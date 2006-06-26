@@ -55,9 +55,33 @@ set numberSetSource {
 		return TCL_OK;
 	    }
 
-	    if ($getObjCmd (interp, objv[2], &pointer->$field) == TCL_ERROR) {
+	    if ($getObjCmd (interp, objv[2], &$pointer->$field) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
+
+	    return TCL_OK;
+	}
+}
+
+set realSetSource {
+	case $optname: {
+	    double value;
+
+	    if ((objc < 2) || (objc > 3)) {
+	        Tcl_WrongNumArgs (interp, 2, objv, "?real?");
+		return TCL_ERROR;
+	    }
+
+	    if (objc == 2) {
+	        Tcl_SetObjResult (interp, Tcl_NewDoubleObj ($pointer->$field));
+		return TCL_OK;
+	    }
+
+	    if (Tcl_GetDoubleFromObj (interp, objv[2], &value) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+
+	    $pointer->$field = (real)value;
 
 	    return TCL_OK;
 	}
@@ -273,6 +297,12 @@ proc put_num_opt {field pointer type} {
 	    set getObjCmd Tcl_GetWideIntFromObj
 	    set typeText "wide int"
 	}
+
+	double {
+	    set newObjCmd Tcl_NewDoubleObj
+	    set getObjCmd Tcl_GetDoubleFromObj
+	    set typeText "double"
+	}
     }
 
     set optname "OPT_[string toupper $field]"
@@ -286,6 +316,14 @@ proc put_varstring_opt {field pointer} {
     set optname "OPT_[string toupper $field]"
 
     puts [subst -nobackslashes -nocommands $stringSetSource]
+}
+
+proc put_real_opt {field pointer} {
+    variable realSetSource
+
+    set optname "OPT_[string toupper $field]"
+
+    puts [subst -nobackslashes -nocommands $realSetSource]
 }
 
 
@@ -370,6 +408,14 @@ proc gencode {} {
 		put_num_opt $field(name) $pointer wide
 	    }
 
+	    double {
+		put_num_opt $field(name) $pointer double
+	    }
+
+	    real {
+	        put_real_opt $field(name) $pointer
+	    }
+
 	    string {
 		put_varstring_opt $field(name) $pointer
 	    }
@@ -402,6 +448,8 @@ CTable fa_position {
     fixedstring subident FA_SUBIDENT_SIZE
     fixedstring facility FA_FACILITY_SIZE
     tailq_entry position_link fa_position
+    double testDouble
+    real testReal
 }
 
 CTable fa_trackstream {
