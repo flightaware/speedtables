@@ -62,6 +62,32 @@ set numberSetSource {
 	}
 }
 
+set stringSetSource {
+        char *string;
+	int   length;
+
+	case $optname: {
+	    if ((objc < 2) || (objc > 3)) {
+	        Tcl_WrongNumArgs (interp, 2, objv, "?string?");
+		return TCL_ERROR;
+	    }
+
+	    if (objc == 2) {
+	        Tcl_SetObjResult (interp, Tcl_NewStringObj ($pointer->$field));
+		return TCL_OK;
+	    }
+
+	    if ($pointer->$field != NULL) {
+	        ckfree ($pointer->$field);
+	    }
+
+	    string = Tcl_GetStringFromObj (objv[2], length);
+	    $pointer->$field = ckalloc (length + 1);
+	    strncpy ($pointer->$field, string, length + 1);
+	    return TCL_OK;
+	}
+}
+
 proc table {name} {
     variable table
     variable booleans
@@ -267,6 +293,15 @@ proc put_num_opt {field pointer type} {
     puts [subst -nobackslashes -nocommands $numberSetSource]
 }
 
+proc put_varstring_opt {field pointer} {
+    variable stringSetSource
+
+    set optname "OPT_[string toupper $field]"
+
+    puts [subst -nobackslashes -nocommands $stringSetSource]
+}
+
+
 proc gencode {} {
     variable table
     variable booleans
@@ -346,6 +381,10 @@ proc gencode {} {
 
 	    wide {
 		put_num_opt $field(name) $pointer wide
+	    }
+
+	    string {
+		put_varstring_opt $field(name) $pointer
 	    }
 	}
     }
