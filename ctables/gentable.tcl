@@ -1,14 +1,46 @@
 #
+# CTables - code to generate Tcl C extensions that implement tables out of
+# C structures
 #
 #
-#
-#
+# $Id$
 #
 
 namespace eval ctable {
     variable table
     variable booleans
     variable fields
+
+    variable leftCurly
+    variable rightCurly
+
+    set leftCurly \173
+    set rightCurly \175
+
+    variable boolsetsource
+
+set boolsetsource {
+	case $optname: {
+	    int boolean;
+
+	    if ((objc < 2) || (objc > 3)) {
+	        Tcl_WrongNumArgs (interp, 2, objv, "?boolean?");
+		return TCL_ERROR;
+	    }
+
+	    if (objc == 2) {
+	        Tcl_SetObjResult (interp, Tcl_NewBooleanObj ($pointer->$field));
+		return TCL_OK;
+	    }
+
+	    if (Tcl_GetBooleanFromObj (interp, objv[2], &boolean) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+
+	    $pointer->$field = boolean;
+	    return TCL_OK;
+	}
+}
 
 proc table {name} {
     variable table
@@ -36,7 +68,7 @@ proc fixedstring {name length {default ""}} {
     lappend fields [list type fixedstring name $name length $length default $default]
 }
 
-proc string {name {default ""}} {
+proc varstring {name {default ""}} {
     variable fields
 
     lappend fields [list name $name type string default $default]
@@ -109,7 +141,7 @@ proc tailq_entry {name structname} {
 }
 
 proc putfield {type name {comment ""}} {
-    if {[::string index $name 0] != "*"} {
+    if {[string index $name 0] != "*"} {
         set name " $name"
     }
 
@@ -128,55 +160,135 @@ proc genstruct {} {
 
     puts $fp "struct $table {"
 
-    foreach "name default" $booleans {
-        putfield "unsigned int" "$name:1"
-    }
-
     foreach myfield $fields {
-        array set field $myfield
+        catch {unset field}
+	array set field $myfield
 
 	switch $field(type) {
 	    string {
-	        putfield char "*$field(name)"
+		putfield char "*$field(name)"
 	    }
 
 	    fixedstring {
-	        putfield char "$field(name)\[$field(length)]"
+		putfield char "$field(name)\[$field(length)]"
 	    }
 
 	    mac {
-	        putfield char "$field(name)[6]"
+		putfield char "$field(name)[6]"
 	    }
 
 	    inet {
-	        putfield char "$field(name)[4]"
+		putfield char "$field(name)[4]"
 	    }
 
 	    tailq_entry {
-	        putfield "TAILQ_ENTRY($field(structname))" $field(name)
+		putfield "TAILQ_ENTRY($field(structname))" $field(name)
 	    }
 
 	    tailq_head {
-	        putfield "TAILQ_HEAD($field(structname), $field(structtype))" $field(name)
+		putfield "TAILQ_HEAD($field(structname), $field(structtype))" $field(name)
 	    }
 
 	    default {
-	        putfield $field(type) $field(name)
+		putfield $field(type) $field(name)
 	    }
 	}
+    }
+
+    foreach "name default" $booleans {
+	putfield "unsigned int" "$name:1"
     }
 
     puts $fp "};"
     puts $fp ""
 }
 
+proc putboolopt {field pointer} {
+    variable boolsetsource
+
+    set optname "OPT_[string toupper $field]"
+
+    puts [subst -nobackslashes -nocommands $boolsetsource]
+}
+
+
+proc gencode {} {
+    variable table
+    variable booleans
+    variable fields
+    variable leftCurly
+    variable rightCurly
+
+    set fp stdout
+
+    puts $fp "int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])\n$leftCurly"
+
+    puts $fp "    struct $table *${table}_ptr = (struct $table *)cData;"
+    puts $fp "    int optIndex;"
+
+    puts $fp "    static CONST char *options[] = $leftCurly"
+    foreach myfield $fields {
+        catch {unset field}
+	array set field $myfield
+
+	puts "    \"$field(name)\","
+    
+    }
+
+    foreach "boolean default" $booleans {
+	puts "    \"$boolean\","
+    }
+    puts $fp "    (char *)NULL"
+    puts $fp "$rightCurly;\n"
+
+    set options "enum options $leftCurly"
+    foreach myfield $fields {
+        catch {unset field}
+	array set field $myfield
+
+	append options "\n    OPT_[string toupper $field(name)],"
+    
+    }
+
+    foreach "bool default" $booleans {
+	append options "\n    OPT_[string toupper $bool],"
+    }
+
+    set options "[string range $options 0 end-1]\n$rightCurly;\n"
+    puts $fp $options
+
+    puts $fp "    if (objc == 1) $leftCurly"
+    puts $fp "        Tcl_WrongNumArgs (interp, 1, objv, \"option ?args?\");"
+    puts $fp "        return TCL_ERROR;"
+    puts $fp "    $rightCurly"
+    puts $fp ""
+
+    puts $fp "    if (Tcl_GetIndexFromObj (interp, objv\[1\], options, \"option\", TCL_EXACT, &optIndex) != TCL_OK) $leftCurly"
+    puts $fp "        return TCL_ERROR;"
+    puts $fp "    $rightCurly"
+    puts $fp ""
+
+    puts $fp "    switch ((enum options) optIndex) $leftCurly"
+
+    foreach "name default" $booleans {
+        putboolopt $name ${table}_ptr
+    }
+
+    foreach myfield $fields {
+    }
+
+    puts $fp "$rightCurly"
+    puts $fp ""
+}
+
 }
 
 proc CTable {name data} {
-    ::ctable::table $name
-    namespace eval ::ctable $data
+::ctable::table $name
+namespace eval ::ctable $data
 
-    ::ctable::genstruct
+::ctable::genstruct
+::ctable::gencode
 }
 
 CTable fa_position {
@@ -200,12 +312,12 @@ CTable fa_trackstream {
     boolean blocked
     boolean trackArchived
 
-    string name
-    string prefix
-    string type
-    string suffix
-    string origin
-    string destination
+    varstring name
+    varstring prefix
+    varstring type
+    varstring suffix
+    varstring origin
+    varstring destination
 
     long departureTime
     long arrivalTime
