@@ -508,7 +508,7 @@ proc gen_new_obj {type pointer fieldName} {
 	fixedstring {
 	    catch {unset field}
 	    array set field $fields($fieldName)
-	    return "Tcl_NewStringObj (&$pointer->$fieldName, $field(length))"
+	    return "Tcl_NewStringObj ($pointer->$fieldName, $field(length))"
 	}
 
 	tailq_entry {
