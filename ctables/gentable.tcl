@@ -128,6 +128,24 @@ set cmdBodySource {
 	    switch ((enum fields) fieldIndex) $leftCurly
 }
 
+set cmdBodyGetSource {
+      case OPT_GET: $leftCurly
+        int i;
+	int fieldIndex;
+
+	if (objc < 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "field ?field...?");
+	    return TCL_ERROR;
+	}
+
+	for (i = 2; i < objc; i++) $leftCurly
+            if (Tcl_GetIndexFromObj (interp, objv[i], fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+		return TCL_ERROR;
+	    }
+
+	    switch ((enum fields) fieldIndex) $leftCurly
+}
+
 proc table {name} {
     variable table
     variable booleans
@@ -233,7 +251,7 @@ proc putfield {type name {comment ""}} {
     puts stdout [format "    %-13s %s;%s" $type $name $comment]
 }
 
-proc genstruct {} {
+proc gen_struct {} {
     variable table
     variable booleans
     variable nonBooleans
@@ -287,15 +305,15 @@ proc genstruct {} {
     puts $fp ""
 }
 
-proc put_bool_opt {field pointer} {
+proc put_bool_field {field pointer} {
     variable boolSetSource
 
-    set optname "OPT_[string toupper $field]"
+    set optname "FIELD_[string toupper $field]"
 
     puts [subst -nobackslashes -nocommands $boolSetSource]
 }
 
-proc put_num_opt {field pointer type} {
+proc put_num_field {field pointer type} {
     variable numberSetSource
 
     set typeText $type
@@ -331,31 +349,31 @@ proc put_num_opt {field pointer type} {
 	}
     }
 
-    set optname "OPT_[string toupper $field]"
+    set optname "FIELD_[string toupper $field]"
 
     puts [subst -nobackslashes -nocommands $numberSetSource]
 }
 
-proc put_varstring_opt {field pointer} {
+proc put_varstring_field {field pointer} {
     variable stringSetSource
 
-    set optname "OPT_[string toupper $field]"
+    set optname "FIELD_[string toupper $field]"
 
     puts [subst -nobackslashes -nocommands $stringSetSource]
 }
 
-proc put_short_opt {field pointer} {
+proc put_short_field {field pointer} {
     variable shortSetSource
 
-    set optname "OPT_[string toupper $field]"
+    set optname "FIELD_[string toupper $field]"
 
     puts [subst -nobackslashes -nocommands $shortSetSource]
 }
 
-proc put_real_opt {field pointer} {
+proc put_real_field {field pointer} {
     variable realSetSource
 
-    set optname "OPT_[string toupper $field]"
+    set optname "FIELD_[string toupper $field]"
 
     puts [subst -nobackslashes -nocommands $realSetSource]
 }
@@ -376,41 +394,41 @@ proc gen_sets {pointer} {
 
 	switch $field(type) {
 	    short {
-		put_short_opt $myfield $pointer
+		put_short_field $myfield $pointer
 	    }
 
 	    int {
-		put_num_opt $myfield $pointer int
+		put_num_field $myfield $pointer int
 	    }
 
 	    long {
-		put_num_opt $myfield $pointer long
+		put_num_field $myfield $pointer long
 	    }
 
 	    wide {
-		put_num_opt $myfield $pointer wide
+		put_num_field $myfield $pointer wide
 	    }
 
 	    double {
-		put_num_opt $myfield $pointer double
+		put_num_field $myfield $pointer double
 	    }
 
 	    real {
-	        put_real_opt $myfield $pointer
+	        put_real_field $myfield $pointer
 	    }
 
 	    string {
-		put_varstring_opt $myfield $pointer
+		put_varstring_field $myfield $pointer
 	    }
 
 	    boolean {
-	        put_bool_opt $myfield $pointer
+	        put_bool_field $myfield $pointer
 	    }
 	}
     }
 }
 
-proc gencode {} {
+proc gen_code {} {
     variable table
     variable booleans
     variable fields
@@ -419,6 +437,7 @@ proc gencode {} {
     variable rightCurly
     variable cmdBodyHeader
     variable cmdBodySource
+    variable cmdBodyGetSource
 
     set fp stdout
 
@@ -429,15 +448,21 @@ proc gencode {} {
     gen_field_names
 
     puts [subst -nobackslashes -nocommands $cmdBodySource]
-
     gen_sets $pointer
-
     puts $fp "          $rightCurly"
     puts $fp "        $rightCurly"
     puts $fp "      $rightCurly"
     puts $fp ""
 
+    puts [subst -nobackslashes -nocommands $cmdBodyGetSource]
     gen_gets
+    puts $fp "          $rightCurly"
+    puts $fp "        $rightCurly"
+    puts $fp "      $rightCurly"
+
+    # finish out the command switch and the command itself
+    puts $fp "    $rightCurly"
+    puts $fp "$rightCurly"
 }
 
 proc gen_new_obj {type pointer fieldName} {
@@ -506,7 +531,7 @@ proc append_list_element {type pointer field} {
     return "Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), [gen_new_obj $type $pointer $field])"
 }
 
-proc genlist {} {
+proc gen_list {} {
     variable table
     variable booleans
     variable fields
@@ -538,70 +563,6 @@ proc genlist {} {
     }
 
     puts "    Tcl_SetObjResult (interp, Tcl_NewListObj ($length, listObjv));"
-}
-
-proc genpickedlist {} {
-    variable table
-    variable booleans
-    variable fields
-    variable fieldList
-    variable leftCurly
-    variable rightCurly
-
-    set pointer ${table}_ptr
-
-    set fp stdout
-
-    puts $fp "INCOMPLETE GEN PICKED CODE"
-
-    puts $fp "    int fieldIndex;"
-
-    puts $fp "    static CONST char *fields[] = $leftCurly"
-    foreach myfield $fieldList {
-	puts "    \"$myfield\","
-    
-    }
-    puts $fp "    (char *)NULL"
-    puts $fp "$rightCurly;\n"
-
-    set fieldenum "enum fields $leftCurly"
-    foreach myField $fieldList {
-	append fieldenum "\n    FIELD_[string toupper $myField],"
-    }
-
-    set fieldenum "[string range $fieldenum 0 end-1]\n$rightCurly;\n"
-    puts $fp $fieldenum
-
-    puts $fp "    if (fieldc == 1) $leftCurly"
-    puts $fp "        Tcl_WrongNumArgs (interp, 1, fieldv, \"field ?field...?\");"
-    puts $fp "        return TCL_ERROR;"
-    puts $fp "    $rightCurly"
-    puts $fp ""
-
-    puts $fp "    for (field = 1; field < fieldc; field++) $leftCurly"
-
-    puts $fp "        if (Tcl_GetIndexFromObj (interp, fieldv\[field\], fields, \"field\", TCL_EXACT, &fieldIndex) != TCL_OK) $leftCurly"
-    puts $fp "            return TCL_ERROR;"
-    puts $fp "        $rightCurly"
-    puts $fp ""
-
-    puts $fp "    switch ((enum fields) fieldIndex) $leftCurly"
-
-    foreach myField $fieldList {
-        catch {unset field}
-	array set field $fields($myField)
-
-	puts $fp "        case FIELD_[string toupper $myField]: $leftCurly"
-	puts $fp "            if ([append_list_element $field(type) $pointer $myField]) == TCL_ERROR) $leftCurly"
-	puts $fp "                return TCL_ERROR;"
-	puts $fp "            $rightCurly"
-	puts $fp "            break;"
-	puts $fp "        $rightCurly"
-	puts $fp ""
-    }
-
-    puts $fp "    $rightCurly"
-
 }
 
 proc gen_field_names {} {
@@ -650,31 +611,26 @@ proc gen_gets {} {
         catch {unset field}
 	array set field $fields($myField)
 
-	puts $fp "        case FIELD_[string toupper $myField]: $leftCurly"
-	puts $fp "            if ([append_list_element $field(type) $pointer $myField]) == TCL_ERROR) $leftCurly"
-	puts $fp "                return TCL_ERROR;"
-	puts $fp "            $rightCurly"
-	puts $fp "            break;"
-	puts $fp "        $rightCurly"
+	puts $fp "              case FIELD_[string toupper $myField]: $leftCurly"
+	puts $fp "                if ([append_list_element $field(type) $pointer $myField]) == TCL_ERROR) $leftCurly"
+	puts $fp "                    return TCL_ERROR;"
+	puts $fp "                $rightCurly"
+	puts $fp "                break;"
+	puts $fp "              $rightCurly"
 	puts $fp ""
     }
-
-    puts $fp "    $rightCurly"
-
 }
-
-
 
 }
 
 proc CTable {name data} {
-::ctable::table $name
-namespace eval ::ctable $data
+    ::ctable::table $name
+    namespace eval ::ctable $data
 
-::ctable::genstruct
-::ctable::gencode
-::ctable::genlist
-::ctable::genpickedlist
+    ::ctable::gen_struct
+    ::ctable::gen_code
+
+    #::ctable::gen_list
 }
 
 CTable fa_position {
