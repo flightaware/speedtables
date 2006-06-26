@@ -1,0 +1,50 @@
+#
+# 
+#
+# $Id$
+#
+
+::ctable::gen_preamble
+
+CTable fa_position {
+    long timestamp
+    short latitude
+    short longitude
+    short groundspeed
+    short altitude
+    char altitudeStatus
+    char updateType
+    char altitudeChange
+    fixedstring subident 4
+    fixedstring facility 3
+    tailq_entry position_link fa_position
+    double testDouble
+    float testFloat
+}
+
+CTable fa_trackstream {
+    tailq_head positions positionhead fa_position
+    boolean inAir
+    boolean debug
+    boolean blocked
+    boolean trackArchived
+
+    varstring name
+    varstring prefix
+    varstring type
+    varstring suffix
+    varstring origin
+    varstring destination
+
+    long departureTime
+    long arrivalTime
+    long oldestTimeSeen
+    long newestTimeSeen
+    long newestTimeSaved
+
+    short lowLatitude
+    short lowLongitude
+    short highLatitude
+    short highLongitude
+}
+
