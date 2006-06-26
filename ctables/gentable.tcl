@@ -88,6 +88,31 @@ set realSetSource {
 	}
 }
 
+set shortSetSource {
+	case $optname: {
+	    int value;
+
+	    if ((objc < 2) || (objc > 3)) {
+	        Tcl_WrongNumArgs (interp, 2, objv, "?short?");
+		return TCL_ERROR;
+	    }
+
+	    if (objc == 2) {
+	        Tcl_SetObjResult (interp, Tcl_NewIntObj ($pointer->$field));
+		return TCL_OK;
+	    }
+
+	    if (Tcl_GetIntFromObj (interp, objv[2], &value) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+
+	    $pointer->$field = (short)value;
+
+	    return TCL_OK;
+	}
+}
+
+
 set stringSetSource {
         char *string;
 	int   length;
@@ -99,7 +124,7 @@ set stringSetSource {
 	    }
 
 	    if (objc == 2) {
-	        Tcl_SetObjResult (interp, Tcl_NewStringObj ($pointer->$field));
+	        Tcl_SetObjResult (interp, Tcl_NewStringObj ($pointer->$field, -1));
 		return TCL_OK;
 	    }
 
@@ -287,6 +312,11 @@ proc put_num_opt {field pointer type} {
     set typeText $type
 
     switch $type {
+        short {
+	    set newObjCmd Tcl_NewIntObj
+	    set getObjCmd Tcl_GetIntFromObj
+	}
+
         int {
 	    set newObjCmd Tcl_NewIntObj
 	    set getObjCmd Tcl_GetIntFromObj
@@ -323,6 +353,14 @@ proc put_varstring_opt {field pointer} {
     set optname "OPT_[string toupper $field]"
 
     puts [subst -nobackslashes -nocommands $stringSetSource]
+}
+
+proc put_short_opt {field pointer} {
+    variable shortSetSource
+
+    set optname "OPT_[string toupper $field]"
+
+    puts [subst -nobackslashes -nocommands $shortSetSource]
 }
 
 proc put_real_opt {field pointer} {
@@ -392,6 +430,10 @@ proc gencode {} {
 	array set field $fields($myfield)
 
 	switch $field(type) {
+	    short {
+		put_short_opt $myfield $pointer
+	    }
+
 	    int {
 		put_num_opt $myfield $pointer int
 	    }
@@ -427,7 +469,7 @@ proc gencode {} {
 }
 
 proc set_list_obj {position objCmd pointer field} {
-    puts "        listObjv\[$position] = $objCmd ($pointer->$field);"
+    puts "    listObjv\[$position] = $objCmd ($pointer->$field);"
 }
 
 proc genlist {} {
@@ -440,42 +482,56 @@ proc genlist {} {
 
     set pointer ${table}_ptr
 
-    puts "INCOMPLETE LSIT CODE"
+    puts "INCOMPLETE LIST CODE"
     puts ""
     set length [llength $fieldList]
 
     puts "    Tcl_Obj *listObjv\[$length];"
-    puts "    int      listObjc;"
     puts ""
 
     set position 0
     foreach fieldName $fieldList {
-	switch $type {
+        catch {unset field}
+	array set field $fields($fieldName)
+
+	switch $field(type) {
+	    short {
+	        set_list_obj $position Tcl_NewIntObj $pointer $fieldName
+	    }
+
 	    int {
-	        set_list_obj 0 Tcl_NewIntObj $pointer $fieldName
+	        set_list_obj $position Tcl_NewIntObj $pointer $fieldName
 	    }
 
 	    long {
-		set newObjCmd Tcl_NewLongObj
-		set getObjCmd Tcl_GetLongFromObj
-
+	        set_list_obj $position Tcl_NewLongObj $pointer $fieldName
 	    }
 
 	    wide {
-		set type "Tcl_WideInt"
-		set newObjCmd Tcl_NewWideIntObj
-		set getObjCmd Tcl_GetWideIntFromObj
-		set typeText "wide int"
+	        set_list_obj $position Tcl_NewWideIntObj $pointer $fieldName
 	    }
 
 	    double {
-		set newObjCmd Tcl_NewDoubleObj
-		set getObjCmd Tcl_GetDoubleFromObj
-		set typeText "double"
+	        set_list_obj $position Tcl_NewDoubleObj $pointer $fieldName
+	    }
+
+	    real {
+	        set_list_obj $position Tcl_NewDoubleObj $pointer $fieldName
+	    }
+
+	    boolean {
+	        set_list_obj $position Tcl_NewBooleanObj $pointer $fieldName
+	    }
+
+	    string {
+	        set_list_obj $position Tcl_NewStringObj $pointer "$fieldName, -1"
 	    }
 	}
 
+	incr position
     }
+
+    puts "    Tcl_SetObjResult (interp, Tcl_NewListObj ($length, listObjv));"
 }
 
 }
@@ -486,6 +542,7 @@ namespace eval ::ctable $data
 
 ::ctable::genstruct
 ::ctable::gencode
+::ctable::genlist
 }
 
 CTable fa_position {
