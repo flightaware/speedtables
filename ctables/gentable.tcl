@@ -19,48 +19,25 @@ namespace eval ctable {
     set leftCurly \173
     set rightCurly \175
 
-    variable boolsetsource
-
 set boolSetSource {
 	case $optname: {
 	    int boolean;
 
-	    if ((objc < 2) || (objc > 3)) {
-	        Tcl_WrongNumArgs (interp, 2, objv, "?boolean?");
-		return TCL_ERROR;
-	    }
-
-	    if (objc == 2) {
-	        Tcl_SetObjResult (interp, Tcl_NewBooleanObj ($pointer->$field));
-		return TCL_OK;
-	    }
-
-	    if (Tcl_GetBooleanFromObj (interp, objv[2], &boolean) == TCL_ERROR) {
+	    if (Tcl_GetBooleanFromObj (interp, objv[i], &boolean) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 
 	    $pointer->$field = boolean;
-	    return TCL_OK;
+	    break;
 	}
 }
 
 set numberSetSource {
 	case $optname: {
-	    if ((objc < 2) || (objc > 3)) {
-	        Tcl_WrongNumArgs (interp, 2, objv, "?$typeText?");
-		return TCL_ERROR;
-	    }
-
-	    if (objc == 2) {
-	        Tcl_SetObjResult (interp, $newObjCmd ($pointer->$field));
-		return TCL_OK;
-	    }
-
-	    if ($getObjCmd (interp, objv[2], &$pointer->$field) == TCL_ERROR) {
+	    if ($getObjCmd (interp, objv[i], &$pointer->$field) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
-
-	    return TCL_OK;
+	    break;
 	}
 }
 
@@ -68,23 +45,12 @@ set realSetSource {
 	case $optname: {
 	    double value;
 
-	    if ((objc < 2) || (objc > 3)) {
-	        Tcl_WrongNumArgs (interp, 2, objv, "?real?");
-		return TCL_ERROR;
-	    }
-
-	    if (objc == 2) {
-	        Tcl_SetObjResult (interp, Tcl_NewDoubleObj ($pointer->$field));
-		return TCL_OK;
-	    }
-
-	    if (Tcl_GetDoubleFromObj (interp, objv[2], &value) == TCL_ERROR) {
+	    if (Tcl_GetDoubleFromObj (interp, objv[i], &value) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 
 	    $pointer->$field = (real)value;
-
-	    return TCL_OK;
+	    break;
 	}
 }
 
@@ -92,42 +58,20 @@ set shortSetSource {
 	case $optname: {
 	    int value;
 
-	    if ((objc < 2) || (objc > 3)) {
-	        Tcl_WrongNumArgs (interp, 2, objv, "?short?");
-		return TCL_ERROR;
-	    }
-
-	    if (objc == 2) {
-	        Tcl_SetObjResult (interp, Tcl_NewIntObj ($pointer->$field));
-		return TCL_OK;
-	    }
-
-	    if (Tcl_GetIntFromObj (interp, objv[2], &value) == TCL_ERROR) {
+	    if (Tcl_GetIntFromObj (interp, objv[i], &value) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 
 	    $pointer->$field = (short)value;
-
-	    return TCL_OK;
+	    break;
 	}
 }
-
 
 set stringSetSource {
         char *string;
 	int   length;
 
 	case $optname: {
-	    if ((objc < 2) || (objc > 3)) {
-	        Tcl_WrongNumArgs (interp, 2, objv, "?string?");
-		return TCL_ERROR;
-	    }
-
-	    if (objc == 2) {
-	        Tcl_SetObjResult (interp, Tcl_NewStringObj ($pointer->$field, -1));
-		return TCL_OK;
-	    }
-
 	    if ($pointer->$field != NULL) {
 	        ckfree ($pointer->$field);
 	    }
@@ -135,8 +79,36 @@ set stringSetSource {
 	    string = Tcl_GetStringFromObj (objv[2], length);
 	    $pointer->$field = ckalloc (length + 1);
 	    strncpy ($pointer->$field, string, length + 1);
-	    return TCL_OK;
+	    break;
 	}
+}
+
+set cmdBodyHeader {
+int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+$leftCurly
+    struct $table *$pointer = (struct $table *)cData;
+    int optIndex;
+
+    static CONST char *options[] = {"get", "set", (char *)NULL};
+
+    enum options {OPT_GET, OPT_SET};
+
+}
+
+set cmdBodySource {
+
+    if (objc == 1) {
+        Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
+	return TCL_ERROR;
+    }
+
+    if (Tcl_GetIndexFromObj (interp, objv[1], options, "option", TCL_EXACT, &optIndex) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    switch ((enum options) optIndex) $leftCurly
+
+        case OPT_SET:
 }
 
 proc table {name} {
@@ -378,44 +350,18 @@ proc gencode {} {
     variable fieldList
     variable leftCurly
     variable rightCurly
+    variable cmdBodyHeader
+    variable cmdBodySource
 
     set fp stdout
 
     set pointer "${table}_ptr"
 
-    puts $fp "int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])\n$leftCurly"
+    puts [subst -nobackslashes -nocommands $cmdBodyHeader]
 
-    puts $fp "    struct $table *$pointer = (struct $table *)cData;"
-    puts $fp "    int optIndex;"
+    gen_field_names
 
-    puts $fp "    static CONST char *options[] = $leftCurly"
-    foreach myfield $fieldList {
-	puts "    \"$myfield\","
-    
-    }
-    puts $fp "    (char *)NULL"
-    puts $fp "$rightCurly;\n"
-
-    set options "enum options $leftCurly"
-    foreach myField $fieldList {
-	append options "\n    OPT_[string toupper $myField],"
-    }
-
-    set options "[string range $options 0 end-1]\n$rightCurly;\n"
-    puts $fp $options
-
-    puts $fp "    if (objc == 1) $leftCurly"
-    puts $fp "        Tcl_WrongNumArgs (interp, 1, objv, \"option ?args?\");"
-    puts $fp "        return TCL_ERROR;"
-    puts $fp "    $rightCurly"
-    puts $fp ""
-
-    puts $fp "    if (Tcl_GetIndexFromObj (interp, objv\[1\], options, \"option\", TCL_EXACT, &optIndex) != TCL_OK) $leftCurly"
-    puts $fp "        return TCL_ERROR;"
-    puts $fp "    $rightCurly"
-    puts $fp ""
-
-    puts $fp "    switch ((enum options) optIndex) $leftCurly"
+    puts [subst -nobackslashes -nocommands $cmdBodySource]
 
     foreach myfield $fieldList {
         catch {unset field}
@@ -623,6 +569,85 @@ proc genpickedlist {} {
     puts $fp "    $rightCurly"
 
 }
+
+proc gen_field_names {} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    set fp stdout
+
+    puts $fp "    static CONST char *fields[] = $leftCurly"
+    foreach myfield $fieldList {
+	puts "    \"$myfield\","
+    
+    }
+    puts $fp "    (char *)NULL"
+    puts $fp "$rightCurly;\n"
+
+    set fieldenum "enum fields $leftCurly"
+    foreach myField $fieldList {
+	append fieldenum "\n    FIELD_[string toupper $myField],"
+    }
+
+    set fieldenum "[string range $fieldenum 0 end-1]\n$rightCurly;\n"
+    puts $fp $fieldenum
+
+    puts $fp ""
+}
+
+
+proc genset {} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    set pointer ${table}_ptr
+
+    set fp stdout
+
+    puts $fp "INCOMPLETE GEN SET CODE"
+
+    puts $fp "    int fieldIndex;"
+
+    puts $fp "    if (fieldc < 3) $leftCurly"
+    puts $fp "        Tcl_WrongNumArgs (interp, 1, fieldv, \"field value ?field value...?\");"
+    puts $fp "        return TCL_ERROR;"
+    puts $fp "    $rightCurly"
+    puts $fp ""
+
+    puts $fp "    for (field = 1; field < fieldc; field += 2) $leftCurly"
+
+    puts $fp "        if (Tcl_GetIndexFromObj (interp, fieldv\[field\], fields, \"field\", TCL_EXACT, &fieldIndex) != TCL_OK) $leftCurly"
+    puts $fp "            return TCL_ERROR;"
+    puts $fp "        $rightCurly"
+    puts $fp ""
+
+    puts $fp "    switch ((enum fields) fieldIndex) $leftCurly"
+
+    foreach myField $fieldList {
+        catch {unset field}
+	array set field $fields($myField)
+
+	puts $fp "        case FIELD_[string toupper $myField]: $leftCurly"
+	puts $fp "            if ([append_list_element $field(type) $pointer $myField]) == TCL_ERROR) $leftCurly"
+	puts $fp "                return TCL_ERROR;"
+	puts $fp "            $rightCurly"
+	puts $fp "            break;"
+	puts $fp "        $rightCurly"
+	puts $fp ""
+    }
+
+    puts $fp "    $rightCurly"
+
+}
+
 
 
 }
