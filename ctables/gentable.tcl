@@ -80,7 +80,7 @@ set stringSetSource {
 		    ckfree ($pointer->$field);
 		}
 
-		string = Tcl_GetStringFromObj (objv[i+1], length);
+		string = Tcl_GetStringFromObj (objv[i+1], &length);
 		$pointer->$field = ckalloc (length + 1);
 		strncpy ($pointer->$field, string, length + 1);
 		break;
