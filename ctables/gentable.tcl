@@ -612,7 +612,7 @@ proc gen_gets {} {
 	array set field $fields($myField)
 
 	puts $fp "              case FIELD_[string toupper $myField]: $leftCurly"
-	puts $fp "                if ([append_list_element $field(type) $pointer $myField]) == TCL_ERROR) $leftCurly"
+	puts $fp "                if ([append_list_element $field(type) $pointer $myField] == TCL_ERROR) $leftCurly"
 	puts $fp "                    return TCL_ERROR;"
 	puts $fp "                $rightCurly"
 	puts $fp "                break;"
