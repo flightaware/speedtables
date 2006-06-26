@@ -393,20 +393,12 @@ proc gencode {} {
 	puts "    \"$myfield\","
     
     }
-
-    foreach "boolean default" $booleans {
-	puts "    \"$boolean\","
-    }
     puts $fp "    (char *)NULL"
     puts $fp "$rightCurly;\n"
 
     set options "enum options $leftCurly"
     foreach myField $fieldList {
 	append options "\n    OPT_[string toupper $myField],"
-    }
-
-    foreach "bool default" $booleans {
-	append options "\n    OPT_[string toupper $bool],"
     }
 
     set options "[string range $options 0 end-1]\n$rightCurly;\n"
@@ -468,8 +460,70 @@ proc gencode {} {
     puts $fp ""
 }
 
-proc set_list_obj {position objCmd pointer field} {
-    puts "    listObjv\[$position] = $objCmd ($pointer->$field);"
+proc gen_new_obj {type pointer fieldName} {
+    variable fields
+
+    switch $type {
+	short {
+	    return "Tcl_NewIntObj ($pointer->$fieldName)"
+	}
+
+	int {
+	    return "Tcl_NewIntObj ($pointer->$fieldName)"
+	}
+
+	long {
+	    return "Tcl_NewLongObj ($pointer->$fieldName)"
+	}
+
+	wide {
+	    return "Tcl_NewWideIntObj ($pointer->$fieldName)"
+	}
+
+	double {
+	    return "Tcl_NewDoubleObj ($pointer->$fieldName)"
+	}
+
+	real {
+	    return "Tcl_NewDoubleObj ($pointer->$fieldName)"
+	}
+
+	boolean {
+	    return "Tcl_NewBooleanObj ($pointer->$fieldName)"
+	}
+
+	string {
+	    return "Tcl_NewStringObj ($pointer->$fieldName, -1)"
+	}
+
+	char {
+	    return "Tcl_NewStringObj (&$pointer->$fieldName, 1)"
+	}
+
+	fixedstring {
+	    catch {unset field}
+	    array set field $fields($fieldName)
+	    return "Tcl_NewStringObj (&$pointer->$fieldName, $field(length))"
+	}
+
+	tailq_entry {
+	}
+
+	tailq_head {
+	}
+
+	default {
+	    error "no code to gen obj for type $type"
+	}
+    }
+}
+
+proc set_list_obj {position type pointer field} {
+    puts "    listObjv\[$position] = [gen_new_obj $type $pointer $field];"
+}
+
+proc append_list_element {type pointer field} {
+    return "Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), [gen_new_obj $type $pointer $field])"
 }
 
 proc genlist {} {
@@ -495,36 +549,8 @@ proc genlist {} {
 	array set field $fields($fieldName)
 
 	switch $field(type) {
-	    short {
-	        set_list_obj $position Tcl_NewIntObj $pointer $fieldName
-	    }
-
-	    int {
-	        set_list_obj $position Tcl_NewIntObj $pointer $fieldName
-	    }
-
-	    long {
-	        set_list_obj $position Tcl_NewLongObj $pointer $fieldName
-	    }
-
-	    wide {
-	        set_list_obj $position Tcl_NewWideIntObj $pointer $fieldName
-	    }
-
-	    double {
-	        set_list_obj $position Tcl_NewDoubleObj $pointer $fieldName
-	    }
-
-	    real {
-	        set_list_obj $position Tcl_NewDoubleObj $pointer $fieldName
-	    }
-
-	    boolean {
-	        set_list_obj $position Tcl_NewBooleanObj $pointer $fieldName
-	    }
-
-	    string {
-	        set_list_obj $position Tcl_NewStringObj $pointer "$fieldName, -1"
+	    default {
+	        set_list_obj $position $field(type) $pointer $fieldName
 	    }
 	}
 
@@ -533,6 +559,71 @@ proc genlist {} {
 
     puts "    Tcl_SetObjResult (interp, Tcl_NewListObj ($length, listObjv));"
 }
+
+proc genpickedlist {} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    set pointer ${table}_ptr
+
+    set fp stdout
+
+    puts $fp "INCOMPLETE GEN PICKED CODE"
+
+    puts $fp "    int fieldIndex;"
+
+    puts $fp "    static CONST char *fields[] = $leftCurly"
+    foreach myfield $fieldList {
+	puts "    \"$myfield\","
+    
+    }
+    puts $fp "    (char *)NULL"
+    puts $fp "$rightCurly;\n"
+
+    set fieldenum "enum fields $leftCurly"
+    foreach myField $fieldList {
+	append fieldenum "\n    FIELD_[string toupper $myField],"
+    }
+
+    set fieldenum "[string range $fieldenum 0 end-1]\n$rightCurly;\n"
+    puts $fp $fieldenum
+
+    puts $fp "    if (fieldc == 1) $leftCurly"
+    puts $fp "        Tcl_WrongNumArgs (interp, 1, fieldv, \"field ?field...?\");"
+    puts $fp "        return TCL_ERROR;"
+    puts $fp "    $rightCurly"
+    puts $fp ""
+
+    puts $fp "    for (field = 1; field < fieldc; field++) $leftCurly"
+
+    puts $fp "        if (Tcl_GetIndexFromObj (interp, fieldv\[field\], fields, \"field\", TCL_EXACT, &fieldIndex) != TCL_OK) $leftCurly"
+    puts $fp "            return TCL_ERROR;"
+    puts $fp "        $rightCurly"
+    puts $fp ""
+
+    puts $fp "    switch ((enum fields) fieldIndex) $leftCurly"
+
+    foreach myField $fieldList {
+        catch {unset field}
+	array set field $fields($myField)
+
+	puts $fp "        case FIELD_[string toupper $myField]: $leftCurly"
+	puts $fp "            if ([append_list_element $field(type) $pointer $myField]) == TCL_ERROR) $leftCurly"
+	puts $fp "                return TCL_ERROR;"
+	puts $fp "            $rightCurly"
+	puts $fp "            break;"
+	puts $fp "        $rightCurly"
+	puts $fp ""
+    }
+
+    puts $fp "    $rightCurly"
+
+}
+
 
 }
 
@@ -543,6 +634,7 @@ namespace eval ::ctable $data
 ::ctable::genstruct
 ::ctable::gencode
 ::ctable::genlist
+::ctable::genpickedlist
 }
 
 CTable fa_position {
