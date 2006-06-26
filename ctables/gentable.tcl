@@ -9,6 +9,7 @@
 namespace eval ctable {
     variable table
     variable booleans
+    variable nonBooleans
     variable fields
     variable fieldList
 
@@ -116,14 +117,16 @@ set stringSetSource {
 proc table {name} {
     variable table
     variable booleans
+    variable nonBooleans
     variable fields
     variable fieldList
 
     set table $name
 
     set booleans ""
-    set fields ""
+    catch {unset fields}
     set fieldList ""
+    set nonBooleans ""
 }
 
 proc end_table {} {
@@ -132,19 +135,25 @@ proc end_table {} {
 proc deffield {name args} {
     variable fields
     variable fieldList
+    variable nonBooleans
 
     lappend args name $name
 
-    lappend fields $args
+    set fields($name) $args
     lappend fieldList $name
+    lappend nonBooleans $name
 }
 
 proc boolean {name {default 0}} {
     variable booleans
+    variable fields
     variable fieldList
 
-    lappend booleans $name $default
+    lappend args name $name type boolean
+
+    set fields($name) $args
     lappend fieldList $name
+    lappend booleans $name
 }
 
 proc fixedstring {name length {default ""}} {
@@ -175,10 +184,6 @@ proc long {name {default 0}} {
     deffield $name type long default $default
 }
 
-proc ulong {name {default 0}} {
-    deffield $name type "unsigned long" default $default
-}
-
 proc wide {name {default 0}} {
     deffield $name type "wide" default $default
 }
@@ -192,8 +197,6 @@ proc double {name {default 0.0}} {
 }
 
 proc inet {name {default 0.0.0.0}} {
-    variable fields
-
     deffield $name type inet default $default
 }
 
@@ -219,15 +222,17 @@ proc putfield {type name {comment ""}} {
 proc genstruct {} {
     variable table
     variable booleans
+    variable nonBooleans
     variable fields
+    variable fieldList
 
     set fp stdout
 
     puts $fp "struct $table {"
 
-    foreach myfield $fields {
+    foreach myfield $nonBooleans {
         catch {unset field}
-	array set field $myfield
+	array set field $fields($myfield)
 
 	switch $field(type) {
 	    string {
@@ -260,7 +265,7 @@ proc genstruct {} {
 	}
     }
 
-    foreach "name default" $booleans {
+    foreach name $booleans {
 	putfield "unsigned int" "$name:1"
     }
 
@@ -332,6 +337,7 @@ proc gencode {} {
     variable table
     variable booleans
     variable fields
+    variable fieldList
     variable leftCurly
     variable rightCurly
 
@@ -345,11 +351,8 @@ proc gencode {} {
     puts $fp "    int optIndex;"
 
     puts $fp "    static CONST char *options[] = $leftCurly"
-    foreach myfield $fields {
-        catch {unset field}
-	array set field $myfield
-
-	puts "    \"$field(name)\","
+    foreach myfield $fieldList {
+	puts "    \"$myfield\","
     
     }
 
@@ -360,12 +363,8 @@ proc gencode {} {
     puts $fp "$rightCurly;\n"
 
     set options "enum options $leftCurly"
-    foreach myfield $fields {
-        catch {unset field}
-	array set field $myfield
-
-	append options "\n    OPT_[string toupper $field(name)],"
-    
+    foreach myField $fieldList {
+	append options "\n    OPT_[string toupper $myField],"
     }
 
     foreach "bool default" $booleans {
@@ -388,37 +387,37 @@ proc gencode {} {
 
     puts $fp "    switch ((enum options) optIndex) $leftCurly"
 
-    foreach "name default" $booleans {
-        put_bool_opt $name $pointer
-    }
-
-    foreach myfield $fields {
+    foreach myfield $fieldList {
         catch {unset field}
-	array set field $myfield
+	array set field $fields($myfield)
 
 	switch $field(type) {
 	    int {
-		put_num_opt $field(name) $pointer int
+		put_num_opt $myfield $pointer int
 	    }
 
 	    long {
-		put_num_opt $field(name) $pointer long
+		put_num_opt $myfield $pointer long
 	    }
 
 	    wide {
-		put_num_opt $field(name) $pointer wide
+		put_num_opt $myfield $pointer wide
 	    }
 
 	    double {
-		put_num_opt $field(name) $pointer double
+		put_num_opt $myfield $pointer double
 	    }
 
 	    real {
-	        put_real_opt $field(name) $pointer
+	        put_real_opt $myfield $pointer
 	    }
 
 	    string {
-		put_varstring_opt $field(name) $pointer
+		put_varstring_opt $myfield $pointer
+	    }
+
+	    boolean {
+	        put_bool_opt $myfield $pointer
 	    }
 	}
     }
@@ -490,7 +489,7 @@ namespace eval ::ctable $data
 }
 
 CTable fa_position {
-    ulong timestamp
+    long timestamp
     short latitude
     short longitude
     short groundspeed
