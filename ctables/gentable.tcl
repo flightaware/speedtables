@@ -10,6 +10,7 @@ namespace eval ctable {
     variable table
     variable booleans
     variable fields
+    variable fieldList
 
     variable leftCurly
     variable rightCurly
@@ -102,94 +103,80 @@ proc table {name} {
 proc end_table {} {
 }
 
+proc deffield {name args} {
+    variable fields
+    variable fieldList
+
+    lappend args name $name
+
+    lappend fields $args
+    lappend fieldList $name
+}
+
 proc boolean {name {default 0}} {
     variable booleans
+    variable fieldList
 
     lappend booleans $name $default
+    lappend fieldList $name
 }
 
 proc fixedstring {name length {default ""}} {
-    variable fields
-
-    lappend fields [list type fixedstring name $name length $length default $default]
+    deffield $name type fixedstring length $length default $default
 }
 
 proc varstring {name {default ""}} {
-    variable fields
-
-    lappend fields [list name $name type string default $default]
+    deffield $name type string default $default
 }
 
 proc char {name {default ""}} {
-    variable fields
-
-    lappend fields [list name $name type char default $default]
+    deffield $name type char default $default
 }
 
 proc mac {name {default 00:00:00:00:00:00}} {
-    variable fields
-
-    lappend fields [list name $name type mac default $default]
+    deffield $name type mac default $default
 }
 
 proc short {name {default 0}} {
-    variable fields
-
-    lappend fields [list name $name type short default $default]
+    deffield $name type short default $default
 }
 
 proc int {name {default 0}} {
-    variable fields
-
-    lappend fields [list name $name type int default $default]
+    deffield $name type int default $default
 }
 
 proc long {name {default 0}} {
-    variable fields
-
-    lappend fields [list name $name type long default $default]
+    deffield $name type long default $default
 }
 
 proc ulong {name {default 0}} {
-    variable fields
-
-    lappend fields [list name $name type "unsigned long" default $default]
+    deffield $name type "unsigned long" default $default
 }
 
 proc wide {name {default 0}} {
-    variable fields
-
-    lappend fields [list name $name type "wide" default $default]
+    deffield $name type "wide" default $default
 }
 
 proc real {name {default 0.0}} {
-    variable fields
-
-    lappend fields [list name $name type real default $default]
+    deffield $name type real default $default
 }
 
 proc double {name {default 0.0}} {
-    variable fields
-
-    lappend fields [list name $name type double default $default]
+    deffield $name type double default $default
 }
 
 proc inet {name {default 0.0.0.0}} {
     variable fields
 
-    lappend fields [list name $name type inet default $default]
+    deffield $name type inet default $default
 }
 
 proc tailq_head {name structname structtype} {
-    variable fields
-
-    lappend fields [list name $name type tailq_head structname $structname structtype $structtype]
+     deffield $name type tailq_head structname $structname structtype $structtype
 }
 
 proc tailq_entry {name structname} {
-    variable fields
-
-    lappend fields [list name $name type tailq_entry structname $structname]
+    deffield $name type tailq_entry structname $structname
 }
 
 proc putfield {type name {comment ""}} {
