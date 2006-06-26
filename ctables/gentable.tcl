@@ -347,6 +347,10 @@ proc put_num_field {field pointer type} {
 	    set getObjCmd Tcl_GetDoubleFromObj
 	    set typeText "double"
 	}
+
+	default {
+	    error "unknown numeric field type: $type"
+	}
     }
 
     set optname "FIELD_[string toupper $field]"

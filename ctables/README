@@ -1,0 +1,68 @@
+
+
+$Id$
+
+This is code to creates tables of rows containing fields in Tcl.
+
+It generates C code that can be compiled, linked, and loaded as a C extension
+to provide high performance tables in Tcl.
+
+
+CTable fa_position {
+    long timestamp
+    short latitude
+    short longitude
+    short groundspeed
+    short altitude
+    char altitudeStatus
+    char updateType
+    char altitudeChange
+    fixedstring subident 4
+    fixedstring facility 3
+    tailq_entry position_link fa_position
+    double testDouble
+    float testFloat
+}
+
+Running this through CTable generates a C structure that looks like this:
+
+struct fa_position {
+    long           timestamp;
+    short          latitude;
+    short          longitude;
+    short          groundspeed;
+    short          altitude;
+    char           altitudeStatus;
+    char           updateType;
+    char           altitudeChange;
+    char           subident[4];
+    char           facility[3];
+    TAILQ_ENTRY(fa_position)  position_link;
+    double         testDouble;
+    float          testFloat;
+};
+
+
+It also generates code to read and write the table.
+
+The TAILQ should probably be implicit.
+
+Defining the table will generate a command to create a table.
+
+When executing that command, it will generate a new table.  The new table
+will itself be a command that has a number of methods.
+
+One of those methods will generate a cursor that can be driven through the
+table.  The cursor will be able to:
+
+* read and write values in the row being pointed to
+
+* delete the row being pointed to
+
+* insert a row before or after the current row
+
+* set a row to default values
+
+* search for rows containing certain characteristics
+
+
