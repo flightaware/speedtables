@@ -117,11 +117,13 @@ proc table {name} {
     variable table
     variable booleans
     variable fields
+    variable fieldList
 
     set table $name
 
     set booleans ""
     set fields ""
+    set fieldList ""
 }
 
 proc end_table {} {
@@ -326,7 +328,6 @@ proc put_real_opt {field pointer} {
     puts [subst -nobackslashes -nocommands $realSetSource]
 }
 
-
 proc gencode {} {
     variable table
     variable booleans
@@ -424,6 +425,58 @@ proc gencode {} {
 
     puts $fp "$rightCurly"
     puts $fp ""
+}
+
+proc set_list_obj {position objCmd pointer field} {
+    puts "        listObjv\[$position] = $objCmd ($pointer->$field);"
+}
+
+proc genlist {} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    set pointer ${table}_ptr
+
+    puts "INCOMPLETE LSIT CODE"
+    puts ""
+    set length [llength $fieldList]
+
+    puts "    Tcl_Obj *listObjv\[$length];"
+    puts "    int      listObjc;"
+    puts ""
+
+    set position 0
+    foreach fieldName $fieldList {
+	switch $type {
+	    int {
+	        set_list_obj 0 Tcl_NewIntObj $pointer $fieldName
+	    }
+
+	    long {
+		set newObjCmd Tcl_NewLongObj
+		set getObjCmd Tcl_GetLongFromObj
+
+	    }
+
+	    wide {
+		set type "Tcl_WideInt"
+		set newObjCmd Tcl_NewWideIntObj
+		set getObjCmd Tcl_GetWideIntFromObj
+		set typeText "wide int"
+	    }
+
+	    double {
+		set newObjCmd Tcl_NewDoubleObj
+		set getObjCmd Tcl_GetDoubleFromObj
+		set typeText "double"
+	    }
+	}
+
+    }
 }
 
 }
