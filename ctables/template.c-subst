@@ -1,0 +1,114 @@
+/*
+ * CTables
+ *
+ * define the following variables and subst this to define a metatable command:
+ *
+ *  rowStructHeadTable - the table that knows about all tables of this
+ *   structure type
+ *
+ *  rowStructTable - an instance of the table defined by the create method
+ *   of this command
+ *
+ *  rowStruct - the C structure describing a row of the table
+ *
+ *  tableCommand - the name this table-creating command will have
+ *
+ *  implementationCommand - the command that created tables will execute
+ *   to obtain their functionality.
+ *
+ * $Id$
+ *
+ */
+
+struct $rowStructHeadTable {
+    Tcl_HashTable *registeredProcTablePtr;
+    struct $rowStruct *rowStructList;
+};
+
+struct $rowStructTable {
+    Tcl_HashTable *registeredProcTablePtr;
+    TAILQ_HEAD (tablehead, $rowStruct) rows;
+};
+
+int
+$tableCommand(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+    int      optIndex;
+
+
+    static CONST char *options[] = {
+        "create", "info", "register", (char *)NULL
+    };
+
+    enum options
+    {
+        OPT_CREATE, OPT_INFO, OPT_REGISTER
+    };
+
+    // struct $rowStruct *row_ptr;
+    struct $rowStructHeadTable *row_head_tbl_ptr = (struct $rowStructHeadTable *)clientData;
+
+    struct $rowStructTable *row_tbl_ptr;
+
+    if (objc < 2 || objc > 4) {
+      err:
+	Tcl_WrongNumArgs (interp, 1, objv, "subcommand ?object? ?args?");
+	return TCL_ERROR;
+    }
+
+    if (Tcl_GetIndexFromObj(interp, objv[1], options, "option", TCL_EXACT,
+        &optIndex) != TCL_OK)
+    {
+	    return TCL_ERROR;
+    }
+
+    switch ((enum options) optIndex) {
+	char      *commandName;
+	char      *lastColon;
+	int        blocked;
+	Tcl_Obj   *blockedObj;
+
+        case OPT_CREATE:
+	    if (objc != 3) goto err;
+
+	    row_tbl_ptr = (struct $rowStructTable *)ckalloc (sizeof(struct $rowStructTable));
+
+	    /* initialize the positions linked list for this aircraft/flight */
+	    TAILQ_INIT (&row_tbl_ptr->rows);
+
+	    row_tbl_ptr->registeredProcTablePtr = row_head_tbl_ptr->registeredProcTablePtr;
+
+	    commandName = Tcl_GetString(objv[2]);
+
+	    Tcl_CreateObjCommand (interp, commandName, $implementationCommand, (ClientData) row_tbl_ptr, NULL);
+
+	    return TCL_OK;
+
+	case OPT_INFO:
+	    if (objc != 2) goto err;
+	    return TCL_OK;
+
+	case OPT_REGISTER:
+	{
+	    /* register a new command into the class -- there's a name which
+	     * is, like, a method name, and a proc which will be invoked
+	     * when the method is invoked
+	     */
+	    Tcl_HashEntry *hashEntry;
+	    int            new;
+
+	    if (objc != 4) {
+		Tcl_WrongNumArgs (interp, 2, objv, "name proc");
+		return TCL_ERROR;
+	    }
+	    hashEntry = Tcl_CreateHashEntry (row_head_tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
+	    Tcl_IncrRefCount(objv[3]);
+	    Tcl_SetHashValue (hashEntry, (ClientData)objv[3]);
+	    return TCL_OK;
+	}
+    }
+
+    panic("never expected to get here");
+    return TCL_ERROR;
+}
+

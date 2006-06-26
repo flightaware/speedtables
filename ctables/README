@@ -65,4 +65,8 @@ table.  The cursor will be able to:
 
 * search for rows containing certain characteristics
 
+Once this can also incorporate structures within structures, it'll be
+pretty strong.
+
+
 
