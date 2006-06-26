@@ -19,7 +19,7 @@ namespace eval ctable {
 
     variable boolsetsource
 
-set boolsetsource {
+set boolSetSource {
 	case $optname: {
 	    int boolean;
 
@@ -38,6 +38,26 @@ set boolsetsource {
 	    }
 
 	    $pointer->$field = boolean;
+	    return TCL_OK;
+	}
+}
+
+set numberSetSource {
+	case $optname: {
+	    if ((objc < 2) || (objc > 3)) {
+	        Tcl_WrongNumArgs (interp, 2, objv, "?$typeText?");
+		return TCL_ERROR;
+	    }
+
+	    if (objc == 2) {
+	        Tcl_SetObjResult (interp, $newObjCmd ($pointer->$field));
+		return TCL_OK;
+	    }
+
+	    if ($getObjCmd (interp, objv[2], &pointer->$field) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+
 	    return TCL_OK;
 	}
 }
@@ -108,6 +128,12 @@ proc ulong {name {default 0}} {
     variable fields
 
     lappend fields [list name $name type "unsigned long" default $default]
+}
+
+proc wide {name {default 0}} {
+    variable fields
+
+    lappend fields [list name $name type "wide" default $default]
 }
 
 proc real {name {default 0.0}} {
@@ -203,14 +229,43 @@ proc genstruct {} {
     puts $fp ""
 }
 
-proc putboolopt {field pointer} {
-    variable boolsetsource
+proc put_bool_opt {field pointer} {
+    variable boolSetSource
 
     set optname "OPT_[string toupper $field]"
 
-    puts [subst -nobackslashes -nocommands $boolsetsource]
+    puts [subst -nobackslashes -nocommands $boolSetSource]
 }
 
+proc put_num_opt {field pointer type} {
+    variable numberSetSource
+
+    set typeText $type
+
+    switch $type {
+        int {
+	    set newObjCmd Tcl_NewIntObj
+	    set getObjCmd Tcl_GetIntFromObj
+	}
+
+	long {
+	    set newObjCmd Tcl_NewLongObj
+	    set getObjCmd Tcl_GetLongFromObj
+
+	}
+
+	wide {
+	    set type "Tcl_WideInt"
+	    set newObjCmd Tcl_NewWideIntObj
+	    set getObjCmd Tcl_GetWideIntFromObj
+	    set typeText "wide int"
+	}
+    }
+
+    set optname "OPT_[string toupper $field]"
+
+    puts [subst -nobackslashes -nocommands $numberSetSource]
+}
 
 proc gencode {} {
     variable table
@@ -221,9 +276,11 @@ proc gencode {} {
 
     set fp stdout
 
+    set pointer "${table}_ptr"
+
     puts $fp "int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])\n$leftCurly"
 
-    puts $fp "    struct $table *${table}_ptr = (struct $table *)cData;"
+    puts $fp "    struct $table *$pointer = (struct $table *)cData;"
     puts $fp "    int optIndex;"
 
     puts $fp "    static CONST char *options[] = $leftCurly"
@@ -271,10 +328,26 @@ proc gencode {} {
     puts $fp "    switch ((enum options) optIndex) $leftCurly"
 
     foreach "name default" $booleans {
-        putboolopt $name ${table}_ptr
+        put_bool_opt $name $pointer
     }
 
     foreach myfield $fields {
+        catch {unset field}
+	array set field $myfield
+
+	switch $field(type) {
+	    int {
+		put_num_opt $field(name) $pointer int
+	    }
+
+	    long {
+		put_num_opt $field(name) $pointer long
+	    }
+
+	    wide {
+		put_num_opt $field(name) $pointer wide
+	    }
+	}
     }
 
     puts $fp "$rightCurly"
