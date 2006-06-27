@@ -72,7 +72,7 @@ ${extension}_Init(Tcl_Interp *interp)
 	return TCL_ERROR;
     }
 
-    if (Tcl_PkgProvide(interp, "${extension}", PACKAGE_VERSION) != TCL_OK) {
+    if (Tcl_PkgProvide(interp, "${extension}", "${extensionVersion}") != TCL_OK) {
 	return TCL_ERROR;
     }
 
