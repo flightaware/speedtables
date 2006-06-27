@@ -19,6 +19,13 @@ namespace eval ctable {
     set leftCurly \173
     set rightCurly \175
 
+set fp [open template.c-subst]
+set metaTableSource [read $fp]
+close $fp
+
+#
+# boolSetSource - code we run subst over to generate a set of a boolean (bit)
+#
 set boolSetSource {
 	      case $optname: {
 	        int boolean;
@@ -33,6 +40,11 @@ set boolSetSource {
 	      }
 }
 
+#
+# numberSetSource - code we run subst over to generate a set of a standard
+#  number such as an integer, long, double, and wide integer.  (We have to 
+#  handle shorts and floats specially due to type coercion requirements.)
+#
 set numberSetSource {
 	      case $optname: {
 		if ($getObjCmd (interp, objv[i+1], &$pointer->$field) == TCL_ERROR) {
@@ -43,6 +55,9 @@ set numberSetSource {
 	      }
 }
 
+#
+# floatSetSource - code we run subst over to generate a set of a float.
+#
 set floatSetSource {
 	      case $optname: {
 		double value;
@@ -57,6 +72,9 @@ set floatSetSource {
 	      }
 }
 
+#
+# shortSetSource - code we run subst over to generate a set of a float.
+#
 set shortSetSource {
 	      case $optname: {
 		int value;
@@ -71,6 +89,11 @@ set shortSetSource {
 	      }
 }
 
+#
+# stringSetSource - code we run subst over to generate a set of a string.
+#
+# strings are char *'s that we manage automagically.
+#
 set stringSetSource {
 	      case $optname: {
 		char *string;
@@ -87,6 +110,10 @@ set stringSetSource {
 	      }
 }
 
+#
+# cmdBodyHeader - code we run subst over to generate the header of the
+#  code body that implements the methods that work on the table.
+#
 set cmdBodyHeader {
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 $leftCurly
@@ -99,6 +126,10 @@ $leftCurly
 
 }
 
+#
+# cmdBodySource - code we run subst over to generate the second chunk of the
+#  body that implements the methods that work on the table.
+#
 set cmdBodySource {
 
     if (objc == 1) {
@@ -128,6 +159,10 @@ set cmdBodySource {
 	    switch ((enum fields) fieldIndex) $leftCurly
 }
 
+#
+# cmdBodyGetSource - chunk of the code that we run subst over to generate
+#  part of the body of the code that handles the "get" method
+#
 set cmdBodyGetSource {
       case OPT_GET: $leftCurly
         int i;
@@ -146,6 +181,10 @@ set cmdBodyGetSource {
 	    switch ((enum fields) fieldIndex) $leftCurly
 }
 
+#
+# table - the proc that starts defining a table, really, a meta table, and
+#  also following it will be the definition of the structure itself
+#
 proc table {name} {
     variable table
     variable booleans
@@ -161,9 +200,20 @@ proc table {name} {
     set nonBooleans ""
 }
 
+#
+# end_table - proc that declares the end of defining a table - currently does
+#  nothing
+#
 proc end_table {} {
 }
 
+#
+# deffield - helper for defining fields -- all of the field-defining procs
+#  use this except for boolean that subsumes its capabilities, since we
+#  need to keep booleans separately for sanity of the C structures
+#
+#  NB do we really?  i don't know
+#
 proc deffield {name args} {
     variable fields
     variable fieldList
@@ -176,6 +226,9 @@ proc deffield {name args} {
     lappend nonBooleans $name
 }
 
+#
+# boolean - define a boolean field
+#
 proc boolean {name {default 0}} {
     variable booleans
     variable fields
@@ -188,58 +241,101 @@ proc boolean {name {default 0}} {
     lappend booleans $name
 }
 
+#
+# fixedstring - define a fixed-length string field
+#
 proc fixedstring {name length {default ""}} {
     deffield $name type fixedstring length $length default $default
 }
 
+#
+# varstring - define a variable-length string field
+#
 proc varstring {name {default ""}} {
     deffield $name type string default $default
 }
 
+#
+# char - define a single character field -- this should probably just be
+#  fixedstring[1] but it's simpler.  shrug.
+#
 proc char {name {default ""}} {
     deffield $name type char default $default
 }
 
+#
+# mac - define a mac address field
+#
 proc mac {name {default 00:00:00:00:00:00}} {
     deffield $name type mac default $default
 }
 
+#
+# short - define a short integer field
+#
 proc short {name {default 0}} {
     deffield $name type short default $default
 }
 
+#
+# int - define an integer field
+#
 proc int {name {default 0}} {
     deffield $name type int default $default
 }
 
+#
+# long - define a long integer field
+#
 proc long {name {default 0}} {
     deffield $name type long default $default
 }
 
+#
+# wide - define a wide integer field -- should always be at least 64 bits
+#
 proc wide {name {default 0}} {
     deffield $name type "wide" default $default
 }
 
+#
+# float - define a floating point field
+#
 proc float {name {default 0.0}} {
     deffield $name type float default $default
 }
 
+#
+# double - define a double-precision floating point field
+#
 proc double {name {default 0.0}} {
     deffield $name type double default $default
 }
 
+#
+# inet - define an IPv4 address field
+#
 proc inet {name {default 0.0.0.0}} {
     deffield $name type inet default $default
 }
 
+#
+# tailq_head - define a queue head - will probably become hidden
+#
 proc tailq_head {name structname structtype} {
      deffield $name type tailq_head structname $structname structtype $structtype
 }
 
+#
+# tailq_entry - define a queue entry - will probably become hidden
+#
 proc tailq_entry {name structname} {
     deffield $name type tailq_entry structname $structname
 }
 
+#
+# putfield - write out a field definition when emitting a C struct
+#
 proc putfield {type name {comment ""}} {
     if {[string index $name 0] != "*"} {
         set name " $name"
@@ -251,6 +347,9 @@ proc putfield {type name {comment ""}} {
     puts stdout [format "    %-13s %s;%s" $type $name $comment]
 }
 
+#
+# gen_struct - gen the table being defined's C structure
+#
 proc gen_struct {} {
     variable table
     variable booleans
@@ -305,6 +404,9 @@ proc gen_struct {} {
     puts $fp ""
 }
 
+#
+# put_bool_field - emit code to set a boolean field
+#
 proc put_bool_field {field pointer} {
     variable boolSetSource
 
@@ -313,6 +415,9 @@ proc put_bool_field {field pointer} {
     puts [subst -nobackslashes -nocommands $boolSetSource]
 }
 
+#
+# put_num_field - emit code to set a numeric field
+#
 proc put_num_field {field pointer type} {
     variable numberSetSource
 
@@ -358,6 +463,10 @@ proc put_num_field {field pointer type} {
     puts [subst -nobackslashes -nocommands $numberSetSource]
 }
 
+#
+# put_varstring_field - emit code to set a variable-length string (char *)
+#  field
+#
 proc put_varstring_field {field pointer} {
     variable stringSetSource
 
@@ -366,6 +475,9 @@ proc put_varstring_field {field pointer} {
     puts [subst -nobackslashes -nocommands $stringSetSource]
 }
 
+#
+# put_short_field - emit code to set a short integer field
+#
 proc put_short_field {field pointer} {
     variable shortSetSource
 
@@ -374,6 +486,9 @@ proc put_short_field {field pointer} {
     puts [subst -nobackslashes -nocommands $shortSetSource]
 }
 
+#
+# put_float_field - emit code to set a floating point field
+#
 proc put_float_field {field pointer} {
     variable floatSetSource
 
@@ -382,6 +497,9 @@ proc put_float_field {field pointer} {
     puts [subst -nobackslashes -nocommands $floatSetSource]
 }
 
+#
+# gen_sets - emit code to set all of the fields of the table being defined
+#
 proc gen_sets {pointer} {
     variable table
     variable booleans
@@ -432,6 +550,20 @@ proc gen_sets {pointer} {
     }
 }
 
+#
+# put_metatable_source - emit the code to define the meta table (table-defining
+# command)
+#
+proc put_metatable_source {tableCommand rowStructHeadTable rowStructTable rowStruct implementationCommand} {
+    variable metaTableSource
+
+    puts [subst -nobackslashes -nocommands $metaTableSource]
+}
+
+#
+# gen_code - generate all of the code for the underlying methods for
+#  managing a created table
+#
 proc gen_code {} {
     variable table
     variable booleans
@@ -469,6 +601,11 @@ proc gen_code {} {
     puts $fp "$rightCurly"
 }
 
+#
+# gen_new_obj - given a data type, pointer name and field name, return
+#  the C code to generate a Tcl object containing that element from the
+#  pointer pointing to the named field.
+#
 proc gen_new_obj {type pointer fieldName} {
     variable fields
 
@@ -527,14 +664,25 @@ proc gen_new_obj {type pointer fieldName} {
     }
 }
 
+#
+# set_list_obj - generate C code to emit a Tcl obj containing the named
+#  field into a list that's being cons'ed up
+#
 proc set_list_obj {position type pointer field} {
     puts "    listObjv\[$position] = [gen_new_obj $type $pointer $field];"
 }
 
+#
+# append_list_element - generate C code to append a list element to the
+#  output object.  used by code that lets you get one or more named fields.
+#
 proc append_list_element {type pointer field} {
     return "Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), [gen_new_obj $type $pointer $field])"
 }
 
+#
+# gen_list - generate C code to emit an entire row into a Tcl list
+#
 proc gen_list {} {
     variable table
     variable booleans
@@ -569,6 +717,13 @@ proc gen_list {} {
     puts "    Tcl_SetObjResult (interp, Tcl_NewListObj ($length, listObjv));"
 }
 
+#
+# gen_field_names - generate C code containing an array of pointers to strings
+#  comprising the names of all of the fields in a row of the table being
+#  defined.  Also generate an enumerated type of all of the field names
+#  mapped to uppercase and prepended with FIELD_ for use with
+#  Tcl_GetIndexFromObj in figuring out what fields are wanted
+#
 proc gen_field_names {} {
     variable table
     variable booleans
@@ -598,7 +753,10 @@ proc gen_field_names {} {
     puts $fp ""
 }
 
-
+#
+# gen_gets - generate code to fetch fields of a row, appending each requested
+#  field as a Tcl object to Tcl's result object
+#
 proc gen_gets {} {
     variable table
     variable booleans
@@ -625,6 +783,10 @@ proc gen_gets {} {
     }
 }
 
+#
+# gen_preamble - generate stuff that goes at the head of the C file
+#  we're generating
+#
 proc gen_preamble {} {
     puts stdout "/* autogenerated [clock format [clock seconds]] */"
     puts stdout ""
@@ -636,6 +798,9 @@ proc gen_preamble {} {
 
 }
 
+#
+# CTable - define a C meta table
+#
 proc CTable {name data} {
     ::ctable::table $name
     namespace eval ::ctable $data
