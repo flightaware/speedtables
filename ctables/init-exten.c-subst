@@ -1,0 +1,78 @@
+/*
+ * CTables
+ *
+ * define the following variables and subst this to define a the C *_Init
+ * routines that the code that loads a C extension expects to find.
+ *
+ *  extension - the name of the extension
+ *
+ * $Id$
+ *
+ */
+
+EXTERN int
+${extension}_Init(Tcl_Interp *interp);
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ${extension}_SafeInit --
+ *
+ *	Initialize the ${extension} in a safe interpreter.
+ *
+ * Results:
+ *	A standard Tcl result
+ *
+ * Side effects:
+ *	Very little
+ *
+ *----------------------------------------------------------------------
+ */
+
+EXTERN int
+${extension}_SafeInit(Tcl_Interp *interp)
+{
+    return ${extension}_Init(interp);
+}
+
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ${extension}_Init --
+ *
+ *	Initialize the ${extension} extension.  The string "${extension}" 
+ *      in the function name must match the PACKAGE declaration at the top of
+ *	configure.in.
+ *
+ * Results:
+ *	A standard Tcl result
+ *
+ * Side effects:
+ *	The ${extension} package is created.
+ *
+ *      New commands for the meta tables are added to the Tcl interpreter.
+ *
+ *----------------------------------------------------------------------
+ */
+
+EXTERN int
+${extension}_Init(Tcl_Interp *interp)
+{
+    /*
+     * This may work with 8.0, but we are using strictly stubs here,
+     * which requires 8.1.
+     */
+    if (Tcl_InitStubs(interp, "8.1", 0) == NULL) {
+	return TCL_ERROR;
+    }
+
+    if (Tcl_PkgRequire(interp, "Tcl", "8.1", 0) == NULL) {
+	return TCL_ERROR;
+    }
+
+    if (Tcl_PkgProvide(interp, "${extension}", PACKAGE_VERSION) != TCL_OK) {
+	return TCL_ERROR;
+    }
+

@@ -1,0 +1,27 @@
+    /*
+     * CTable code fragment to do metatable allocation that goes inside the
+     * package *_Init code.
+     *
+     * $Id$
+     *
+     * Create the master table that has the registered proc table and stuff.
+     */
+    fa_trackstreamTablePtr = (struct fa_trackstreamTable *)ckalloc (sizeof (struct fa_trackstreamTable));
+
+    /* create the table for registering Tcl commands to appear as methods
+     * of the table class and pass it in through Tcl's client data
+     * mechanism
+     */
+    hashTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
+    Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
+    fa_trackstreamTablePtr->registeredProcTablePtr = hashTablePtr;
+
+    fa_trackstreamTablePtr->trackstreamStructList = (struct fa_trackstream *)NULL;
+
+    /* Create the CTrackStream command -- it's fairly equivalent to an
+     * Itcl class in that it can create its own commands with their
+     * own data spaces, etc.
+     */
+    Tcl_CreateObjCommand(interp, "CTrackStream", (Tcl_ObjCmdProc *) fa_CTrackStreamObjCmd, (ClientData)fa_trackstreamTablePtr, (Tcl_CmdDeleteProc *)NULL);
+
+
