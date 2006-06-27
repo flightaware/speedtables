@@ -557,6 +557,8 @@ proc gen_sets {pointer} {
 proc put_metatable_source {tableCommand rowStructHeadTable rowStructTable rowStruct implementationCommand} {
     variable metaTableSource
 
+    set Id {CTable template Id}
+
     puts [subst -nobackslashes -nocommands $metaTableSource]
 }
 
@@ -806,7 +808,10 @@ proc CTable {name data} {
     namespace eval ::ctable $data
 
     ::ctable::gen_struct
+
     ::ctable::gen_code
+
+    ::ctable::put_metatable_source ${name}MetaObjCmd ${name}RowHeadStructTable ${name}RowStructTable $name ${name}ObjCmd
 
     #::ctable::gen_list
 }

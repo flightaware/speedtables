@@ -31,7 +31,7 @@ struct $rowStructTable {
 };
 
 int
-$tableCommand(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     int      optIndex;
 
