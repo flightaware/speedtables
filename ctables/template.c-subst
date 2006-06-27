@@ -64,9 +64,6 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 
     switch ((enum options) optIndex) {
 	char      *commandName;
-	char      *lastColon;
-	int        blocked;
-	Tcl_Obj   *blockedObj;
 
         case OPT_CREATE:
 	    if (objc != 3) goto err;
