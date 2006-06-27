@@ -8,6 +8,7 @@
 
 namespace eval ctable {
     variable table
+    variable tables
     variable booleans
     variable nonBooleans
     variable fields
@@ -19,8 +20,18 @@ namespace eval ctable {
     set leftCurly \173
     set rightCurly \175
 
+    set tables ""
+
 set fp [open template.c-subst]
 set metaTableSource [read $fp]
+close $fp
+
+set fp [open init-exten.c-subst]
+set initExtensionSource [read $fp]
+close $fp
+
+set fp [open exten-frag.c-subst]
+set extensionFragmentSource [read $fp]
 close $fp
 
 #
@@ -563,6 +574,19 @@ proc put_metatable_source {tableCommand rowStructHeadTable rowStructTable rowStr
 }
 
 #
+# put_init_extension_source - emit the code to create the C functions that
+# Tcl will expect to find when loading the shared library.
+#
+proc put_init_extension_source {extension extensionVersion} {
+    variable initExtensionSource
+
+    set Id {init extension Id}
+
+    puts [subst -nobackslashes -nocommands $initExtensionSource]
+}
+
+
+#
 # gen_code - generate all of the code for the underlying methods for
 #  managing a created table
 #
@@ -801,10 +825,27 @@ proc gen_preamble {} {
 }
 
 #
+# CExtension - define a C extension
+#
+proc CExtension {name {version 1.0}} {
+    set ::ctable::extension $name
+    set ::ctable::extensionVersion $version
+    set ::ctable::tables ""
+}
+
+proc EndExtension {} {
+    ::ctable::put_init_extension_source [string totitle $::ctable::extension] $::ctable::extensionVersion
+
+    puts stdout "    return TCL_OK;"
+    puts stdout $::ctable::rightCurly
+}
+
+#
 # CTable - define a C meta table
 #
 proc CTable {name data} {
     ::ctable::table $name
+    lappend ::ctable::tables $name
     namespace eval ::ctable $data
 
     ::ctable::gen_struct
@@ -812,6 +853,7 @@ proc CTable {name data} {
     ::ctable::gen_code
 
     ::ctable::put_metatable_source ${name}MetaObjCmd ${name}RowHeadStructTable ${name}RowStructTable $name ${name}ObjCmd
+
 
     #::ctable::gen_list
 }
