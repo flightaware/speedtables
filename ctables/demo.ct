@@ -6,6 +6,8 @@
 
 ::ctable::gen_preamble
 
+CExtension urk
+
 CTable fa_position {
     long timestamp
     short latitude
@@ -48,3 +50,4 @@ CTable fa_trackstream {
     short highLongitude
 }
 
+EndExtension
