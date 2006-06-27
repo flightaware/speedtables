@@ -27,7 +27,7 @@ struct $rowStructHeadTable {
 
 struct $rowStructTable {
     Tcl_HashTable *registeredProcTablePtr;
-    TAILQ_HEAD (tablehead, $rowStruct) rows;
+    TAILQ_HEAD (${rowStruct}Head, $rowStruct) rows;
 };
 
 int
