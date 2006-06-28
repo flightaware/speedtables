@@ -61,6 +61,8 @@ ${extension}_SafeInit(Tcl_Interp *interp)
 EXTERN int
 ${extension}_Init(Tcl_Interp *interp)
 {
+    Tcl_HashTable *hashTablePtr;
+
     /*
      * This may work with 8.0, but we are using strictly stubs here,
      * which requires 8.1.

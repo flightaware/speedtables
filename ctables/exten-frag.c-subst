@@ -5,8 +5,14 @@
      * $Id$
      *
      * Create the master table that has the registered proc table and stuff.
+     *
+     *  define the following variables and subst this:
+     *   rowStructHeadTable
+     *   rowStruct
+     *   tableCommand - the name of the C command that creates this table
+     *   commandName - the name the command will have from Tcl
      */
-    fa_trackstreamTablePtr = (struct fa_trackstreamTable *)ckalloc (sizeof (struct fa_trackstreamTable));
+    ${rowStructHeadTable}Ptr = (struct $rowStructHeadTable *)ckalloc (sizeof (struct $rowStructHeadTable));
 
     /* create the table for registering Tcl commands to appear as methods
      * of the table class and pass it in through Tcl's client data
@@ -14,14 +20,14 @@
      */
     hashTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
     Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
-    fa_trackstreamTablePtr->registeredProcTablePtr = hashTablePtr;
+    ${rowStructHeadTable}Ptr->registeredProcTablePtr = hashTablePtr;
 
-    fa_trackstreamTablePtr->trackstreamStructList = (struct fa_trackstream *)NULL;
+    ${rowStructHeadTable}Ptr->rowStructList = (struct $rowStruct *)NULL;
 
     /* Create the CTrackStream command -- it's fairly equivalent to an
      * Itcl class in that it can create its own commands with their
      * own data spaces, etc.
      */
-    Tcl_CreateObjCommand(interp, "CTrackStream", (Tcl_ObjCmdProc *) fa_CTrackStreamObjCmd, (ClientData)fa_trackstreamTablePtr, (Tcl_CmdDeleteProc *)NULL);
+    Tcl_CreateObjCommand(interp, "$commandName", (Tcl_ObjCmdProc *) $tableCommand, (ClientData)${rowStructHeadTable}Ptr, (Tcl_CmdDeleteProc *)NULL);
 
 

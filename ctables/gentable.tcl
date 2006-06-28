@@ -645,6 +645,19 @@ proc put_metatable_source {tableCommand rowStructHeadTable rowStructTable rowStr
 }
 
 #
+# put_init_command_source - emit the code to initialize create within Tcl
+# the command that will invoke the C command defined by 
+# put_metatable_source
+#
+proc put_init_command_source {commandName tableCommand rowStructHeadTable rowStruct} {
+    variable extensionFragmentSource
+
+    set Id {init extension Id}
+
+    emit [subst -nobackslashes -nocommands $extensionFragmentSource]
+}
+
+#
 # put_init_extension_source - emit the code to create the C functions that
 # Tcl will expect to find when loading the shared library.
 #
@@ -918,6 +931,10 @@ proc CExtension {name {version 1.0}} {
 proc EndExtension {} {
     ::ctable::put_init_extension_source [string totitle $::ctable::extension] $::ctable::extensionVersion
 
+    foreach name $::ctable::tables {
+	::ctable::put_init_command_source $name ${name}MetaObjCmd ${name}RowStructHeadTable $name
+    }
+
     ::ctable::emit "    return TCL_OK;"
     ::ctable::emit $::ctable::rightCurly
 
@@ -939,7 +956,6 @@ proc CTable {name data} {
     ::ctable::gen_code
 
     ::ctable::put_metatable_source ${name}MetaObjCmd ${name}RowHeadStructTable ${name}RowStructTable $name ${name}ObjCmd
-
 
     #::ctable::gen_list
 }
