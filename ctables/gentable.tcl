@@ -178,9 +178,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "type", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET};
+    enum options {OPT_GET, OPT_SET, OPT_TYPE};
 
 }
 
@@ -200,6 +200,11 @@ set cmdBodySource {
     }
 
     switch ((enum options) optIndex) $leftCurly
+      case OPT_TYPE: {
+          Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
+	  return TCL_OK;
+      }
+
       case OPT_SET: $leftCurly
         int i;
 	int fieldIndex;

@@ -33,3 +33,15 @@ one and only one key per row.
 A future version will have cursors and more fanciness.
 
 
+Wed Jun 28 02:31:56 CDT 2006
+
+Oh my god it's working.
+
+Now I want to add a new method for tables, type, which will return the
+name of the table type.
+
+Also "fields" for the meta table and maybe the generated table as well.
+
+Also "delete"
+
+Also perhaps "exists".
