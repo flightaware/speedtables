@@ -86,3 +86,12 @@ object and squirrel away a pointer to it.  This'll let people pass in
 lists and stuff they don't want to crack out.
 
 
+Wed Jun 28 13:52:17 CDT 2006
+
+foreach done
+
+destroy done
+
+reset done
+
+

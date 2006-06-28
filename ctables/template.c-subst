@@ -56,7 +56,10 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 	char      *commandName;
 
         case OPT_CREATE:
-	    if (objc != 3) goto err;
+	    if (objc != 3) {
+		Tcl_WrongNumArgs (interp, 2, objv, "name");
+		return TCL_ERROR;
+	    }
 
 	    row_tbl_ptr = (struct $rowStructTable *)ckalloc (sizeof(struct $rowStructTable));
 
