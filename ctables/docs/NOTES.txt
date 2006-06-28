@@ -67,4 +67,18 @@ Wed Jun 28 03:05:53 CDT 2006
 Added a "fields" method to get field names in the order defined, as a list,
 from a table
 
+Add a foreach or something to walk the array.  Also add a search capability.
+
+if you do a create and the name is #auto, generate the name a la incr tcl
+
+implement IPv4 addresses and MAC addresses natively as 4 byte and 6 byte or
+whatever types, with conversion.
+
+Wed Jun 28 03:20:00 CDT 2006
+
+Added "names" -- yes it generates a list that will be gross but it was
+quick and actually provides basic functionality.
+
+
+
 
