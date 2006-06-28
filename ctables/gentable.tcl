@@ -47,7 +47,7 @@ set boolSetSource {
 	      case $optname: {
 	        int boolean;
 
-	        if (Tcl_GetBooleanFromObj (interp, objv[i+1], &boolean) == TCL_ERROR) {
+	        if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
 	            Tcl_AppendResult (interp, " while converting $field", NULL);
 	            return TCL_ERROR;
 	        }
@@ -64,7 +64,7 @@ set boolSetSource {
 #
 set numberSetSource {
 	      case $optname: {
-		if ($getObjCmd (interp, objv[i+1], &$pointer->$field) == TCL_ERROR) {
+		if ($getObjCmd (interp, obj, &$pointer->$field) == TCL_ERROR) {
 		    Tcl_AppendResult (interp, " while converting $field", NULL);
 		    return TCL_ERROR;
 		}
@@ -79,7 +79,7 @@ set floatSetSource {
 	      case $optname: {
 		double value;
 
-		if (Tcl_GetDoubleFromObj (interp, objv[i+1], &value) == TCL_ERROR) {
+		if (Tcl_GetDoubleFromObj (interp, obj, &value) == TCL_ERROR) {
 		    Tcl_AppendResult (interp, " while converting $field", NULL);
 		    return TCL_ERROR;
 		}
@@ -96,7 +96,7 @@ set shortSetSource {
 	      case $optname: {
 		int value;
 
-		if (Tcl_GetIntFromObj (interp, objv[i+1], &value) == TCL_ERROR) {
+		if (Tcl_GetIntFromObj (interp, obj, &value) == TCL_ERROR) {
 		    Tcl_AppendResult (interp, " while converting $field", NULL);
 		    return TCL_ERROR;
 		}
@@ -120,7 +120,7 @@ set stringSetSource {
 		    ckfree ($pointer->$field);
 		}
 
-		string = Tcl_GetStringFromObj (objv[i+1], &length);
+		string = Tcl_GetStringFromObj (obj, &length);
 		$pointer->$field = ckalloc (length + 1);
 		strncpy ($pointer->$field, string, length + 1);
 		break;
@@ -134,7 +134,7 @@ set charSetSource {
 	      case $optname: {
 		char *string;
 
-		string = Tcl_GetStringFromObj (objv[i+1], NULL);
+		string = Tcl_GetStringFromObj (obj, NULL);
 		$pointer->$field = string[0];
 		break;
 	      }
@@ -148,7 +148,7 @@ set fixedstringSetSource {
 	      case $optname: {
 		char *string;
 
-		string = Tcl_GetStringFromObj (objv[i+1], NULL);
+		string = Tcl_GetStringFromObj (obj, NULL);
 		strncpy ($pointer->$field, string, $length);
 		break;
 	      }
@@ -348,8 +348,9 @@ set cmdBodySource {
       }
 
       case OPT_SET: $leftCurly
-        int i;
-	int fieldIndex;
+        int       i;
+	int       fieldIndex;
+	Tcl_Obj  *obj;
 
 	if ((objc < 3) || (objc % 2) != 1) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "key field value ?field value...?");
@@ -372,6 +373,7 @@ set cmdBodySource {
             if (Tcl_GetIndexFromObj (interp, objv[i], fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
 		return TCL_ERROR;
 	    }
+	    obj = objv[i+1];
 
 	    switch ((enum fields) fieldIndex) $leftCurly
 }
