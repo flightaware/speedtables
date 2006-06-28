@@ -27,12 +27,12 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 
 
     static CONST char *options[] = {
-        "create", "info", "register", (char *)NULL
+        "create", "info", "method", (char *)NULL
     };
 
     enum options
     {
-        OPT_CREATE, OPT_INFO, OPT_REGISTER
+        OPT_CREATE, OPT_INFO, OPT_METHOD
     };
 
     // struct $rowStruct *row_ptr;
@@ -97,7 +97,7 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 	    if (objc != 2) goto err;
 	    return TCL_OK;
 
-	case OPT_REGISTER:
+	case OPT_METHOD:
 	{
 	    /* register a new command into the class -- there's a name which
 	     * is, like, a method name, and a proc which will be invoked

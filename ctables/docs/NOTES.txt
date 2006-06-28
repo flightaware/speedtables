@@ -97,3 +97,12 @@ reset done
 Wed Jun 28 14:52:36 CDT 2006
 
 #auto as option to create to get it to generate a name is done.
+
+
+Wed Jun 28 17:15:47 CDT 2006
+
+You can now register methods using "metatable method name proc" and the
+name will be present inside all tables defined from the metatable and
+will invoke the proc upon invocation of the method.
+
+

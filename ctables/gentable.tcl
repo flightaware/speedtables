@@ -211,7 +211,33 @@ set cmdBodySource {
     }
 
     if (Tcl_GetIndexFromObj (interp, objv[1], options, "option", TCL_EXACT, &optIndex) != TCL_OK) {
-        return TCL_ERROR;
+	Tcl_Obj      **calloutObjv;
+	int           i;
+	int           result;
+
+	hashEntry = Tcl_FindHashEntry (tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[1]));
+
+	if (hashEntry == NULL) {
+	    Tcl_HashSearch hashSearch;
+
+	    Tcl_AppendResult (interp, ", or one of the registered methods:", (char *)NULL);
+
+	    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->registeredProcTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	        char *key = Tcl_GetHashKey (tbl_ptr->registeredProcTablePtr, hashEntry);
+		Tcl_AppendResult (interp, " ", key, (char *)NULL);
+	    }
+	    return TCL_ERROR;
+	}
+
+	calloutObjv = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj *) * objc);
+	calloutObjv[0] = (Tcl_Obj *)Tcl_GetHashValue (hashEntry);
+	calloutObjv[1] = objv[0];
+	for (i = 2; i < objc; i++) {
+	    calloutObjv[i] = objv[i];
+	}
+	result = Tcl_EvalObjv (interp, objc, calloutObjv, 0);
+	ckfree ((void *)calloutObjv);
+	return result;
     }
 
     switch ((enum options) optIndex) $leftCurly
