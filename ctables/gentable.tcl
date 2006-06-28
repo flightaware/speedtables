@@ -204,7 +204,7 @@ set cmdBodySource {
         int i;
 	int fieldIndex;
 
-	if ((objc < 5) || (objc % 2) != 1) {
+	if ((objc < 3) || (objc % 2) != 1) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "key field value ?field value...?");
 	    return TCL_ERROR;
 	}
@@ -214,14 +214,14 @@ set cmdBodySource {
 	    $pointer = (struct $table *)ckalloc (sizeof (struct $table));
 	    ${table}_init($pointer);
 	    Tcl_SetHashValue (hashEntry, (ClientData)$pointer);
-	    printf ("created new entry for '%s'\n", Tcl_GetString (objv[2]));
+	    // printf ("created new entry for '%s'\n", Tcl_GetString (objv[2]));
 	} else {
 	    $pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
-	    printf ("found existing entry for '%s'\n", Tcl_GetString (objv[2]));
+	    // printf ("found existing entry for '%s'\n", Tcl_GetString (objv[2]));
 	}
 
 	for (i = 3; i < objc; i += 2) $leftCurly
-	    printf ("i = %d\n", i);
+	    // printf ("i = %d\n", i);
             if (Tcl_GetIndexFromObj (interp, objv[i], fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
 		return TCL_ERROR;
 	    }
@@ -250,7 +250,7 @@ set cmdBodyGetSource {
 	}
 	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
 
-	if (i == 3) {
+	if (objc == 3) {
 	    return ${table}_genlist (interp, $pointer);
 	}
 
@@ -850,10 +850,11 @@ proc gen_new_obj {type pointer fieldName} {
 	    array set field $fields($fieldName)
 	    #return "Tcl_NewStringObj ($pointer->$fieldName, -1)"
 	    if {$field(default) == ""} {
-		return "(($pointer == NULL) ? Tcl_NewObj () : Tcl_NewStringObj ($pointer->$fieldName, -1))"
+	        set nullBody "Tcl_NewObj ()"
 	    } else {
-		return "(($pointer == NULL) ? Tcl_NewStringObj (\"$field(default)\",[string length $field(default)]) : Tcl_NewStringObj ($pointer->$fieldName, -1))"
+	        set nullBody "Tcl_NewStringObj (\"$field(default)\",[string length $field(default)])"
 	    }
+	    return "(($pointer->$fieldName == NULL) ? $nullBody : Tcl_NewStringObj ($pointer->$fieldName, -1))"
 	}
 
 	char {
