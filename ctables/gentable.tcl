@@ -178,9 +178,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "type", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "delete", "type", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_TYPE};
+    enum options {OPT_GET, OPT_SET, OPT_DELETE, OPT_TYPE};
 
 }
 
@@ -203,6 +203,21 @@ set cmdBodySource {
       case OPT_TYPE: {
           Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
 	  return TCL_OK;
+      }
+
+      case OPT_DELETE: {
+	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
+
+	if (hashEntry == NULL) {
+	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 0);
+	    return TCL_OK;
+	}
+
+	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
+	${table}_delete($pointer);
+	Tcl_DeleteHashEntry (hashEntry);
+	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
+	return TCL_OK;
       }
 
       case OPT_SET: $leftCurly
@@ -477,6 +492,34 @@ proc gen_defaults_subr {subr struct pointer} {
 	    }
 	}
     }
+
+    emit "}"
+    emit ""
+}
+
+#
+# gen_delete_subr - gen code to delete (free) a row
+#
+proc gen_delete_subr {subr struct pointer} {
+    variable table
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    emit "void ${subr}(struct $struct *$pointer) {"
+
+    foreach myfield $fieldList {
+        catch {unset field}
+	array set field $fields($myfield)
+
+	switch $field(type) {
+	    string {
+	        emit "    if ($pointer->$myfield != NULL) ckfree ($pointer->$myfield);"
+	    }
+	}
+    }
+    emit "    ckfree ((char *)$pointer);"
 
     emit "}"
     emit ""
@@ -1070,6 +1113,8 @@ proc CTable {name data} {
     ::ctable::gen_struct
 
     ::ctable::gen_defaults_subr ${name}_init $name ${name}_ptr
+
+    ::ctable::gen_delete_subr ${name}_delete $name ${name}_ptr
 
     ::ctable::gen_list
 

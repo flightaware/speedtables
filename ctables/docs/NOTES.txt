@@ -45,3 +45,11 @@ Also "fields" for the meta table and maybe the generated table as well.
 Also "delete"
 
 Also perhaps "exists".
+
+
+Wed Jun 28 02:49:28 CDT 2006
+
+"type" and "delete" are done.  delete returns 1 if it deleted, 0 if it didn't
+exist.
+
+
