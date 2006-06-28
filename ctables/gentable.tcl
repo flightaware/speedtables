@@ -141,6 +141,20 @@ set charSetSource {
 }
 
 #
+# fixedstringSetSource - code we run subst over to generate a set of a 
+# fixed-length string.
+#
+set fixedstringSetSource {
+	      case $optname: {
+		char *string;
+
+		string = Tcl_GetStringFromObj (objv[i+1], NULL);
+		strncpy ($pointer->$field, string, $length);
+		break;
+	      }
+}
+
+#
 # cmdBodyHeader - code we run subst over to generate the header of the
 #  code body that implements the methods that work on the table.
 #
@@ -515,6 +529,17 @@ proc emit_set_char_field {field pointer} {
 }
 
 #
+# emit_set_fixedstring_field - emit code to set a fixedstring field
+#
+proc emit_set_fixedstring_field {field pointer length} {
+    variable fixedstringSetSource
+
+    set optname "FIELD_[string toupper $field]"
+
+    emit [subst -nobackslashes -nocommands $fixedstringSetSource]
+}
+
+#
 # emit_set_short_field - emit code to set a short integer field
 #
 proc emit_set_short_field {field pointer} {
@@ -590,8 +615,12 @@ proc gen_sets {pointer} {
 		emit_set_char_field $myfield $pointer
 	    }
 
+	    fixedstring {
+		emit_set_fixedstring_field $myfield $pointer $field(length)
+	    }
+
 	    default {
-	        error "attempt to put field of unknown type $field(type)"
+	        error "attempt to emit set field of unknown type $field(type)"
 	    }
 	}
     }
