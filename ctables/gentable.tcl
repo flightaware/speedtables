@@ -257,6 +257,7 @@ set cmdBodySource {
       }
 
       case OPT_DESTROY: {
+	  ${table}_delete_all_rows (tbl_ptr);
           Tcl_DeleteCommandFromToken (interp, tbl_ptr->commandInfo);
 	  return TCL_OK;
       }
