@@ -5,6 +5,7 @@
  * routines that the code that loads a C extension expects to find.
  *
  *  extension - the name of the extension
+ *  extensionVersion - the version number, like 1.0
  *
  * $Id$
  *
