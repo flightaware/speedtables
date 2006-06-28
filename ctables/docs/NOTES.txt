@@ -58,3 +58,8 @@ Wed Jun 28 02:53:00 CDT 2006
 "exists" is done and works
 
 
+Wed Jun 28 03:00:01 CDT 2006
+
+added a "statistics" method to get hash statistics a la arrays
+
+
