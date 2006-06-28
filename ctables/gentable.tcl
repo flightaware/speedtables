@@ -154,6 +154,7 @@ set fixedstringSetSource {
 	      }
 }
 
+
 #
 # cmdBodyHeader - code we run subst over to generate the header of the
 #  code body that implements the methods that work on the table.
@@ -170,6 +171,18 @@ struct $rowStructTable {
     Tcl_Command    commandInfo;
     // TAILQ_HEAD (${rowStruct}Head, $rowStruct) rows;
 };
+
+void ${table}_delete_all_rows(struct ${table}StructTable *tbl_ptr) {
+    Tcl_HashSearch hashSearch;
+    Tcl_HashEntry *hashEntry;
+    struct ${table} *$pointer;
+
+    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
+	${table}_delete($pointer);
+    }
+    Tcl_DeleteHashTable (tbl_ptr->keyTablePtr);
+}
 
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 $leftCurly
@@ -238,15 +251,7 @@ set cmdBodySource {
       }
 
       case OPT_RESET: {
-	  Tcl_HashSearch hashSearch;
-
-	  // delete all the memory in the row bodies, then delete the
-	  // hashtable, then recreate it
-	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	    $pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
-	    ${table}_delete($pointer);
-	  }
-	  Tcl_DeleteHashTable (tbl_ptr->keyTablePtr);
+	  ${table}_delete_all_rows (tbl_ptr);
 	  Tcl_InitCustomHashTable (tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);
 	  return TCL_OK;
       }
