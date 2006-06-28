@@ -128,6 +128,19 @@ set stringSetSource {
 }
 
 #
+# charSetSource - code we run subst over to generate a set of a single char.
+#
+set charSetSource {
+	      case $optname: {
+		char *string;
+
+		string = Tcl_GetStringFromObj (objv[i+1], NULL);
+		$pointer->$field = string[0];
+		break;
+	      }
+}
+
+#
 # cmdBodyHeader - code we run subst over to generate the header of the
 #  code body that implements the methods that work on the table.
 #
@@ -491,6 +504,17 @@ proc put_varstring_field {field pointer} {
 }
 
 #
+# put_char_field - emit code to set a single char field
+#
+proc put_char_field {field pointer} {
+    variable charSetSource
+
+    set optname "FIELD_[string toupper $field]"
+
+    emit [subst -nobackslashes -nocommands $charSetSource]
+}
+
+#
 # put_short_field - emit code to set a short integer field
 #
 proc put_short_field {field pointer} {
@@ -560,6 +584,14 @@ proc gen_sets {pointer} {
 
 	    boolean {
 	        put_bool_field $myfield $pointer
+	    }
+
+	    char {
+		put_char_field $myfield $pointer
+	    }
+
+	    default {
+	        error "attempt to put field of unknown type $field(type)"
 	    }
 	}
     }
