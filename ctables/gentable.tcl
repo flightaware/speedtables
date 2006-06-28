@@ -837,7 +837,14 @@ proc gen_new_obj {type pointer fieldName} {
 	}
 
 	string {
-	    return "Tcl_NewStringObj ($pointer->$fieldName, -1)"
+	    catch {unset field}
+	    array set field $fields($fieldName)
+	    #return "Tcl_NewStringObj ($pointer->$fieldName, -1)"
+	    if {$field(default) == ""} {
+		return "(($pointer == NULL) ? Tcl_NewObj () : Tcl_NewStringObj ($pointer->$fieldName, -1))"
+	    } else {
+		return "(($pointer == NULL) ? Tcl_NewStringObj (\"$field(default)\",[string length $field(default)]) : Tcl_NewStringObj ($pointer->$fieldName, -1))"
+	    }
 	}
 
 	char {

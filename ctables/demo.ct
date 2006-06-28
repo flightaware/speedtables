@@ -33,7 +33,7 @@ CTable fa_trackstream {
     varstring prefix
     varstring type
     varstring suffix
-    varstring origin
+    varstring origin "KSGR"
     varstring destination
 
     long departureTime
