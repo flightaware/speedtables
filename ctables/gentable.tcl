@@ -619,6 +619,12 @@ proc gen_sets {pointer} {
 		emit_set_fixedstring_field $myfield $pointer $field(length)
 	    }
 
+	    tailq_entry {
+	    }
+
+	    tailq_head {
+	    }
+
 	    default {
 	        error "attempt to emit set field of unknown type $field(type)"
 	    }
@@ -687,6 +693,7 @@ proc gen_code {} {
 
     # finish out the command switch and the command itself
     emit "    $rightCurly"
+    emit "    return TCL_OK;"
     emit "$rightCurly"
 }
 
