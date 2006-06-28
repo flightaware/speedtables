@@ -663,6 +663,12 @@ proc put_init_command_source {commandName tableCommand rowStructHeadTable rowStr
 #
 proc put_init_extension_source {extension extensionVersion} {
     variable initExtensionSource
+    variable tables
+
+    set structHeadTablePointers ""
+    foreach name $tables {
+        append structHeadTablePointers "    struct ${name}RowStructHeadTable *${name}RowStructHeadTablePtr;\n";
+    }
 
     set Id {init extension Id}
 
@@ -955,7 +961,7 @@ proc CTable {name data} {
 
     ::ctable::gen_code
 
-    ::ctable::put_metatable_source ${name}MetaObjCmd ${name}RowHeadStructTable ${name}RowStructTable $name ${name}ObjCmd
+    ::ctable::put_metatable_source ${name}MetaObjCmd ${name}RowStructHeadTable ${name}RowStructTable $name ${name}ObjCmd
 
     #::ctable::gen_list
 }

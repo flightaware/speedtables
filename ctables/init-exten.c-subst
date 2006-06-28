@@ -6,6 +6,8 @@
  *
  *  extension - the name of the extension
  *  extensionVersion - the version number, like 1.0
+ *  structHeadTablePointers - a struct * pointer for each head table
+ *  for each table being defined.
  *
  * $Id$
  *
@@ -61,6 +63,7 @@ ${extension}_SafeInit(Tcl_Interp *interp)
 EXTERN int
 ${extension}_Init(Tcl_Interp *interp)
 {
+$structHeadTablePointers
     Tcl_HashTable *hashTablePtr;
 
     /*
