@@ -167,7 +167,8 @@ struct $rowStructHeadTable {
 struct $rowStructTable {
     Tcl_HashTable *registeredProcTablePtr;
     Tcl_HashTable *keyTablePtr;
-    TAILQ_HEAD (${rowStruct}Head, $rowStruct) rows;
+    Tcl_Command    commandInfo;
+    // TAILQ_HEAD (${rowStruct}Head, $rowStruct) rows;
 };
 
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
@@ -178,9 +179,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "exists", "delete", "type", "fields", "names", "reset", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "exists", "delete", "type", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_TYPE, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_TYPE, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -247,6 +248,11 @@ set cmdBodySource {
 	  }
 	  Tcl_DeleteHashTable (tbl_ptr->keyTablePtr);
 	  Tcl_InitCustomHashTable (tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);
+	  return TCL_OK;
+      }
+
+      case OPT_DESTROY: {
+          Tcl_DeleteCommandFromToken (interp, tbl_ptr->commandInfo);
 	  return TCL_OK;
       }
 
