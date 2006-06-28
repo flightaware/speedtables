@@ -433,9 +433,9 @@ proc gen_struct {} {
 }
 
 #
-# put_bool_field - emit code to set a boolean field
+# emit_set_bool_field - emit code to set a boolean field
 #
-proc put_bool_field {field pointer} {
+proc emit_set_bool_field {field pointer} {
     variable boolSetSource
 
     set optname "FIELD_[string toupper $field]"
@@ -444,9 +444,9 @@ proc put_bool_field {field pointer} {
 }
 
 #
-# put_num_field - emit code to set a numeric field
+# emit_set_num_field - emit code to set a numeric field
 #
-proc put_num_field {field pointer type} {
+proc emit_set_num_field {field pointer type} {
     variable numberSetSource
 
     set typeText $type
@@ -492,10 +492,10 @@ proc put_num_field {field pointer type} {
 }
 
 #
-# put_varstring_field - emit code to set a variable-length string (char *)
+# emit_set_varstring_field - emit code to set a variable-length string (char *)
 #  field
 #
-proc put_varstring_field {field pointer} {
+proc emit_set_varstring_field {field pointer} {
     variable stringSetSource
 
     set optname "FIELD_[string toupper $field]"
@@ -504,9 +504,9 @@ proc put_varstring_field {field pointer} {
 }
 
 #
-# put_char_field - emit code to set a single char field
+# emit_set_char_field - emit code to set a single char field
 #
-proc put_char_field {field pointer} {
+proc emit_set_char_field {field pointer} {
     variable charSetSource
 
     set optname "FIELD_[string toupper $field]"
@@ -515,9 +515,9 @@ proc put_char_field {field pointer} {
 }
 
 #
-# put_short_field - emit code to set a short integer field
+# emit_set_short_field - emit code to set a short integer field
 #
-proc put_short_field {field pointer} {
+proc emit_set_short_field {field pointer} {
     variable shortSetSource
 
     set optname "FIELD_[string toupper $field]"
@@ -526,9 +526,9 @@ proc put_short_field {field pointer} {
 }
 
 #
-# put_float_field - emit code to set a floating point field
+# emit_set_float_field - emit code to set a floating point field
 #
-proc put_float_field {field pointer} {
+proc emit_set_float_field {field pointer} {
     variable floatSetSource
 
     set optname "FIELD_[string toupper $field]"
@@ -555,39 +555,39 @@ proc gen_sets {pointer} {
 
 	switch $field(type) {
 	    short {
-		put_short_field $myfield $pointer
+		emit_set_short_field $myfield $pointer
 	    }
 
 	    int {
-		put_num_field $myfield $pointer int
+		emit_set_num_field $myfield $pointer int
 	    }
 
 	    long {
-		put_num_field $myfield $pointer long
+		emit_set_num_field $myfield $pointer long
 	    }
 
 	    wide {
-		put_num_field $myfield $pointer wide
+		emit_set_num_field $myfield $pointer wide
 	    }
 
 	    double {
-		put_num_field $myfield $pointer double
+		emit_set_num_field $myfield $pointer double
 	    }
 
 	    float {
-	        put_float_field $myfield $pointer
+	        emit_set_float_field $myfield $pointer
 	    }
 
 	    string {
-		put_varstring_field $myfield $pointer
+		emit_set_varstring_field $myfield $pointer
 	    }
 
 	    boolean {
-	        put_bool_field $myfield $pointer
+	        emit_set_bool_field $myfield $pointer
 	    }
 
 	    char {
-		put_char_field $myfield $pointer
+		emit_set_char_field $myfield $pointer
 	    }
 
 	    default {
