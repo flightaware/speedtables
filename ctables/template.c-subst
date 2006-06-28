@@ -20,17 +20,6 @@
  *
  */
 
-struct $rowStructHeadTable {
-    Tcl_HashTable *registeredProcTablePtr;
-    struct $rowStruct *rowStructList;
-};
-
-struct $rowStructTable {
-    Tcl_HashTable *registeredProcTablePtr;
-    Tcl_HashTable *keyTablePtr;
-    TAILQ_HEAD (${rowStruct}Head, $rowStruct) rows;
-};
-
 int
 ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {

@@ -159,10 +159,24 @@ set fixedstringSetSource {
 #  code body that implements the methods that work on the table.
 #
 set cmdBodyHeader {
+struct $rowStructHeadTable {
+    Tcl_HashTable *registeredProcTablePtr;
+    struct $rowStruct *rowStructList;
+};
+
+struct $rowStructTable {
+    Tcl_HashTable *registeredProcTablePtr;
+    Tcl_HashTable *keyTablePtr;
+    TAILQ_HEAD (${rowStruct}Head, $rowStruct) rows;
+};
+
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 $leftCurly
-    struct $table *$pointer = (struct $table *)cData;
+    struct $rowStructTable *tbl_ptr = (struct $rowStructTable *)cData;
+    struct $table *$pointer;
     int optIndex;
+    Tcl_HashEntry *hashEntry;
+    int new;
 
     static CONST char *options[] = {"get", "set", (char *)NULL};
 
@@ -190,12 +204,20 @@ set cmdBodySource {
         int i;
 	int fieldIndex;
 
-	if ((objc < 4) || (objc % 2)) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "field value ?field value...?");
+	if ((objc < 5) || (objc % 2) != 1) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "key field value ?field value...?");
 	    return TCL_ERROR;
 	}
 
-	for (i = 2; i < objc; i += 2) $leftCurly
+	hashEntry = Tcl_CreateHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]), &new);
+	if (new) {
+	    $pointer = (struct $table *)ckalloc (sizeof (struct $table));
+	    Tcl_SetHashValue (hashEntry, (ClientData)$pointer);
+	} else {
+	    $pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
+	}
+
+	for (i = 3; i < objc; i += 2) $leftCurly
             if (Tcl_GetIndexFromObj (interp, objv[i], fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
 		return TCL_ERROR;
 	    }
@@ -212,12 +234,17 @@ set cmdBodyGetSource {
         int i;
 	int fieldIndex;
 
-	if (objc < 3) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "field ?field...?");
+	if (objc < 4) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "key field ?field...?");
 	    return TCL_ERROR;
 	}
 
-	for (i = 2; i < objc; i++) $leftCurly
+	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
+	if (hashEntry == NULL) {
+	    return TCL_OK;
+	}
+
+	for (i = 3; i < objc; i++) $leftCurly
             if (Tcl_GetIndexFromObj (interp, objv[i], fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
 		return TCL_ERROR;
 	    }
@@ -667,7 +694,7 @@ proc put_init_extension_source {extension extensionVersion} {
 
     set structHeadTablePointers ""
     foreach name $tables {
-        append structHeadTablePointers "    struct ${name}RowStructHeadTable *${name}RowStructHeadTablePtr;\n";
+        append structHeadTablePointers "    struct ${name}StructHeadTable *${name}StructHeadTablePtr;\n";
     }
 
     set Id {init extension Id}
@@ -692,6 +719,10 @@ proc gen_code {} {
     variable cmdBodyGetSource
 
     set pointer "${table}_ptr"
+
+    set rowStructTable ${table}StructTable
+    set rowStructHeadTable ${table}StructHeadTable
+    set rowStruct $table
 
     emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
@@ -940,7 +971,7 @@ proc EndExtension {} {
     ::ctable::put_init_extension_source [string totitle $::ctable::extension] $::ctable::extensionVersion
 
     foreach name $::ctable::tables {
-	::ctable::put_init_command_source $name ${name}MetaObjCmd ${name}RowStructHeadTable $name
+	::ctable::put_init_command_source $name ${name}MetaObjCmd ${name}StructHeadTable $name
     }
 
     ::ctable::emit "    return TCL_OK;"
@@ -963,7 +994,7 @@ proc CTable {name data} {
 
     ::ctable::gen_code
 
-    ::ctable::put_metatable_source ${name}MetaObjCmd ${name}RowStructHeadTable ${name}RowStructTable $name ${name}ObjCmd
+    ::ctable::put_metatable_source ${name}MetaObjCmd ${name}StructHeadTable ${name}StructTable $name ${name}ObjCmd
 
     #::ctable::gen_list
 }
