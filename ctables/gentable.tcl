@@ -784,6 +784,7 @@ proc gen_code {} {
     gen_sets $pointer
     emit "          $rightCurly"
     emit "        $rightCurly"
+    emit "        break;"
     emit "      $rightCurly"
     emit ""
 
@@ -791,6 +792,7 @@ proc gen_code {} {
     gen_gets
     emit "          $rightCurly"
     emit "        $rightCurly"
+    emit "        break;"
     emit "      $rightCurly"
 
     # finish out the command switch and the command itself
