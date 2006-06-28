@@ -1,0 +1,84 @@
+
+
+$Id$
+
+I want a lot of flexibility setting and getting but without having a ton
+of different ways to do it that are stupid.
+
+Peter pointed out that SQL does it in different ways.  For example, with
+inserts you have a list of fields being inserted and a list of the data,
+but with update, it's key-value.
+
+A lot of the time key-value is handier, but when bulk-loading data, I more
+want to suck the stuff out of a list.
+
+
+the way it works right now:
+
+foo set $key field value field value field value...
+
+foo get $key field field field field - returns a list of the values matching
+the requested fields
+
+foo get $key - returns a list of all of the values in field definition order
+
+
+SETTING FOR THE FUTURE
+
+The thing is, I want to import, like, a big file or something...
+
+Then it'll be a list of data with a separate list of fields to import
+
+So it could either be something like
+
+foo import $key $fields $values
+
+or
+
+foo import $key $values field field field field field
+
+or all fields if no fields are specified
+
+I might also want to import from an array
+
+foo set $key -array arrayName  - do all of the fields in the array
+ 
+foo set $key -array arrayName field field field field - do only the specified
+fields
+
+
+GETTING FOR THE FUTURE
+
+It will be real common to want to pull stuff into an array
+
+foo get $key -array arrayName
+
+Sometimes I won't want all the fields.  It will be much more efficient
+when I don't need them all, to not convert them all back to Tcl.
+
+foo get $key -array arrayName field field field field
+
+I may also want to write out key-value pairs, not just values.
+
+foo get $key -pairs field field field field
+
+returns
+
+key value key value key value
+
+
+==========
+
+Implementation
+
+The problem is that set is pretty hard-coded, and its functionality needs
+to be factored and made more general-purpose.
+
+I think I need to factor out a routine that lets me pass a field name,
+a pointer, and an object that contains the value to be set.
+
+YES - with that, the rest becomes much easier.
+
+
+
+
