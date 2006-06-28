@@ -178,9 +178,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "exists", "delete", "type", "fields", "names", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "exists", "delete", "type", "fields", "names", "reset", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_TYPE, OPT_FIELDS, OPT_NAMES, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_TYPE, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_STATISTICS};
 
 }
 
@@ -236,6 +236,19 @@ set cmdBodySource {
 	  return TCL_OK;
       }
 
+      case OPT_RESET: {
+	  Tcl_HashSearch hashSearch;
+
+	  // delete all the memory in the row bodies, then delete the
+	  // hashtable, then recreate it
+	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	    $pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
+	    ${table}_delete($pointer);
+	  }
+	  Tcl_DeleteHashTable (tbl_ptr->keyTablePtr);
+	  Tcl_InitCustomHashTable (tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);
+	  return TCL_OK;
+      }
 
       case OPT_DELETE: {
 	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
