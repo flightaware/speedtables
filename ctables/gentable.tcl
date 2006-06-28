@@ -238,14 +238,20 @@ set cmdBodyGetSource {
         int i;
 	int fieldIndex;
 
-	if (objc < 4) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key field ?field...?");
+	if (objc < 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
 	    return TCL_ERROR;
 	}
 
 	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
+
 	if (hashEntry == NULL) {
 	    return TCL_OK;
+	}
+	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
+
+	if (i == 3) {
+	    return ${table}_genlist (interp, $pointer);
 	}
 
 	for (i = 3; i < objc; i++) $leftCurly
@@ -468,6 +474,7 @@ proc gen_defaults_subr {subr struct pointer} {
     }
 
     emit "}"
+    emit ""
 }
 
 #
@@ -900,9 +907,9 @@ proc gen_list {} {
 
     set pointer ${table}_ptr
 
-    emit "INCOMPLETE LIST CODE"
-    emit ""
     set length [llength $fieldList]
+
+    emit "int ${table}_genlist (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
 
     emit "    Tcl_Obj *listObjv\[$length];"
     emit ""
@@ -922,6 +929,9 @@ proc gen_list {} {
     }
 
     emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($length, listObjv));"
+    emit "    return TCL_OK;"
+    emit "$rightCurly"
+    emit ""
 }
 
 #
@@ -1055,10 +1065,11 @@ proc CTable {name data} {
 
     ::ctable::gen_defaults_subr ${name}_init $name ${name}_ptr
 
+    ::ctable::gen_list
+
     ::ctable::gen_code
 
     ::ctable::put_metatable_source ${name}MetaObjCmd ${name}StructHeadTable ${name}StructTable $name ${name}ObjCmd
 
-    #::ctable::gen_list
 }
 
