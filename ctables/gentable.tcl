@@ -250,8 +250,8 @@ set cmdBodySource {
           int i;
 	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
 
-	  for (i = 0; fields[i] != NULL; i++) {
-	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (fields[i], -1)) == TCL_ERROR) {
+	  for (i = 0; ${table}_fields[i] != NULL; i++) {
+	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (${table}_fields[i], -1)) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
 	  }
@@ -370,12 +370,12 @@ set cmdBodySource {
 
 	for (i = 3; i < objc; i += 2) $leftCurly
 	    // printf ("i = %d\n", i);
-            if (Tcl_GetIndexFromObj (interp, objv[i], fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+            if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	    obj = objv[i+1];
 
-	    switch ((enum fields) fieldIndex) $leftCurly
+	    switch ((enum ${table}_fields) fieldIndex) $leftCurly
 }
 
 #
@@ -404,11 +404,11 @@ set cmdBodyGetSource {
 	}
 
 	for (i = 3; i < objc; i++) $leftCurly
-            if (Tcl_GetIndexFromObj (interp, objv[i], fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+            if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 
-	    switch ((enum fields) fieldIndex) $leftCurly
+	    switch ((enum ${table}_fields) fieldIndex) $leftCurly
 }
 
 #
@@ -962,8 +962,6 @@ proc gen_code {} {
 
     emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
-    gen_field_names
-
     emit [subst -nobackslashes -nocommands $cmdBodySource]
     gen_sets $pointer
     emit "          $rightCurly"
@@ -1127,7 +1125,7 @@ proc gen_field_names {} {
     variable leftCurly
     variable rightCurly
 
-    emit "    static CONST char *fields\[] = $leftCurly"
+    emit "static CONST char *${table}_fields\[] = $leftCurly"
     foreach myfield $fieldList {
 	emit "        \"$myfield\","
     
@@ -1135,7 +1133,7 @@ proc gen_field_names {} {
     emit "        (char *)NULL"
     emit "    $rightCurly;\n"
 
-    set fieldenum "enum fields $leftCurly"
+    set fieldenum "enum ${table}_fields $leftCurly"
     foreach myField $fieldList {
 	append fieldenum "\n    FIELD_[string toupper $myField],"
     }
@@ -1240,6 +1238,8 @@ proc CTable {name data} {
     namespace eval ::ctable $data
 
     ::ctable::gen_struct
+
+    ::ctable::gen_field_names
 
     ::ctable::gen_defaults_subr ${name}_init $name ${name}_ptr
 
