@@ -178,9 +178,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "exists", "delete", "type", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "exists", "delete", "type", "fields", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_TYPE, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_TYPE, OPT_FIELDS, OPT_STATISTICS};
 
 }
 
@@ -203,6 +203,18 @@ set cmdBodySource {
       case OPT_TYPE: {
           Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
 	  return TCL_OK;
+      }
+
+      case OPT_FIELDS: {
+          int i;
+	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
+
+	  for (i = 0; fields[i] != NULL; i++) {
+	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (fields[i], -1)) == TCL_ERROR) {
+	          return TCL_ERROR;
+	      }
+	  }
+          return TCL_OK;
       }
 
       case OPT_STATISTICS: {
