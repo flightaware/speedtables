@@ -81,4 +81,8 @@ quick and actually provides basic functionality.
 
 
 
+Have tclobj as a datatype as well, it'll incr the reference count of the
+object and squirrel away a pointer to it.  This'll let people pass in
+lists and stuff they don't want to crack out.
+
 

@@ -192,9 +192,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "exists", "delete", "type", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "exists", "delete", "foreach", "type", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_TYPE, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_FOREACH, OPT_TYPE, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -237,6 +237,38 @@ set cmdBodySource {
 	  ckfree ((char *)stats);
 	  return TCL_OK;
       }
+
+      case OPT_FOREACH: {
+	  Tcl_HashSearch  hashSearch;
+
+	  if (objc != 4) {
+	      Tcl_WrongNumArgs (interp, 2, objv, "varName codeBody");
+	      return TCL_ERROR;
+	  }
+
+	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	      if (Tcl_ObjSetVar2 (interp, objv[2], NULL, Tcl_NewStringObj (Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry), -1), TCL_LEAVE_ERR_MSG) == NULL) {
+	          return TCL_ERROR;
+	      }
+	      switch (Tcl_EvalObjEx (interp, objv[3], 0)) {
+	        case TCL_ERROR:
+		  Tcl_AppendResult (interp, " while processing foreach code body", NULL);
+		  return TCL_ERROR;
+
+		case TCL_OK:
+		case TCL_CONTINUE:
+		  break;
+
+		case TCL_BREAK:
+		  return TCL_OK;
+
+		case TCL_RETURN:
+		  return TCL_RETURN;
+	      }
+	  }
+	  return TCL_OK;
+      }
+
 
       case OPT_NAMES: {
           Tcl_Obj *resultObj = Tcl_GetObjResult (interp);
