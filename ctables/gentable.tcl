@@ -178,9 +178,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "delete", "type", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "exists", "delete", "type", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_DELETE, OPT_TYPE};
+    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_TYPE};
 
 }
 
@@ -217,6 +217,17 @@ set cmdBodySource {
 	${table}_delete($pointer);
 	Tcl_DeleteHashEntry (hashEntry);
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
+	return TCL_OK;
+      }
+
+      case OPT_EXISTS: {
+	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
+
+	if (hashEntry == NULL) {
+	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 0);
+	} else {
+	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
+	}
 	return TCL_OK;
       }
 
