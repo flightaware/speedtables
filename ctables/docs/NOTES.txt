@@ -20,3 +20,16 @@ gcc -pipe -Wall -Wno-implicit-int -fno-common -c urk.c -o urk.o
 
 gcc -pipe -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o urk4.0.dylib urk.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
 
+
+
+
+Wed Jun 28 00:16:44 CDT 2006
+
+I've decided to punt on the fancy linked lists and cursors for this version.
+
+I'm going to just use hashtables for indexing stuff and there will be
+one and only one key per row.
+
+A future version will have cursors and more fanciness.
+
+

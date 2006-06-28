@@ -27,6 +27,7 @@ struct $rowStructHeadTable {
 
 struct $rowStructTable {
     Tcl_HashTable *registeredProcTablePtr;
+    Tcl_HashTable *keyTablePtr;
     TAILQ_HEAD (${rowStruct}Head, $rowStruct) rows;
 };
 
@@ -70,10 +71,13 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 
 	    row_tbl_ptr = (struct $rowStructTable *)ckalloc (sizeof(struct $rowStructTable));
 
-	    /* initialize the positions linked list for this aircraft/flight */
+	    /* initialize the positions linked list */
 	    TAILQ_INIT (&row_tbl_ptr->rows);
 
 	    row_tbl_ptr->registeredProcTablePtr = row_head_tbl_ptr->registeredProcTablePtr;
+
+	    row_tbl_ptr->keyTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
+	    Tcl_InitCustomHashTable (row_tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);
 
 	    commandName = Tcl_GetString(objv[2]);
 
