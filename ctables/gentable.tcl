@@ -34,6 +34,12 @@ set fp [open exten-frag.c-subst]
 set extensionFragmentSource [read $fp]
 close $fp
 
+proc emit {text} {
+    variable ofp
+
+    puts $ofp $text
+}
+
 #
 # boolSetSource - code we run subst over to generate a set of a boolean (bit)
 #
@@ -355,7 +361,7 @@ proc putfield {type name {comment ""}} {
     if {$comment != ""} {
         set comment " /* $comment */"
     }
-    puts stdout [format "    %-13s %s;%s" $type $name $comment]
+    emit [format "    %-13s %s;%s" $type $name $comment]
 }
 
 #
@@ -368,9 +374,7 @@ proc gen_struct {} {
     variable fields
     variable fieldList
 
-    set fp stdout
-
-    puts $fp "struct $table {"
+    emit "struct $table {"
 
     foreach myfield $nonBooleans {
         catch {unset field}
@@ -411,8 +415,8 @@ proc gen_struct {} {
 	putfield "unsigned int" "$name:1"
     }
 
-    puts $fp "};"
-    puts $fp ""
+    emit "};"
+    emit ""
 }
 
 #
@@ -423,7 +427,7 @@ proc put_bool_field {field pointer} {
 
     set optname "FIELD_[string toupper $field]"
 
-    puts [subst -nobackslashes -nocommands $boolSetSource]
+    emit [subst -nobackslashes -nocommands $boolSetSource]
 }
 
 #
@@ -471,7 +475,7 @@ proc put_num_field {field pointer type} {
 
     set optname "FIELD_[string toupper $field]"
 
-    puts [subst -nobackslashes -nocommands $numberSetSource]
+    emit [subst -nobackslashes -nocommands $numberSetSource]
 }
 
 #
@@ -483,7 +487,7 @@ proc put_varstring_field {field pointer} {
 
     set optname "FIELD_[string toupper $field]"
 
-    puts [subst -nobackslashes -nocommands $stringSetSource]
+    emit [subst -nobackslashes -nocommands $stringSetSource]
 }
 
 #
@@ -494,7 +498,7 @@ proc put_short_field {field pointer} {
 
     set optname "FIELD_[string toupper $field]"
 
-    puts [subst -nobackslashes -nocommands $shortSetSource]
+    emit [subst -nobackslashes -nocommands $shortSetSource]
 }
 
 #
@@ -505,7 +509,7 @@ proc put_float_field {field pointer} {
 
     set optname "FIELD_[string toupper $field]"
 
-    puts [subst -nobackslashes -nocommands $floatSetSource]
+    emit [subst -nobackslashes -nocommands $floatSetSource]
 }
 
 #
@@ -570,7 +574,7 @@ proc put_metatable_source {tableCommand rowStructHeadTable rowStructTable rowStr
 
     set Id {CTable template Id}
 
-    puts [subst -nobackslashes -nocommands $metaTableSource]
+    emit [subst -nobackslashes -nocommands $metaTableSource]
 }
 
 #
@@ -582,7 +586,7 @@ proc put_init_extension_source {extension extensionVersion} {
 
     set Id {init extension Id}
 
-    puts [subst -nobackslashes -nocommands $initExtensionSource]
+    emit [subst -nobackslashes -nocommands $initExtensionSource]
 }
 
 
@@ -601,30 +605,28 @@ proc gen_code {} {
     variable cmdBodySource
     variable cmdBodyGetSource
 
-    set fp stdout
-
     set pointer "${table}_ptr"
 
-    puts [subst -nobackslashes -nocommands $cmdBodyHeader]
+    emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
     gen_field_names
 
-    puts [subst -nobackslashes -nocommands $cmdBodySource]
+    emit [subst -nobackslashes -nocommands $cmdBodySource]
     gen_sets $pointer
-    puts $fp "          $rightCurly"
-    puts $fp "        $rightCurly"
-    puts $fp "      $rightCurly"
-    puts $fp ""
+    emit "          $rightCurly"
+    emit "        $rightCurly"
+    emit "      $rightCurly"
+    emit ""
 
-    puts [subst -nobackslashes -nocommands $cmdBodyGetSource]
+    emit [subst -nobackslashes -nocommands $cmdBodyGetSource]
     gen_gets
-    puts $fp "          $rightCurly"
-    puts $fp "        $rightCurly"
-    puts $fp "      $rightCurly"
+    emit "          $rightCurly"
+    emit "        $rightCurly"
+    emit "      $rightCurly"
 
     # finish out the command switch and the command itself
-    puts $fp "    $rightCurly"
-    puts $fp "$rightCurly"
+    emit "    $rightCurly"
+    emit "$rightCurly"
 }
 
 #
@@ -695,7 +697,7 @@ proc gen_new_obj {type pointer fieldName} {
 #  field into a list that's being cons'ed up
 #
 proc set_list_obj {position type pointer field} {
-    puts "    listObjv\[$position] = [gen_new_obj $type $pointer $field];"
+    emit "    listObjv\[$position] = [gen_new_obj $type $pointer $field];"
 }
 
 #
@@ -719,12 +721,12 @@ proc gen_list {} {
 
     set pointer ${table}_ptr
 
-    puts "INCOMPLETE LIST CODE"
-    puts ""
+    emit "INCOMPLETE LIST CODE"
+    emit ""
     set length [llength $fieldList]
 
-    puts "    Tcl_Obj *listObjv\[$length];"
-    puts ""
+    emit "    Tcl_Obj *listObjv\[$length];"
+    emit ""
 
     set position 0
     foreach fieldName $fieldList {
@@ -740,7 +742,7 @@ proc gen_list {} {
 	incr position
     }
 
-    puts "    Tcl_SetObjResult (interp, Tcl_NewListObj ($length, listObjv));"
+    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($length, listObjv));"
 }
 
 #
@@ -758,15 +760,13 @@ proc gen_field_names {} {
     variable leftCurly
     variable rightCurly
 
-    set fp stdout
-
-    puts $fp "    static CONST char *fields\[] = $leftCurly"
+    emit "    static CONST char *fields\[] = $leftCurly"
     foreach myfield $fieldList {
-	puts "        \"$myfield\","
+	emit "        \"$myfield\","
     
     }
-    puts $fp "        (char *)NULL"
-    puts $fp "    $rightCurly;\n"
+    emit "        (char *)NULL"
+    emit "    $rightCurly;\n"
 
     set fieldenum "enum fields $leftCurly"
     foreach myField $fieldList {
@@ -774,9 +774,9 @@ proc gen_field_names {} {
     }
 
     set fieldenum "[string range $fieldenum 0 end-1]\n$rightCurly;\n"
-    puts $fp $fieldenum
+    emit $fieldenum
 
-    puts $fp ""
+    emit ""
 }
 
 #
@@ -793,19 +793,17 @@ proc gen_gets {} {
 
     set pointer ${table}_ptr
 
-    set fp stdout
-
     foreach myField $fieldList {
         catch {unset field}
 	array set field $fields($myField)
 
-	puts $fp "              case FIELD_[string toupper $myField]: $leftCurly"
-	puts $fp "                if ([append_list_element $field(type) $pointer $myField] == TCL_ERROR) $leftCurly"
-	puts $fp "                    return TCL_ERROR;"
-	puts $fp "                $rightCurly"
-	puts $fp "                break;"
-	puts $fp "              $rightCurly"
-	puts $fp ""
+	emit "              case FIELD_[string toupper $myField]: $leftCurly"
+	emit "                if ([append_list_element $field(type) $pointer $myField] == TCL_ERROR) $leftCurly"
+	emit "                    return TCL_ERROR;"
+	emit "                $rightCurly"
+	emit "                break;"
+	emit "              $rightCurly"
+	emit ""
     }
 }
 
@@ -814,12 +812,25 @@ proc gen_gets {} {
 #  we're generating
 #
 proc gen_preamble {} {
-    puts stdout "/* autogenerated [clock format [clock seconds]] */"
-    puts stdout ""
-    puts stdout "#include <tcl.h>"
-    puts stdout "#include <string.h>"
-    puts stdout "#include \"queue.h\""
-    puts stdout ""
+    emit "/* autogenerated [clock format [clock seconds]] */"
+    emit ""
+    emit "#include <tcl.h>"
+    emit "#include <string.h>"
+    emit "#include \"queue.h\""
+    emit ""
+}
+
+#
+# compile - compile and link the shared library
+#
+proc compile {fileFragName version} {
+    cd build
+
+    exec gcc -pipe -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
+
+    exec gcc -pipe -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
+
+    cd ..
 }
 
 }
@@ -828,6 +839,9 @@ proc gen_preamble {} {
 # CExtension - define a C extension
 #
 proc CExtension {name {version 1.0}} {
+    file mkdir build
+    set ::ctable::ofp [open build/$name.c w]
+    ::ctable::gen_preamble
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""
@@ -836,8 +850,12 @@ proc CExtension {name {version 1.0}} {
 proc EndExtension {} {
     ::ctable::put_init_extension_source [string totitle $::ctable::extension] $::ctable::extensionVersion
 
-    puts stdout "    return TCL_OK;"
-    puts stdout $::ctable::rightCurly
+    ::ctable::emit "    return TCL_OK;"
+    ::ctable::emit $::ctable::rightCurly
+
+    close $::ctable::ofp
+
+    ::ctable::compile $::ctable::extension $::ctable::extensionVersion
 }
 
 #
