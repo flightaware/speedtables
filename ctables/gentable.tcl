@@ -913,9 +913,11 @@ proc gen_preamble {} {
 proc compile {fileFragName version} {
     cd build
 
-    exec gcc -pipe -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
+    exec gcc -pipe -g -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
 
-    exec gcc -pipe -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
+    #exec gcc -pipe -g -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
+
+    exec gcc -pipe -g -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/sc/lib -ltclstub8.4g -ltcl8.4g
 
     cd ..
 }

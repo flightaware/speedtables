@@ -24,7 +24,7 @@
 
     ${rowStructHeadTable}Ptr->rowStructList = (struct $rowStruct *)NULL;
 
-    /* Create the CTrackStream command -- it's fairly equivalent to an
+    /* Create the $commandName command -- it's fairly equivalent to an
      * Itcl class in that it can create its own commands with their
      * own data spaces, etc.
      */
