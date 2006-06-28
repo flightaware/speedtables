@@ -161,8 +161,9 @@ set fixedstringSetSource {
 #
 set cmdBodyHeader {
 struct $rowStructHeadTable {
-    Tcl_HashTable *registeredProcTablePtr;
+    Tcl_HashTable     *registeredProcTablePtr;
     struct $rowStruct *rowStructList;
+    long unsigned int  nextAutoCounter;
 };
 
 struct $rowStructTable {

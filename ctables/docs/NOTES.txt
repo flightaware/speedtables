@@ -94,4 +94,6 @@ destroy done
 
 reset done
 
+Wed Jun 28 14:52:36 CDT 2006
 
+#auto as option to create to get it to generate a name is done.

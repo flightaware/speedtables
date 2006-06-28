@@ -55,7 +55,9 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
     switch ((enum options) optIndex) {
 	char      *commandName;
 
-        case OPT_CREATE:
+        case OPT_CREATE: {
+	    int baseNameLength = 0;
+
 	    if (objc != 3) {
 		Tcl_WrongNumArgs (interp, 2, objv, "name");
 		return TCL_ERROR;
@@ -70,12 +72,26 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 
 	    row_tbl_ptr->keyTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
 	    Tcl_InitCustomHashTable (row_tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);
-
 	    commandName = Tcl_GetString(objv[2]);
+
+	    if (strcmp (commandName, "#auto") == 0) {
+		char *objName;
+
+	        objName = Tcl_GetStringFromObj (objv[0], &baseNameLength);
+		baseNameLength += 42;
+		commandName = ckalloc (baseNameLength);
+		snprintf (commandName, baseNameLength, "%s%lu", objName, row_head_tbl_ptr->nextAutoCounter++);
+	    }
 
 	    row_tbl_ptr->commandInfo = Tcl_CreateObjCommand (interp, commandName, $implementationCommand, (ClientData) row_tbl_ptr, NULL);
 
+	    Tcl_SetStringObj (Tcl_GetObjResult (interp), commandName, -1);
+	    if (baseNameLength) {
+	        ckfree (commandName);
+	    }
+
 	    return TCL_OK;
+	}
 
 	case OPT_INFO:
 	    if (objc != 2) goto err;

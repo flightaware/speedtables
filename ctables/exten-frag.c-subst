@@ -22,6 +22,8 @@
     Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
     ${rowStructHeadTable}Ptr->registeredProcTablePtr = hashTablePtr;
 
+    ${rowStructHeadTable}Ptr->nextAutoCounter = 0;
+
     ${rowStructHeadTable}Ptr->rowStructList = (struct $rowStruct *)NULL;
 
     /* Create the $commandName command -- it's fairly equivalent to an
