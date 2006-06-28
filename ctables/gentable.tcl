@@ -212,12 +212,16 @@ set cmdBodySource {
 	hashEntry = Tcl_CreateHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]), &new);
 	if (new) {
 	    $pointer = (struct $table *)ckalloc (sizeof (struct $table));
+	    ${table}_init($pointer);
 	    Tcl_SetHashValue (hashEntry, (ClientData)$pointer);
+	    printf ("created new entry for '%s'\n", Tcl_GetString (objv[2]));
 	} else {
 	    $pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
+	    printf ("found existing entry for '%s'\n", Tcl_GetString (objv[2]));
 	}
 
 	for (i = 3; i < objc; i += 2) $leftCurly
+	    printf ("i = %d\n", i);
             if (Tcl_GetIndexFromObj (interp, objv[i], fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
 		return TCL_ERROR;
 	    }
@@ -305,9 +309,7 @@ proc boolean {name {default 0}} {
     variable fields
     variable fieldList
 
-    lappend args name $name type boolean
-
-    set fields($name) $args
+    set fields($name) [list name $name type boolean default $default]
     lappend fieldList $name
     lappend booleans $name
 }
@@ -330,7 +332,7 @@ proc varstring {name {default ""}} {
 # char - define a single character field -- this should probably just be
 #  fixedstring[1] but it's simpler.  shrug.
 #
-proc char {name {default ""}} {
+proc char {name {default " "}} {
     deffield $name type char default $default
 }
 
@@ -416,6 +418,56 @@ proc putfield {type name {comment ""}} {
         set comment " /* $comment */"
     }
     emit [format "    %-13s %s;%s" $type $name $comment]
+}
+
+#
+# gen_defaults_subr - gen code to set a row to default values
+#
+proc gen_defaults_subr {subr struct pointer} {
+    variable table
+    variable fields
+    variable fieldList
+
+    emit "void ${subr}(struct $struct *$pointer) {"
+
+    foreach myfield $fieldList {
+        catch {unset field}
+	array set field $fields($myfield)
+
+	switch $field(type) {
+	    string {
+	        emit "    $pointer->$myfield = NULL;"
+	    }
+
+	    fixedstring {
+	        emit "    strncpy ($pointer->$myfield, \"$field(default)\", $field(length));"
+	    }
+
+	    mac {
+	        emit "    strncpy ($pointer->$myfield, \"$field(default)\", $field(length));"
+	    }
+
+	    inet {
+	        emit "    strncpy ($pointer->$myfield, \"$field(default)\", $field(length));"
+	    }
+
+	    char {
+	        emit "    $pointer->$myfield = '[string index $field(default) 0]';"
+	    }
+
+	    tailq_entry {
+	    }
+
+	    tailq_head {
+	    }
+
+	    default {
+	        emit "    $pointer->$myfield = $field(default);"
+	    }
+	}
+    }
+
+    emit "}"
 }
 
 #
@@ -991,6 +1043,8 @@ proc CTable {name data} {
     namespace eval ::ctable $data
 
     ::ctable::gen_struct
+
+    ::ctable::gen_defaults_subr ${name}_init $name ${name}_ptr
 
     ::ctable::gen_code
 
