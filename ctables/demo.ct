@@ -17,13 +17,13 @@ CTable fa_position {
     char altitudeChange
     fixedstring subident 4
     fixedstring facility 3
-    tailq_entry position_link fa_position
+    #tailq_entry position_link fa_position
     double testDouble
     float testFloat
 }
 
 CTable fa_trackstream {
-    tailq_head positions positionhead fa_position
+    #tailq_head positions positionhead fa_position
     boolean inAir
     boolean debug
     boolean blocked
