@@ -739,7 +739,7 @@ proc putfield {type name {comment ""}} {
     if {$comment != ""} {
         set comment " /* $comment */"
     }
-    emit [format "    %-13s %s;%s" $type $name $comment]
+    emit [format "    %-20s %s;%s" $type $name $comment]
 }
 
 #
