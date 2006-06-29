@@ -342,16 +342,7 @@ set cmdBodySource {
 	    return TCL_ERROR;
 	}
 
-	hashEntry = Tcl_CreateHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]), &new);
-	if (new) {
-	    $pointer = (struct $table *)ckalloc (sizeof (struct $table));
-	    ${table}_init($pointer);
-	    Tcl_SetHashValue (hashEntry, (ClientData)$pointer);
-	    // printf ("created new entry for '%s'\n", Tcl_GetString (objv[2]));
-	} else {
-	    $pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
-	    // printf ("found existing entry for '%s'\n", Tcl_GetString (objv[2]));
-	}
+        $pointer = ${table}_find_or_create (tbl_ptr, Tcl_GetString (objv[2]), &new);
 
 	for (i = 3; i < objc; i += 2) {
 	    // printf ("i = %d\n", i);
