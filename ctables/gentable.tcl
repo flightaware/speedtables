@@ -388,44 +388,47 @@ set cmdBodySource {
 	    }
 	}
 
-	switch (Tcl_EvalObjEx (interp, objv[2], 0)) {
-	  int       new;
-	  int       listObjc;
-	  Tcl_Obj **listObjv;
+	while (1) {
+	    switch (Tcl_EvalObjEx (interp, objv[2], 0)) {
+	      int       new;
+	      int       listObjc;
+	      Tcl_Obj **listObjv;
 
-	  case TCL_ERROR:
-	    Tcl_AppendResult (interp, " while processing import code body", NULL);
-	    return TCL_ERROR;
-
-	  case TCL_OK:
-	  case TCL_CONTINUE:
-	    if (Tcl_ListObjGetElements (interp, Tcl_GetObjResult (interp), &listObjc, &listObjv) == TCL_ERROR) {
-		Tcl_AppendResult (interp, " while processing code result", NULL);
+	      case TCL_ERROR:
+	        Tcl_AppendResult (interp, " while processing import code body", NULL);
 	        return TCL_ERROR;
-	    }
 
-	    if (listObjc == 0) {
+	      case TCL_OK:
+	      case TCL_CONTINUE:
+	        if (Tcl_ListObjGetElements (interp, Tcl_GetObjResult (interp), &listObjc, &listObjv) == TCL_ERROR) {
+		    Tcl_AppendResult (interp, " while processing code result", NULL);
+	            return TCL_ERROR;
+	        }
+
+	        if (listObjc == 0) {
+	            return TCL_OK;
+	        }
+
+	        if (nFields + 1 != listObjc) {
+		    Tcl_SetObjResult (interp, Tcl_NewStringObj ("number of fields in list does not match what was expected", -1));
+	            return TCL_ERROR;
+	        }
+
+	        $pointer = ${table}_find_or_create (tbl_ptr, Tcl_GetString (listObjv[0]), &new);
+	        for (i = 1; i <= nFields; i++) {
+	            if (${table}_set (interp, listObjv[i], $pointer, fieldIds[i - 1]) == TCL_ERROR) {
+		        return TCL_ERROR;
+		    }
+	        }
+	        break;
+
+	      case TCL_BREAK:
 	        return TCL_OK;
+
+	      case TCL_RETURN:
+	        return TCL_RETURN;
 	    }
-
-	    if (nFields + 1 != listObjc) {
-		Tcl_SetObjResult (interp, Tcl_NewStringObj ("number of fields in list does not match what was expected", -1));
-	        return TCL_ERROR;
-	    }
-
-	    $pointer = ${table}_find_or_create (tbl_ptr, Tcl_GetString (listObjv[0]), &new);
-	    for (i = 1; i <= nFields; i++) {
-	        ${table}_set (interp, listObjv[i], $pointer, fieldIds[i - 1]);
-	    }
-	    break;
-
-	  case TCL_BREAK:
-	    return TCL_OK;
-
-	  case TCL_RETURN:
-	    return TCL_RETURN;
-	  }
-	return TCL_OK;
+	}
       }
 
       case OPT_SET: $leftCurly
