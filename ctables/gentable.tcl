@@ -44,17 +44,17 @@ proc emit {text} {
 # boolSetSource - code we run subst over to generate a set of a boolean (bit)
 #
 set boolSetSource {
-	      case $optname: {
-	        int boolean;
+      case $optname: {
+        int boolean;
 
-	        if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
-	            Tcl_AppendResult (interp, " while converting $field", NULL);
-	            return TCL_ERROR;
-	        }
+        if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
+            Tcl_AppendResult (interp, " while converting $field", NULL);
+            return TCL_ERROR;
+        }
 
-	        $pointer->$field = boolean;
-	        break;
-	      }
+        $pointer->$field = boolean;
+        break;
+      }
 }
 
 #
@@ -63,47 +63,47 @@ set boolSetSource {
 #  handle shorts and floats specially due to type coercion requirements.)
 #
 set numberSetSource {
-	      case $optname: {
-		if ($getObjCmd (interp, obj, &$pointer->$field) == TCL_ERROR) {
-		    Tcl_AppendResult (interp, " while converting $field", NULL);
-		    return TCL_ERROR;
-		}
-		break;
-	      }
+      case $optname: {
+	if ($getObjCmd (interp, obj, &$pointer->$field) == TCL_ERROR) {
+	    Tcl_AppendResult (interp, " while converting $field", NULL);
+	    return TCL_ERROR;
+	}
+	break;
+      }
 }
 
 #
 # floatSetSource - code we run subst over to generate a set of a float.
 #
 set floatSetSource {
-	      case $optname: {
-		double value;
+      case $optname: {
+	double value;
 
-		if (Tcl_GetDoubleFromObj (interp, obj, &value) == TCL_ERROR) {
-		    Tcl_AppendResult (interp, " while converting $field", NULL);
-		    return TCL_ERROR;
-		}
+	if (Tcl_GetDoubleFromObj (interp, obj, &value) == TCL_ERROR) {
+	    Tcl_AppendResult (interp, " while converting $field", NULL);
+	    return TCL_ERROR;
+	}
 
-		$pointer->$field = (float)value;
-		break;
-	      }
+	$pointer->$field = (float)value;
+	break;
+      }
 }
 
 #
 # shortSetSource - code we run subst over to generate a set of a float.
 #
 set shortSetSource {
-	      case $optname: {
-		int value;
+      case $optname: {
+	int value;
 
-		if (Tcl_GetIntFromObj (interp, obj, &value) == TCL_ERROR) {
-		    Tcl_AppendResult (interp, " while converting $field", NULL);
-		    return TCL_ERROR;
-		}
+	if (Tcl_GetIntFromObj (interp, obj, &value) == TCL_ERROR) {
+	    Tcl_AppendResult (interp, " while converting $field", NULL);
+	    return TCL_ERROR;
+	}
 
-		$pointer->$field = (short)value;
-		break;
-	      }
+	$pointer->$field = (short)value;
+	break;
+      }
 }
 
 #
@@ -112,32 +112,32 @@ set shortSetSource {
 # strings are char *'s that we manage automagically.
 #
 set stringSetSource {
-	      case $optname: {
-		char *string;
-		int   length;
+      case $optname: {
+	char *string;
+	int   length;
 
-		if ($pointer->$field != NULL) {
-		    ckfree ($pointer->$field);
-		}
+	if ($pointer->$field != NULL) {
+	    ckfree ($pointer->$field);
+	}
 
-		string = Tcl_GetStringFromObj (obj, &length);
-		$pointer->$field = ckalloc (length + 1);
-		strncpy ($pointer->$field, string, length + 1);
-		break;
-	      }
+	string = Tcl_GetStringFromObj (obj, &length);
+	$pointer->$field = ckalloc (length + 1);
+	strncpy ($pointer->$field, string, length + 1);
+	break;
+      }
 }
 
 #
 # charSetSource - code we run subst over to generate a set of a single char.
 #
 set charSetSource {
-	      case $optname: {
-		char *string;
+      case $optname: {
+	char *string;
 
-		string = Tcl_GetStringFromObj (obj, NULL);
-		$pointer->$field = string[0];
-		break;
-	      }
+	string = Tcl_GetStringFromObj (obj, NULL);
+	$pointer->$field = string[0];
+	break;
+      }
 }
 
 #
@@ -145,13 +145,13 @@ set charSetSource {
 # fixed-length string.
 #
 set fixedstringSetSource {
-	      case $optname: {
-		char *string;
+      case $optname: {
+	char *string;
 
-		string = Tcl_GetStringFromObj (obj, NULL);
-		strncpy ($pointer->$field, string, $length);
-		break;
-	      }
+	string = Tcl_GetStringFromObj (obj, NULL);
+	strncpy ($pointer->$field, string, $length);
+	break;
+      }
 }
 
 
