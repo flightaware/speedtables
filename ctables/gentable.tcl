@@ -161,9 +161,28 @@ set fixedstringSetSource {
 set inetSetSource {
       case $optname: {
 	if (!inet_aton (Tcl_GetString (obj), &$pointer->$field)) {
-	    Tcl_AppendResult (interp, "bad IP address parsing field $field", (char *)NULL);
+	    Tcl_AppendResult (interp, "bad IP address parsing field '$field'", (char *)NULL);
 	    return TCL_ERROR;
 	}
+
+	break;
+      }
+}
+
+#
+# macSetSource - code we run subst over to generate a set of an ethernet
+# MAC address.
+#
+set macSetSource {
+      case $optname: {
+        struct ether_addr *mac;
+
+	mac = ether_aton (Tcl_GetString (obj));
+	if (mac == NULL) {
+	    Tcl_AppendResult (interp, "bad MAC address parsing field '$field'", (char *)NULL);
+	    return TCL_ERROR;
+	}
+	$pointer->$field = *mac;
 
 	break;
       }
@@ -747,7 +766,7 @@ proc gen_defaults_subr {subr struct pointer} {
 	    }
 
 	    mac {
-	        emit "    strncpy ($pointer->$myfield, \"$field(default)\", $field(length));"
+	        emit "    $pointer->$myfield = *ether_aton (\"$field(default)\");"
 	    }
 
 	    inet {
@@ -829,7 +848,7 @@ proc gen_struct {} {
 	    }
 
 	    mac {
-		putfield char "$field(name)[6]"
+		putfield "struct ether_addr" $field(name)
 	    }
 
 	    inet {
@@ -962,6 +981,16 @@ proc emit_set_inet_field {field pointer} {
     emit [subst -nobackslashes -nocommands $inetSetSource]
 }
 
+#
+# emit_set_mac_field - emit code to set a MAC address
+#
+proc emit_set_mac_field {field pointer} {
+    variable macSetSource
+
+    set optname "FIELD_[string toupper $field]"
+
+    emit [subst -nobackslashes -nocommands $macSetSource]
+}
 
 #
 # emit_set_short_field - emit code to set a short integer field
@@ -1044,6 +1073,10 @@ proc gen_sets {pointer} {
 
 	    inet {
 	        emit_set_inet_field $myfield $pointer
+	    }
+
+	    mac {
+	        emit_set_mac_field $myfield $pointer
 	    }
 
 	    tailq_entry {
@@ -1236,6 +1269,10 @@ proc gen_new_obj {type pointer fieldName} {
 
 	inet {
 	    return "Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
+	}
+
+	mac {
+	    return "Tcl_NewStringObj (ether_ntoa (&$pointer->$fieldName), -1)"
 	}
 
 	tailq_entry {

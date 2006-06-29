@@ -90,7 +90,7 @@ proc inet {name {default 0.0.0.0}} {
 Add code to generate an entry in the struct-defining routine "gen_struct":
 
             inet {
-                putfield char "struct in_addr $field(name)"
+                putfield "struct in_addr" $field(name)
             }
 
 
