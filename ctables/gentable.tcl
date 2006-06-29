@@ -349,7 +349,6 @@ set cmdBodySource {
 
       case OPT_SET: $leftCurly
         int       i;
-	int       fieldIndex;
 
 	if ((objc < 3) || (objc % 2) != 1) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "key field value ?field value...?");
@@ -369,14 +368,24 @@ set cmdBodySource {
 
 	for (i = 3; i < objc; i += 2) {
 	    // printf ("i = %d\n", i);
-            if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-		return TCL_ERROR;
-	    }
-
-	    if (${table}_set (interp, objv[i+1], $pointer, fieldIndex) == TCL_ERROR) {
+	    if (${table}_set_fieldobj (interp, objv[i+1], $pointer, objv[i]) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 	}
+}
+
+set fieldObjSetSource {
+int
+${table}_set_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, Tcl_Obj *fieldObj)
+{
+    int fieldIndex;
+
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    return ${table}_set (interp, obj, $pointer, fieldIndex);
+}
 }
 
 set fieldSetSource {
@@ -946,6 +955,7 @@ proc put_init_extension_source {extension extensionVersion} {
 }
 
 proc gen_set_function {table pointer} {
+    variable fieldObjSetSource
     variable fieldSetSource
     variable leftCurly
     variable rightCurly
@@ -957,6 +967,8 @@ proc gen_set_function {table pointer} {
     emit "    $rightCurly"
     emit "    return TCL_OK;"
     emit "$rightCurly"
+
+    emit [subst -nobackslashes -nocommands $fieldObjSetSource]
 
 }
 
