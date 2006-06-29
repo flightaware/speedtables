@@ -81,4 +81,31 @@ YES - with that, the rest becomes much easier.
 
 
 
+========
+
+INCREDIBLY FAST IMPORTING
+
+What we want to do here is get a field name list and find the enumerated
+field numbers in advance of looping on the import, so we only do the
+lookup once.
+
+something like
+
+foo import code field field field field
+
+code is executed repeatedly and is expected to return a list of the
+proper length every time.
+
+If it returns a break (TCL_BREAK), we stop.
+
+Otherwise we take the first field as the key and each subsequent field
+gets assigned in turn
+
+if no fields are named, it expects them all to be there
+
+========
+
+For "foreach" and "names" methods, accept an optional argument that's
+a Tcl_Match pattern.
+
 

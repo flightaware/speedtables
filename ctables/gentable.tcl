@@ -254,14 +254,24 @@ set cmdBodySource {
 
       case OPT_FOREACH: {
 	  Tcl_HashSearch  hashSearch;
+	  int             doMatch = 0;
+	  char           *pattern;
+	  char           *key;
 
-	  if (objc != 4) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "varName codeBody");
+	  if ((objc < 4) || (objc > 5)) {
+	      Tcl_WrongNumArgs (interp, 2, objv, "varName codeBody ?pattern?");
 	      return TCL_ERROR;
 	  }
 
+	  if (objc == 5) {
+	      doMatch = 1;
+	      pattern = Tcl_GetString (objv[4]);
+	  }
+
 	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      if (Tcl_ObjSetVar2 (interp, objv[2], NULL, Tcl_NewStringObj (Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry), -1), TCL_LEAVE_ERR_MSG) == NULL) {
+	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
+	      if (doMatch && !Tcl_StringCaseMatch (key, pattern, 1)) continue;
+	      if (Tcl_ObjSetVar2 (interp, objv[2], NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == NULL) {
 	          return TCL_ERROR;
 	      }
 	      switch (Tcl_EvalObjEx (interp, objv[3], 0)) {
