@@ -378,6 +378,13 @@ set cmdBodySource {
 	    switch ((enum ${table}_fields) fieldIndex) $leftCurly
 }
 
+set fieldSetSource {
+int
+${table}_set (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int field) $leftCurly
+
+    switch ((enum ${table}_fields) field) $leftCurly
+}
+
 #
 # cmdBodyGetSource - chunk of the code that we run subst over to generate
 #  part of the body of the code that handles the "get" method
@@ -938,6 +945,21 @@ proc put_init_extension_source {extension extensionVersion} {
     emit [subst -nobackslashes -nocommands $initExtensionSource]
 }
 
+proc gen_set_function {table pointer} {
+    variable fieldSetSource
+    variable leftCurly
+    variable rightCurly
+
+    emit [subst -nobackslashes -nocommands $fieldSetSource]
+
+    gen_sets $pointer
+
+    emit "    $rightCurly"
+    emit "    return TCL_OK;"
+    emit "$rightCurly"
+
+}
+
 
 #
 # gen_code - generate all of the code for the underlying methods for
@@ -959,6 +981,8 @@ proc gen_code {} {
     set rowStructTable ${table}StructTable
     set rowStructHeadTable ${table}StructHeadTable
     set rowStruct $table
+
+    gen_set_function $table $pointer
 
     emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
