@@ -160,19 +160,6 @@ set fixedstringSetSource {
 #  code body that implements the methods that work on the table.
 #
 set cmdBodyHeader {
-struct $rowStructHeadTable {
-    Tcl_HashTable     *registeredProcTablePtr;
-    struct $rowStruct *rowStructList;
-    long unsigned int  nextAutoCounter;
-};
-
-struct $rowStructTable {
-    Tcl_HashTable *registeredProcTablePtr;
-    Tcl_HashTable *keyTablePtr;
-    Tcl_Command    commandInfo;
-    // TAILQ_HEAD (${rowStruct}Head, $rowStruct) rows;
-};
-
 void ${table}_delete_all_rows(struct ${table}StructTable *tbl_ptr) {
     Tcl_HashSearch hashSearch;
     Tcl_HashEntry *hashEntry;
@@ -374,7 +361,39 @@ set cmdBodySource {
 	}
 }
 
+set tableHeadSource {
+struct ${table}StructHeadTable {
+    Tcl_HashTable     *registeredProcTablePtr;
+    struct ${table}   *rowStructList;
+    long unsigned int  nextAutoCounter;
+};
+
+struct ${table}StructTable {
+    Tcl_HashTable *registeredProcTablePtr;
+    Tcl_HashTable *keyTablePtr;
+    Tcl_Command    commandInfo;
+    // TAILQ_HEAD (${table}Head, $table) rows;
+};
+}
+
 set fieldObjSetSource {
+struct $table *${table}_find_or_create (struct ${table}StructTable *tbl_ptr, char *key, int *newPtr) {
+    struct $table *${table}_ptr;
+    Tcl_HashEntry *hashEntry = Tcl_CreateHashEntry (tbl_ptr->keyTablePtr, key, newPtr);
+
+    if (*newPtr) {
+        ${table}_ptr = (struct $table *)ckalloc (sizeof (struct $table));
+	${table}_init (${table}_ptr);
+	Tcl_SetHashValue (hashEntry, (ClientData)${table}_ptr);
+	// printf ("created new entry for '%s'\n", key);
+    } else {
+        ${table}_ptr = (struct $table *) Tcl_GetHashValue (hashEntry);
+	// printf ("found existing entry for '%s'\n", key);
+    }
+
+    return ${table}_ptr;
+}
+
 int
 ${table}_set_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, Tcl_Obj *fieldObj)
 {
@@ -671,6 +690,7 @@ proc gen_delete_subr {subr struct pointer} {
     emit ""
 }
 
+
 #
 # gen_struct - gen the table being defined's C structure
 #
@@ -912,10 +932,19 @@ proc gen_sets {pointer} {
 }
 
 #
+# gen_table_head_source - emit the code to define the head structures
+#
+proc gen_table_head_source {table} {
+    variable tableHeadSource
+
+    emit [subst -nobackslashes -nocommands $tableHeadSource]
+}
+
+#
 # put_metatable_source - emit the code to define the meta table (table-defining
 # command)
 #
-proc put_metatable_source {tableCommand rowStructHeadTable rowStructTable rowStruct implementationCommand} {
+proc put_metatable_source {table} {
     variable metaTableSource
 
     set Id {CTable template Id}
@@ -1272,6 +1301,8 @@ proc CTable {name data} {
 
     ::ctable::gen_struct
 
+    ::ctable::gen_table_head_source $name
+
     ::ctable::gen_field_names
 
     ::ctable::gen_defaults_subr ${name}_init $name ${name}_ptr
@@ -1282,7 +1313,7 @@ proc CTable {name data} {
 
     ::ctable::gen_code
 
-    ::ctable::put_metatable_source ${name}MetaObjCmd ${name}StructHeadTable ${name}StructTable $name ${name}ObjCmd
+    ::ctable::put_metatable_source $name
 
 }
 

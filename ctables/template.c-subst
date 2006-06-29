@@ -21,7 +21,7 @@
  */
 
 int
-${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     int      optIndex;
 
@@ -35,10 +35,10 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
         OPT_CREATE, OPT_INFO, OPT_METHOD
     };
 
-    // struct $rowStruct *row_ptr;
-    struct $rowStructHeadTable *row_head_tbl_ptr = (struct $rowStructHeadTable *)clientData;
+    // struct $table *row_ptr;
+    struct ${table}StructHeadTable *row_head_tbl_ptr = (struct ${table}StructHeadTable *)clientData;
 
-    struct $rowStructTable *row_tbl_ptr;
+    struct ${table}StructTable *row_tbl_ptr;
 
     if (objc < 2 || objc > 4) {
       err:
@@ -63,7 +63,7 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 		return TCL_ERROR;
 	    }
 
-	    row_tbl_ptr = (struct $rowStructTable *)ckalloc (sizeof(struct $rowStructTable));
+	    row_tbl_ptr = (struct ${table}StructTable *)ckalloc (sizeof(struct ${table}StructTable));
 
 	    /* initialize the positions linked list */
 	    // TAILQ_INIT (&row_tbl_ptr->rows);
@@ -83,7 +83,7 @@ ${tableCommand}(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CO
 		snprintf (commandName, baseNameLength, "%s%lu", objName, row_head_tbl_ptr->nextAutoCounter++);
 	    }
 
-	    row_tbl_ptr->commandInfo = Tcl_CreateObjCommand (interp, commandName, $implementationCommand, (ClientData) row_tbl_ptr, NULL);
+	    row_tbl_ptr->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) row_tbl_ptr, NULL);
 
 	    Tcl_SetStringObj (Tcl_GetObjResult (interp), commandName, -1);
 	    if (baseNameLength) {
