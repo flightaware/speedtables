@@ -2,10 +2,14 @@
 
 $Id$
 
-This is code to creates tables of rows containing fields in Tcl.
+CTABLE
 
-It generates C code that can be compiled, linked, and loaded as a C extension
-to provide high performance tables in Tcl.
+This is code to creates tables of rows where rows consist of fields, in Tcl.
+
+It takes the definition of one or more tables and generates C code that can 
+is then compiled and linked as a C shared library extension for Tcl,
+providing high performance tables that are far more memory-efficient than
+using array of lists lists of lists, Itcl objects, etc.
 
 
 CTable fa_position {
@@ -42,6 +46,27 @@ struct fa_position {
     float          testFloat;
 };
 
+Defining the table generates a command of the same name.  That command
+has a number of methods, the most important of which is "create".
+
+In the above example,
+
+    fa_position create x
+
+Will create a new command, x, that "owns" zero or more instances of the
+fa_position structure and has a number of methods for getting and setting
+values, importing, traversing, counting, checking the existence of, etc,
+rows in the table.
+
+When executing that command, it will generate a new table.  The new table
+will itself be a command that has a number of methods.
+
+One of those methods will generate a cursor that can be driven through the
+table.  The cursor will be able to:
+
+* read and write values in the row being pointed to
+
+-----
 
 It also generates code to read and write the table.
 
