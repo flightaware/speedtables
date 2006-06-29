@@ -295,11 +295,26 @@ set cmdBodySource {
 
 
       case OPT_NAMES: {
-          Tcl_Obj *resultObj = Tcl_GetObjResult (interp);
-	  Tcl_HashSearch hashSearch;
+          Tcl_Obj        *resultObj = Tcl_GetObjResult (interp);
+	  Tcl_HashSearch  hashSearch;
+	  int             doMatch = 0;
+	  char           *pattern;
+	  char           *key;
+
+	  if (objc > 3) {
+	      Tcl_WrongNumArgs (interp, 2, objv, "varName codeBody ?pattern?");
+	      return TCL_ERROR;
+	  }
+
+	  if (objc == 3) {
+	      doMatch = 1;
+	      pattern = Tcl_GetString (objv[2]);
+	  }
 
 	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry), -1)) == TCL_ERROR) {
+	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
+	      if (doMatch && !Tcl_StringCaseMatch (key, pattern, 1)) continue;
+	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (key, -1)) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
 	  }
