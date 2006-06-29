@@ -180,9 +180,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "exists", "delete", "foreach", "type", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "exists", "delete", "foreach", "type", "import", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_FOREACH, OPT_TYPE, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -357,6 +357,9 @@ set cmdBodySource {
 	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
 	}
 	return TCL_OK;
+      }
+
+      case OPT_IMPORT: {
       }
 
       case OPT_SET: $leftCurly
@@ -1160,11 +1163,11 @@ proc gen_list {} {
 
     set pointer ${table}_ptr
 
-    set length [llength $fieldList]
+    set lengthDef [string toupper $table]_NFIELDS
 
     emit "int ${table}_genlist (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
 
-    emit "    Tcl_Obj *listObjv\[$length];"
+    emit "    Tcl_Obj *listObjv\[$lengthDef];"
     emit ""
 
     set position 0
@@ -1181,7 +1184,7 @@ proc gen_list {} {
 	incr position
     }
 
-    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($length, listObjv));"
+    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef, listObjv));"
     emit "    return TCL_OK;"
     emit "$rightCurly"
     emit ""
@@ -1202,13 +1205,16 @@ proc gen_field_names {} {
     variable leftCurly
     variable rightCurly
 
+    emit "#define [string toupper $table]_NFIELDS [llength $fieldList]"
+    emit ""
+
     emit "static CONST char *${table}_fields\[] = $leftCurly"
     foreach myfield $fieldList {
 	emit "    \"$myfield\","
     
     }
-    emit "        (char *)NULL"
-    emit "    $rightCurly;\n"
+    emit "    (char *) NULL"
+    emit "$rightCurly;\n"
 
     set fieldenum "enum ${table}_fields $leftCurly"
     foreach myField $fieldList {
