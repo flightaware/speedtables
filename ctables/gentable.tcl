@@ -170,6 +170,8 @@ void ${table}_delete_all_rows(struct ${table}StructTable *tbl_ptr) {
 	${table}_delete($pointer);
     }
     Tcl_DeleteHashTable (tbl_ptr->keyTablePtr);
+
+    tbl_ptr->count = 0;
 }
 
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
@@ -180,9 +182,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "exists", "delete", "foreach", "type", "import", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "exists", "delete", "count", "foreach", "type", "import", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -344,8 +346,14 @@ set cmdBodySource {
 	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
 	${table}_delete($pointer);
 	Tcl_DeleteHashEntry (hashEntry);
+	tbl_ptr->count--;
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
 	return TCL_OK;
+      }
+
+      case OPT_COUNT: {
+          Tcl_SetIntObj (Tcl_GetObjResult (interp), tbl_ptr->count);
+	  return TCL_OK;
       }
 
       case OPT_EXISTS: {
@@ -459,6 +467,7 @@ struct ${table}StructTable {
     Tcl_HashTable *registeredProcTablePtr;
     Tcl_HashTable *keyTablePtr;
     Tcl_Command    commandInfo;
+    long           count;
     // TAILQ_HEAD (${table}Head, $table) rows;
 };
 }
@@ -466,12 +475,14 @@ struct ${table}StructTable {
 set fieldObjSetSource {
 struct $table *${table}_find_or_create (struct ${table}StructTable *tbl_ptr, char *key, int *newPtr) {
     struct $table *${table}_ptr;
+
     Tcl_HashEntry *hashEntry = Tcl_CreateHashEntry (tbl_ptr->keyTablePtr, key, newPtr);
 
     if (*newPtr) {
         ${table}_ptr = (struct $table *)ckalloc (sizeof (struct $table));
 	${table}_init (${table}_ptr);
 	Tcl_SetHashValue (hashEntry, (ClientData)${table}_ptr);
+	tbl_ptr->count++;
 	// printf ("created new entry for '%s'\n", key);
     } else {
         ${table}_ptr = (struct $table *) Tcl_GetHashValue (hashEntry);
