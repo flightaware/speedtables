@@ -355,7 +355,6 @@ set cmdBodySource {
 set tableHeadSource {
 struct ${table}StructHeadTable {
     Tcl_HashTable     *registeredProcTablePtr;
-    struct ${table}   *rowStructList;
     long unsigned int  nextAutoCounter;
 };
 
@@ -948,7 +947,7 @@ proc put_metatable_source {table} {
 # the command that will invoke the C command defined by 
 # put_metatable_source
 #
-proc put_init_command_source {commandName tableCommand rowStructHeadTable rowStruct} {
+proc put_init_command_source {table} {
     variable extensionFragmentSource
 
     set Id {init extension Id}
@@ -1180,7 +1179,7 @@ proc gen_field_names {} {
 
     emit "static CONST char *${table}_fields\[] = $leftCurly"
     foreach myfield $fieldList {
-	emit "        \"$myfield\","
+	emit "    \"$myfield\","
     
     }
     emit "        (char *)NULL"
@@ -1271,7 +1270,7 @@ proc EndExtension {} {
     ::ctable::put_init_extension_source [string totitle $::ctable::extension] $::ctable::extensionVersion
 
     foreach name $::ctable::tables {
-	::ctable::put_init_command_source $name ${name}MetaObjCmd ${name}StructHeadTable $name
+	::ctable::put_init_command_source $name
     }
 
     ::ctable::emit "    return TCL_OK;"

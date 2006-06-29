@@ -7,12 +7,9 @@
      * Create the master table that has the registered proc table and stuff.
      *
      *  define the following variables and subst this:
-     *   rowStructHeadTable
-     *   rowStruct
-     *   tableCommand - the name of the C command that creates this table
-     *   commandName - the name the command will have from Tcl
+     *   table
      */
-    ${rowStructHeadTable}Ptr = (struct $rowStructHeadTable *)ckalloc (sizeof (struct $rowStructHeadTable));
+    ${table}StructHeadTablePtr = (struct ${table}StructHeadTable *)ckalloc (sizeof (struct ${table}StructHeadTable));
 
     /* create the table for registering Tcl commands to appear as methods
      * of the table class and pass it in through Tcl's client data
@@ -20,16 +17,13 @@
      */
     hashTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
     Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
-    ${rowStructHeadTable}Ptr->registeredProcTablePtr = hashTablePtr;
+    ${table}StructHeadTablePtr->registeredProcTablePtr = hashTablePtr;
 
-    ${rowStructHeadTable}Ptr->nextAutoCounter = 0;
+    ${table}StructHeadTablePtr->nextAutoCounter = 0;
 
-    ${rowStructHeadTable}Ptr->rowStructList = (struct $rowStruct *)NULL;
-
-    /* Create the $commandName command -- it's fairly equivalent to an
+    /* Create the ${table}MetaObjCmd command -- it's fairly equivalent to an
      * Itcl class in that it can create its own commands with their
      * own data spaces, etc.
      */
-    Tcl_CreateObjCommand(interp, "$commandName", (Tcl_ObjCmdProc *) $tableCommand, (ClientData)${rowStructHeadTable}Ptr, (Tcl_CmdDeleteProc *)NULL);
-
+    Tcl_CreateObjCommand(interp, "${table}", (Tcl_ObjCmdProc *) ${table}MetaObjCmd, (ClientData)${table}StructHeadTablePtr, (Tcl_CmdDeleteProc *)NULL);
 
