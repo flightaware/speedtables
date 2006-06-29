@@ -154,6 +154,20 @@ set fixedstringSetSource {
       }
 }
 
+#
+# inetSetSource - code we run subst over to generate a set of an IPv4
+# internet address.
+#
+set inetSetSource {
+      case $optname: {
+	if (!inet_aton (Tcl_GetString (obj), &$pointer->$field)) {
+	    Tcl_AppendResult (interp, "bad IP address parsing field $field", (char *)NULL);
+	    return TCL_ERROR;
+	}
+
+	break;
+      }
+}
 
 #
 # cmdBodyHeader - code we run subst over to generate the header of the
@@ -737,7 +751,7 @@ proc gen_defaults_subr {subr struct pointer} {
 	    }
 
 	    inet {
-	        emit "    strncpy ($pointer->$myfield, \"$field(default)\", $field(length));"
+	        emit "    inet_aton (\"$field(default)\", &$pointer->$myfield);"
 	    }
 
 	    char {
@@ -819,7 +833,7 @@ proc gen_struct {} {
 	    }
 
 	    inet {
-		putfield char "$field(name)[4]"
+		putfield "struct in_addr" $field(name)
 	    }
 
 	    tailq_entry {
@@ -938,6 +952,18 @@ proc emit_set_fixedstring_field {field pointer length} {
 }
 
 #
+# emit_set_inet_field - emit code to set an IPv4 address
+#
+proc emit_set_inet_field {field pointer} {
+    variable inetSetSource
+
+    set optname "FIELD_[string toupper $field]"
+
+    emit [subst -nobackslashes -nocommands $inetSetSource]
+}
+
+
+#
 # emit_set_short_field - emit code to set a short integer field
 #
 proc emit_set_short_field {field pointer} {
@@ -1014,6 +1040,10 @@ proc gen_sets {pointer} {
 
 	    fixedstring {
 		emit_set_fixedstring_field $myfield $pointer $field(length)
+	    }
+
+	    inet {
+	        emit_set_inet_field $myfield $pointer
 	    }
 
 	    tailq_entry {
@@ -1204,6 +1234,10 @@ proc gen_new_obj {type pointer fieldName} {
 	    return "Tcl_NewStringObj ($pointer->$fieldName, $field(length))"
 	}
 
+	inet {
+	    return "Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
+	}
+
 	tailq_entry {
 	}
 
@@ -1348,6 +1382,11 @@ proc gen_preamble {} {
     emit "#include <string.h>"
     emit "#include \"queue.h\""
     emit ""
+    emit "#include <sys/types.h>"
+    emit "#include <sys/socket.h>"
+    emit "#include <netinet/in.h>"
+    emit "#include <arpa/inet.h>"
+    emit "#include <net/ethernet.h>"
 }
 
 #

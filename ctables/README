@@ -72,3 +72,85 @@ pretty strong.
 
 
 
+
+ADDING SUPPORT FOR A NEW TYPE TO CTABLE
+---------------------------------------
+
+If you need any include files, add them to gen_preamble.
+
+Create a proc that defines the type.
+
+#
+# inet - define an IPv4 address field
+#           
+proc inet {name {default 0.0.0.0}} {
+    deffield $name type inet default $default
+}           
+
+Add code to generate an entry in the struct-defining routine "gen_struct":
+
+            inet {
+                putfield char "struct in_addr $field(name)"
+            }
+
+
+
+Create a proc that sets the field from a passed Tcl object.  Typically
+this uses subst to replace some standard variables in a code fragment:
+
+#
+# inetSetSource - code we run subst over to generate a set of an IPv4
+# internet address.
+#
+set inetSetSource {
+      case $optname: {
+        if (!inet_aton (Tcl_GetString (obj), &$pointer->$field)) {
+            Tcl_AppendResult (interp, "bad IP address parsing field $field", (char *)NULL);
+            return TCL_ERROR;
+        }
+
+        break;
+      }
+}
+
+
+
+#
+# emit_set_inet_field - emit code to set an IPv4 address
+#
+proc emit_set_inet_field {field pointer length} {
+    variable inetSetSource
+
+    set optname "FIELD_[string toupper $field]"
+
+    emit [subst -nobackslashes -nocommands $inetSetSource]
+}
+
+
+
+Add that to the switch statement in the gen_sets proc:
+
+            inet {
+                emit_set_inet_field $myfield $pointer
+            }
+
+
+
+Add an entry to the switch statement in gen_defaults_subr for generating
+a default value:
+
+            inet {
+                emit "    inet_aton (\"$field(default)\", &$pointer->$myfield);"
+            }
+
+
+
+Add an entry to the switch statement in the gen_new_obj proc that creates
+a Tcl object representing the pointer and field:
+
+        inet {
+            return "Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
+        }
+
+
+
