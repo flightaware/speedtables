@@ -350,7 +350,6 @@ set cmdBodySource {
       case OPT_SET: $leftCurly
         int       i;
 	int       fieldIndex;
-	Tcl_Obj  *obj;
 
 	if ((objc < 3) || (objc % 2) != 1) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "key field value ?field value...?");
@@ -368,14 +367,16 @@ set cmdBodySource {
 	    // printf ("found existing entry for '%s'\n", Tcl_GetString (objv[2]));
 	}
 
-	for (i = 3; i < objc; i += 2) $leftCurly
+	for (i = 3; i < objc; i += 2) {
 	    // printf ("i = %d\n", i);
             if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
 		return TCL_ERROR;
 	    }
-	    obj = objv[i+1];
 
-	    switch ((enum ${table}_fields) fieldIndex) $leftCurly
+	    if (${table}_set (interp, objv[i+1], $pointer, fieldIndex) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+	}
 }
 
 set fieldSetSource {
@@ -842,7 +843,6 @@ proc gen_sets {pointer} {
     variable leftCurly
     variable rightCurly
     variable cmdBodyHeader
-    variable cmdBodySource
 
     foreach myfield $fieldList {
         catch {unset field}
@@ -987,9 +987,6 @@ proc gen_code {} {
     emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
     emit [subst -nobackslashes -nocommands $cmdBodySource]
-    gen_sets $pointer
-    emit "          $rightCurly"
-    emit "        $rightCurly"
     emit "        break;"
     emit "      $rightCurly"
     emit ""
