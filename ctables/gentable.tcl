@@ -360,6 +360,72 @@ set cmdBodySource {
       }
 
       case OPT_IMPORT: {
+        int    fieldIds[$nFields];
+	int    i;
+	int    nFields = 0;
+
+	if (objc < 3) {
+	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
+	  return TCL_ERROR;
+	}
+
+	if (objc > $nFields + 3) {
+	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
+          Tcl_AppendResult (interp, " More fields requested than exist in record", NULL);
+	  return TCL_ERROR;
+	}
+
+	if (objc == 3) {
+	    nFields = $nFields;
+	    for (i = 0; i < $nFields; i++) {
+	        fieldIds[i] = i;
+	    }
+	} else {
+	    for (i = 3; i < objc; i++) {
+	        if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIds[nFields++]) != TCL_OK) {
+		    return TCL_ERROR;
+		}
+	    }
+	}
+
+	switch (Tcl_EvalObjEx (interp, objv[2], 0)) {
+	  int       new;
+	  int       listObjc;
+	  Tcl_Obj **listObjv;
+
+	  case TCL_ERROR:
+	    Tcl_AppendResult (interp, " while processing import code body", NULL);
+	    return TCL_ERROR;
+
+	  case TCL_OK:
+	  case TCL_CONTINUE:
+	    if (Tcl_ListObjGetElements (interp, Tcl_GetObjResult (interp), &listObjc, &listObjv) == TCL_ERROR) {
+		Tcl_AppendResult (interp, " while processing code result", NULL);
+	        return TCL_ERROR;
+	    }
+
+	    if (listObjc == 0) {
+	        return TCL_OK;
+	    }
+
+	    if (nFields + 1 != listObjc) {
+		Tcl_SetObjResult (interp, Tcl_NewStringObj ("number of fields in list does not match what was expected", -1));
+	        return TCL_ERROR;
+	    }
+
+	    $pointer = ${table}_find_or_create (tbl_ptr, Tcl_GetString (listObjv[0]), &new);
+	    for (i = 1; i <= nFields; i++) {
+	        ${table}_set (interp, listObjv[i], $pointer, fieldIds[i - 1]);
+	    }
+	    break;
+
+	  case TCL_BREAK:
+	    return TCL_OK;
+
+	  case TCL_RETURN:
+	    return TCL_RETURN;
+	  }
+	return TCL_OK;
       }
 
       case OPT_SET: $leftCurly
@@ -1036,6 +1102,8 @@ proc gen_code {} {
     variable cmdBodyGetSource
 
     set pointer "${table}_ptr"
+
+    set nFields [string toupper $table]_NFIELDS
 
     set rowStructTable ${table}StructTable
     set rowStructHeadTable ${table}StructHeadTable
