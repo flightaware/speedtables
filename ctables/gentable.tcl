@@ -760,8 +760,17 @@ proc gen_defaults_subr {subr struct pointer} {
     variable table
     variable fields
     variable fieldList
+    variable leftCurly
+    variable rightCurly
 
-    emit "void ${subr}(struct $struct *$pointer) {"
+    set baseCopy ${struct}_basecopy
+
+    emit "void ${subr}(struct $struct *$pointer) $leftCurly"
+    emit "    static int firstPass = 1;"
+    emit "    static struct $struct $baseCopy;"
+    emit ""
+    emit "    if (firstPass) $leftCurly"
+    emit "        firstPass = 0;"
 
     foreach myfield $fieldList {
         catch {unset field}
@@ -769,36 +778,40 @@ proc gen_defaults_subr {subr struct pointer} {
 
 	switch $field(type) {
 	    string {
-	        emit "    $pointer->$myfield = (char *) NULL;"
+	        emit "        $baseCopy.$myfield = (char *) NULL;"
 	    }
 
 	    fixedstring {
-	        emit "    strncpy ($pointer->$myfield, \"$field(default)\", $field(length));"
+	        emit "        strncpy ($baseCopy.$myfield, \"$field(default)\", $field(length));"
 	    }
 
 	    mac {
-	        emit "    $pointer->$myfield = *ether_aton (\"$field(default)\");"
+	        emit "        $baseCopy.$myfield = *ether_aton (\"$field(default)\");"
 	    }
 
 	    inet {
-	        emit "    inet_aton (\"$field(default)\", &$pointer->$myfield);"
+	        emit "        inet_aton (\"$field(default)\", &$baseCopy.$myfield);"
 	    }
 
 	    char {
-	        emit "    $pointer->$myfield = '[string index $field(default) 0]';"
+	        emit "        $baseCopy.$myfield = '[string index $field(default) 0]';"
 	    }
 
 	    tclobj {
-	        emit "    $pointer->$myfield = (Tcl_Obj *) NULL;"
+	        emit "        $baseCopy.$myfield = (Tcl_Obj *) NULL;"
 	    }
 
 	    default {
-	        emit "    $pointer->$myfield = $field(default);"
+	        emit "        $baseCopy.$myfield = $field(default);"
 	    }
 	}
     }
 
-    emit "}"
+    emit "    $rightCurly"
+    emit ""
+    emit "    *$pointer = $baseCopy;"
+
+    emit "$rightCurly"
     emit ""
 }
 

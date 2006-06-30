@@ -154,8 +154,7 @@ gen_sets proc:
             }
 
 
-Add an entry to the switch statement in gen_defaults_subr for generating
-a default value:
+If necessary, add an entry to the switch statement in gen_defaults_subr for generating a default value.  If a straight C assignment of your field from the default value will work, like "i = 0", you can just let it use the default.
 
             inet {
                 emit "    inet_aton (\"$field(default)\", &$pointer->$myfield);"
