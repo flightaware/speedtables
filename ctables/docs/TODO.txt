@@ -26,4 +26,27 @@ copy of the pregenerated initialized row to the new row being initialized.
 DONE when issuing a bad something parsing something, maybe include the bad
 value itself.
 
+create a direct interface to postgresql "copy in".  Make it optional.
+
+    http://www.postgresql.org/docs/8.1/static/libpq-exec.html
+    http://www.postgresql.org/docs/8.1/static/libpq-copy.html
+    http://www.postgresql.org/docs/8.1/static/sql-copy.html
+
+    We'd escape all of the strings that could contain escape characters,
+    i.e. strings, but not integers, IP addresses, MAC addresses, etc.
+
+    You'd pass us a connection handle and you'd have already issued the
+    "copy in" so the channel would be in copy_in state, and we'll
+    call PQputCopyData repeatedly and then PQputCopyEnd and send you
+    back the result / error, etc.
+
+    You'd probably tell us how many rows to batch in a single put
+    (they can be separated by a newline) or max bytes or something
+    like that.
+
+    Also you'd probably also want to do the reverse, copy in.
+
+create a direct interface to reading and writing CSV or tab-separated or 
+whatever.
+
 
