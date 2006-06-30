@@ -1,0 +1,7 @@
+
+
+a lot of those emit_set_*_field routines are basically the same and can
+be replaced by one that specifies which variable containing source for
+setting that field type needs to be substituted.
+
+

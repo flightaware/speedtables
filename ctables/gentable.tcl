@@ -48,7 +48,7 @@ set boolSetSource {
         int boolean;
 
         if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
-            Tcl_AppendResult (interp, " while converting $field", NULL);
+            Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
             return TCL_ERROR;
         }
 
@@ -65,7 +65,7 @@ set boolSetSource {
 set numberSetSource {
       case $optname: {
 	if ($getObjCmd (interp, obj, &$pointer->$field) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $field", NULL);
+	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
 	    return TCL_ERROR;
 	}
 	break;
@@ -80,7 +80,7 @@ set floatSetSource {
 	double value;
 
 	if (Tcl_GetDoubleFromObj (interp, obj, &value) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $field", NULL);
+	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
@@ -97,7 +97,7 @@ set shortSetSource {
 	int value;
 
 	if (Tcl_GetIntFromObj (interp, obj, &value) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $field", NULL);
+	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
@@ -116,7 +116,7 @@ set stringSetSource {
 	char *string;
 	int   length;
 
-	if ($pointer->$field != NULL) {
+	if ($pointer->$field != (char *) NULL) {
 	    ckfree ($pointer->$field);
 	}
 
@@ -134,7 +134,7 @@ set charSetSource {
       case $optname: {
 	char *string;
 
-	string = Tcl_GetStringFromObj (obj, NULL);
+	string = Tcl_GetString (obj);
 	$pointer->$field = string[0];
 	break;
       }
@@ -148,7 +148,7 @@ set fixedstringSetSource {
       case $optname: {
 	char *string;
 
-	string = Tcl_GetStringFromObj (obj, NULL);
+	string = Tcl_GetString (obj);
 	strncpy ($pointer->$field, string, $length);
 	break;
       }
@@ -178,12 +178,29 @@ set macSetSource {
         struct ether_addr *mac;
 
 	mac = ether_aton (Tcl_GetString (obj));
-	if (mac == NULL) {
+	if (mac == (struct ether_addr *) NULL) {
 	    Tcl_AppendResult (interp, "bad MAC address parsing field '$field'", (char *)NULL);
 	    return TCL_ERROR;
 	}
 	$pointer->$field = *mac;
 
+	break;
+      }
+}
+
+#
+# tclobjSetSource - code we run subst over to generate a set of a tclobj.
+#
+# tclobjs are Tcl_Obj *'s that we manage automagically.
+#
+set tclobjSetSource {
+      case $optname: {
+	if ($pointer->$field != (Tcl_Obj *) NULL) {
+	    Tcl_DecrRefCount ($pointer->$field);
+	}
+
+	$pointer->$field = obj;
+	Tcl_IncrRefCount (obj);
 	break;
       }
 }
@@ -198,7 +215,7 @@ void ${table}_delete_all_rows(struct ${table}StructTable *tbl_ptr) {
     Tcl_HashEntry *hashEntry;
     struct ${table} *$pointer;
 
-    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
 	${table}_delete($pointer);
     }
@@ -239,12 +256,12 @@ set cmdBodySource {
 
 	hashEntry = Tcl_FindHashEntry (tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[1]));
 
-	if (hashEntry == NULL) {
+	if (hashEntry == (Tcl_HashEntry *) NULL) {
 	    Tcl_HashSearch hashSearch;
 
 	    Tcl_AppendResult (interp, ", or one of the registered methods:", (char *)NULL);
 
-	    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->registeredProcTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->registeredProcTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	        char *key = Tcl_GetHashKey (tbl_ptr->registeredProcTablePtr, hashEntry);
 		Tcl_AppendResult (interp, " ", key, (char *)NULL);
 	    }
@@ -272,7 +289,7 @@ set cmdBodySource {
           int i;
 	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
 
-	  for (i = 0; ${table}_fields[i] != NULL; i++) {
+	  for (i = 0; ${table}_fields[i] != (char *) NULL; i++) {
 	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (${table}_fields[i], -1)) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
@@ -303,15 +320,15 @@ set cmdBodySource {
 	      pattern = Tcl_GetString (objv[4]);
 	  }
 
-	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
 	      if (doMatch && !Tcl_StringCaseMatch (key, pattern, 1)) continue;
-	      if (Tcl_ObjSetVar2 (interp, objv[2], NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == NULL) {
+	      if (Tcl_ObjSetVar2 (interp, objv[2], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
 	          return TCL_ERROR;
 	      }
 	      switch (Tcl_EvalObjEx (interp, objv[3], 0)) {
 	        case TCL_ERROR:
-		  Tcl_AppendResult (interp, " while processing foreach code body", NULL);
+		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
 		  return TCL_ERROR;
 
 		case TCL_OK:
@@ -346,7 +363,7 @@ set cmdBodySource {
 	      pattern = Tcl_GetString (objv[2]);
 	  }
 
-	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
 	      if (doMatch && !Tcl_StringCaseMatch (key, pattern, 1)) continue;
 	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (key, -1)) == TCL_ERROR) {
@@ -358,7 +375,7 @@ set cmdBodySource {
 
       case OPT_RESET: {
 	  ${table}_delete_all_rows (tbl_ptr);
-	  Tcl_InitCustomHashTable (tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);
+	  Tcl_InitCustomHashTable (tbl_ptr->keyTablePtr, TCL_STRING_KEYS, (Tcl_HashKeyType *)NULL);
 	  TAILQ_INIT (&tbl_ptr->rows);
 	  return TCL_OK;
       }
@@ -372,7 +389,7 @@ set cmdBodySource {
       case OPT_DELETE: {
 	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
 
-	if (hashEntry == NULL) {
+	if (hashEntry == (Tcl_HashEntry *) NULL) {
 	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 0);
 	    return TCL_OK;
 	}
@@ -393,7 +410,7 @@ set cmdBodySource {
       case OPT_EXISTS: {
 	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
 
-	if (hashEntry == NULL) {
+	if (hashEntry == (Tcl_HashEntry *) NULL) {
 	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 0);
 	} else {
 	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
@@ -413,7 +430,7 @@ set cmdBodySource {
 
 	if (objc > $nFields + 3) {
 	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
-          Tcl_AppendResult (interp, " More fields requested than exist in record", NULL);
+          Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
 	  return TCL_ERROR;
 	}
 
@@ -437,13 +454,13 @@ set cmdBodySource {
 	      Tcl_Obj **listObjv;
 
 	      case TCL_ERROR:
-	        Tcl_AppendResult (interp, " while processing import code body", NULL);
+	        Tcl_AppendResult (interp, " while processing import code body", (char *)NULL);
 	        return TCL_ERROR;
 
 	      case TCL_OK:
 	      case TCL_CONTINUE:
 	        if (Tcl_ListObjGetElements (interp, Tcl_GetObjResult (interp), &listObjc, &listObjv) == TCL_ERROR) {
-		    Tcl_AppendResult (interp, " while processing code result", NULL);
+		    Tcl_AppendResult (interp, " while processing code result", (char *)NULL);
 	            return TCL_ERROR;
 	        }
 
@@ -562,7 +579,7 @@ set cmdBodyGetSource {
 
 	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
 
-	if (hashEntry == NULL) {
+	if (hashEntry == (Tcl_HashEntry *)NULL) {
 	    return TCL_OK;
 	}
 	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
@@ -716,6 +733,13 @@ proc inet {name {default 0.0.0.0}} {
 }
 
 #
+# tclobj - define an straight-through Tcl_Obj
+#
+proc tclobj {name} {
+    deffield $name type tclobj
+}
+
+#
 # putfield - write out a field definition when emitting a C struct
 #
 proc putfield {type name {comment ""}} {
@@ -745,7 +769,7 @@ proc gen_defaults_subr {subr struct pointer} {
 
 	switch $field(type) {
 	    string {
-	        emit "    $pointer->$myfield = NULL;"
+	        emit "    $pointer->$myfield = (char *) NULL;"
 	    }
 
 	    fixedstring {
@@ -762,6 +786,10 @@ proc gen_defaults_subr {subr struct pointer} {
 
 	    char {
 	        emit "    $pointer->$myfield = '[string index $field(default) 0]';"
+	    }
+
+	    tclobj {
+	        emit "    $pointer->$myfield = (Tcl_Obj *) NULL;"
 	    }
 
 	    default {
@@ -792,7 +820,7 @@ proc gen_delete_subr {subr struct pointer} {
 
 	switch $field(type) {
 	    string {
-	        emit "    if ($pointer->$myfield != NULL) ckfree ($pointer->$myfield);"
+	        emit "    if ($pointer->$myfield != (char *) NULL) ckfree ($pointer->$myfield);"
 	    }
 	}
     }
@@ -836,6 +864,10 @@ proc gen_struct {} {
 
 	    inet {
 		putfield "struct in_addr" $field(name)
+	    }
+
+	    tclobj {
+		putfield "struct Tcl_Obj" "*$field(name)"
 	    }
 
 	    default {
@@ -990,6 +1022,17 @@ proc emit_set_float_field {field pointer} {
 }
 
 #
+# emit_set_tclobj_field - emit code to set an tclobj
+#
+proc emit_set_tclobj_field {field pointer} {
+    variable tclobjSetSource
+
+    set optname "FIELD_[string toupper $field]"
+
+    emit [subst -nobackslashes -nocommands $tclobjSetSource]
+}
+
+#
 # gen_sets - emit code to set all of the fields of the table being defined
 #
 proc gen_sets {pointer} {
@@ -1052,6 +1095,10 @@ proc gen_sets {pointer} {
 
 	    mac {
 	        emit_set_mac_field $myfield $pointer
+	    }
+
+	    tclobj {
+	        emit_set_tclobj_field $myfield $pointer
 	    }
 
 	    default {
@@ -1223,7 +1270,7 @@ proc gen_new_obj {type pointer fieldName} {
 	    } else {
 	        set nullBody "Tcl_NewStringObj (\"$field(default)\",[string length $field(default)])"
 	    }
-	    return "(($pointer->$fieldName == NULL) ? $nullBody : Tcl_NewStringObj ($pointer->$fieldName, -1))"
+	    return "(($pointer->$fieldName == (char *) NULL) ? $nullBody : Tcl_NewStringObj ($pointer->$fieldName, -1))"
 	}
 
 	char {
@@ -1242,6 +1289,10 @@ proc gen_new_obj {type pointer fieldName} {
 
 	mac {
 	    return "Tcl_NewStringObj (ether_ntoa (&$pointer->$fieldName), -1)"
+	}
+
+	tclobj {
+	    return "(($pointer->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : $pointer->$fieldName)"
 	}
 
 	default {
