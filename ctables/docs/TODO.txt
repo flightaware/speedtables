@@ -15,7 +15,7 @@ files to include.
 Add a way to write methods in C and add additional C code to the stuff
 being generated, from the CTable definition.
 
-make the *_init routine have a static internal copy of an initialization
+DONE make the *_init routine have a static internal copy of an initialization
 row and a static saying if it's been generated or not.  generate it
 the first time.  from then on, don't generate, but always do a structure
 copy of the pregenerated initialized row to the new row being initialized.

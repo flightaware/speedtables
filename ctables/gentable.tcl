@@ -161,7 +161,7 @@ set fixedstringSetSource {
 set inetSetSource {
       case $optname: {
 	if (!inet_aton (Tcl_GetString (obj), &$pointer->$field)) {
-	    Tcl_AppendResult (interp, "bad IP address parsing field '$field'", (char *)NULL);
+	    Tcl_AppendResult (interp, "expected IP address but got \"", Tcl_GetString (obj), "\" parsing field \"$field\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
@@ -179,7 +179,7 @@ set macSetSource {
 
 	mac = ether_aton (Tcl_GetString (obj));
 	if (mac == (struct ether_addr *) NULL) {
-	    Tcl_AppendResult (interp, "bad MAC address parsing field '$field'", (char *)NULL);
+	    Tcl_AppendResult (interp, "expected MAC address but got \"", Tcl_GetString (obj), "\" parsing field \"$field\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
 	$pointer->$field = *mac;
@@ -958,6 +958,17 @@ proc emit_set_standard_field {field pointer setSourceVarName} {
     emit [subst -nobackslashes -nocommands [set $setSourceVarName]]
 }
 
+#           
+# emit_set_fixedstring_field - emit code to set a fixedstring field
+#
+proc emit_set_fixedstring_field {field pointer length} {
+    variable fixedstringSetSource
+      
+    set optname "FIELD_[string toupper $field]"
+
+    emit [subst -nobackslashes -nocommands $fixedstringSetSource]
+} 
+
 #
 # gen_sets - emit code to set all of the fields of the table being defined
 #
@@ -991,6 +1002,10 @@ proc gen_sets {pointer} {
 		emit_set_num_field $myfield $pointer double
 	    }
 
+	    fixedstring {
+		emit_set_fixedstring_field $myfield $pointer $field(length)
+	    }
+
 	    short {
 		emit_set_standard_field $myfield $pointer shortSetSource
 	    }
@@ -1004,15 +1019,11 @@ proc gen_sets {pointer} {
 	    }
 
 	    boolean {
-		emit_set_standard_field $field $pointer boolSetSource
+		emit_set_standard_field $myfield $pointer boolSetSource
 	    }
 
 	    char {
-		emit_set_standard_field $field $pointer charSetSource
-	    }
-
-	    fixedstring {
-		emit_set_standard_field $myfield $pointer $field(length) fixedstringSetSource
+		emit_set_standard_field $myfield $pointer charSetSource
 	    }
 
 	    inet {
