@@ -5,9 +5,12 @@ DONE a lot of those emit_set_*_field routines are basically the same and can
 be replaced by one that specifies which variable containing source for
 setting that field type needs to be substituted.
 
-be able to import from an array
+be able to import from an array, including only specific variables
 
-be able to import key-value pairs in array get/set format
+be able to get fields from a row in array get format
+
+ALREADY DONE - IT's INHERENT be able to import key-value pairs in array 
+get/set format 
 
 Add a way for someone doing a CTable definition to specify additional
 files to include.
@@ -20,7 +23,7 @@ row and a static saying if it's been generated or not.  generate it
 the first time.  from then on, don't generate, but always do a structure
 copy of the pregenerated initialized row to the new row being initialized.
 
-when issuing a bad something parsing something, maybe include the bad
+DONE when issuing a bad something parsing something, maybe include the bad
 value itself.
 
 
