@@ -1,7 +1,20 @@
+$Id$
 
 
-a lot of those emit_set_*_field routines are basically the same and can
+DONE a lot of those emit_set_*_field routines are basically the same and can
 be replaced by one that specifies which variable containing source for
 setting that field type needs to be substituted.
+
+be able to import from an array
+
+be able to import key-value pairs in array get/set format
+
+Add a way for someone doing a CTable definition to specify additional
+files to include.
+
+Add a way to write methods in C and add additional C code to the stuff
+being generated, from the CTable definition.
+
+
 
 
