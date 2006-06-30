@@ -359,6 +359,7 @@ set cmdBodySource {
       case OPT_RESET: {
 	  ${table}_delete_all_rows (tbl_ptr);
 	  Tcl_InitCustomHashTable (tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);
+	  TAILQ_INIT (&tbl_ptr->rows);
 	  return TCL_OK;
       }
 
@@ -501,7 +502,7 @@ struct ${table}StructTable {
     Tcl_HashTable *keyTablePtr;
     Tcl_Command    commandInfo;
     long           count;
-    // TAILQ_HEAD (${table}Head, $table) rows;
+    TAILQ_HEAD (${table}Head, $table) rows;
 };
 }
 
@@ -715,20 +716,6 @@ proc inet {name {default 0.0.0.0}} {
 }
 
 #
-# tailq_head - define a queue head - will probably become hidden
-#
-proc tailq_head {name structname structtype} {
-     deffield $name type tailq_head structname $structname structtype $structtype
-}
-
-#
-# tailq_entry - define a queue entry - will probably become hidden
-#
-proc tailq_entry {name structname} {
-    deffield $name type tailq_entry structname $structname
-}
-
-#
 # putfield - write out a field definition when emitting a C struct
 #
 proc putfield {type name {comment ""}} {
@@ -775,12 +762,6 @@ proc gen_defaults_subr {subr struct pointer} {
 
 	    char {
 	        emit "    $pointer->$myfield = '[string index $field(default) 0]';"
-	    }
-
-	    tailq_entry {
-	    }
-
-	    tailq_head {
 	    }
 
 	    default {
@@ -833,6 +814,8 @@ proc gen_struct {} {
     variable fieldList
 
     emit "struct $table {"
+    #putfield TAILQ_ENTRY($table) ${table}_link
+    putfield TAILQ_ENTRY($table) _link
 
     foreach myfield $nonBooleans {
         catch {unset field}
@@ -853,14 +836,6 @@ proc gen_struct {} {
 
 	    inet {
 		putfield "struct in_addr" $field(name)
-	    }
-
-	    tailq_entry {
-		putfield "TAILQ_ENTRY($field(structname))" $field(name)
-	    }
-
-	    tailq_head {
-		putfield "TAILQ_HEAD($field(structname), $field(structtype))" $field(name)
 	    }
 
 	    default {
@@ -1079,12 +1054,6 @@ proc gen_sets {pointer} {
 	        emit_set_mac_field $myfield $pointer
 	    }
 
-	    tailq_entry {
-	    }
-
-	    tailq_head {
-	    }
-
 	    default {
 	        error "attempt to emit set field of unknown type $field(type)"
 	    }
@@ -1273,12 +1242,6 @@ proc gen_new_obj {type pointer fieldName} {
 
 	mac {
 	    return "Tcl_NewStringObj (ether_ntoa (&$pointer->$fieldName), -1)"
-	}
-
-	tailq_entry {
-	}
-
-	tailq_head {
 	}
 
 	default {

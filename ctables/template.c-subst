@@ -66,7 +66,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    row_tbl_ptr = (struct ${table}StructTable *)ckalloc (sizeof(struct ${table}StructTable));
 
 	    /* initialize the positions linked list */
-	    // TAILQ_INIT (&row_tbl_ptr->rows);
+	    TAILQ_INIT (&row_tbl_ptr->rows);
 
 	    row_tbl_ptr->registeredProcTablePtr = row_head_tbl_ptr->registeredProcTablePtr;
 
