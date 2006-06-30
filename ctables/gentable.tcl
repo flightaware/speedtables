@@ -885,17 +885,6 @@ proc gen_struct {} {
 }
 
 #
-# emit_set_bool_field - emit code to set a boolean field
-#
-proc emit_set_bool_field {field pointer} {
-    variable boolSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $boolSetSource]
-}
-
-#
 # emit_set_num_field - emit code to set a numeric field
 #
 proc emit_set_num_field {field pointer type} {
@@ -944,92 +933,16 @@ proc emit_set_num_field {field pointer type} {
 }
 
 #
-# emit_set_varstring_field - emit code to set a variable-length string (char *)
-#  field
+# emit_set_standard_field - emit code to set a field that has a
+# "set source" string to go with it and gets managed in a standard
+#  way
 #
-proc emit_set_varstring_field {field pointer} {
-    variable stringSetSource
+proc emit_set_standard_field {field pointer setSourceVarName} {
+    variable $setSourceVarName
 
     set optname "FIELD_[string toupper $field]"
 
-    emit [subst -nobackslashes -nocommands $stringSetSource]
-}
-
-#
-# emit_set_char_field - emit code to set a single char field
-#
-proc emit_set_char_field {field pointer} {
-    variable charSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $charSetSource]
-}
-
-#
-# emit_set_fixedstring_field - emit code to set a fixedstring field
-#
-proc emit_set_fixedstring_field {field pointer length} {
-    variable fixedstringSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $fixedstringSetSource]
-}
-
-#
-# emit_set_inet_field - emit code to set an IPv4 address
-#
-proc emit_set_inet_field {field pointer} {
-    variable inetSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $inetSetSource]
-}
-
-#
-# emit_set_mac_field - emit code to set a MAC address
-#
-proc emit_set_mac_field {field pointer} {
-    variable macSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $macSetSource]
-}
-
-#
-# emit_set_short_field - emit code to set a short integer field
-#
-proc emit_set_short_field {field pointer} {
-    variable shortSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $shortSetSource]
-}
-
-#
-# emit_set_float_field - emit code to set a floating point field
-#
-proc emit_set_float_field {field pointer} {
-    variable floatSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $floatSetSource]
-}
-
-#
-# emit_set_tclobj_field - emit code to set an tclobj
-#
-proc emit_set_tclobj_field {field pointer} {
-    variable tclobjSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $tclobjSetSource]
+    emit [subst -nobackslashes -nocommands [set $setSourceVarName]]
 }
 
 #
@@ -1049,10 +962,6 @@ proc gen_sets {pointer} {
 	array set field $fields($myfield)
 
 	switch $field(type) {
-	    short {
-		emit_set_short_field $myfield $pointer
-	    }
-
 	    int {
 		emit_set_num_field $myfield $pointer int
 	    }
@@ -1069,36 +978,40 @@ proc gen_sets {pointer} {
 		emit_set_num_field $myfield $pointer double
 	    }
 
+	    short {
+		emit_set_standard_field $myfield $pointer shortSetSource
+	    }
+
 	    float {
-	        emit_set_float_field $myfield $pointer
+	        emit_set_standard_field $myfield $pointer floatSetSource
 	    }
 
 	    string {
-		emit_set_varstring_field $myfield $pointer
+		emit_set_standard_field $myfield $pointer stringSetSource
 	    }
 
 	    boolean {
-	        emit_set_bool_field $myfield $pointer
+		emit_set_standard_field $field $pointer boolSetSource
 	    }
 
 	    char {
-		emit_set_char_field $myfield $pointer
+		emit_set_standard_field $field $pointer charSetSource
 	    }
 
 	    fixedstring {
-		emit_set_fixedstring_field $myfield $pointer $field(length)
+		emit_set_standard_field $myfield $pointer $field(length) fixedstringSetSource
 	    }
 
 	    inet {
-	        emit_set_inet_field $myfield $pointer
+	        emit_set_standard_field $myfield $pointer inetSetSource
 	    }
 
 	    mac {
-	        emit_set_mac_field $myfield $pointer
+	        emit_set_standard_field $myfield $pointer macSetSource
 	    }
 
 	    tclobj {
-	        emit_set_tclobj_field $myfield $pointer
+	        emit_set_standard_field $myfield $pointer tclobjSetSource
 	    }
 
 	    default {

@@ -138,27 +138,20 @@ set inetSetSource {
       }
 }
 
+If you can do this in a standard way, i.e. generate a source string as above
+and reference $pointer and $field for the variable references, you don't
+need to do a custom emit_set_*_routine, but can just use the standard one.
 
+An example of a custom emit_set_*_routine is emit_set_num_field, which
+handles multiple field types (int, long, wide and double).
 
-#
-# emit_set_inet_field - emit code to set an IPv4 address
-#
-proc emit_set_inet_field {field pointer length} {
-    variable inetSetSource
-
-    set optname "FIELD_[string toupper $field]"
-
-    emit [subst -nobackslashes -nocommands $inetSetSource]
-}
-
-
-
-Add that to the switch statement in the gen_sets proc:
+Add a call to the emit_set_standard_field routine, referencing your
+set source variable, or your custom one, to the switch statement in the 
+gen_sets proc:
 
             inet {
-                emit_set_inet_field $myfield $pointer
+                emit_set_standard_field $myfield $pointer inetSetSource
             }
-
 
 
 Add an entry to the switch statement in gen_defaults_subr for generating
