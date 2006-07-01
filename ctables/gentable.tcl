@@ -322,8 +322,7 @@ set cmdBodySource {
 
       case OPT_FOREACH: {
 	  Tcl_HashSearch  hashSearch;
-	  int             doMatch = 0;
-	  char           *pattern;
+	  char           *pattern = (char *) NULL;
 	  char           *key;
 
 	  if ((objc < 4) || (objc > 5)) {
@@ -332,13 +331,12 @@ set cmdBodySource {
 	  }
 
 	  if (objc == 5) {
-	      doMatch = 1;
 	      pattern = Tcl_GetString (objv[4]);
 	  }
 
 	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
-	      if (doMatch && !Tcl_StringCaseMatch (key, pattern, 1)) continue;
+	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 	      if (Tcl_ObjSetVar2 (interp, objv[2], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
 	          return TCL_ERROR;
 	      }
@@ -365,8 +363,7 @@ set cmdBodySource {
       case OPT_NAMES: {
           Tcl_Obj        *resultObj = Tcl_GetObjResult (interp);
 	  Tcl_HashSearch  hashSearch;
-	  int             doMatch = 0;
-	  char           *pattern;
+	  char           *pattern = (char *) NULL;
 	  char           *key;
 
 	  if (objc > 3) {
@@ -375,13 +372,12 @@ set cmdBodySource {
 	  }
 
 	  if (objc == 3) {
-	      doMatch = 1;
 	      pattern = Tcl_GetString (objv[2]);
 	  }
 
 	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
-	      if (doMatch && !Tcl_StringCaseMatch (key, pattern, 1)) continue;
+	      if ((pattern != (char *) NULL)  && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (key, -1)) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
@@ -1591,11 +1587,14 @@ proc gen_preamble {} {
 proc compile {fileFragName version} {
     cd build
 
-    exec gcc -pipe -g -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
+    #set cflags "-g"
+    set cflags "-O2"
 
-    #exec gcc -pipe -g -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
+    exec gcc -pipe $cflags -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
 
-    exec gcc -pipe -g -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/sc/lib -ltclstub8.4g -ltcl8.4g
+    #exec gcc -pipe $cflags -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
+
+    exec gcc -pipe $cflags -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/sc/lib -ltclstub8.4g -ltcl8.4g
 
     cd ..
 }
