@@ -55,6 +55,14 @@ from that, make a function that returns "CONST char *" for all the types.
 make a way to find out the types of fields and whether quoting may be
 required (i.e. not for ints, floats, macs, inets, needed for strings)
 
-since we will want Tcl_Objs with the names of the fields pretty often,
+DONE since we will want Tcl_Objs with the names of the fields pretty often,
 at startup time generate them and increment their reference counts so
 they'll be kept around forever.
+
+factor out the get routine as the set routine was factored out earlier and
+then use it from the big GET case statement.  This will facilitate using
+this stuff from C as well as having alternative ways to get stuff, like,
+for example, a routine that gets stuff in "array set" format and a routine
+that gets stuff for CSV output and stuff like that.
+
+
