@@ -7,7 +7,7 @@ setting that field type needs to be substituted.
 
 be able to import from an array, including only specific variables
 
-be able to get fields from a row in array get format
+DONE be able to get fields from a row in array get format
 
 ALREADY DONE - IT's INHERENT be able to import key-value pairs in array 
 get/set format 
@@ -59,7 +59,7 @@ DONE since we will want Tcl_Objs with the names of the fields pretty often,
 at startup time generate them and increment their reference counts so
 they'll be kept around forever.
 
-factor out the get routine as the set routine was factored out earlier and
+DONE factor out the get routine as the set routine was factored out earlier and
 then use it from the big GET case statement.  This will facilitate using
 this stuff from C as well as having alternative ways to get stuff, like,
 for example, a routine that gets stuff in "array set" format and a routine

@@ -6,4 +6,5 @@ $Id$
       field names unique, for example, FIELD_MAC now becomes for table
       "cable_device", FIELD_CABLE_DEVICE_MAC.
 
-
+    * Add new "array_get" method that will let you one or more fields,
+      or all fields, in "array get" format, i.e. key value [key value...]"

@@ -687,7 +687,7 @@ set cmdBodyArrayGetSource {
 	}
 
 	for (i = 3; i < objc; i++) {
-	    if (${table}_get_fieldobj (interp, $pointer, objv[i]) == TCL_ERROR) {
+	    if (${table}_get_field_and_nameobj (interp, $pointer, objv[i]) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 	}
