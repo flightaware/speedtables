@@ -583,6 +583,17 @@ ${table}_set (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int fie
 }
 
 set fieldObjGetSource {
+struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
+    Tcl_HashEntry *hashEntry;
+
+    hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, key);
+    if (hashEntry == (Tcl_HashEntry *) NULL) {
+        return (struct $table *) NULL;
+    }
+    
+    return (struct $table *) Tcl_GetHashValue (hashEntry);
+}
+
 int
 ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
 {
@@ -611,17 +622,6 @@ ${table}_get_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl
     }
 
     return ${table}_get (interp, $pointer, fieldIndex);
-}
-
-struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
-    Tcl_HashEntry *hashEntry;
-
-    hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, key);
-    if (hashEntry == (Tcl_HashEntry *) NULL) {
-        return (struct $table *) NULL;
-    }
-    
-    return (struct $table *) Tcl_GetHashValue (hashEntry);
 }
 
 }
@@ -1203,7 +1203,6 @@ proc put_init_extension_source {extension extensionVersion} {
 #
 proc gen_set_function {table pointer} {
     variable fieldObjSetSource
-    variable fieldAndNameObjGetSource
     variable fieldSetSource
     variable leftCurly
     variable rightCurly
@@ -1217,8 +1216,6 @@ proc gen_set_function {table pointer} {
     emit "$rightCurly"
 
     emit [subst -nobackslashes -nocommands $fieldObjSetSource]
-
-    emit [subst -nobackslashes -nocommands $fieldAndNameObjGetSource]
 
 }
 
@@ -1235,6 +1232,7 @@ proc gen_set_function {table pointer} {
 #
 proc gen_get_function {table pointer} {
     variable fieldObjGetSource
+    variable fieldAndNameObjGetSource
     variable fieldGetSource
     variable leftCurly
     variable rightCurly
@@ -1248,6 +1246,8 @@ proc gen_get_function {table pointer} {
     emit "$rightCurly"
 
     emit [subst -nobackslashes -nocommands $fieldObjGetSource]
+
+    emit [subst -nobackslashes -nocommands $fieldAndNameObjGetSource]
 
 }
 
