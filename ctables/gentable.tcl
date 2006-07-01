@@ -1367,11 +1367,7 @@ proc gen_list {} {
         catch {unset field}
 	array set field $fields($fieldName)
 
-	switch $field(type) {
-	    default {
-	        set_list_obj $position $field(type) $pointer $fieldName
-	    }
-	}
+	set_list_obj $position $field(type) $pointer $fieldName
 
 	incr position
     }
@@ -1462,6 +1458,9 @@ proc gen_field_names {} {
     foreach myfield $fieldList {
         emit "Tcl_Obj *${table}_${myfield}NameObj;"
     }
+    emit ""
+
+    emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS\];"
     emit ""
 
 }
