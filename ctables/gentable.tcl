@@ -1587,14 +1587,23 @@ proc gen_preamble {} {
 proc compile {fileFragName version} {
     cd build
 
-    #set cflags "-g"
-    set cflags "-O2"
+    set debug 0
 
-    exec gcc -pipe $cflags -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
+    if {$debug} {
+        set optflag "-g"
+	set stub "-ltclstub8.4g"
+	set lib "-ltcl8.4g"
+    } else {
+        set optflag "-O3"
+	set stub "-ltclstub8.4"
+	set lib "-ltcl8.4"
+    }
+
+    exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
 
     #exec gcc -pipe $cflags -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
 
-    exec gcc -pipe $cflags -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/sc/lib -ltclstub8.4g -ltcl8.4g
+    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/sc/lib $stub $lib
 
     cd ..
 }
