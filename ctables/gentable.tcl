@@ -554,6 +554,18 @@ ${table}_set_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer
 
     return ${table}_set (interp, obj, $pointer, fieldIndex);
 }
+
+struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
+    Tcl_HashEntry *hashEntry;
+
+    hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, key);
+    if (hashEntry == (Tcl_HashEntry *) NULL) {
+        return (struct $table *) NULL;
+    }
+    
+    return (struct $table *) Tcl_GetHashValue (hashEntry);
+}
+
 }
 
 set fieldSetSource {
@@ -577,12 +589,10 @@ set cmdBodyGetSource {
 	    return TCL_ERROR;
 	}
 
-	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
-
-	if (hashEntry == (Tcl_HashEntry *)NULL) {
+	$pointer = ${table}_find (tbl_ptr, Tcl_GetString (objv[2]));
+	if ($pointer == (struct $table *) NULL) {
 	    return TCL_OK;
 	}
-	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
 
 	if (objc == 3) {
 	    return ${table}_genlist (interp, $pointer);
