@@ -1165,6 +1165,17 @@ proc gen_set_function {table pointer} {
 
 }
 
+#
+# gen_get_function - create a *_get routine that takes a pointer to the
+#  tcl interp, an object pointer, a pointer to a table row and a field number,
+#  and gets the value from the field of the row and store it into the
+#  object.
+#
+#  Also create a *_get_fieldobj function that takes pointers to the same
+#  tcl interpreter, object, and table row but takes an object containg
+#  a string identifying the field, which is then looked up to identify
+#  the field number and used in a call to the *_get function.
+#
 proc gen_get_function {table pointer} {
     variable fieldObjGetSource
     variable fieldGetSource
