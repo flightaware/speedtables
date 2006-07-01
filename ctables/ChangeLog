@@ -8,3 +8,7 @@ $Id$
 
     * Add new "array_get" method that will let you one or more fields,
       or all fields, in "array get" format, i.e. key value [key value...]"
+
+    * Make it work under FreeBSD as well as Darwin.  Eventually we will
+      have to at least parse tclConfig.sh and possibly even have our
+      own GNU autoconf thang.

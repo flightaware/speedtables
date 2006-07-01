@@ -1585,25 +1585,53 @@ proc gen_preamble {} {
 # compile - compile and link the shared library
 #
 proc compile {fileFragName version} {
+    global tcl_platform
+
     cd build
 
     set debug 0
 
-    if {$debug} {
-        set optflag "-g"
-	set stub "-ltclstub8.4g"
-	set lib "-ltcl8.4g"
-    } else {
-        set optflag "-O3"
-	set stub "-ltclstub8.4"
-	set lib "-ltcl8.4"
+    switch $tcl_platform(os) {
+	"FreeBSD" {
+	    if {$debug} {
+		set optflag "-g"
+		set stub "-ltclstub84g"
+		set lib "-ltcl84g"
+	    } else {
+		set optflag "-O3"
+		set stub "-ltclstub84"
+		set lib "-ltcl84"
+	    }
+
+	    exec gcc -pipe $optflag -fPIC -I/usr/local/include/tcl8.4 -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
+
+	    exec ld -Bshareable $optflag -x -o lib${fileFragName}.so $fileFragName.o -L/usr/local/lib $stub
+	}
+
+	"Darwin" {
+	    if {$debug} {
+		set optflag "-g"
+		set stub "-ltclstub8.4g"
+		set lib "-ltcl8.4g"
+	    } else {
+		set optflag "-O3"
+		set stub "-ltclstub8.4"
+		set lib "-ltcl8.4"
+	    }
+
+	    exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
+
+	    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/sc/lib $stub $lib
+	}
+
+	default {
+	    error "unknown OS $tcl_platform(os)"
+	}
     }
 
-    exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
 
     #exec gcc -pipe $cflags -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
 
-    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/sc/lib $stub $lib
 
     cd ..
 }
