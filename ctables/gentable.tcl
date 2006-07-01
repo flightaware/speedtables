@@ -686,7 +686,7 @@ set cmdBodyArrayGetSource {
 	    return ${table}_gen_keyvalue_list (interp, $pointer);
 	}
 
-	for (i = 3; i < objc; i += 2) {
+	for (i = 3; i < objc; i++) {
 	    if (${table}_get_fieldobj (interp, $pointer, objv[i]) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
