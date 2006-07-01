@@ -554,6 +554,27 @@ ${table}_set_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer
 
     return ${table}_set (interp, obj, $pointer, fieldIndex);
 }
+}
+
+set fieldSetSource {
+int
+${table}_set (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int field) $leftCurly
+
+    switch ((enum ${table}_fields) field) $leftCurly
+}
+
+set fieldObjGetSource {
+int
+${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj, Tcl_Obj *destObj)
+{
+    int fieldIndex;
+
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    return ${table}_get (interp, $pointer, fieldIndex, destObj);
+}
 
 struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
     Tcl_HashEntry *hashEntry;
@@ -568,9 +589,9 @@ struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
 
 }
 
-set fieldSetSource {
+set fieldGetSource {
 int
-${table}_set (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int field) $leftCurly
+${table}_get (Tcl_Interp *interp, struct $table *$pointer, int field, Tcl_Obj *obj) $leftCurly
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
@@ -1107,6 +1128,11 @@ proc put_init_extension_source {extension extensionVersion} {
     emit [subst -nobackslashes -nocommands $initExtensionSource]
 }
 
+#
+# gen_set_function - create a *_set routine that takes a pointer to the
+# tcl interp, an object, a pointer to a table row and a field number,
+# and sets the value extracted from the obj into the field of the row
+#
 proc gen_set_function {table pointer} {
     variable fieldObjSetSource
     variable fieldSetSource
@@ -1122,6 +1148,24 @@ proc gen_set_function {table pointer} {
     emit "$rightCurly"
 
     emit [subst -nobackslashes -nocommands $fieldObjSetSource]
+
+}
+
+proc gen_get_function {table pointer} {
+    variable fieldObjGetSource
+    variable fieldGetSource
+    variable leftCurly
+    variable rightCurly
+
+    emit [subst -nobackslashes -nocommands $fieldGetSource]
+
+    gen_gets $pointer
+
+    emit "    $rightCurly"
+    emit "    return TCL_OK;"
+    emit "$rightCurly"
+
+    emit [subst -nobackslashes -nocommands $fieldObjGetSource]
 
 }
 
@@ -1172,6 +1216,8 @@ proc gen_code {} {
 
     gen_set_function $table $pointer
 
+    gen_get_function $table $pointer
+
     emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
     emit [subst -nobackslashes -nocommands $cmdBodySource]
@@ -1180,7 +1226,7 @@ proc gen_code {} {
     emit ""
 
     emit [subst -nobackslashes -nocommands $cmdBodyGetSource]
-    gen_gets
+    gen_gets $pointer
     emit "          $rightCurly"
     emit "        $rightCurly"
     emit "        break;"
@@ -1413,15 +1459,13 @@ proc gen_field_names {} {
 # gen_gets - generate code to fetch fields of a row, appending each requested
 #  field as a Tcl object to Tcl's result object
 #
-proc gen_gets {} {
+proc gen_gets {pointer} {
     variable table
     variable booleans
     variable fields
     variable fieldList
     variable leftCurly
     variable rightCurly
-
-    set pointer ${table}_ptr
 
     foreach myField $fieldList {
         catch {unset field}
