@@ -565,7 +565,7 @@ ${table}_set (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int fie
 
 set fieldObjGetSource {
 int
-${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj, Tcl_Obj *destObj)
+${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
 {
     int fieldIndex;
 
@@ -573,7 +573,7 @@ ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fie
         return TCL_ERROR;
     }
 
-    return ${table}_get (interp, $pointer, fieldIndex, destObj);
+    return ${table}_get (interp, $pointer, fieldIndex);
 }
 
 struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
@@ -591,7 +591,7 @@ struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
 
 set fieldGetSource {
 int
-${table}_get (Tcl_Interp *interp, struct $table *$pointer, int field, Tcl_Obj *obj) $leftCurly
+${table}_get (Tcl_Interp *interp, struct $table *$pointer, int field) $leftCurly
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
@@ -603,7 +603,6 @@ ${table}_get (Tcl_Interp *interp, struct $table *$pointer, int field, Tcl_Obj *o
 set cmdBodyGetSource {
       case OPT_GET: $leftCurly
         int i;
-	int fieldIndex;
 
 	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
@@ -619,12 +618,11 @@ set cmdBodyGetSource {
 	    return ${table}_genlist (interp, $pointer);
 	}
 
-	for (i = 3; i < objc; i++) $leftCurly
-            if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-		return TCL_ERROR;
+	for (i = 3; i < objc; i++) {
+	    if (${table}_get_fieldobj (interp, $pointer, objv[i]) == TCL_ERROR) {
+	        return TCL_ERROR;
 	    }
-
-	    switch ((enum ${table}_fields) fieldIndex) $leftCurly
+	}
 }
 
 #
@@ -1226,9 +1224,6 @@ proc gen_code {} {
     emit ""
 
     emit [subst -nobackslashes -nocommands $cmdBodyGetSource]
-    gen_gets $pointer
-    emit "          $rightCurly"
-    emit "        $rightCurly"
     emit "        break;"
     emit "      $rightCurly"
 
