@@ -21,6 +21,8 @@
 
     ${table}StructHeadTablePtr->nextAutoCounter = 0;
 
+    ${table}_setup ();
+
     /* Create the ${table}MetaObjCmd command -- it's fairly equivalent to an
      * Itcl class in that it can create its own commands with their
      * own data spaces, etc.

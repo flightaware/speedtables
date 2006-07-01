@@ -49,4 +49,12 @@ create a direct interface to postgresql "copy in".  Make it optional.
 create a direct interface to reading and writing CSV or tab-separated or 
 whatever.
 
+make all the types able to return text, not just to generate tcl object's.
+from that, make a function that returns "CONST char *" for all the types.
 
+make a way to find out the types of fields and whether quoting may be
+required (i.e. not for ints, floats, macs, inets, needed for strings)
+
+since we will want Tcl_Objs with the names of the fields pretty often,
+at startup time generate them and increment their reference counts so
+they'll be kept around forever.

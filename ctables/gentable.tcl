@@ -1115,6 +1115,27 @@ proc gen_set_function {table pointer} {
 
 }
 
+#
+# gen_setup_routine - emit code to be run for this table type at shared 
+#  libary load time
+#
+proc gen_setup_routine {table} {
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    emit "void ${table}_setup (void) $leftCurly"
+
+    foreach field $fieldList {
+	set nameObj ${table}_${field}NameObj
+        emit "    $nameObj = Tcl_NewStringObj (\"$field\", -1);"
+	emit "    Tcl_IncrRefCount ($nameObj);"
+	emit ""
+    }
+    emit "$rightCurly"
+    emit ""
+}
+
 
 #
 # gen_code - generate all of the code for the underlying methods for
@@ -1295,6 +1316,48 @@ proc gen_list {} {
 }
 
 #
+# gen_keyvalue_list - generate C code to emit an entire row into a Tcl list in
+#  "array set" format
+#
+proc gen_keyvalue_list {} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    set pointer ${table}_ptr
+
+    set lengthDef [string toupper $table]_NFIELDS
+
+    emit "int ${table}_gen_keyvalue_list (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
+
+    emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
+    emit ""
+
+    set position 0
+    foreach fieldName $fieldList {
+        catch {unset field}
+	array set field $fields($fieldName)
+
+	emit "    listObjv\[$position] = ${table}_${fieldName}NameObj;"
+	incr position
+
+	set_list_obj $position $field(type) $pointer $fieldName
+	incr position
+
+	emit ""
+    }
+
+    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef, listObjv));"
+    emit "    return TCL_OK;"
+    emit "$rightCurly"
+    emit ""
+}
+
+
+#
 # gen_field_names - generate C code containing an array of pointers to strings
 #  comprising the names of all of the fields in a row of the table being
 #  defined.  Also generate an enumerated type of all of the field names
@@ -1328,7 +1391,12 @@ proc gen_field_names {} {
     set fieldenum "[string range $fieldenum 0 end-1]\n$rightCurly;\n"
     emit $fieldenum
 
+    emit "// define objects that will be filled with the corresponding field names"
+    foreach myfield $fieldList {
+        emit "Tcl_Obj *${table}_${myfield}NameObj;"
+    }
     emit ""
+
 }
 
 #
@@ -1375,6 +1443,7 @@ proc gen_preamble {} {
     emit "#include <netinet/in.h>"
     emit "#include <arpa/inet.h>"
     emit "#include <net/ethernet.h>"
+    emit ""
 }
 
 #
@@ -1435,11 +1504,15 @@ proc CTable {name data} {
 
     ::ctable::gen_field_names
 
+    ::ctable::gen_setup_routine $name
+
     ::ctable::gen_defaults_subr ${name}_init $name ${name}_ptr
 
     ::ctable::gen_delete_subr ${name}_delete $name ${name}_ptr
 
     ::ctable::gen_list
+
+    ::ctable::gen_keyvalue_list
 
     ::ctable::gen_code
 
