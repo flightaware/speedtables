@@ -248,9 +248,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "exists", "delete", "count", "foreach", "type", "import", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "exists", "delete", "count", "foreach", "type", "import", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAYGET, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -506,7 +506,7 @@ set cmdBodySource {
 	}
       }
 
-      case OPT_SET: $leftCurly
+      case OPT_SET: {
         int       i;
 
 	if ((objc < 3) || (objc % 2) != 1) {
@@ -522,6 +522,9 @@ set cmdBodySource {
 	        return TCL_ERROR;
 	    }
 	}
+        break;
+      }
+
 }
 
 set tableHeadSource {
@@ -591,6 +594,24 @@ ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fie
 
     return ${table}_get (interp, $pointer, fieldIndex);
 }
+}
+
+set fieldAndNameObjGetSource {
+int
+${table}_get_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
+{
+    int fieldIndex;
+
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_NameObjList[fieldIndex]) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    return ${table}_get (interp, $pointer, fieldIndex);
+}
 
 struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
     Tcl_HashEntry *hashEntry;
@@ -617,7 +638,7 @@ ${table}_get (Tcl_Interp *interp, struct $table *$pointer, int field) $leftCurly
 #  part of the body of the code that handles the "get" method
 #
 set cmdBodyGetSource {
-      case OPT_GET: $leftCurly
+      case OPT_GET: {
         int i;
 
 	if (objc < 3) {
@@ -639,6 +660,39 @@ set cmdBodyGetSource {
 	        return TCL_ERROR;
 	    }
 	}
+        break;
+      }
+}
+
+#
+# cmdBodyArrayGetSource - chunk of the code that we run subst over to generate
+#  part of the body of the code that handles the "array_get" method
+#
+set cmdBodyArrayGetSource {
+      case OPT_ARRAYGET: {
+        int i;
+
+	if (objc < 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
+	    return TCL_ERROR;
+	}
+
+	$pointer = ${table}_find (tbl_ptr, Tcl_GetString (objv[2]));
+	if ($pointer == (struct $table *) NULL) {
+	    return TCL_OK;
+	}
+
+	if (objc == 3) {
+	    return ${table}_gen_keyvalue_list (interp, $pointer);
+	}
+
+	for (i = 3; i < objc; i += 2) {
+	    if (${table}_get_fieldobj (interp, $pointer, objv[i]) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+	}
+        break;
+      }
 }
 
 #
@@ -1149,6 +1203,7 @@ proc put_init_extension_source {extension extensionVersion} {
 #
 proc gen_set_function {table pointer} {
     variable fieldObjSetSource
+    variable fieldAndNameObjGetSource
     variable fieldSetSource
     variable leftCurly
     variable rightCurly
@@ -1162,6 +1217,8 @@ proc gen_set_function {table pointer} {
     emit "$rightCurly"
 
     emit [subst -nobackslashes -nocommands $fieldObjSetSource]
+
+    emit [subst -nobackslashes -nocommands $fieldAndNameObjGetSource]
 
 }
 
@@ -1239,6 +1296,7 @@ proc gen_code {} {
     variable cmdBodyHeader
     variable cmdBodySource
     variable cmdBodyGetSource
+    variable cmdBodyArrayGetSource
 
     set pointer "${table}_ptr"
 
@@ -1255,13 +1313,10 @@ proc gen_code {} {
     emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
     emit [subst -nobackslashes -nocommands $cmdBodySource]
-    emit "        break;"
-    emit "      $rightCurly"
-    emit ""
 
     emit [subst -nobackslashes -nocommands $cmdBodyGetSource]
-    emit "        break;"
-    emit "      $rightCurly"
+
+    emit [subst -nobackslashes -nocommands $cmdBodyArrayGetSource]
 
     # finish out the command switch and the command itself
     emit "    $rightCurly"
