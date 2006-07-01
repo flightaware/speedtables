@@ -1194,16 +1194,25 @@ proc gen_setup_routine {table} {
 
     emit "void ${table}_setup (void) $leftCurly"
 
+    # create and initialize all of the NameObj objects containing field
+    # names as Tcl objects and increment their reference counts so 
+    # (hopefully, heh) they'll never be deleted.
+    #
+    # also populate the *_NameObjList table
+    #
+
+    set position 0
     foreach field $fieldList {
 	set nameObj ${table}_${field}NameObj
-        emit "    $nameObj = Tcl_NewStringObj (\"$field\", -1);"
+        emit "    ${table}_NameObjList\[$position\] = $nameObj = Tcl_NewStringObj (\"$field\", -1);"
 	emit "    Tcl_IncrRefCount ($nameObj);"
 	emit ""
+	incr position
     }
+    emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
     emit "$rightCurly"
     emit ""
 }
-
 
 #
 # gen_code - generate all of the code for the underlying methods for
@@ -1460,7 +1469,7 @@ proc gen_field_names {} {
     }
     emit ""
 
-    emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS\];"
+    emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
     emit ""
 
 }
