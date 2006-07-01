@@ -1,0 +1,9 @@
+
+$Id$
+
+7/1/2006 karl
+    * Generate enum entries for fields using a proc.  That proc makes the
+      field names unique, for example, FIELD_MAC now becomes for table
+      "cable_device", FIELD_CABLE_DEVICE_MAC.
+
+

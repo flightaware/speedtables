@@ -34,10 +34,26 @@ set fp [open exten-frag.c-subst]
 set extensionFragmentSource [read $fp]
 close $fp
 
+#
+# emit - emit a string to the file being generated
+#
 proc emit {text} {
     variable ofp
 
     puts $ofp $text
+}
+
+#
+# field_to_enum - return a field mapped to the name we'll use when
+#  creating or referencing an enumerated list of field names.
+#
+#  for example, creating table fa_position and field longitude, this
+#   routine will return FIELD_FA_POSITION_LONGITUDE
+#
+proc field_to_enum {field} {
+    variable table
+
+    return "FIELD_[string toupper $table]_[string toupper $field]"
 }
 
 #
@@ -969,7 +985,7 @@ proc emit_set_num_field {field pointer type} {
 	}
     }
 
-    set optname "FIELD_[string toupper $field]"
+    set optname [field_to_enum $field]
 
     emit [subst -nobackslashes -nocommands $numberSetSource]
 }
@@ -982,7 +998,7 @@ proc emit_set_num_field {field pointer type} {
 proc emit_set_standard_field {field pointer setSourceVarName} {
     variable $setSourceVarName
 
-    set optname "FIELD_[string toupper $field]"
+    set optname [field_to_enum $field]
 
     emit [subst -nobackslashes -nocommands [set $setSourceVarName]]
 }
@@ -993,7 +1009,7 @@ proc emit_set_standard_field {field pointer setSourceVarName} {
 proc emit_set_fixedstring_field {field pointer length} {
     variable fixedstringSetSource
       
-    set optname "FIELD_[string toupper $field]"
+    set optname [field_to_enum $field]
 
     emit [subst -nobackslashes -nocommands $fixedstringSetSource]
 } 
@@ -1436,7 +1452,7 @@ proc gen_field_names {} {
 
     set fieldenum "enum ${table}_fields $leftCurly"
     foreach myField $fieldList {
-	append fieldenum "\n    FIELD_[string toupper $myField],"
+	append fieldenum "\n    [field_to_enum $myField],"
     }
 
     set fieldenum "[string range $fieldenum 0 end-1]\n$rightCurly;\n"
@@ -1466,7 +1482,7 @@ proc gen_gets {pointer} {
         catch {unset field}
 	array set field $fields($myField)
 
-	emit "              case FIELD_[string toupper $myField]: $leftCurly"
+	emit "              case [field_to_enum $myField]: $leftCurly"
 	emit "                if ([append_list_element $field(type) $pointer $myField] == TCL_ERROR) $leftCurly"
 	emit "                    return TCL_ERROR;"
 	emit "                $rightCurly"
