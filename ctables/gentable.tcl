@@ -13,6 +13,7 @@ namespace eval ctable {
     variable nonBooleans
     variable fields
     variable fieldList
+    variable ctableTypes
 
     variable leftCurly
     variable rightCurly
@@ -21,6 +22,8 @@ namespace eval ctable {
     set rightCurly \175
 
     set tables ""
+
+set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
 
 set fp [open template.c-subst]
 set metaTableSource [read $fp]
@@ -849,6 +852,40 @@ proc putfield {type name {comment ""}} {
 }
 
 #
+# ctable_type_to_enum - return a type mapped to the name we use when
+#  creating or referencing an enumerated list of ctable types.
+#
+proc ctable_type_to_enum {type} {
+    return "CTABLE_TYPE_[string toupper $type]"
+}
+
+#
+# gen_ctable_type_stuff - generate enumerated type for all of the supported
+# ctable fields and generated an array of char pointers to the type names
+#
+proc gen_ctable_type_stuff {} {
+    variable ctableTypes
+    variable leftCurly
+    variable rightCurly
+
+    set typeEnum "enum ctable_types $leftCurly"
+    foreach type $ctableTypes {
+        append typeEnum "\n    [ctable_type_to_enum $type],"
+    }
+    emit "[string range $typeEnum 0 end-1]\n$rightCurly;\n"
+
+    emit "char *ctableTypes\[\] = $leftCurly"
+    foreach type $ctableTypes {
+        emit "    \"$type\","
+    }
+    emit "    (char *) NULL"
+    emit "$rightCurly;"
+    emit ""
+}
+
+set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
+
+#
 # gen_defaults_subr - gen code to set a row to default values
 #
 proc gen_defaults_subr {subr struct pointer} {
@@ -1644,7 +1681,10 @@ proc compile {fileFragName version} {
 proc CExtension {name {version 1.0}} {
     file mkdir build
     set ::ctable::ofp [open build/$name.c w]
+
     ::ctable::gen_preamble
+    ::ctable::gen_ctable_type_stuff
+
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""

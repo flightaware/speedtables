@@ -51,9 +51,17 @@ whatever.
 
 make all the types able to return text, not just to generate tcl object's.
 from that, make a function that returns "CONST char *" for all the types.
+    NOTE - after looking at the Tcl core, how they do the Tcl_PrintDouble
+    function is to actually hoke up a Tcl object and get Tcl to create
+    a string representation in the object.  We can't do that unless we
+    access Tcl internals.  Looks like we might be doing a lot of mallocing
+    if we want to be thread safe.
 
 make a way to find out the types of fields and whether quoting may be
 required (i.e. not for ints, floats, macs, inets, needed for strings)
+    create enumerated list of types that are supported.
+    create a table that allows conversion between enumerated ctable and
+    their textual equivalents.
 
 DONE since we will want Tcl_Objs with the names of the fields pretty often,
 at startup time generate them and increment their reference counts so

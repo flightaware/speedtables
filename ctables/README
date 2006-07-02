@@ -101,9 +101,16 @@ pretty strong.
 ADDING SUPPORT FOR A NEW TYPE TO CTABLE
 ---------------------------------------
 
-If you need any include files, add them to gen_preamble.
+Decide what the name of your new type is, for instance "int", "float",
+"double", "inet", "mac", etc.
 
-Create a proc that defines the type.
+In this example we'll add native support for IP addresses and call them "inet".
+
+1. Add the name of the type to ctableTypes.
+
+2. If you need any include files, add them to gen_preamble.
+
+3. Create a proc that defines the type.
 
 #
 # inet - define an IPv4 address field
@@ -112,7 +119,7 @@ proc inet {name {default 0.0.0.0}} {
     deffield $name type inet default $default
 }           
 
-Add code to generate an entry in the struct-defining routine "gen_struct":
+4. Add code to generate an entry in the struct-defining routine "gen_struct":
 
             inet {
                 putfield "struct in_addr" $field(name)
@@ -120,7 +127,7 @@ Add code to generate an entry in the struct-defining routine "gen_struct":
 
 
 
-Create a proc that sets the field from a passed Tcl object.  Typically
+5. Create a proc that sets the field from a passed Tcl object.  Typically
 this uses subst to replace some standard variables in a code fragment:
 
 #
@@ -145,7 +152,7 @@ need to do a custom emit_set_*_routine, but can just use the standard one.
 An example of a custom emit_set_*_routine is emit_set_num_field, which
 handles multiple field types (int, long, wide and double).
 
-Add a call to the emit_set_standard_field routine, referencing your
+6. Add a call to the emit_set_standard_field routine, referencing your
 set source variable, or your custom one, to the switch statement in the 
 gen_sets proc:
 
@@ -154,7 +161,7 @@ gen_sets proc:
             }
 
 
-If necessary, add an entry to the switch statement in gen_defaults_subr for generating a default value.  If a straight C assignment of your field from the default value will work, like "i = 0", you can just let it use the default.
+7. If necessary, add an entry to the switch statement in gen_defaults_subr for generating a default value.  If a straight C assignment of your field from the default value will work, like "i = 0", you can just let it use the default.
 
             inet {
                 emit "    inet_aton (\"$field(default)\", &$pointer->$myfield);"
@@ -162,12 +169,20 @@ If necessary, add an entry to the switch statement in gen_defaults_subr for gene
 
 
 
-Add an entry to the switch statement in the gen_new_obj proc that creates
+8. Add an entry to the switch statement in the gen_new_obj proc that creates
 a Tcl object representing the pointer and field:
 
         inet {
             return "Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
         }
 
+
+9. Create a CTable that incorporates your type.  Try to build it.  If it
+doesn't compile cleanly, debug it.
+
+If you get a Tcl traceback, debug the Tcl directly.
+
+If you get a C compilation error, look at the generated code and see what
+your mistake is.
 
 
