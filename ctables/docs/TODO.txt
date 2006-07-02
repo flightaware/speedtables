@@ -57,8 +57,8 @@ from that, make a function that returns "CONST char *" for all the types.
     access Tcl internals.  Looks like we might be doing a lot of mallocing
     if we want to be thread safe.
 
-make a way to find out the types of fields and whether quoting may be
-required (i.e. not for ints, floats, macs, inets, needed for strings)
+DONE make a way to find out the types of fields and whether quoting may be
+    required (i.e. not for ints, floats, macs, inets, needed for strings)
     DONE create enumerated list of types that are supported.
     DONE create a table that allows conversion between enumerated ctable and
          their textual equivalents.

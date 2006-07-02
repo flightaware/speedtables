@@ -23,3 +23,10 @@ $Id$
 
     * Add of new method, fieldtype, which will return the CTable type of
       the passed-in field.
+
+    * Add of new method, needs_quoting, which returns one if the passed-in
+      field requires or may require quoting (i.e. could contain characters
+      that could trip up a database insert, CSV export, or something like
+      that.)
+
+

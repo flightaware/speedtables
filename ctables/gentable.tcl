@@ -251,9 +251,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "exists", "delete", "count", "foreach", "type", "import", "fields", "fieldtype", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "exists", "delete", "count", "foreach", "type", "import", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAYGET, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAYGET, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -330,6 +330,22 @@ set cmdBodySource {
 	Tcl_SetStringObj (Tcl_GetObjResult (interp), ctableTypes[(int)${table}_types[fieldIndex]], -1);
 	return TCL_OK;
       }
+
+      case OPT_NEEDSQUOTING: {
+        int fieldIndex;
+
+	if (objc != 3) {
+            Tcl_WrongNumArgs (interp, 2, objv, "fieldName");
+	    return TCL_ERROR;
+	}
+
+	if (Tcl_GetIndexFromObj (interp, objv[2], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), ${table}_needs_quoting[fieldIndex]);
+	return TCL_OK;
+      }
+
 
       case OPT_STATISTICS: {
           CONST char *stats = Tcl_HashStats (tbl_ptr->keyTablePtr);
@@ -771,14 +787,14 @@ proc boolean {name {default 0}} {
 # fixedstring - define a fixed-length string field
 #
 proc fixedstring {name length {default ""}} {
-    deffield $name type fixedstring length $length default $default
+    deffield $name type fixedstring length $length default $default needsQuoting 1
 }
 
 #
 # varstring - define a variable-length string field
 #
 proc varstring {name {default ""}} {
-    deffield $name type varstring default $default
+    deffield $name type varstring default $default needsQuoting 1
 }
 
 #
@@ -786,7 +802,7 @@ proc varstring {name {default ""}} {
 #  fixedstring[1] but it's simpler.  shrug.
 #
 proc char {name {default " "}} {
-    deffield $name type char default $default
+    deffield $name type char default $default needsQuoting 1
 }
 
 #
@@ -849,7 +865,7 @@ proc inet {name {default 0.0.0.0}} {
 # tclobj - define an straight-through Tcl_Obj
 #
 proc tclobj {name} {
-    deffield $name type tclobj
+    deffield $name type tclobj needsQuoting 1
 }
 
 #
@@ -1584,6 +1600,19 @@ proc gen_field_names {} {
 	append typeList "\n    [ctable_type_to_enum $field(type)],"
     }
     emit "[string range $typeList 0 end-1]\n$rightCurly;\n"
+
+    set needsQuoting "int ${table}_needs_quoting\[\] = $leftCurly"
+    foreach myField $fieldList {
+        catch {unset field}
+	array set field $fields($myField)
+	if {[info exists field(needsQuoting)] && $field(needsQuoting)} {
+	    set quoting 1
+	} else {
+	    set quoting 0
+	}
+	append needsQuoting "\n    $quoting,"
+    }
+    emit "[string range $needsQuoting 0 end-1]\n$rightCurly;\n"
 
     emit "// define objects that will be filled with the corresponding field names"
     foreach myfield $fieldList {
