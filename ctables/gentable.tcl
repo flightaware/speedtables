@@ -763,7 +763,7 @@ proc fixedstring {name length {default ""}} {
 # varstring - define a variable-length string field
 #
 proc varstring {name {default ""}} {
-    deffield $name type string default $default
+    deffield $name type varstring default $default
 }
 
 #
@@ -806,7 +806,7 @@ proc long {name {default 0}} {
 # wide - define a wide integer field -- should always be at least 64 bits
 #
 proc wide {name {default 0}} {
-    deffield $name type "wide" default $default
+    deffield $name type wide default $default
 }
 
 #
@@ -909,7 +909,7 @@ proc gen_defaults_subr {subr struct pointer} {
 	array set field $fields($myfield)
 
 	switch $field(type) {
-	    string {
+	    varstring {
 	        emit "        $baseCopy.$myfield = (char *) NULL;"
 	    }
 
@@ -964,7 +964,7 @@ proc gen_delete_subr {subr struct pointer} {
 	array set field $fields($myfield)
 
 	switch $field(type) {
-	    string {
+	    varstring {
 	        emit "    if ($pointer->$myfield != (char *) NULL) ckfree ($pointer->$myfield);"
 	    }
 	}
@@ -995,7 +995,7 @@ proc gen_struct {} {
 	array set field $fields($myfield)
 
 	switch $field(type) {
-	    string {
+	    varstring {
 		putfield char "*$field(name)"
 	    }
 
@@ -1146,7 +1146,7 @@ proc gen_sets {pointer} {
 	        emit_set_standard_field $myfield $pointer floatSetSource
 	    }
 
-	    string {
+	    varstring {
 		emit_set_standard_field $myfield $pointer stringSetSource
 	    }
 
@@ -1394,7 +1394,7 @@ proc gen_new_obj {type pointer fieldName} {
 	    return "Tcl_NewBooleanObj ($pointer->$fieldName)"
 	}
 
-	string {
+	varstring {
 	    catch {unset field}
 	    array set field $fields($fieldName)
 	    #return "Tcl_NewStringObj ($pointer->$fieldName, -1)"
@@ -1558,9 +1558,17 @@ proc gen_field_names {} {
     foreach myField $fieldList {
 	append fieldenum "\n    [field_to_enum $myField],"
     }
-
     set fieldenum "[string range $fieldenum 0 end-1]\n$rightCurly;\n"
     emit $fieldenum
+
+    set typeList "enum ctable_types ${table}_types\[\] = $leftCurly"
+    foreach myField $fieldList {
+        catch {unset field}
+	array set field $fields($myField)
+
+	append typeList "\n    [ctable_type_to_enum $field(type)],"
+    }
+    emit "[string range $typeList 0 end-1]\n$rightCurly;\n"
 
     emit "// define objects that will be filled with the corresponding field names"
     foreach myfield $fieldList {

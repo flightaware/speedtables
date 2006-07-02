@@ -12,3 +12,12 @@ $Id$
     * Make it work under FreeBSD as well as Darwin.  Eventually we will
       have to at least parse tclConfig.sh and possibly even have our
       own GNU autoconf thang.
+
+    * Emit a enumerated typedef for the CTable types.  Also enumerate
+      a corresponding array of char pointers containing the type names.
+
+    * Emit an enum *_types for each defined table that has the enumerated
+      ctable type for each field in the table.  This will allow us at
+      runtime to easily and efficiently determine the type of any field from 
+      C.  Soon, from Tcl as well.
+
