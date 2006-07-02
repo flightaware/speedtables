@@ -251,9 +251,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "exists", "delete", "count", "foreach", "type", "import", "fields", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "exists", "delete", "count", "foreach", "type", "import", "fields", "fieldtype", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAYGET, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAYGET, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -314,6 +314,21 @@ set cmdBodySource {
 	      }
 	  }
           return TCL_OK;
+      }
+
+      case OPT_FIELDTYPE: {
+        int fieldIndex;
+
+	if (objc != 3) {
+            Tcl_WrongNumArgs (interp, 2, objv, "fieldName");
+	    return TCL_ERROR;
+	}
+
+	if (Tcl_GetIndexFromObj (interp, objv[2], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	Tcl_SetStringObj (Tcl_GetObjResult (interp), ctableTypes[(int)${table}_types[fieldIndex]], -1);
+	return TCL_OK;
       }
 
       case OPT_STATISTICS: {

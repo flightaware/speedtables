@@ -21,3 +21,5 @@ $Id$
       runtime to easily and efficiently determine the type of any field from 
       C.  Soon, from Tcl as well.
 
+    * Add of new method, fieldtype, which will return the CTable type of
+      the passed-in field.
