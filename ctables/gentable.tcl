@@ -1330,6 +1330,7 @@ proc gen_get_function {table pointer} {
 #
 proc gen_setup_routine {table} {
     variable fieldList
+    variable fields
     variable leftCurly
     variable rightCurly
 
@@ -1341,7 +1342,6 @@ proc gen_setup_routine {table} {
     #
     # also populate the *_NameObjList table
     #
-
     set position 0
     foreach field $fieldList {
 	set nameObj ${table}_${field}NameObj
@@ -1351,6 +1351,29 @@ proc gen_setup_routine {table} {
 	incr position
     }
     emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
+    emit ""
+
+    #
+    # create and initialize string objects for varstring defaults
+    #
+    emit "// defaults for varstring objects"
+    foreach fieldName $fieldList {
+        catch {unset field}
+	array set field $fields($fieldName)
+
+	if {$field(type) != "varstring"} continue
+
+	set defObj ${table}_${fieldName}DefaultStringObj
+
+	if {$field(default) == ""} {
+	    emit "    $defObj = Tcl_NewObj ();"
+	} else {
+	    emit "    $defObj = Tcl_NewStringObj (\"$field(default)\", -1);"
+	}
+	emit "    Tcl_IncrRefCount ($defObj);"
+	emit ""
+    }
+
     emit "$rightCurly"
     emit ""
 }
@@ -1404,6 +1427,7 @@ proc gen_code {} {
 #
 proc gen_new_obj {type pointer fieldName} {
     variable fields
+    variable table
 
     switch $type {
 	short {
@@ -1437,13 +1461,8 @@ proc gen_new_obj {type pointer fieldName} {
 	varstring {
 	    catch {unset field}
 	    array set field $fields($fieldName)
-	    #return "Tcl_NewStringObj ($pointer->$fieldName, -1)"
-	    if {$field(default) == ""} {
-	        set nullBody "Tcl_NewObj ()"
-	    } else {
-	        set nullBody "Tcl_NewStringObj (\"$field(default)\",[string length $field(default)])"
-	    }
-	    return "(($pointer->$fieldName == (char *) NULL) ? $nullBody : Tcl_NewStringObj ($pointer->$fieldName, $pointer->_${fieldName}Length))"
+
+	    return "(($pointer->$fieldName == (char *) NULL) ? ${table}_${fieldName}DefaultStringObj  : Tcl_NewStringObj ($pointer->$fieldName, $pointer->_${fieldName}Length))"
 	}
 
 	char {
@@ -1632,6 +1651,16 @@ proc gen_field_names {} {
     emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
     emit ""
 
+    emit "// define default objects for varstring fields"
+    foreach myField $fieldList {
+        catch {unset field}
+	array set field $fields($myField)
+
+	if {$field(type) == "varstring"} {
+	    emit "Tcl_Obj *${table}_${myField}DefaultStringObj;"
+	}
+    }
+    emit ""
 }
 
 #

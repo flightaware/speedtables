@@ -36,4 +36,7 @@ $Id$
       larger row size as we're carrying string lengths along with pointers
       to strings in each rows.
 
-
+    * For varstrings, create a Tcl_Obj containing the default value and
+      increment its reference count at setup time, and when returning the 
+      default value, simply return a pointer to that Tcl_Obj rather than
+      creating a new string obj.
