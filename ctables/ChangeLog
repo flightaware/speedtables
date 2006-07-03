@@ -56,3 +56,7 @@ $Id$
       otherwise finds the string and returns a pointer to the string,
       setting the length pointer to the length of the string if the length
       pointer isn't NULL.
+
+    * Tagged Revision 1.1 (rev1_1)
+
+

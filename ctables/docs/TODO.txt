@@ -83,6 +83,7 @@ Do a thing like lassign where you can set fetched fields into variables.
 (Fairly unimportant as you can easily lassign the result of a "get")
 
 Make set return a 1 if it created the row and a 0 if it already exists.
+(Uh, not sure how valuable this actually is.)
 
 Make an export function that works like import insofar as calling code
 repeatedly with the field names preparsed.
