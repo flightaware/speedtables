@@ -105,4 +105,22 @@ You can now register methods using "metatable method name proc" and the
 name will be present inside all tables defined from the metatable and
 will invoke the proc upon invocation of the method.
 
+/*
+ * figure out the byte length of the next UTF8 character
+ */
+int
+utf8_byte_length(char *s)
+{
+    if ((*s & 0x80) == 0) return 1;
+
+    if ((*s & 0xe0) == 0xc0) return 2;
+
+    if ((*s & 0xf0) == 0xe0) return 3;
+
+    if ((*s & 0xf8) == 0xf0) return 4;
+
+    if ((*s & 0xfc) == 0xf8) return 5;
+
+    if ((*s & 0xfe) == 0xfc) return 6;
+}
 
