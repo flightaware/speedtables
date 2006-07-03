@@ -126,11 +126,11 @@ set shortSetSource {
 }
 
 #
-# stringSetSource - code we run subst over to generate a set of a string.
+# varstringSetSource - code we run subst over to generate a set of a string.
 #
 # strings are char *'s that we manage automagically.
 #
-set stringSetSource {
+set varstringSetSource {
       case $optname: {
 	char *string;
 	int   length;
@@ -1178,7 +1178,7 @@ proc gen_sets {pointer} {
 	    }
 
 	    varstring {
-		emit_set_standard_field $myfield $pointer stringSetSource
+		emit_set_standard_field $myfield $pointer varstringSetSource
 	    }
 
 	    boolean {
