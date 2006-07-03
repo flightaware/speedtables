@@ -49,6 +49,34 @@ proc emit {text} {
 }
 
 #
+# cquote -- quote a string so the C compiler will see the same thing
+#  if it occurs inside double-quotes
+#
+proc cquote {string} {
+  # first, escape the metacharacters \ and "
+  regsub -all {["\\]} $string {\\&} string
+
+  # Now loop over the string looking for nonprinting characters
+  set quoted ""
+  while {
+    [regexp {([[:graph:]]*)([^[:graph:]])(.*)} $string _ plain char string]
+  } {
+    append quoted $plain
+    # gratuitously make \n and friends look nice
+    set index [string first $char "\r\n\t\b\f"]
+    if {$index == -1} {
+      scan $char %c decimal
+      set plain [format {\%03o} $decimal]
+    } else {
+      set plain [lindex {{\r} {\n} {\t} {\b} {\f}} $index]
+    }
+    append quoted $plain
+  }
+  append quoted $string
+  return $quoted
+}
+
+#
 # field_to_enum - return a field mapped to the name we'll use when
 #  creating or referencing an enumerated list of field names.
 #
@@ -1194,6 +1222,8 @@ proc emit_set_standard_field {field pointer setSourceVarName} {
 proc emit_set_varstring_field {table field pointer default defaultLength} {
     variable varstringSetSource
 
+    set default [cquote $default]
+
     set optname [field_to_enum $field]
 
     emit [subst -nobackslashes -nocommands $varstringSetSource]
@@ -1450,7 +1480,7 @@ proc gen_setup_routine {table} {
 		emit ""
 	    }
 	} else {
-	    emit "    $defObj = Tcl_NewStringObj (\"$field(default)\", -1);"
+	    emit "    $defObj = Tcl_NewStringObj (\"[cquote $field(default)]\", -1);"
 	    emit "    Tcl_IncrRefCount ($defObj);"
 	    emit ""
 	}
@@ -1744,7 +1774,7 @@ proc gen_keyvalue_list {} {
 	emit ""
     }
 
-    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef, listObjv));"
+    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef * 2, listObjv));"
     emit "    return TCL_OK;"
     emit "$rightCurly"
     emit ""
