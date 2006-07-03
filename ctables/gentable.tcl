@@ -1353,10 +1353,11 @@ proc gen_setup_routine {table} {
     emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
     emit ""
 
+    set defaultEmptyStringCreated 0
     #
     # create and initialize string objects for varstring defaults
     #
-    emit "// defaults for varstring objects"
+    emit "    // defaults for varstring objects, if any"
     foreach fieldName $fieldList {
         catch {unset field}
 	array set field $fields($fieldName)
@@ -1366,12 +1367,18 @@ proc gen_setup_routine {table} {
 	set defObj ${table}_${fieldName}DefaultStringObj
 
 	if {$field(default) == ""} {
-	    emit "    $defObj = Tcl_NewObj ();"
+	    if {!$defaultEmptyStringCreated} {
+	        set defaultEmptyStringCreated 1
+		set emptyObj ${table}_DefaultEmptyStringObj
+		emit "    $emptyObj = Tcl_NewObj ();"
+		emit "    Tcl_IncrRefCount ($emptyObj);"
+		emit ""
+	    }
 	} else {
 	    emit "    $defObj = Tcl_NewStringObj (\"$field(default)\", -1);"
+	    emit "    Tcl_IncrRefCount ($defObj);"
+	    emit ""
 	}
-	emit "    Tcl_IncrRefCount ($defObj);"
-	emit ""
     }
 
     emit "$rightCurly"
@@ -1462,7 +1469,13 @@ proc gen_new_obj {type pointer fieldName} {
 	    catch {unset field}
 	    array set field $fields($fieldName)
 
-	    return "(($pointer->$fieldName == (char *) NULL) ? ${table}_${fieldName}DefaultStringObj  : Tcl_NewStringObj ($pointer->$fieldName, $pointer->_${fieldName}Length))"
+	    if {$field(default) == ""} {
+		set defObj ${table}_DefaultEmptyStringObj
+	    } else {
+		set defObj ${table}_${fieldName}DefaultStringObj
+	    }
+
+	    return "(($pointer->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj ($pointer->$fieldName, $pointer->_${fieldName}Length))"
 	}
 
 	char {
@@ -1651,13 +1664,22 @@ proc gen_field_names {} {
     emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
     emit ""
 
-    emit "// define default objects for varstring fields"
+    set defaultStringObjCreated 0
+
+    emit "// define default objects for varstring fields, if any"
     foreach myField $fieldList {
         catch {unset field}
 	array set field $fields($myField)
 
 	if {$field(type) == "varstring"} {
-	    emit "Tcl_Obj *${table}_${myField}DefaultStringObj;"
+	    if {$field(default) == ""} {
+	        if {!$defaultStringObjCreated} {
+		    set defaultStringObjCreated 1
+		    emit "Tcl_Obj *${table}_DefaultEmptyStringObj;"
+		}
+	    } else {
+		emit "Tcl_Obj *${table}_${myField}DefaultStringObj;"
+	    }
 	}
     }
     emit ""

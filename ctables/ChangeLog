@@ -40,3 +40,8 @@ $Id$
       increment its reference count at setup time, and when returning the 
       default value, simply return a pointer to that Tcl_Obj rather than
       creating a new string obj.
+
+    * Optimization for varstring defaults.  If the default is an empty
+      string, only generate one empty string obj default and use that
+      as the default for each varstring with an empty string, rather than 
+      creating an empty obj for each.
