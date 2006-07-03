@@ -29,4 +29,11 @@ $Id$
       that could trip up a database insert, CSV export, or something like
       that.)
 
+7/2/2006 karl
+    * Keep track of string lengths for varstring fields to prevent lots
+      of unnecessary counting and to lay the groundwork for character
+      quoting that we'll be implementing soon, with a tradeoff off somewhat 
+      larger row size as we're carrying string lengths along with pointers
+      to strings in each rows.
+
 

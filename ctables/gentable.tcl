@@ -142,6 +142,7 @@ set varstringSetSource {
 	string = Tcl_GetStringFromObj (obj, &length);
 	$pointer->$field = ckalloc (length + 1);
 	strncpy ($pointer->$field, string, length + 1);
+	$pointer->_${field}Length = length;
 	break;
       }
 }
@@ -763,6 +764,12 @@ proc deffield {name args} {
     variable fieldList
     variable nonBooleans
 
+    if {[string index $name 0] == "_"} {
+        error "field name \"$name\" cannot start with underscore"
+    }
+
+    # NB need to make sure string is a valid C name
+
     lappend args name $name
 
     set fields($name) $args
@@ -942,6 +949,7 @@ proc gen_defaults_subr {subr struct pointer} {
 	switch $field(type) {
 	    varstring {
 	        emit "        $baseCopy.$myfield = (char *) NULL;"
+		emit "        $baseCopy._${myfield}Length = 0;"
 	    }
 
 	    fixedstring {
@@ -1028,6 +1036,7 @@ proc gen_struct {} {
 	switch $field(type) {
 	    varstring {
 		putfield char "*$field(name)"
+		putfield int  "_$field(name)Length"
 	    }
 
 	    fixedstring {
@@ -1434,7 +1443,7 @@ proc gen_new_obj {type pointer fieldName} {
 	    } else {
 	        set nullBody "Tcl_NewStringObj (\"$field(default)\",[string length $field(default)])"
 	    }
-	    return "(($pointer->$fieldName == (char *) NULL) ? $nullBody : Tcl_NewStringObj ($pointer->$fieldName, -1))"
+	    return "(($pointer->$fieldName == (char *) NULL) ? $nullBody : Tcl_NewStringObj ($pointer->$fieldName, $pointer->_${fieldName}Length))"
 	}
 
 	char {

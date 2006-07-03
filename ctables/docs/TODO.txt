@@ -74,4 +74,9 @@ this stuff from C as well as having alternative ways to get stuff, like,
 for example, a routine that gets stuff in "array set" format and a routine
 that gets stuff for CSV output and stuff like that.
 
+When we have default string values, create a Tcl_Obj with that string value
+and increment the reference count once, then when feeding a default string
+value to something fetching it, instead of doing a Tcl_NewStringObj on the
+default string, simply give the pointer to the pre-set Tcl_Obj.
+
 
