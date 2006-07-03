@@ -59,4 +59,11 @@ $Id$
 
     * Tagged Revision 1.1 (rev1_1)
 
+    * When setting a string, compare that string to the default value and
+      if it is the same as the default value, store a null pointer rather
+      than allocating the string, copying it, and storing that pointer.
+      When fetching a string, as before, provide the default value if the
+      pointer within the row is null.
 
+    * Enforce that field names must start with a letter and can contain
+      only upper and lowercase letters, digits, and underscores.

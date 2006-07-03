@@ -49,8 +49,8 @@ create a direct interface to postgresql "copy in".  Make it optional.
 create a direct interface to reading and writing CSV or tab-separated or 
 whatever.
 
-make all the types able to return text, not just to generate tcl object's.
-from that, make a function that returns "CONST char *" for all the types.
+DONE make all the types able to return text, not just to generate tcl object's.
+     from that, make a function that returns "CONST char *" for all the types.
     NOTE - after looking at the Tcl core, how they do the Tcl_PrintDouble
     function is to actually hoke up a Tcl object and get Tcl to create
     a string representation in the object.  We can't do that unless we

@@ -6,6 +6,8 @@
 # $Id$
 #
 
+package provide ctable 1.1
+
 namespace eval ctable {
     variable table
     variable tables
@@ -130,6 +132,14 @@ set shortSetSource {
 #
 # strings are char *'s that we manage automagically.
 #
+# Get the string from the passed-in object.  If the length of the string
+# matches the length of the default string, see if the length of the
+# default string is zero or if obj's string matches the default string.
+# If so, set the char * field in the row to NULL.  Upon a fetch of the
+# field, we'll provide the default string.
+#
+# Otherwise allocate space for the new string value and copy it in.
+#
 set varstringSetSource {
       case $optname: {
 	char *string;
@@ -140,6 +150,13 @@ set varstringSetSource {
 	}
 
 	string = Tcl_GetStringFromObj (obj, &length);
+	if (length == $defaultLength) {
+	    if (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0)) {
+	        $pointer->$field = NULL;
+		$pointer->_${field}Length = 0;
+		break;
+	    }
+	}
 	$pointer->$field = ckalloc (length + 1);
 	strncpy ($pointer->$field, string, length + 1);
 	$pointer->_${field}Length = length;
@@ -799,11 +816,9 @@ proc deffield {name args} {
     variable fieldList
     variable nonBooleans
 
-    if {[string index $name 0] == "_"} {
-        error "field name \"$name\" cannot start with underscore"
+    if {![regexp {^[a-zA-Z][_a-zA-Z0-9]*$} $name]} {
+        error "field name \"$name\" must start with a letter and can only contain letters, numbers, and underscores"
     }
-
-    # NB need to make sure string is a valid C name
 
     lappend args name $name
 
@@ -813,12 +828,17 @@ proc deffield {name args} {
 }
 
 #
-# boolean - define a boolean field
+# boolean - define a boolean field -- same contents as deffield except it
+#  appends to the booleans list instead of the nonBooleans list NB kludge
 #
 proc boolean {name {default 0}} {
     variable booleans
     variable fields
     variable fieldList
+
+    if {![regexp {^[a-zA-Z][_a-zA-Z0-9]*$} $name]} {
+        error "field name \"$name\" must start with a letter and can only contain letters, numbers, and underscores"
+    }
 
     set fields($name) [list name $name type boolean default $default]
     lappend fieldList $name
@@ -1168,6 +1188,17 @@ proc emit_set_standard_field {field pointer setSourceVarName} {
     emit [subst -nobackslashes -nocommands [set $setSourceVarName]]
 }
 
+#
+# emit_set_varstring_field - emit code to set a varstring field
+#
+proc emit_set_varstring_field {table field pointer default defaultLength} {
+    variable varstringSetSource
+
+    set optname [field_to_enum $field]
+
+    emit [subst -nobackslashes -nocommands $varstringSetSource]
+}
+
 #           
 # emit_set_fixedstring_field - emit code to set a fixedstring field
 #
@@ -1225,7 +1256,7 @@ proc gen_sets {pointer} {
 	    }
 
 	    varstring {
-		emit_set_standard_field $myfield $pointer varstringSetSource
+		emit_set_varstring_field $table $myfield $pointer $field(default) [string length $field(default)]
 	    }
 
 	    boolean {
@@ -1554,6 +1585,12 @@ proc gen_new_obj {type pointer fieldName} {
 # gen_set_obj - given an object, a data type, pointer name and field name, 
 #  return the C code to set a Tcl object to contain that element from the
 #  pointer pointing to the named field.
+#
+# note: this is an inefficient way to get the value of varstrings,
+# fixedstrings and chars, and can't even do tclobjs.  
+#
+# do what gen_get_string_cases does, or call its parent anyway *_get_string,
+# to get string representations of those efficiently.
 #
 proc gen_set_obj {obj type pointer fieldName} {
     variable fields

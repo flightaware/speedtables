@@ -23,7 +23,6 @@ CTable fa_position {
 }
 
 CTable fa_trackstream {
-    #tailq_head positions positionhead fa_position
     boolean inAir
     boolean debug
     boolean blocked
