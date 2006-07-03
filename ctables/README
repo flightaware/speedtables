@@ -176,6 +176,20 @@ a Tcl object representing the pointer and field:
             return "Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
         }
 
+8b. Add an entry to the switch statement in the gen_set_obj proc that sets an
+existing Tcl object to contain the pointer and field.
+
+        inet {
+            return "Tcl_SetStringObj ($obj, inet_ntoa ($pointer->$fieldName), -1)"
+        }
+
+NOTE that if your object is very text-oriented or Tcl_Obj-oriented you may
+need to do something special in gen_gets_string_cases to have it be
+efficient.  (For varstring fixedstring, and char, for example, we just return 
+a pointer directly to the string inside the row itself and set the length 
+from the length field that we store (varstring) or the known length field
+(fixedstring and char) rather than setting a Tcl object to the string value
+and then having the next step get the string rep from that.)
 
 9. Create a CTable that incorporates your type.  Try to build it.  If it
 doesn't compile cleanly, debug it.

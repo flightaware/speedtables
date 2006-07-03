@@ -686,6 +686,19 @@ ${table}_get (Tcl_Interp *interp, struct $table *$pointer, int field) $leftCurly
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
+set fieldGetStringSource {
+CONST char *
+${table}_get_string (struct $table *$pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
+    int length;
+
+    if (lengthPtr == (int *) NULL) {
+        lengthPtr = &length;
+    }
+
+    switch ((enum ${table}_fields) field) $leftCurly
+}
+
+
 #
 # cmdBodyGetSource - chunk of the code that we run subst over to generate
 #  part of the body of the code that handles the "get" method
@@ -816,6 +829,9 @@ proc boolean {name {default 0}} {
 # fixedstring - define a fixed-length string field
 #
 proc fixedstring {name length {default ""}} {
+    if {[string length $default] != $length} {
+        error "fixedstring \"$name\" default string \"$default\" must match length \"$length\""
+    }
     deffield $name type fixedstring length $length default $default needsQuoting 1
 }
 
@@ -1329,13 +1345,12 @@ proc gen_get_function {table pointer} {
     variable fieldObjGetSource
     variable fieldAndNameObjGetSource
     variable fieldGetSource
+    variable fieldGetStringSource
     variable leftCurly
     variable rightCurly
 
     emit [subst -nobackslashes -nocommands $fieldGetSource]
-
-    gen_gets $pointer
-
+    gen_gets_cases $pointer
     emit "    $rightCurly"
     emit "    return TCL_OK;"
     emit "$rightCurly"
@@ -1343,6 +1358,13 @@ proc gen_get_function {table pointer} {
     emit [subst -nobackslashes -nocommands $fieldObjGetSource]
 
     emit [subst -nobackslashes -nocommands $fieldAndNameObjGetSource]
+
+    emit [subst -nobackslashes -nocommands $fieldGetStringSource]
+    gen_gets_string_cases $pointer
+    emit "    $rightCurly"
+    emit "    return TCL_OK;"
+    emit "$rightCurly"
+
 
 }
 
@@ -1520,6 +1542,76 @@ proc gen_new_obj {type pointer fieldName} {
 
 	tclobj {
 	    return "(($pointer->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : $pointer->$fieldName)"
+	}
+
+	default {
+	    error "no code to gen obj for type $type"
+	}
+    }
+}
+
+#
+# gen_set_obj - given an object, a data type, pointer name and field name, 
+#  return the C code to set a Tcl object to contain that element from the
+#  pointer pointing to the named field.
+#
+proc gen_set_obj {obj type pointer fieldName} {
+    variable fields
+    variable table
+
+    switch $type {
+	short {
+	    return "Tcl_SetIntObj ($obj, $pointer->$fieldName)"
+	}
+
+	int {
+	    return "Tcl_SetIntObj ($obj, $pointer->$fieldName)"
+	}
+
+	long {
+	    return "Tcl_SetLongObj ($obj, $pointer->$fieldName)"
+	}
+
+	wide {
+	    return "Tcl_SetWideIntObj ($obj, $pointer->$fieldName)"
+	}
+
+	double {
+	    return "Tcl_SetDoubleObj ($obj, $pointer->$fieldName)"
+	}
+
+	float {
+	    return "Tcl_SetDoubleObj ($obj, $pointer->$fieldName)"
+	}
+
+	boolean {
+	    return "Tcl_SetBooleanObj ($obj, $pointer->$fieldName)"
+	}
+
+	varstring {
+	    return "Tcl_SetStringObj ($obj, $pointer->$fieldName, $pointer->_${fieldName}Length)"
+	}
+
+	char {
+	    return "Tcl_SetStringObj ($obj, &$pointer->$fieldName, 1)"
+	}
+
+	fixedstring {
+	    catch {unset field}
+	    array set field $fields($fieldName)
+	    return "Tcl_SetStringObj ($obj, $pointer->$fieldName, $field(length))"
+	}
+
+	inet {
+	    return "Tcl_SetStringObj ($obj, inet_ntoa ($pointer->$fieldName), -1)"
+	}
+
+	mac {
+	    return "Tcl_SetStringObj ($obj, ether_ntoa (&$pointer->$fieldName), -1)"
+	}
+
+	tclobj {
+	    error "can't set a string to a tclobj (field \"$fieldName\") -- you have to handle this outside of gen_set_obj"
 	}
 
 	default {
@@ -1708,10 +1800,10 @@ proc gen_field_names {} {
 }
 
 #
-# gen_gets - generate code to fetch fields of a row, appending each requested
-#  field as a Tcl object to Tcl's result object
+# gen_gets_cases - generate case statements for each field, each case fetches
+#  field from row and returns a new Tcl_Obj set with that field's value
 #
-proc gen_gets {pointer} {
+proc gen_gets_cases {pointer} {
     variable table
     variable booleans
     variable fields
@@ -1725,6 +1817,66 @@ proc gen_gets {pointer} {
 
 	emit "      case [field_to_enum $myField]:"
 	emit "        return [gen_new_obj $field(type) $pointer $myField];"
+	emit ""
+    }
+}
+
+#
+# gen_gets_string_cases - generate case statements for each field, each case
+#  generates a return of a char * to a string representing that field's
+#  value and sets a passed-in int * to the length returned.
+#
+proc gen_gets_string_cases {pointer} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    foreach myField $fieldList {
+        catch {unset field}
+	array set field $fields($myField)
+
+	emit "      case [field_to_enum $myField]:"
+
+	switch $field(type) {
+	  "varstring" {
+	    emit "        if ($pointer->$myField == NULL) $leftCurly"
+
+	    if {$field(default) == ""} {
+	        set source ${table}_DefaultEmptyStringObj
+	    } else {
+	        set source ${table}_${myField}DefaultStringObj
+	    }
+	    emit "            return Tcl_GetStringFromObj ($source, lengthPtr);"
+	    emit "        $rightCurly"
+	    emit "        *lengthPtr = ${pointer}->_${myField}Length;"
+	    emit "        return $pointer->$myField;"
+	  }
+
+	  "fixedstring" {
+	      emit "        *lengthPtr = $field(length);"
+	      emit "        return $pointer->$myField;"
+	  }
+
+	  "char" {
+	      emit "        *lengthPtr = 1;"
+	      emit "        return &$pointer->$myField;"
+	  }
+
+	  "tclobj" {
+	    emit "        if ($pointer->$myField == NULL) $leftCurly"
+	    emit "            return Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, lengthPtr);"
+	    emit "        $rightCurly"
+	    emit "        return Tcl_GetStringFromObj ($pointer->$myField, lengthPtr);"
+	  }
+
+	  default {
+	      emit "        [gen_set_obj utilityObj $field(type) $pointer $myField];"
+	      emit "        return Tcl_GetStringFromObj (utilityObj, lengthPtr);"
+	  }
+	}
 	emit ""
     }
 }

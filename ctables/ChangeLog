@@ -49,3 +49,10 @@ $Id$
     * *_get C function now returns a (Tcl_Obj *) to an object representing
       the thing you asked for, rather than appending to a list on the
       Tcl result.  This makes it much more useful from C.
+
+    * Now generating *_get_string function that takes a pointer to a row,
+      a field in the row, a pointer to a length integer and a pointer to
+      a Tcl_Obj that we use for utility purposes and it generates or
+      otherwise finds the string and returns a pointer to the string,
+      setting the length pointer to the length of the string if the length
+      pointer isn't NULL.
