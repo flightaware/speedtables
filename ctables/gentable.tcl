@@ -625,24 +625,41 @@ struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
     return (struct $table *) Tcl_GetHashValue (hashEntry);
 }
 
-int
+Tcl_Obj *
 ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
 {
     int fieldIndex;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-        return TCL_ERROR;
+        return (Tcl_Obj *)NULL;
     }
 
     return ${table}_get (interp, $pointer, fieldIndex);
+}
+
+int
+${table}_lappend_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
+{
+    Tcl_Obj *obj = ${table}_get_fieldobj (interp, $pointer, fieldObj);
+
+    if (obj == NULL) {
+        return TCL_ERROR;
+    }
+
+    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), obj) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
 }
 }
 
 set fieldAndNameObjGetSource {
 int
-${table}_get_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
+${table}_lappend_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
 {
-    int fieldIndex;
+    int        fieldIndex;
+    Tcl_Obj   *obj;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
         return TCL_ERROR;
@@ -652,13 +669,18 @@ ${table}_get_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl
         return TCL_ERROR;
     }
 
-    return ${table}_get (interp, $pointer, fieldIndex);
+    obj = ${table}_get (interp, $pointer, fieldIndex);
+    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), obj) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
 }
 
 }
 
 set fieldGetSource {
-int
+Tcl_Obj *
 ${table}_get (Tcl_Interp *interp, struct $table *$pointer, int field) $leftCurly
 
     switch ((enum ${table}_fields) field) $leftCurly
@@ -687,7 +709,7 @@ set cmdBodyGetSource {
 	}
 
 	for (i = 3; i < objc; i++) {
-	    if (${table}_get_fieldobj (interp, $pointer, objv[i]) == TCL_ERROR) {
+	    if (${table}_lappend_fieldobj (interp, $pointer, objv[i]) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 	}
@@ -718,7 +740,7 @@ set cmdBodyArrayGetSource {
 	}
 
 	for (i = 3; i < objc; i++) {
-	    if (${table}_get_field_and_nameobj (interp, $pointer, objv[i]) == TCL_ERROR) {
+	    if (${table}_lappend_field_and_nameobj (interp, $pointer, objv[i]) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 	}
@@ -1701,12 +1723,8 @@ proc gen_gets {pointer} {
         catch {unset field}
 	array set field $fields($myField)
 
-	emit "              case [field_to_enum $myField]: $leftCurly"
-	emit "                if ([append_list_element $field(type) $pointer $myField] == TCL_ERROR) $leftCurly"
-	emit "                    return TCL_ERROR;"
-	emit "                $rightCurly"
-	emit "                break;"
-	emit "              $rightCurly"
+	emit "      case [field_to_enum $myField]:"
+	emit "        return [gen_new_obj $field(type) $pointer $myField];"
 	emit ""
     }
 }

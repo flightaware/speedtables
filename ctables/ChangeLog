@@ -45,3 +45,7 @@ $Id$
       string, only generate one empty string obj default and use that
       as the default for each varstring with an empty string, rather than 
       creating an empty obj for each.
+
+    * *_get C function now returns a (Tcl_Obj *) to an object representing
+      the thing you asked for, rather than appending to a list on the
+      Tcl result.  This makes it much more useful from C.
