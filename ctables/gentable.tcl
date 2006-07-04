@@ -100,12 +100,18 @@ set boolSetSource {
       case $optname: {
         int boolean;
 
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
+	}
+
         if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
             Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
             return TCL_ERROR;
         }
 
         $pointer->$field = boolean;
+	$pointer->_${field}IsNull = 0;
         break;
       }
 }
@@ -117,10 +123,18 @@ set boolSetSource {
 #
 set numberSetSource {
       case $optname: {
+
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
+	}
+
 	if ($getObjCmd (interp, obj, &$pointer->$field) == TCL_ERROR) {
 	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
 	    return TCL_ERROR;
 	}
+
+	$pointer->_${field}IsNull = 0;
 	break;
       }
 }
@@ -132,12 +146,18 @@ set floatSetSource {
       case $optname: {
 	double value;
 
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
+	}
+
 	if (Tcl_GetDoubleFromObj (interp, obj, &value) == TCL_ERROR) {
 	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
 	$pointer->$field = (float)value;
+	$pointer->_${field}IsNull = 0;
 	break;
       }
 }
@@ -149,12 +169,18 @@ set shortSetSource {
       case $optname: {
 	int value;
 
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
+	}
+
 	if (Tcl_GetIntFromObj (interp, obj, &value) == TCL_ERROR) {
 	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
 	$pointer->$field = (short)value;
+	$pointer->_${field}IsNull = 0;
 	break;
       }
 }
@@ -179,6 +205,12 @@ set varstringSetSource {
 
 	if ($pointer->$field != (char *) NULL) {
 	    ckfree ($pointer->$field);
+	    $pointer->$field = NULL;
+	}
+
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
 	}
 
 	string = Tcl_GetStringFromObj (obj, &length);
@@ -203,8 +235,14 @@ set charSetSource {
       case $optname: {
 	char *string;
 
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
+	}
+
 	string = Tcl_GetString (obj);
 	$pointer->$field = string[0];
+	$pointer->_${field}IsNull = 0;
 	break;
       }
 }
@@ -217,8 +255,14 @@ set fixedstringSetSource {
       case $optname: {
 	char *string;
 
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
+	}
+
 	string = Tcl_GetString (obj);
 	strncpy ($pointer->$field, string, $length);
+	$pointer->_${field}IsNull = 0;
 	break;
       }
 }
@@ -229,11 +273,18 @@ set fixedstringSetSource {
 #
 set inetSetSource {
       case $optname: {
+
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
+	}
+
 	if (!inet_aton (Tcl_GetString (obj), &$pointer->$field)) {
 	    Tcl_AppendResult (interp, "expected IP address but got \"", Tcl_GetString (obj), "\" parsing field \"$field\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
+	$pointer->_${field}IsNull = 0;
 	break;
       }
 }
@@ -246,12 +297,19 @@ set macSetSource {
       case $optname: {
         struct ether_addr *mac;
 
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
+	}
+
 	mac = ether_aton (Tcl_GetString (obj));
 	if (mac == (struct ether_addr *) NULL) {
 	    Tcl_AppendResult (interp, "expected MAC address but got \"", Tcl_GetString (obj), "\" parsing field \"$field\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
+
 	$pointer->$field = *mac;
+	$pointer->_${field}IsNull = 0;
 
 	break;
       }
@@ -264,12 +322,20 @@ set macSetSource {
 #
 set tclobjSetSource {
       case $optname: {
+
 	if ($pointer->$field != (Tcl_Obj *) NULL) {
 	    Tcl_DecrRefCount ($pointer->$field);
+	    $pointer->$field = NULL;
+	}
+
+	if (${table}_obj_is_null (obj)) {
+	    $pointer->_${field}IsNull = 1;
+	    break;
 	}
 
 	$pointer->$field = obj;
 	Tcl_IncrRefCount (obj);
+	$pointer->_${field}IsNull = 0;
 	break;
       }
 }
@@ -1068,6 +1134,10 @@ proc gen_defaults_subr {subr struct pointer} {
 	}
     }
 
+    foreach myfield $fieldList {
+        emit "        $baseCopy._${myfield}IsNull = 1;"
+    }
+
     emit "    $rightCurly"
     emit ""
     emit "    *$pointer = $baseCopy;"
@@ -1151,8 +1221,12 @@ proc gen_struct {} {
 	}
     }
 
-    foreach name $booleans {
-	putfield "unsigned int" "$name:1"
+    foreach myfield $booleans {
+	putfield "unsigned int" "$myfield:1"
+    }
+
+    foreach myfield $fieldList {
+        putfield "unsigned int" _${myfield}IsNull:1
     }
 
     emit "};"
@@ -1164,6 +1238,7 @@ proc gen_struct {} {
 #
 proc emit_set_num_field {field pointer type} {
     variable numberSetSource
+    variable table
 
     set typeText $type
 
@@ -1214,6 +1289,7 @@ proc emit_set_num_field {field pointer type} {
 #
 proc emit_set_standard_field {field pointer setSourceVarName} {
     variable $setSourceVarName
+    variable table
 
     set optname [field_to_enum $field]
 
@@ -1238,6 +1314,7 @@ proc emit_set_varstring_field {table field pointer default defaultLength} {
 #
 proc emit_set_fixedstring_field {field pointer length} {
     variable fixedstringSetSource
+    variable table
       
     set optname [field_to_enum $field]
 
@@ -1547,31 +1624,31 @@ proc gen_new_obj {type pointer fieldName} {
 
     switch $type {
 	short {
-	    return "Tcl_NewIntObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewIntObj ($pointer->$fieldName)"
 	}
 
 	int {
-	    return "Tcl_NewIntObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewIntObj ($pointer->$fieldName)"
 	}
 
 	long {
-	    return "Tcl_NewLongObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewLongObj ($pointer->$fieldName)"
 	}
 
 	wide {
-	    return "Tcl_NewWideIntObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewWideIntObj ($pointer->$fieldName)"
 	}
 
 	double {
-	    return "Tcl_NewDoubleObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewDoubleObj ($pointer->$fieldName)"
 	}
 
 	float {
-	    return "Tcl_NewDoubleObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewDoubleObj ($pointer->$fieldName)"
 	}
 
 	boolean {
-	    return "Tcl_NewBooleanObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewBooleanObj ($pointer->$fieldName)"
 	}
 
 	varstring {
@@ -1588,21 +1665,21 @@ proc gen_new_obj {type pointer fieldName} {
 	}
 
 	char {
-	    return "Tcl_NewStringObj (&$pointer->$fieldName, 1)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewStringObj (&$pointer->$fieldName, 1)"
 	}
 
 	fixedstring {
 	    catch {unset field}
 	    array set field $fields($fieldName)
-	    return "Tcl_NewStringObj ($pointer->$fieldName, $field(length))"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewStringObj ($pointer->$fieldName, $field(length))"
 	}
 
 	inet {
-	    return "Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
 	}
 
 	mac {
-	    return "Tcl_NewStringObj (ether_ntoa (&$pointer->$fieldName), -1)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewStringObj (ether_ntoa (&$pointer->$fieldName), -1)"
 	}
 
 	tclobj {
