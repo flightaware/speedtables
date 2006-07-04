@@ -75,3 +75,12 @@ $Id$
     * Fix bug in array_get where no keys are specified.  It was
       returning exactly half as many fields as it should have. Oops.
 
+    * Change the syntax of the CExtension command to require a version
+      number and take the code as the third argument.  This means the
+      enter extension code body is specified on the CExtension command
+      line via "{...}", which allowed EndExtension to move into the
+      ctable namespace and be invoked automatically by CExtension at
+      the end of code generation.  This will allow us to scarf off a
+      complete copy of the code being fed to CExtension, which will
+      let us see if it's the same as we got last time and keep us from
+      doing a generate/compile/link phase if nothing's changed.

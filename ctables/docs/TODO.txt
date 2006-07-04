@@ -96,4 +96,7 @@ DONE factor the get value stuff a little better.  right now the only way you
 
 Make it work with UTF8 chars.
 
+Scarf off the ctable definition and if the one we're fed next compares
+identically, avoid generating, compiling and linking it.
+
 

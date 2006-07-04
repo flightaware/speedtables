@@ -4,7 +4,7 @@
 # $Id$
 #
 
-CExtension urk
+CExtension urk 1.0 {
 
 CTable fa_position {
     long timestamp
@@ -47,4 +47,4 @@ CTable fa_trackstream {
     short highLongitude
 }
 
-EndExtension
+}

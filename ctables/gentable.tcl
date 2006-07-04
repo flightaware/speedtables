@@ -2022,12 +2022,33 @@ proc compile {fileFragName version} {
     cd ..
 }
 
+proc EndExtension {} {
+    variable tables
+    variable extension
+    variable extensionVersion
+    variable rightCurly
+    variable ofp
+
+    put_init_extension_source [string totitle $extension] $extensionVersion
+
+    foreach name $tables {
+	put_init_command_source $name
+    }
+
+    emit "    return TCL_OK;"
+    emit $rightCurly
+
+    close $ofp
+
+    compile $extension $::ctable::extensionVersion
+}
+
 }
 
 #
 # CExtension - define a C extension
 #
-proc CExtension {name {version 1.0}} {
+proc CExtension {name version code} {
     file mkdir build
     set ::ctable::ofp [open build/$name.c w]
 
@@ -2037,21 +2058,10 @@ proc CExtension {name {version 1.0}} {
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""
-}
 
-proc EndExtension {} {
-    ::ctable::put_init_extension_source [string totitle $::ctable::extension] $::ctable::extensionVersion
+    namespace eval ::ctable $code
 
-    foreach name $::ctable::tables {
-	::ctable::put_init_command_source $name
-    }
-
-    ::ctable::emit "    return TCL_OK;"
-    ::ctable::emit $::ctable::rightCurly
-
-    close $::ctable::ofp
-
-    ::ctable::compile $::ctable::extension $::ctable::extensionVersion
+    ::ctable::EndExtension
 }
 
 #
