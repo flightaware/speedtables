@@ -2108,6 +2108,18 @@ proc save_extension_code {name version code} {
     close $fp
 }
 
+#
+# install_queue_h - install queue.h in the target dir if something like it
+#  isn't there already
+#
+proc install_queue_h {targetDir} {
+    variable srcDir
+
+    if {![file readable $targetDir/queue.h]} {
+        file copy $srcDir/queue.h $targetDir
+    }
+}
+
 }
 
 #
@@ -2121,6 +2133,8 @@ proc CExtension {name version code} {
     }
 
     file mkdir $::ctable::buildPath
+
+    ::ctable::install_queue_h $::ctable::buildPath
 
     if {[::ctable::extension_already_built $name $version $code]} {
         #puts stdout "extension $name $version unchanged"

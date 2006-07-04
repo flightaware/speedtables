@@ -102,3 +102,7 @@ $Id$
     * Add the build path to the auto_path if it's not already there.
       Do a pkg_mkIndex on the build directory if we generated something.
       (This makes "package require" work for the extension we created.)
+
+    * Add a Makefile.  It's currently lame.  Add automation to copy
+      qhehe.h to the target directory if there isn't something there matching.
+
