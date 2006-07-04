@@ -25,6 +25,8 @@ namespace eval ctable {
 
     set tables ""
 
+    set cvsID {$Id$}
+
 set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
 
 set fp [open template.c-subst]
