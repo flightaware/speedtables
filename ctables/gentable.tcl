@@ -2056,13 +2056,13 @@ proc extension_already_built {name version code} {
 
     # if open of the stash file fails, it ain't built
     if {[catch {open $ctFile} fp] == 1} {
-        puts ".ct file not there, build required"
+        #puts ".ct file not there, build required"
         return 0
     }
 
     # read the first line for the prior CVS ID, if failed, report not built
     if {[gets $fp priorCvsID] < 0} {
-        puts "first line read of .ct file failed, build required"
+        #puts "first line read of .ct file failed, build required"
         close $fp
 	return 0
     }
@@ -2070,7 +2070,7 @@ proc extension_already_built {name version code} {
     # see if this file's cvs id matches the cvs id we saved in the .ct file
     # if not, rebuilt not built
     if {$cvsID != $priorCvsID} {
-        puts "prior cvs id does not match, build required"
+        #puts "prior cvs id does not match, build required"
 	return 0
     }
 
@@ -2079,11 +2079,11 @@ proc extension_already_built {name version code} {
 
     # if the prior code and current code aren't identical, report not built
     if {$priorCode != $code} {
-        puts "extension code changed, build required"
+        #puts "extension code changed, build required"
 	return 0
     }
 
-    puts "prior code and generator cvs match, build not required"
+    #puts "prior code and generator cvs match, build not required"
     return 1
 }
 
