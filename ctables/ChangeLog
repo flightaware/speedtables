@@ -98,3 +98,7 @@ $Id$
       do the build.  This way, if there's any change in the generator
       software, a build will occur even if the CExtension code hasn't
       changed.
+
+    * Add the build path to the auto_path if it's not already there.
+      Do a pkg_mkIndex on the build directory if we generated something.
+      (This makes "package require" work for the extension we created.)

@@ -41,8 +41,6 @@ set fp [open exten-frag.c-subst]
 set extensionFragmentSource [read $fp]
 close $fp
 
-set buildPath build
-
 #
 # emit - emit a string to the file being generated
 #
@@ -2021,6 +2019,8 @@ proc compile {fileFragName version} {
 	    error "unknown OS $tcl_platform(os)"
 	}
     }
+
+    pkg_mkIndex $buildPath
 }
 
 proc EndExtension {} {
@@ -2114,6 +2114,10 @@ proc save_extension_code {name version code} {
 proc CExtension {name version code} {
     global tcl_platform
 
+    if {![info exists ::ctable::buildPath]} {
+        CTableBuildPath build
+    }
+
     file mkdir $::ctable::buildPath
 
     if {[::ctable::extension_already_built $name $version $code]} {
@@ -2171,6 +2175,12 @@ proc CTable {name data} {
 # CTableBuildPath - set the path for where we're building CTable stuff
 #
 proc CTableBuildPath {dir} {
+    global auto_path
+
     set ::ctable::buildPath $dir
+
+    if {[lsearch -exact $auto_path $dir] < 0} {
+        lappend auto_path $dir
+    }
 }
 

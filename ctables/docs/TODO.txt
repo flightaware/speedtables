@@ -99,6 +99,10 @@ Make it work with UTF8 chars.
 DONE Scarf off the ctable definition and if the one we're fed next compares
      identically, avoid generating, compiling and linking it.
 
+DONE keep track of the version info on the generator and force a rebuild if
+     it's changed.  this way if the generator is updated we rebuild even if
+     code body is identical.
+
 Expanding on the previous thing, also make sure the C source file and the
 shared library is newer than the scarfed file and that the CVS version
 of gentable that the stuff was built with hasn't altered.  This way if
@@ -107,4 +111,7 @@ got updated, that we still regenerate the shared library.
 
 Catch tracebacks and don't emit the entire traceback unless asked to or
 something.
+
+DONE Add the build path to the auto path if it isn't already there.
+
 
