@@ -25,7 +25,7 @@ namespace eval ctable {
 
     set tables ""
 
-    set cvsID {$Id$}
+    set cvsID {CTable generator ID: $Id$}
 
 set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
 
@@ -2050,23 +2050,41 @@ proc EndExtension {} {
 #
 proc extension_already_built {name version code} {
     variable buildPath
+    variable cvsID
 
     set ctFile $buildPath/$name-$version.ct
 
     # if open of the stash file fails, it ain't built
     if {[catch {open $ctFile} fp] == 1} {
+        puts ".ct file not there, build required"
         return 0
+    }
+
+    # read the first line for the prior CVS ID, if failed, report not built
+    if {[gets $fp priorCvsID] < 0} {
+        puts "first line read of .ct file failed, build required"
+        close $fp
+	return 0
+    }
+
+    # see if this file's cvs id matches the cvs id we saved in the .ct file
+    # if not, rebuilt not built
+    if {$cvsID != $priorCvsID} {
+        puts "prior cvs id does not match, build required"
+	return 0
     }
 
     set priorCode [read -nonewline $fp]
     close $fp
 
-    if {$priorCode == $code} {
-        puts "prior code matches"
-	return 1
+    # if the prior code and current code aren't identical, report not built
+    if {$priorCode != $code} {
+        puts "extension code changed, build required"
+	return 0
     }
 
-    return 0
+    puts "prior code and generator cvs match, build not required"
+    return 1
 }
 
 #
@@ -2076,10 +2094,14 @@ proc extension_already_built {name version code} {
 #
 proc save_extension_code {name version code} {
     variable buildPath
+    variable cvsID
+    variable leftCurly
+    variable rightCurly
 
     set ctFile $buildPath/$name-$version.ct
 
     set fp [open $ctFile w]
+    puts $fp $cvsID
     puts $fp $code
     close $fp
 }
@@ -2095,7 +2117,7 @@ proc CExtension {name version code} {
     file mkdir $::ctable::buildPath
 
     if {[::ctable::extension_already_built $name $version $code]} {
-        puts stdout "extension $name $version unchanged"
+        #puts stdout "extension $name $version unchanged"
 	return
     }
 
