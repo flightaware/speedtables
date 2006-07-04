@@ -84,3 +84,7 @@ $Id$
       complete copy of the code being fed to CExtension, which will
       let us see if it's the same as we got last time and keep us from
       doing a generate/compile/link phase if nothing's changed.
+
+    * Create a CTableBuildPath command that sets where we will build.
+      Include the version number in the filename of the generated C
+      source and the object file that we compile to.

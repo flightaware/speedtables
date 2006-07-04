@@ -39,6 +39,8 @@ set fp [open exten-frag.c-subst]
 set extensionFragmentSource [read $fp]
 close $fp
 
+set buildPath build
+
 #
 # emit - emit a string to the file being generated
 #
@@ -1972,10 +1974,12 @@ proc gen_preamble {} {
 #
 proc compile {fileFragName version} {
     global tcl_platform
-
-    cd build
+    variable buildPath
 
     set debug 0
+
+    set sourceFile $buildPath/$fileFragName-$version.c
+    set objFile $buildPath/$fileFragName-$version.o
 
     switch $tcl_platform(os) {
 	"FreeBSD" {
@@ -1989,9 +1993,9 @@ proc compile {fileFragName version} {
 		set lib "-ltcl84"
 	    }
 
-	    exec gcc -pipe $optflag -fPIC -I/usr/local/include/tcl8.4 -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
+	    exec gcc -pipe $optflag -fPIC -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -c $sourceFile -o $objFile
 
-	    exec ld -Bshareable $optflag -x -o lib${fileFragName}.so $fileFragName.o -L/usr/local/lib $stub
+	    exec ld -Bshareable $optflag -x -o $buildPath/lib${fileFragName}.so $objFile -L/usr/local/lib $stub
 	}
 
 	"Darwin" {
@@ -2005,21 +2009,15 @@ proc compile {fileFragName version} {
 		set lib "-ltcl8.4"
 	    }
 
-	    exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -c $fileFragName.c -o $fileFragName.o
+	    exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$buildPath -c $sourceFile -o $objFile
 
-	    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/sc/lib $stub $lib
+	    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub $lib
 	}
 
 	default {
 	    error "unknown OS $tcl_platform(os)"
 	}
     }
-
-
-    #exec gcc -pipe $cflags -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o ${fileFragName}${version}.dylib ${fileFragName}.o -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 -ltclstub8.4 -ltcl
-
-
-    cd ..
 }
 
 proc EndExtension {} {
@@ -2049,8 +2047,8 @@ proc EndExtension {} {
 # CExtension - define a C extension
 #
 proc CExtension {name version code} {
-    file mkdir build
-    set ::ctable::ofp [open build/$name.c w]
+    file mkdir $::ctable::buildPath
+    set ::ctable::ofp [open $::ctable::buildPath/$name-$version.c w]
 
     ::ctable::gen_preamble
     ::ctable::gen_ctable_type_stuff
@@ -2092,5 +2090,12 @@ proc CTable {name data} {
 
     ::ctable::put_metatable_source $name
 
+}
+
+#
+# CTableBuildPath - set the path for where we're building CTable stuff
+#
+proc CTableBuildPath {dir} {
+    set ::ctable::buildPath $dir
 }
 
