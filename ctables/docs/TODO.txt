@@ -96,7 +96,12 @@ DONE factor the get value stuff a little better.  right now the only way you
 
 Make it work with UTF8 chars.
 
-Scarf off the ctable definition and if the one we're fed next compares
-identically, avoid generating, compiling and linking it.
+DONE Scarf off the ctable definition and if the one we're fed next compares
+     identically, avoid generating, compiling and linking it.
 
+Expanding on the previous thing, also make sure the C source file and the
+shared library is newer than the scarfed file and that the CVS version
+of gentable that the stuff was built with hasn't altered.  This way if
+the build previously failed for some reason or the version of gentable
+got updated, that we still regenerate the shared library.
 

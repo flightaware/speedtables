@@ -88,3 +88,6 @@ $Id$
     * Create a CTableBuildPath command that sets where we will build.
       Include the version number in the filename of the generated C
       source and the object file that we compile to.
+
+    * Scarf off the CExtension source code and compare it to what we're
+      being asked to build now.  If they're the same, don't bother.

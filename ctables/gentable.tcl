@@ -1978,8 +1978,9 @@ proc compile {fileFragName version} {
 
     set debug 0
 
-    set sourceFile $buildPath/$fileFragName-$version.c
-    set objFile $buildPath/$fileFragName-$version.o
+    set buildFragName $buildPath/$fileFragName-$version
+    set sourceFile $buildFragName.c
+    set objFile $buildFragName.o
 
     switch $tcl_platform(os) {
 	"FreeBSD" {
@@ -2041,13 +2042,61 @@ proc EndExtension {} {
     compile $extension $::ctable::extensionVersion
 }
 
+#
+# extension_already_built - see if the extension already exists unchanged
+#  from what's being asked for
+#
+proc extension_already_built {name version code} {
+    variable buildPath
+
+    set ctFile $buildPath/$name-$version.ct
+
+    # if open of the stash file fails, it ain't built
+    if {[catch {open $ctFile} fp] == 1} {
+        return 0
+    }
+
+    set priorCode [read -nonewline $fp]
+    close $fp
+
+    if {$priorCode == $code} {
+        puts "prior code matches"
+	return 1
+    }
+
+    return 0
+}
+
+#
+# save_extension_code - after a successful build, cache the extension
+#  definition so extension_already_built can see if it's necessary to
+#  generate, compile and link the shared library next time we're run
+#
+proc save_extension_code {name version code} {
+    variable buildPath
+
+    set ctFile $buildPath/$name-$version.ct
+
+    set fp [open $ctFile w]
+    puts $fp $code
+    close $fp
+}
+
 }
 
 #
 # CExtension - define a C extension
 #
 proc CExtension {name version code} {
+    global tcl_platform
+
     file mkdir $::ctable::buildPath
+
+    if {[::ctable::extension_already_built $name $version $code]} {
+        puts stdout "extension $name $version unchanged"
+	return
+    }
+
     set ::ctable::ofp [open $::ctable::buildPath/$name-$version.c w]
 
     ::ctable::gen_preamble
@@ -2060,6 +2109,8 @@ proc CExtension {name version code} {
     namespace eval ::ctable $code
 
     ::ctable::EndExtension
+
+    ::ctable::save_extension_code $name $version $code
 }
 
 #
