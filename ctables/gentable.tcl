@@ -6,8 +6,6 @@
 # $Id$
 #
 
-package provide ctable 1.1
-
 namespace eval ctable {
     variable table
     variable tables
@@ -29,15 +27,19 @@ namespace eval ctable {
 
 set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
 
-set fp [open template.c-subst]
+if {![info exists srcDir]} {
+    set srcDir .
+}
+
+set fp [open $srcDir/template.c-subst]
 set metaTableSource [read $fp]
 close $fp
 
-set fp [open init-exten.c-subst]
+set fp [open $srcDir/init-exten.c-subst]
 set initExtensionSource [read $fp]
 close $fp
 
-set fp [open exten-frag.c-subst]
+set fp [open $srcDir/exten-frag.c-subst]
 set extensionFragmentSource [read $fp]
 close $fp
 
@@ -2183,4 +2185,6 @@ proc CTableBuildPath {dir} {
         lappend auto_path $dir
     }
 }
+
+package provide ctable 1.1
 
