@@ -125,4 +125,9 @@ Have a way to find out if a field is null out-of-band, that is, some kind of
 method called is_null or the like that will tell if you if a field or fields
 is null.
 
+Create something like array_get_nonnull or a switch.
+
+Gotta make varstrings be able to be defined without defaults and still
+work properly with the whole null thing.
+
 

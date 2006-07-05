@@ -176,8 +176,8 @@ a Tcl object representing the pointer and field:
             return "Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
         }
 
-8b. Add an entry to the switch statement in the gen_set_obj proc that sets an
-existing Tcl object to contain the pointer and field.
+8b. Add an entry to the switch statement in the gen_get_set_obj proc that 
+sets an existing Tcl object to contain the pointer and field.
 
         inet {
             return "Tcl_SetStringObj ($obj, inet_ntoa ($pointer->$fieldName), -1)"

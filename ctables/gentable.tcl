@@ -1785,7 +1785,7 @@ proc gen_new_obj {type pointer fieldName} {
 }
 
 #
-# gen_set_obj - given an object, a data type, pointer name and field name, 
+# gen_get_set_obj - given an object, a data type, pointer name and field name, 
 #  return the C code to set a Tcl object to contain that element from the
 #  pointer pointing to the named field.
 #
@@ -1795,7 +1795,7 @@ proc gen_new_obj {type pointer fieldName} {
 # do what gen_get_string_cases does, or call its parent anyway *_get_string,
 # to get string representations of those efficiently.
 #
-proc gen_set_obj {obj type pointer fieldName} {
+proc gen_get_set_obj {obj type pointer fieldName} {
     variable fields
     variable table
 
@@ -1851,7 +1851,7 @@ proc gen_set_obj {obj type pointer fieldName} {
 	}
 
 	tclobj {
-	    error "can't set a string to a tclobj (field \"$fieldName\") -- you have to handle this outside of gen_set_obj"
+	    error "can't set a string to a tclobj (field \"$fieldName\") -- you have to handle this outside of gen_get_set_obj"
 	}
 
 	default {
@@ -2084,6 +2084,10 @@ proc gen_gets_string_cases {pointer} {
 
 	emit "      case [field_to_enum $myField]:"
 
+	emit "        if ($pointer->_${myField}IsNull) $leftCurly"
+	emit "            return Tcl_GetStringFromObj (${table}_NullValueObj, lengthPtr);"
+	emit "        $rightCurly"
+
 	switch $field(type) {
 	  "varstring" {
 	    emit "        if ($pointer->$myField == NULL) $leftCurly"
@@ -2117,7 +2121,7 @@ proc gen_gets_string_cases {pointer} {
 	  }
 
 	  default {
-	      emit "        [gen_set_obj utilityObj $field(type) $pointer $myField];"
+	      emit "        [gen_get_set_obj utilityObj $field(type) $pointer $myField];"
 	      emit "        return Tcl_GetStringFromObj (utilityObj, lengthPtr);"
 	  }
 	}
