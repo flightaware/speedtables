@@ -114,4 +114,11 @@ something.
 
 DONE Add the build path to the auto path if it isn't already there.
 
+Rework this whole default value thing.  Or maybe the null value is in addition
+to the default value.  The point is that for doubles and stuff like that, if
+we're getting fed from a database, there can be null values for stuff besides
+varstrings.  For example when reading cable modem data, if we don't have a
+status of "registration complete", we have null values for the signal-to-noise
+and transmit power and the like.
+
 

@@ -367,9 +367,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "exists", "delete", "count", "foreach", "type", "import", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "exists", "delete", "null_value", "count", "foreach", "type", "import", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAYGET, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAYGET, OPT_EXISTS, OPT_DELETE, OPT_NULLVALUE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -563,6 +563,11 @@ set cmdBodySource {
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
 	return TCL_OK;
       }
+
+      case OPT_NULLVALUE: {
+	  return TCL_OK;
+      }
+
 
       case OPT_COUNT: {
           Tcl_SetIntObj (Tcl_GetObjResult (interp), tbl_ptr->count);
@@ -1175,6 +1180,44 @@ proc gen_delete_subr {subr struct pointer} {
 }
 
 
+set isNullSubrSource {
+int ${table}_obj_is_null(Tcl_Obj *obj) {
+    char     *nullValueString;
+    int       nullValueLength;
+
+    char     *objString;
+    int       objStringLength;
+
+     nullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullValueLength);
+     objString = Tcl_GetStringFromObj (obj, &objStringLength);
+
+    if (nullValueLength != objStringLength) {
+        return 0;
+    }
+
+    if (nullValueLength == 0) {
+        return 1;
+    }
+
+    if (*nullValueString != *objString) {
+        return 0;
+    }
+
+    return (strncmp (nullValueString, objString, nullValueLength) == 0);
+}
+}
+
+#
+# gen_is_null_subr - gen code to determine if an object contains the null value
+#
+proc gen_obj_is_null_subr {} {
+    variable table
+    variable isNullSubrSource
+
+    emit [subst -nobackslashes -nocommands $isNullSubrSource]
+}
+
+
 #
 # gen_struct - gen the table being defined's C structure
 #
@@ -1567,6 +1610,10 @@ proc gen_setup_routine {table} {
 	}
     }
 
+    emit "    // initialize the null string object to the default (empty) value"
+    emit "    ${table}_NullValueObj = Tcl_NewObj ();"
+    emit "    Tcl_IncrRefCount (${table}_NullValueObj);"
+
     emit "$rightCurly"
     emit ""
 }
@@ -1624,31 +1671,31 @@ proc gen_new_obj {type pointer fieldName} {
 
     switch $type {
 	short {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewIntObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj ($pointer->$fieldName)"
 	}
 
 	int {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewIntObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj ($pointer->$fieldName)"
 	}
 
 	long {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewLongObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewLongObj ($pointer->$fieldName)"
 	}
 
 	wide {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewWideIntObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewWideIntObj ($pointer->$fieldName)"
 	}
 
 	double {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewDoubleObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj ($pointer->$fieldName)"
 	}
 
 	float {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewDoubleObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj ($pointer->$fieldName)"
 	}
 
 	boolean {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewBooleanObj ($pointer->$fieldName)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewBooleanObj ($pointer->$fieldName)"
 	}
 
 	varstring {
@@ -1665,21 +1712,21 @@ proc gen_new_obj {type pointer fieldName} {
 	}
 
 	char {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewStringObj (&$pointer->$fieldName, 1)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (&$pointer->$fieldName, 1)"
 	}
 
 	fixedstring {
 	    catch {unset field}
 	    array set field $fields($fieldName)
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewStringObj ($pointer->$fieldName, $field(length))"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj ($pointer->$fieldName, $field(length))"
 	}
 
 	inet {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
 	}
 
 	mac {
-	    return "$pointer->_${fieldName}IsNull ? ${table}NullObj : Tcl_NewStringObj (ether_ntoa (&$pointer->$fieldName), -1)"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (ether_ntoa (&$pointer->$fieldName), -1)"
 	}
 
 	tclobj {
@@ -1927,6 +1974,10 @@ proc gen_field_names {} {
     emit ""
 
     set defaultStringObjCreated 0
+
+    emit "// define the null value object"
+    emit "Tcl_Obj *${table}_NullValueObj;"
+    emit ""
 
     emit "// define default objects for varstring fields, if any"
     foreach myField $fieldList {
@@ -2253,6 +2304,8 @@ proc CTable {name data} {
     ::ctable::gen_defaults_subr ${name}_init $name ${name}_ptr
 
     ::ctable::gen_delete_subr ${name}_delete $name ${name}_ptr
+
+    ::ctable::gen_obj_is_null_subr
 
     ::ctable::gen_list
 
