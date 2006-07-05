@@ -368,9 +368,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "array_get_nonnull", "exists", "delete", "count", "foreach", "type", "import", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "type", "import", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_NONNULL, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -880,7 +880,7 @@ set cmdBodyGetSource {
 #  part of the body of the code that handles the "array_get" method
 #
 set cmdBodyArrayGetSource {
-      case OPT_ARRAY_GET: {
+      case OPT_ARRAY_GET_WITH_NULLS: {
         int i;
 
 	if (objc < 3) {
@@ -905,7 +905,7 @@ set cmdBodyArrayGetSource {
         break;
       }
 
-      case OPT_ARRAY_GET_NONNULL: {
+      case OPT_ARRAY_GET: {
         int i;
 
 	if (objc < 3) {
