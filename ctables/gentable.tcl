@@ -971,7 +971,7 @@ proc fixedstring {name length {default ""}} {
 #
 # varstring - define a variable-length string field
 #
-proc varstring {name {default ""}} {
+proc varstring {name {default "DeanSaidHeKnewSanskritIWasLikeWhatever"}} {
     deffield $name $default "DeanSaidHeKnewSanskritIWasLikeWhatever" type varstring needsQuoting 1
 }
 
@@ -1448,7 +1448,14 @@ proc gen_sets {pointer} {
 	    }
 
 	    varstring {
-		emit_set_varstring_field $table $myfield $pointer $field(default) [string length $field(default)]
+	        if {[info exists field(default)]} {
+		    set default $field(default)
+		    set defaultLength [string length $field(default)]
+		} else {
+		    set default ""
+		    set defaultLength 0
+		}
+		emit_set_varstring_field $table $myfield $pointer $default $defaultLength
 	    }
 
 	    boolean {
@@ -1620,7 +1627,11 @@ proc gen_setup_routine {table} {
     emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
     emit ""
 
-    set defaultEmptyStringCreated 0
+    set emptyObj ${table}_DefaultEmptyStringObj
+    emit "    $emptyObj = Tcl_NewObj ();"
+    emit "    Tcl_IncrRefCount ($emptyObj);"
+    emit ""
+
     #
     # create and initialize string objects for varstring defaults
     #
@@ -1634,15 +1645,7 @@ proc gen_setup_routine {table} {
 
 	set defObj ${table}_${fieldName}DefaultStringObj
 
-	if {$field(default) == ""} {
-	    if {!$defaultEmptyStringCreated} {
-	        set defaultEmptyStringCreated 1
-		set emptyObj ${table}_DefaultEmptyStringObj
-		emit "    $emptyObj = Tcl_NewObj ();"
-		emit "    Tcl_IncrRefCount ($emptyObj);"
-		emit ""
-	    }
-	} else {
+	if {$field(default) != ""} {
 	    emit "    $defObj = Tcl_NewStringObj (\"[cquote $field(default)]\", -1);"
 	    emit "    Tcl_IncrRefCount ($defObj);"
 	    emit ""
@@ -2018,7 +2021,8 @@ proc gen_field_names {} {
     emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
     emit ""
 
-    set defaultStringObjCreated 0
+    emit "Tcl_Obj *${table}_DefaultEmptyStringObj;"
+    emit ""
 
     emit "// define the null value object"
     emit "Tcl_Obj *${table}_NullValueObj;"
@@ -2030,12 +2034,7 @@ proc gen_field_names {} {
 	array set field $fields($myField)
 
 	if {$field(type) == "varstring" && [info exists field(default)]} {
-	    if {$field(default) == ""} {
-	        if {!$defaultStringObjCreated} {
-		    set defaultStringObjCreated 1
-		    emit "Tcl_Obj *${table}_DefaultEmptyStringObj;"
-		}
-	    } else {
+	    if {$field(default) != ""} {
 		emit "Tcl_Obj *${table}_${myField}DefaultStringObj;"
 	    }
 	}
@@ -2092,7 +2091,7 @@ proc gen_gets_string_cases {pointer} {
 	  "varstring" {
 	    emit "        if ($pointer->$myField == NULL) $leftCurly"
 
-	    if {$field(default) == ""} {
+	    if {![info exists field(default)] || $field(default) == ""} {
 	        set source ${table}_DefaultEmptyStringObj
 	    } else {
 	        set source ${table}_${myField}DefaultStringObj
