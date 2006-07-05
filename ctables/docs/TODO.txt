@@ -121,4 +121,8 @@ varstrings.  For example when reading cable modem data, if we don't have a
 status of "registration complete", we have null values for the signal-to-noise
 and transmit power and the like.
 
+Have a way to find out if a field is null out-of-band, that is, some kind of
+method called is_null or the like that will tell if you if a field or fields
+is null.
+
 

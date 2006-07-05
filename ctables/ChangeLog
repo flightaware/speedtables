@@ -1,33 +1,49 @@
 
 $Id$
 
-7/1/2006 karl
-    * Generate enum entries for fields using a proc.  That proc makes the
-      field names unique, for example, FIELD_MAC now becomes for table
-      "cable_device", FIELD_CABLE_DEVICE_MAC.
+7/4/2006 karl
+    * Add a new method, null_value, to the meta table object that sets
+      a null value that is returned by set and get when a field's value
+      hasn't been set or has been set with the defined null_value.
+      The default is an empty string.
 
-    * Add new "array_get" method that will let you one or more fields,
-      or all fields, in "array get" format, i.e. key value [key value...]"
+    * Rework default stuff so that if a default value is defined, upon
+      init of a new row, elements with default values will be set with
+      the default values and the corresponding null value bits will be
+      set to say that the elements are not null.  Anything without a
+      default value predefined has its null bit set.
 
-    * Make it work under FreeBSD as well as Darwin.  Eventually we will
-      have to at least parse tclConfig.sh and possibly even have our
-      own GNU autoconf thang.
+    * Change the syntax of the CExtension command to require a version
+      number and take the code as the third argument.  This means the
+      enter extension code body is specified on the CExtension command
+      line via "{...}", which allowed EndExtension to move into the
+      ctable namespace and be invoked automatically by CExtension at
+      the end of code generation.  This will allow us to scarf off a
+      complete copy of the code being fed to CExtension, which will
+      let us see if it's the same as we got last time and keep us from
+      doing a generate/compile/link phase if nothing's changed.
 
-    * Emit a enumerated typedef for the CTable types.  Also enumerate
-      a corresponding array of char pointers containing the type names.
+    * Create a CTableBuildPath command that sets where we will build.
+      Include the version number in the filename of the generated C
+      source and the object file that we compile to.
 
-    * Emit an enum *_types for each defined table that has the enumerated
-      ctable type for each field in the table.  This will allow us at
-      runtime to easily and efficiently determine the type of any field from 
-      C.  Soon, from Tcl as well.
+    * Scarf off the CExtension source code and compare it to what we're
+      being asked to build now.  If they're the same, don't bother.
 
-    * Add of new method, fieldtype, which will return the CTable type of
-      the passed-in field.
+    * Record the CVS ID of the CTable generator in the scarfed off
+      CExtension source code file (.ct file).  When checking to see
+      if a build is necessary, also compare them.  If they don't match,
+      do the build.  This way, if there's any change in the generator
+      software, a build will occur even if the CExtension code hasn't
+      changed.
 
-    * Add of new method, needs_quoting, which returns one if the passed-in
-      field requires or may require quoting (i.e. could contain characters
-      that could trip up a database insert, CSV export, or something like
-      that.)
+    * Add the build path to the auto_path if it's not already there.
+      Do a pkg_mkIndex on the build directory if we generated something.
+      (This makes "package require" work for the extension we created.)
+
+    * Add a Makefile.  It's currently lame.  Add automation to copy
+      qhehe.h to the target directory if there isn't something there matching.
+
 
 7/2/2006 karl
     * Keep track of string lengths for varstring fields to prevent lots
@@ -75,34 +91,32 @@ $Id$
     * Fix bug in array_get where no keys are specified.  It was
       returning exactly half as many fields as it should have. Oops.
 
-    * Change the syntax of the CExtension command to require a version
-      number and take the code as the third argument.  This means the
-      enter extension code body is specified on the CExtension command
-      line via "{...}", which allowed EndExtension to move into the
-      ctable namespace and be invoked automatically by CExtension at
-      the end of code generation.  This will allow us to scarf off a
-      complete copy of the code being fed to CExtension, which will
-      let us see if it's the same as we got last time and keep us from
-      doing a generate/compile/link phase if nothing's changed.
 
-    * Create a CTableBuildPath command that sets where we will build.
-      Include the version number in the filename of the generated C
-      source and the object file that we compile to.
+7/1/2006 karl
+    * Generate enum entries for fields using a proc.  That proc makes the
+      field names unique, for example, FIELD_MAC now becomes for table
+      "cable_device", FIELD_CABLE_DEVICE_MAC.
 
-    * Scarf off the CExtension source code and compare it to what we're
-      being asked to build now.  If they're the same, don't bother.
+    * Add new "array_get" method that will let you one or more fields,
+      or all fields, in "array get" format, i.e. key value [key value...]"
 
-    * Record the CVS ID of the CTable generator in the scarfed off
-      CExtension source code file (.ct file).  When checking to see
-      if a build is necessary, also compare them.  If they don't match,
-      do the build.  This way, if there's any change in the generator
-      software, a build will occur even if the CExtension code hasn't
-      changed.
+    * Make it work under FreeBSD as well as Darwin.  Eventually we will
+      have to at least parse tclConfig.sh and possibly even have our
+      own GNU autoconf thang.
 
-    * Add the build path to the auto_path if it's not already there.
-      Do a pkg_mkIndex on the build directory if we generated something.
-      (This makes "package require" work for the extension we created.)
+    * Emit a enumerated typedef for the CTable types.  Also enumerate
+      a corresponding array of char pointers containing the type names.
 
-    * Add a Makefile.  It's currently lame.  Add automation to copy
-      qhehe.h to the target directory if there isn't something there matching.
+    * Emit an enum *_types for each defined table that has the enumerated
+      ctable type for each field in the table.  This will allow us at
+      runtime to easily and efficiently determine the type of any field from 
+      C.  Soon, from Tcl as well.
+
+    * Add of new method, fieldtype, which will return the CTable type of
+      the passed-in field.
+
+    * Add of new method, needs_quoting, which returns one if the passed-in
+      field requires or may require quoting (i.e. could contain characters
+      that could trip up a database insert, CSV export, or something like
+      that.)
 

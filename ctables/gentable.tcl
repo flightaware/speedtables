@@ -914,7 +914,7 @@ proc end_table {} {
 #
 #  NB do we really?  i don't know
 #
-proc deffield {name args} {
+proc deffield {name default baseDefault args} {
     variable fields
     variable fieldList
     variable nonBooleans
@@ -925,6 +925,11 @@ proc deffield {name args} {
 
     lappend args name $name
 
+    # if the default doesn't equal the baseDefault, we have a real default
+    if {$default != $baseDefault} {
+        lappend args default $default
+    }
+
     set fields($name) $args
     lappend fieldList $name
     lappend nonBooleans $name
@@ -934,7 +939,7 @@ proc deffield {name args} {
 # boolean - define a boolean field -- same contents as deffield except it
 #  appends to the booleans list instead of the nonBooleans list NB kludge
 #
-proc boolean {name {default 0}} {
+proc boolean {name {default ""}} {
     variable booleans
     variable fields
     variable fieldList
@@ -943,7 +948,12 @@ proc boolean {name {default 0}} {
         error "field name \"$name\" must start with a letter and can only contain letters, numbers, and underscores"
     }
 
-    set fields($name) [list name $name type boolean default $default]
+    set fields($name) [list name $name type boolean]
+
+    if {$default != ""} {
+        lappend fields($name) default $default
+    }
+
     lappend fieldList $name
     lappend booleans $name
 }
@@ -955,14 +965,14 @@ proc fixedstring {name length {default ""}} {
     if {[string length $default] != $length} {
         error "fixedstring \"$name\" default string \"$default\" must match length \"$length\""
     }
-    deffield $name type fixedstring length $length default $default needsQuoting 1
+    deffield $name $default "" type fixedstring length $length needsQuoting 1
 }
 
 #
 # varstring - define a variable-length string field
 #
 proc varstring {name {default ""}} {
-    deffield $name type varstring default $default needsQuoting 1
+    deffield $name $default "DeanSaidHeKnewSanskritIWasLikeWhatever" type varstring needsQuoting 1
 }
 
 #
@@ -970,63 +980,63 @@ proc varstring {name {default ""}} {
 #  fixedstring[1] but it's simpler.  shrug.
 #
 proc char {name {default " "}} {
-    deffield $name type char default $default needsQuoting 1
+    deffield $name $default "" type char needsQuoting 1
 }
 
 #
 # mac - define a mac address field
 #
-proc mac {name {default 00:00:00:00:00:00}} {
-    deffield $name type mac default $default
+proc mac {name {default ""}} {
+    deffield $name $default "" type mac
 }
 
 #
 # short - define a short integer field
 #
-proc short {name {default 0}} {
-    deffield $name type short default $default
+proc short {name {default ""}} {
+    deffield $name $default "" type short
 }
 
 #
 # int - define an integer field
 #
-proc int {name {default 0}} {
-    deffield $name type int default $default
+proc int {name {default ""}} {
+    deffield $name $default "" type int
 }
 
 #
 # long - define a long integer field
 #
-proc long {name {default 0}} {
-    deffield $name type long default $default
+proc long {name {default ""}} {
+    deffield $name $default "" type long
 }
 
 #
 # wide - define a wide integer field -- should always be at least 64 bits
 #
-proc wide {name {default 0}} {
-    deffield $name type wide default $default
+proc wide {name {default ""}} {
+    deffield $name $default "" type wide
 }
 
 #
 # float - define a floating point field
 #
-proc float {name {default 0.0}} {
-    deffield $name type float default $default
+proc float {name {default ""}} {
+    deffield $name $default "" type float
 }
 
 #
 # double - define a double-precision floating point field
 #
-proc double {name {default 0.0}} {
-    deffield $name type double default $default
+proc double {name {default ""}} {
+    deffield $name $default "" type double
 }
 
 #
 # inet - define an IPv4 address field
 #
-proc inet {name {default 0.0.0.0}} {
-    deffield $name type inet default $default
+proc inet {name {default ""}} {
+    deffield $name $default "" type inet
 }
 
 #
@@ -1111,36 +1121,64 @@ proc gen_defaults_subr {subr struct pointer} {
 	    varstring {
 	        emit "        $baseCopy.$myfield = (char *) NULL;"
 		emit "        $baseCopy._${myfield}Length = 0;"
+
+		if {[info exists field(default)]} {
+		    emit "        $baseCopy._${myfield}IsNull = 0;"
+		} else {
+		    emit "        $baseCopy._${myfield}IsNull = 1;"
+		}
 	    }
 
 	    fixedstring {
-	        emit "        strncpy ($baseCopy.$myfield, \"$field(default)\", $field(length));"
+	        if {[info exists field(default)]} {
+		    emit "        strncpy ($baseCopy.$myfield, \"$field(default)\", $field(length));"
+		    emit "        $baseCopy._${myfield}IsNull = 0;"
+		} else {
+		    emit "        $baseCopy._${myfield}IsNull = 1;"
+		}
 	    }
 
 	    mac {
-	        emit "        $baseCopy.$myfield = *ether_aton (\"$field(default)\");"
+		if {[info exists field(default)]} {
+		    emit "        $baseCopy.$myfield = *ether_aton (\"$field(default)\");"
+		    emit "        $baseCopy._${myfield}IsNull = 0;"
+		} else {
+		    emit "        $baseCopy._${myfield}IsNull = 1;"
+		}
 	    }
 
 	    inet {
-	        emit "        inet_aton (\"$field(default)\", &$baseCopy.$myfield);"
+		if {[info exists field(default)]} {
+		    emit "        inet_aton (\"$field(default)\", &$baseCopy.$myfield);"
+		    emit "        $baseCopy._${myfield}IsNull = 0;"
+		} else {
+		    emit "        $baseCopy._${myfield}IsNull = 1;"
+		}
 	    }
 
 	    char {
-	        emit "        $baseCopy.$myfield = '[string index $field(default) 0]';"
+	        if {[info exists field(default)]} {
+		    emit "        $baseCopy.$myfield = '[string index $field(default) 0]';"
+		    emit "        $baseCopy._${myfield}IsNull = 0;"
+		} else {
+		    emit "        $baseCopy._${myfield}IsNull = 1;"
+		}
 	    }
 
 	    tclobj {
 	        emit "        $baseCopy.$myfield = (Tcl_Obj *) NULL;"
+		emit "        $baseCopy._${myfield}IsNull = 1;"
 	    }
 
 	    default {
-	        emit "        $baseCopy.$myfield = $field(default);"
+	        if {[info exists field(default)]} {
+	            emit "        $baseCopy.$myfield = $field(default);"
+		    emit "        $baseCopy._${myfield}IsNull = 0;"
+		} else {
+		    emit "        $baseCopy._${myfield}IsNull = 1;"
+		}
 	    }
 	}
-    }
-
-    foreach myfield $fieldList {
-        emit "        $baseCopy._${myfield}IsNull = 1;"
     }
 
     emit "    $rightCurly"
@@ -1592,6 +1630,7 @@ proc gen_setup_routine {table} {
 	array set field $fields($fieldName)
 
 	if {$field(type) != "varstring"} continue
+	if {![info exists field(default)]} continue
 
 	set defObj ${table}_${fieldName}DefaultStringObj
 
@@ -1702,13 +1741,19 @@ proc gen_new_obj {type pointer fieldName} {
 	    catch {unset field}
 	    array set field $fields($fieldName)
 
-	    if {$field(default) == ""} {
-		set defObj ${table}_DefaultEmptyStringObj
+	    # if there's no default for the var string, the null pointer 
+	    # response is the null
+	    if {![info exists field(default)]} {
+	        set defObj ${table}_NullValueObj
 	    } else {
-		set defObj ${table}_${fieldName}DefaultStringObj
+		if {$field(default) == ""} {
+		    set defObj ${table}_DefaultEmptyStringObj
+		} else {
+		    set defObj ${table}_${fieldName}DefaultStringObj
+		}
 	    }
 
-	    return "(($pointer->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj ($pointer->$fieldName, $pointer->_${fieldName}Length))"
+	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : (($pointer->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj ($pointer->$fieldName, $pointer->_${fieldName}Length))"
 	}
 
 	char {
@@ -1984,7 +2029,7 @@ proc gen_field_names {} {
         catch {unset field}
 	array set field $fields($myField)
 
-	if {$field(type) == "varstring"} {
+	if {$field(type) == "varstring" && [info exists field(default)]} {
 	    if {$field(default) == ""} {
 	        if {!$defaultStringObjCreated} {
 		    set defaultStringObjCreated 1

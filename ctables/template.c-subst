@@ -27,12 +27,12 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 
     static CONST char *options[] = {
-        "create", "info", "method", (char *)NULL
+        "create", "info", "null_value", "method", (char *)NULL
     };
 
     enum options
     {
-        OPT_CREATE, OPT_INFO, OPT_METHOD
+        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD
     };
 
     // struct $table *row_ptr;
@@ -96,6 +96,22 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	case OPT_INFO:
 	    if (objc != 2) goto err;
+	    return TCL_OK;
+
+	case OPT_NULLVALUE:
+	    if (objc > 3) {
+		Tcl_WrongNumArgs (interp, 2, objv, "?newValue?");
+	    }
+
+	    if (objc == 2) {
+	        Tcl_SetObjResult (interp, ${table}_NullValueObj);
+		return TCL_OK;
+	    }
+
+            Tcl_DecrRefCount (${table}_NullValueObj);
+	    ${table}_NullValueObj = objv[2];
+	    Tcl_IncrRefCount (objv[2]);
+	    Tcl_SetObjResult (interp, objv[2]);
 	    return TCL_OK;
 
 	case OPT_METHOD:
