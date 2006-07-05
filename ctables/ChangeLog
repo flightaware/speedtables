@@ -1,6 +1,10 @@
 
 $Id$
 
+7/5/2006 karl
+    * Add a new method, array_get_nonnull, that will only return nonnull
+      key-value pairs.
+
 7/4/2006 karl
     * Add a new method, null_value, to the meta table object that sets
       a null value that is returned by set and get when a field's value

@@ -367,9 +367,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "exists", "delete", "null_value", "count", "foreach", "type", "import", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "array_get_nonnull", "exists", "delete", "count", "foreach", "type", "import", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAYGET, OPT_EXISTS, OPT_DELETE, OPT_NULLVALUE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_NONNULL, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -563,11 +563,6 @@ set cmdBodySource {
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
 	return TCL_OK;
       }
-
-      case OPT_NULLVALUE: {
-	  return TCL_OK;
-      }
-
 
       case OPT_COUNT: {
           Tcl_SetIntObj (Tcl_GetObjResult (interp), tbl_ptr->count);
@@ -774,7 +769,7 @@ ${table}_lappend_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj 
 }
 }
 
-set fieldAndNameObjGetSource {
+set lappendFieldAndNameObjSource {
 int
 ${table}_lappend_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
 {
@@ -790,6 +785,35 @@ ${table}_lappend_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer,
     }
 
     obj = ${table}_get (interp, $pointer, fieldIndex);
+    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), obj) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+
+}
+
+set lappendNonnullFieldAndNameObjSource {
+int
+${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
+{
+    int        fieldIndex;
+    Tcl_Obj   *obj;
+
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    obj = ${table}_get (interp, $pointer, fieldIndex);
+    if (obj == ${table}_NullValueObj) {
+        return TCL_OK;
+    }
+
+    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_NameObjList[fieldIndex]) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
     if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), obj) == TCL_ERROR) {
         return TCL_ERROR;
     }
@@ -855,7 +879,7 @@ set cmdBodyGetSource {
 #  part of the body of the code that handles the "array_get" method
 #
 set cmdBodyArrayGetSource {
-      case OPT_ARRAYGET: {
+      case OPT_ARRAY_GET: {
         int i;
 
 	if (objc < 3) {
@@ -874,6 +898,31 @@ set cmdBodyArrayGetSource {
 
 	for (i = 3; i < objc; i++) {
 	    if (${table}_lappend_field_and_nameobj (interp, $pointer, objv[i]) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+	}
+        break;
+      }
+
+      case OPT_ARRAY_GET_NONNULL: {
+        int i;
+
+	if (objc < 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
+	    return TCL_ERROR;
+	}
+
+	$pointer = ${table}_find (tbl_ptr, Tcl_GetString (objv[2]));
+	if ($pointer == (struct $table *) NULL) {
+	    return TCL_OK;
+	}
+
+	if (objc == 3) {
+	    return ${table}_gen_nonnull_keyvalue_list (interp, $pointer);
+	}
+
+	for (i = 3; i < objc; i++) {
+	    if (${table}_lappend_nonnull_field_and_nameobj (interp, $pointer, objv[i]) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 	}
@@ -1573,7 +1622,8 @@ proc gen_set_function {table pointer} {
 #
 proc gen_get_function {table pointer} {
     variable fieldObjGetSource
-    variable fieldAndNameObjGetSource
+    variable lappendFieldAndNameObjSource
+    variable lappendNonnullFieldAndNameObjSource
     variable fieldGetSource
     variable fieldGetStringSource
     variable leftCurly
@@ -1587,9 +1637,12 @@ proc gen_get_function {table pointer} {
 
     emit [subst -nobackslashes -nocommands $fieldObjGetSource]
 
-    emit [subst -nobackslashes -nocommands $fieldAndNameObjGetSource]
+    emit [subst -nobackslashes -nocommands $lappendFieldAndNameObjSource]
+
+    emit [subst -nobackslashes -nocommands $lappendNonnullFieldAndNameObjSource]
 
     emit [subst -nobackslashes -nocommands $fieldGetStringSource]
+
     gen_gets_string_cases $pointer
     emit "    $rightCurly"
     emit "    return TCL_OK;"
@@ -1956,6 +2009,45 @@ proc gen_keyvalue_list {} {
     emit ""
 }
 
+#
+# gen_nonnull_keyvalue_list - generate C code to emit all of the nonnull
+#   values in an entire row into a Tcl list in "array set" format
+#
+proc gen_nonnull_keyvalue_list {} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    set pointer ${table}_ptr
+
+    set lengthDef [string toupper $table]_NFIELDS
+
+    emit "int ${table}_gen_nonnull_keyvalue_list (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
+
+    emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
+    emit "    int position = 0;"
+    emit "    Tcl_Obj *obj;"
+    emit ""
+
+    foreach fieldName $fieldList {
+        catch {unset field}
+	array set field $fields($fieldName)
+
+	emit "    obj = [gen_new_obj $field(type) $pointer $fieldName];"
+	emit "    if (obj != ${table}_NullValueObj) $leftCurly"
+	emit "        listObjv\[position++] = ${table}_${fieldName}NameObj;"
+	emit "        listObjv\[position++] = obj;"
+	emit "    $rightCurly"
+    }
+
+    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj (position, listObjv));"
+    emit "    return TCL_OK;"
+    emit "$rightCurly"
+    emit ""
+}
 
 #
 # gen_field_names - generate C code containing an array of pointers to strings
@@ -2358,6 +2450,8 @@ proc CTable {name data} {
     ::ctable::gen_list
 
     ::ctable::gen_keyvalue_list
+
+    ::ctable::gen_nonnull_keyvalue_list
 
     ::ctable::gen_code
 
