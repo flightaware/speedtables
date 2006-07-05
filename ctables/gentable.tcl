@@ -213,6 +213,7 @@ set varstringSetSource {
 	    break;
 	}
 
+	$pointer->_${field}IsNull = 0;
 	string = Tcl_GetStringFromObj (obj, &length);
 	if (length == $defaultLength) {
 	    if (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0)) {
