@@ -9,6 +9,13 @@ $Id$
       Create array_get_with_nulls that replaces the prior behavior of
       array_get.
 
+    * Added a new *_set_null function that, given a pointer to a row and
+      a field number, will set the corresponding field's null value bit
+      to true.  Note, there will be no reciprocal *_set_nonnull function
+      because when the null bit is set, the corresponding value is
+      undefined -- the only way to set a field nonnull is to set a value
+      into it with the corresponding table's *_set routine.
+
 7/4/2006 karl
     * Add a new method, null_value, to the meta table object that sets
       a null value that is returned by set and get when a field's value

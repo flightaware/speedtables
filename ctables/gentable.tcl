@@ -672,6 +672,71 @@ set cmdBodySource {
         break;
       }
 
+#if 0
+      case OPT_SUCK_POSTGRES_SELECT: {
+          const PGresult   *res;
+	  char             *fieldName;
+	  char             *key;
+	  char             *value;
+	  int              *fieldList;
+	  int               fieldIndex;
+	  int               nTuples;
+	  int               field;
+	  int               row;
+	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
+	  Tcl_Obj          *valueObj = Tcl_NewObj();
+
+          if (objc != 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle");
+	    return TCL_ERROR;
+	  }
+
+          nFields = PQnfields (res);
+
+	  fieldList = (int *) ckalloc ( nFields * sizeof (int));
+
+	  for (field = 0; field < nFields; field++) {
+	      fieldName = PQfname (res, field);
+
+	      Tcl_SetStringObj (fieldNameObj, fieldName, -1);
+
+	      if (Tcl_GetIndexFromObj (interp, fieldNameObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+		  Tcl_AppendResult (interp, " while matching postgres fields with ${table} fields", (char *)NULL);
+		  return TCL_ERROR;
+	      }
+
+	      fieldList[field] = fieldIndex;
+	  }
+
+	  nTuples = PQntuples (res);
+
+	  for (row = 0; row < nTuples; row++) {
+	      key = PQgetvalue (res, row, field);
+	      if (key == NULL) {
+	          key = "";
+              }
+
+	      $pointer = ${table}_find_or_create (tbl_ptr, key, &new);
+
+	      for (field = 1; field < nFields; field++) {
+	          value = PQgetvalue (res, row, field);
+
+		  if (value == NULL) {
+		      if (PQgetisnull (res, row, field)) {
+			 ${table}_set_null ($pointer, fieldList[field]);
+		          continue;
+		      } else {
+		          valueObj = ${table}_DefaultEmptyStringObj;
+		      }
+		  }
+		  Tcl_SetStringObj (valueObj, value, -1);
+		  ${table}_set (interp, valueObj, $pointer, fieldList[field]);
+	      }
+	  }
+
+	  return TCL_OK;
+      }
+#endif
 }
 
 set tableHeadSource {
@@ -1536,6 +1601,30 @@ proc gen_sets {pointer} {
 }
 
 #
+# gen_set_null_function - emit C routine to set a specific field to null
+#  in a given table and row
+#
+proc gen_set_null_function {table} {
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    emit "void"
+    emit "${table}_set_null (struct $table *rowPtr, int field) $leftCurly"
+
+    emit "    switch ((enum ${table}_fields) field) $leftCurly"
+
+    foreach myField $fieldList {
+        set optname [field_to_enum $myField]
+
+        emit "      case $optname: rowPtr->_${myField}IsNull = 1; break;"
+    }
+
+    emit "    $rightCurly"
+    emit "$rightCurly"
+}
+
+#
 # gen_table_head_source - emit the code to define the head structures
 #
 proc gen_table_head_source {table} {
@@ -1739,6 +1828,8 @@ proc gen_code {} {
     set rowStruct $table
 
     gen_set_function $table $pointer
+
+    gen_set_null_function $table
 
     gen_get_function $table $pointer
 
