@@ -16,6 +16,11 @@ $Id$
       undefined -- the only way to set a field nonnull is to set a value
       into it with the corresponding table's *_set routine.
 
+    * New import_postgres_result can import a multirow PostgreSQL result
+      directly into a ctable without any intervening per-row Tcl.  This
+      is extremely fast.  Excluding the pg_exec overhead, on a 2.2 GHz
+      AMD64 we can import 210,000 8-element rows per second.
+
 7/4/2006 karl
     * Add a new method, null_value, to the meta table object that sets
       a null value that is returned by set and get when a field's value

@@ -705,7 +705,8 @@ set cmdBodySource {
 
 	  fieldList = (int *) ckalloc ( nFields * sizeof (int));
 
-	  for (field = 0; field < nFields; field++) {
+	  // the first field in the query result must be the key
+	  for (field = 1; field < nFields; field++) {
 	      fieldName = PQfname (res, field);
 
 	      Tcl_SetStringObj (fieldNameObj, fieldName, -1);
@@ -721,7 +722,7 @@ set cmdBodySource {
 	  nTuples = PQntuples (res);
 
 	  for (row = 0; row < nTuples; row++) {
-	      key = PQgetvalue (res, row, field);
+	      key = PQgetvalue (res, row, 0);
 	      if (key == NULL) {
 	          key = "";
               }
@@ -2374,9 +2375,9 @@ proc compile {fileFragName version} {
 		set lib "-ltcl84"
 	    }
 
-	    exec gcc -pipe $optflag -fPIC -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -c $sourceFile -o $objFile
+	    exec gcc -pipe $optflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
-	    exec ld -Bshareable $optflag -x -o $buildPath/lib${fileFragName}.so $objFile -L/usr/local/lib $stub
+	    exec ld -Bshareable $optflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl1.6 -L/usr/local/lib/pgtcl1.6 -lpgtcl1.6 -L/usr/local/lib -lpq -L/usr/local/lib $stub
 	}
 
 	"Darwin" {
