@@ -1,6 +1,11 @@
 
 $Id$
 
+7/6/2006 karl
+    * Fix the build on Darwin to not use the Postgres stuff.  Still haven't
+      gotten the shared library on Darwin to work properly with the
+      libpq and libpgtcl libraries.
+
 7/5/2006 karl
     * Add a new method, array_get_nonnull, that will only return nonnull
       key-value pairs.
