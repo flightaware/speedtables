@@ -1003,6 +1003,58 @@ ${table}_get_string (struct $table *$pointer, int field, int *lengthPtr, Tcl_Obj
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
+set dstringAppendGetTabSepSource {
+void
+${table}_dstring_append_get_tabsep (char *key, struct $table *$pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr) {
+    int        i;
+    int        nChars;
+    Tcl_Obj   *utilityObj = Tcl_NewObj();
+
+    Tcl_DStringAppend (dsPtr, key, -1);
+
+    for (i = 0; i < nFields; i++) {
+	Tcl_DStringAppend (dsPtr, "\t", 1);
+	Tcl_DStringAppend (dsPtr, ${table}_get_string ($pointer, fieldNums[i], &nChars, utilityObj), nChars);
+    }
+    Tcl_DStringAppend (dsPtr, "\n", 1);
+    Tcl_DecrRefCount (utilityObj);
+}
+
+int
+${table}_export_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields) {
+    Tcl_Channel    channel;
+    int            mode;
+    Tcl_DString    dString;
+    Tcl_HashSearch hashSearch;
+    Tcl_HashEntry *hashEntry;
+    struct ${table} *$pointer;
+
+    if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
+        return TCL_ERROR;
+    }
+
+    if ((mode & TCL_WRITABLE) == 0) {
+	Tcl_AppendResult (interp, "channel \"", channelName, "\" not writable", (char *)NULL);
+        return TCL_ERROR;
+    }
+
+    Tcl_DStringInit (&dString);
+
+    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+        Tcl_DStringSetLength (&dString, 0);
+	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
+
+	${table}_dstring_append_get_tabsep (Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry), $pointer, fieldNums, nFields, &dString);
+
+	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
+	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
+	    return TCL_ERROR;
+	}
+    }
+
+    return TCL_OK;
+}
+}
 
 #
 # cmdBodyGetSource - chunk of the code that we run subst over to generate
@@ -1821,6 +1873,7 @@ proc gen_get_function {table pointer} {
     variable fieldObjGetSource
     variable lappendFieldAndNameObjSource
     variable lappendNonnullFieldAndNameObjSource
+    variable dstringAppendGetTabSepSource
     variable fieldGetSource
     variable fieldGetStringSource
     variable leftCurly
@@ -1839,11 +1892,12 @@ proc gen_get_function {table pointer} {
     emit [subst -nobackslashes -nocommands $lappendNonnullFieldAndNameObjSource]
 
     emit [subst -nobackslashes -nocommands $fieldGetStringSource]
-
     gen_gets_string_cases $pointer
     emit "    $rightCurly"
     emit "    return TCL_OK;"
     emit "$rightCurly"
+
+    emit [subst -nobackslashes -nocommands $dstringAppendGetTabSepSource]
 
 
 }

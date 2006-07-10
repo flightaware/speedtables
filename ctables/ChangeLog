@@ -17,6 +17,12 @@ $Id$
       a list containing the key and all specified fields (or all fields,
       if no fields are specified.)
 
+    * New C routines, *_dstring_append_get_tabsep that will generate
+      tab-separated (and newline-terminated) fields from a row
+      into a DString, and *_export_tabsep that will write all the
+      rows in a table, tab-separated, to a channel.  Compiles cleanly
+      but not yet tested.
+
 7/6/2006 karl
     * Fix the build on Darwin to not use the Postgres stuff.  Still haven't
       gotten the shared library on Darwin to work properly with the
