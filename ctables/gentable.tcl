@@ -1391,6 +1391,18 @@ proc gen_obj_is_null_subr {} {
     emit [subst -nobackslashes -nocommands $isNullSubrSource]
 }
 
+#
+# sanity_check - prior to generating everything, make sure what we're being
+#  asked to do is reasonable
+#
+proc sanity_check {} {
+    variable fieldList
+    variable table
+
+    if {[llength $fieldList] == 0} {
+        error "no fields defined in table \"$table\" -- at least one field must be defined in a table"
+    }
+}
 
 #
 # gen_struct - gen the table being defined's C structure
@@ -2561,6 +2573,8 @@ proc CTable {name data} {
     ::ctable::table $name
     lappend ::ctable::tables $name
     namespace eval ::ctable $data
+
+    ::ctable::sanity_check
 
     ::ctable::gen_struct
 

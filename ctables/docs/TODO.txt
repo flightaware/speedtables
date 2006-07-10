@@ -133,3 +133,5 @@ DONE Gotta make varstrings be able to be defined without defaults and still
 It's easy to make the null_value setting be local to an instance of the
 table and not global to all tables of a specific type.  tbl_ptr is defined
 in the big case statement -- 
+
+DONE It's an error to not define at least one field.

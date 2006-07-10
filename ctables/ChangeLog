@@ -1,6 +1,10 @@
 
 $Id$
 
+7/10/2006 karl
+    * Detect defining a table with no fields and report as an error rather
+      than generating stuff the C compiler can't understand.
+
 7/6/2006 karl
     * Fix the build on Darwin to not use the Postgres stuff.  Still haven't
       gotten the shared library on Darwin to work properly with the
