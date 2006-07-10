@@ -5,6 +5,12 @@ $Id$
     * Detect defining a table with no fields and report as an error rather
       than generating stuff the C compiler can't understand.
 
+    * Catch errors defining ctables and save off the errorInfo traceback
+      that's basically internal to ctable.  Made a new proc,
+      ::ctable::get_error_info, that will return that info, and include
+      a note in the error message to run that proc to see the internal
+      errorInfo traceback.
+
 7/6/2006 karl
     * Fix the build on Darwin to not use the Postgres stuff.  Still haven't
       gotten the shared library on Darwin to work properly with the

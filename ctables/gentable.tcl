@@ -14,6 +14,7 @@ namespace eval ctable {
     variable fields
     variable fieldList
     variable ctableTypes
+    variable ctableErrorInfo
     variable withPgtcl
 
     variable leftCurly
@@ -21,6 +22,8 @@ namespace eval ctable {
 
     set leftCurly \173
     set rightCurly \175
+
+    set ctableErrorInfo ""
 
     if {$tcl_platform(os) == "Darwin"} {
        set withPgtcl 0
@@ -2529,13 +2532,28 @@ proc install_queue_h {targetDir} {
     }
 }
 
+#
+# get_error_info - to keep tracebacks from containing lots of internals
+#  of ctable stuff, we scarf errorInfo into ctableErrorInfo if we get
+#  an error interpreting a CExtension/CTable definition.  This allows
+#  one to get the error info if debugging is required, etc.
+#
+proc get_error_info {} {
+    variable ctableErrorInfo
+
+    return $ctableErrorInfo
+}
+
 }
 
 #
 # CExtension - define a C extension
 #
 proc CExtension {name version code} {
-    global tcl_platform
+    global tcl_platform errorInfo errorCode
+
+    # clear the error info placeholder
+    set ctableErrorInfo ""
 
     if {![info exists ::ctable::buildPath]} {
         CTableBuildPath build
@@ -2559,7 +2577,11 @@ proc CExtension {name version code} {
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""
 
-    namespace eval ::ctable $code
+    if {[catch {namespace eval ::ctable $code} result] == 1} {
+        set ::ctable::ctableErrorInfo $errorInfo
+
+        return -code error -errorcode $errorCode "$result\n(run ::ctable::get_error_info to see ctable's internal errorInfo)"
+    }
 
     ::ctable::EndExtension
 

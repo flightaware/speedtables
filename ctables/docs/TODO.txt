@@ -109,8 +109,8 @@ of gentable that the stuff was built with hasn't altered.  This way if
 the build previously failed for some reason or the version of gentable
 got updated, that we still regenerate the shared library.
 
-Catch tracebacks and don't emit the entire traceback unless asked to or
-something.
+DONE Catch tracebacks and don't emit the entire traceback unless asked to or
+     something.
 
 DONE Add the build path to the auto path if it isn't already there.
 
