@@ -11,6 +11,12 @@ $Id$
       a note in the error message to run that proc to see the internal
       errorInfo traceback.
 
+    * Create new method, export, that's the analog of import.  It will
+      export all fields or specified fields from each stored row by
+      repeated calling the passed proc with an argument consisting of
+      a list containing the key and all specified fields (or all fields,
+      if no fields are specified.)
+
 7/6/2006 karl
     * Fix the build on Darwin to not use the Postgres stuff.  Still haven't
       gotten the shared library on Darwin to work properly with the

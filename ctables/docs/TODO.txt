@@ -5,18 +5,10 @@ DONE a lot of those emit_set_*_field routines are basically the same and can
 be replaced by one that specifies which variable containing source for
 setting that field type needs to be substituted.
 
-be able to import from an array, including only specific variables
-
 DONE be able to get fields from a row in array get format
 
 ALREADY DONE - IT's INHERENT be able to import key-value pairs in array 
 get/set format 
-
-Add a way for someone doing a CTable definition to specify additional
-files to include.
-
-Add a way to write methods in C and add additional C code to the stuff
-being generated, from the CTable definition.
 
 DONE make the *_init routine have a static internal copy of an initialization
 row and a static saying if it's been generated or not.  generate it
@@ -45,9 +37,6 @@ create a direct interface to postgresql "copy in".  Make it optional.
     like that.
 
     Also you'd probably also want to do the reverse, copy in.
-
-create a direct interface to reading and writing CSV or tab-separated or 
-whatever.
 
 DONE make all the types able to return text, not just to generate tcl object's.
      from that, make a function that returns "CONST char *" for all the types.
@@ -78,15 +67,6 @@ DONE When we have default string values, create a Tcl_Obj with that string value
 and increment the reference count once, then when feeding a default string
 value to something fetching it, instead of doing a Tcl_NewStringObj on the
 default string, simply give the pointer to the pre-set Tcl_Obj.
-
-Do a thing like lassign where you can set fetched fields into variables.
-(Fairly unimportant as you can easily lassign the result of a "get")
-
-Make set return a 1 if it created the row and a 0 if it already exists.
-(Uh, not sure how valuable this actually is.)
-
-Make an export function that works like import insofar as calling code
-repeatedly with the field names preparsed.
 
 DONE factor the get value stuff a little better.  right now the only way you
      can get a value is to cause it to be lappended onto the Tcl result object.
@@ -135,3 +115,30 @@ table and not global to all tables of a specific type.  tbl_ptr is defined
 in the big case statement -- 
 
 DONE It's an error to not define at least one field.
+
+
+be able to import from an array, including only specific variables
+NO - no easy way to get names of an array from C and anyway you can just
+do a foo set $key field $array(field) field2 $array(field2), etc.
+
+Add a way for someone doing a CTable definition to specify additional
+files to include.
+
+Add a way to write methods in C and add additional C code to the stuff
+being generated, from the CTable definition.  This may also involve generating
+a C include file that defines stuff that is otherwise defined in the
+C source file we generate, so that you don't have to specify your C
+code in some kind of quoted ctable definition.
+
+create a direct interface to reading and writing CSV or tab-separated or 
+whatever.
+
+Do a thing like lassign where you can set fetched fields into variables.
+(Fairly unimportant as you can easily lassign the result of a "get")
+
+Make set return a 1 if it created the row and a 0 if it already exists.
+(Uh, not sure how valuable this actually is.)
+
+Make an export function that works like import insofar as calling code
+repeatedly with the field names preparsed.
+

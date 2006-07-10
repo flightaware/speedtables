@@ -378,9 +378,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "type", "import", "import_postgres_result", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
 
 }
 
@@ -761,6 +761,77 @@ set cmdBodySource {
         return TCL_ERROR;
 #endif
       }
+
+      case OPT_EXPORT: {
+        int              fieldIds[$nFields];
+	int              i;
+	int              nFields = 0;
+        Tcl_Obj        **listObjv;
+	Tcl_Obj         *evalObjv[2];
+        Tcl_HashSearch   hashSearch;
+	char            *key;
+
+	if (objc < 3) {
+	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
+	  return TCL_ERROR;
+	}
+
+	if (objc > $nFields + 3) {
+	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
+          Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
+	  return TCL_ERROR;
+	}
+
+	if (objc == 3) {
+	    nFields = $nFields;
+	    for (i = 0; i < $nFields; i++) {
+	        fieldIds[i] = i;
+	    }
+	} else {
+	    for (i = 3; i < objc; i++) {
+	        if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIds[nFields++]) != TCL_OK) {
+		    return TCL_ERROR;
+		}
+	    }
+	}
+
+	listObjv = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj *) * (nFields + 1));
+	evalObjv[0] = objv[2];
+
+        for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	    key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
+	    listObjv[0] = Tcl_NewStringObj (key, -1);
+	    ${table}_ptr = (struct $table *) Tcl_GetHashValue (hashEntry);
+
+	    for (i = 0; i < nFields; i++) {
+	        listObjv[i + 1] = ${table}_get (interp, ${table}_ptr, fieldIds[i]);
+	    }
+
+	    evalObjv[1] = Tcl_NewListObj (nFields + 1, listObjv);
+
+	      switch (Tcl_EvalObjv (interp, 2, evalObjv, 0)) {
+	        case TCL_ERROR:
+		  ckfree ((char *)listObjv);
+		  Tcl_AppendResult (interp, " while processing export proc", (char *) NULL);
+		  return TCL_ERROR;
+
+		case TCL_OK:
+		case TCL_CONTINUE:
+		  break;
+
+		case TCL_BREAK:
+		  ckfree ((char *)listObjv);
+		  return TCL_OK;
+
+		case TCL_RETURN:
+		  ckfree ((char *)listObjv);
+		  return TCL_RETURN;
+	      }
+        }
+        ckfree ((char *)listObjv);
+	return TCL_OK;
+      }
+
 }
 
 set tableHeadSource {
