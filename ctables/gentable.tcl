@@ -1101,8 +1101,8 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_pt
     int            i;
     Tcl_Obj       *utilityObj = Tcl_NewObj ();
 
-    $pointer = ${table}_find_or_create (tbl_ptr, key, &new);
     key = strsep (&key, "\t");
+    $pointer = ${table}_find_or_create (tbl_ptr, key, &new);
 
     for (i = 0; i < nFields; i++) {
         field = strsep (&key, "\t");
@@ -1134,7 +1134,10 @@ ${table}_import_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr,
     while (1) {
         Tcl_SetStringObj (lineObj, "", 0);
         if (Tcl_GetsObj (channel, lineObj) <= 0) break;
-	${table}_set_from_tabsep (interp, tbl_ptr, Tcl_GetString (lineObj), fieldNums, nFields);
+	if (${table}_set_from_tabsep (interp, tbl_ptr, Tcl_GetString (lineObj), fieldNums, nFields) == TCL_ERROR) {
+	    Tcl_DecrRefCount (lineObj);
+	    return TCL_ERROR;
+	}
     }
 
     Tcl_DecrRefCount (lineObj);
