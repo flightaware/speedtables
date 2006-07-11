@@ -1337,7 +1337,7 @@ proc inet {name {default ""}} {
 # tclobj - define an straight-through Tcl_Obj
 #
 proc tclobj {name} {
-    deffield $name type tclobj needsQuoting 1
+    deffield $name "" "" type tclobj needsQuoting 1
 }
 
 #

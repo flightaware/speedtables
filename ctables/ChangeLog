@@ -27,6 +27,8 @@ $Id$
       Note that this currently does no quoting to make sure that
       tabs or newlines in strings don't screw things up.
 
+    * Make subobj datatype work again.
+
 7/6/2006 karl
     * Fix the build on Darwin to not use the Postgres stuff.  Still haven't
       gotten the shared library on Darwin to work properly with the
