@@ -378,9 +378,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
 
 }
 
@@ -762,7 +762,8 @@ set cmdBodySource {
 #endif
       }
 
-      case OPT_WRITE_TABSEP: {
+      case OPT_WRITE_TABSEP:
+      case OPT_READ_TABSEP: {
         int              fieldIds[$nFields];
 	int              i;
 	int              nFields = 0;
@@ -791,7 +792,11 @@ set cmdBodySource {
 	    }
 	}
 
-	return ${table}_export_tabsep (interp, tbl_ptr, Tcl_GetString (objv[2]), fieldIds, nFields);
+	if (optIndex == OPT_WRITE_TABSEP) {
+	    return ${table}_export_tabsep (interp, tbl_ptr, Tcl_GetString (objv[2]), fieldIds, nFields);
+	} else {
+	    return ${table}_import_tabsep (interp, tbl_ptr, Tcl_GetString (objv[2]), fieldIds, nFields);
+	}
       }
 
       case OPT_EXPORT: {
@@ -1035,7 +1040,7 @@ ${table}_get_string (struct $table *$pointer, int field, int *lengthPtr, Tcl_Obj
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
-set dstringAppendGetTabSepSource {
+set tabSepFunctionsSource {
 void
 ${table}_dstring_append_get_tabsep (char *key, struct $table *$pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr) {
     int        i;
@@ -1084,6 +1089,55 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr,
 	}
     }
 
+    return TCL_OK;
+}
+
+int
+${table}_set_from_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, char *string, int *fieldIds, int nFields) {
+    struct $table *$pointer;
+    char          *key;
+    char          *field;
+    int            new;
+    int            i;
+    Tcl_Obj       *utilityObj = Tcl_NewObj ();
+
+    $pointer = ${table}_find_or_create (tbl_ptr, key, &new);
+    key = strsep (&key, "\t");
+
+    for (i = 0; i < nFields; i++) {
+        field = strsep (&key, "\t");
+	Tcl_SetStringObj (utilityObj, field, -1);
+	if (${table}_set (interp, utilityObj, $pointer, fieldIds[i]) == TCL_ERROR) {
+	    Tcl_DecrRefCount (utilityObj);
+	    return TCL_ERROR;
+	}
+    }
+
+    return TCL_OK;
+}
+
+int
+${table}_import_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields) {
+    Tcl_Channel      channel;
+    int              mode;
+    Tcl_Obj         *lineObj = Tcl_NewObj();
+
+    if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
+        return TCL_ERROR;
+    }
+
+    if ((mode & TCL_READABLE) == 0) {
+	Tcl_AppendResult (interp, "channel \"", channelName, "\" not readable", (char *)NULL);
+        return TCL_ERROR;
+    }
+
+    while (1) {
+        Tcl_SetStringObj (lineObj, "", 0);
+        if (Tcl_GetsObj (channel, lineObj) <= 0) break;
+	${table}_set_from_tabsep (interp, tbl_ptr, Tcl_GetString (lineObj), fieldNums, nFields);
+    }
+
+    Tcl_DecrRefCount (lineObj);
     return TCL_OK;
 }
 }
@@ -1905,7 +1959,7 @@ proc gen_get_function {table pointer} {
     variable fieldObjGetSource
     variable lappendFieldAndNameObjSource
     variable lappendNonnullFieldAndNameObjSource
-    variable dstringAppendGetTabSepSource
+    variable tabSepFunctionsSource
     variable fieldGetSource
     variable fieldGetStringSource
     variable leftCurly
@@ -1929,9 +1983,7 @@ proc gen_get_function {table pointer} {
     emit "    return TCL_OK;"
     emit "$rightCurly"
 
-    emit [subst -nobackslashes -nocommands $dstringAppendGetTabSepSource]
-
-
+    emit [subst -nobackslashes -nocommands $tabSepFunctionsSource]
 }
 
 #

@@ -27,6 +27,19 @@ $Id$
       Note that this currently does no quoting to make sure that
       tabs or newlines in strings don't screw things up.
 
+    * New C routines, *_set_from_tabsep that will take a pointer to
+      a row, a tab-separated import string, an array of field numbers
+      and a number of fields and set the values into the row.  The
+      first field is the key.
+      *_import_tabsep reads lines from a channel and
+      invokes *_set_from_tabsep on each line.
+
+    * Add of read_tabsep method that, using the above routines,  will read 
+      all of the fields, or the named fields, tab-separated, from the 
+      specified Tcl channel.  Note that, like write_tabsep, this currently 
+      does no quoting to make sure that tabs or newlines in strings don't 
+      screw things up.
+
     * Make subobj datatype work again.
 
 7/6/2006 karl
