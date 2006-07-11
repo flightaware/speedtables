@@ -378,9 +378,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP};
 
 }
 
@@ -760,6 +760,38 @@ set cmdBodySource {
         Tcl_SetStringObj (Tcl_GetObjResult (interp), "this version of ctables was built without postgresql support", -1);
         return TCL_ERROR;
 #endif
+      }
+
+      case OPT_WRITE_TABSEP: {
+        int              fieldIds[$nFields];
+	int              i;
+	int              nFields = 0;
+
+	if (objc < 3) {
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?field field...?");
+	  return TCL_ERROR;
+	}
+
+	if (objc > $nFields + 3) {
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?field field...?");
+          Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
+	  return TCL_ERROR;
+	}
+
+	if (objc == 3) {
+	    nFields = $nFields;
+	    for (i = 0; i < $nFields; i++) {
+	        fieldIds[i] = i;
+	    }
+	} else {
+	    for (i = 3; i < objc; i++) {
+	        if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIds[nFields++]) != TCL_OK) {
+		    return TCL_ERROR;
+		}
+	    }
+	}
+
+	return ${table}_export_tabsep (interp, tbl_ptr, Tcl_GetString (objv[2]), fieldIds, nFields);
       }
 
       case OPT_EXPORT: {

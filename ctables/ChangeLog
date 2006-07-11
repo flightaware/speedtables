@@ -20,8 +20,12 @@ $Id$
     * New C routines, *_dstring_append_get_tabsep that will generate
       tab-separated (and newline-terminated) fields from a row
       into a DString, and *_export_tabsep that will write all the
-      rows in a table, tab-separated, to a channel.  Compiles cleanly
-      but not yet tested.
+      rows in a table, tab-separated, to a channel.
+
+    * Add of write_tabsep method that will write all of the fields, or
+      the named fields, tab-separated, to the specified Tcl channel.
+      Note that this currently does no quoting to make sure that
+      tabs or newlines in strings don't screw things up.
 
 7/6/2006 karl
     * Fix the build on Darwin to not use the Postgres stuff.  Still haven't
