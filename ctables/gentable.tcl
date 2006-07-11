@@ -1101,11 +1101,11 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_pt
     int            i;
     Tcl_Obj       *utilityObj = Tcl_NewObj ();
 
-    key = strsep (&key, "\t");
+    key = strsep (&string, "\t");
     $pointer = ${table}_find_or_create (tbl_ptr, key, &new);
 
     for (i = 0; i < nFields; i++) {
-        field = strsep (&key, "\t");
+        field = strsep (&string, "\t");
 	Tcl_SetStringObj (utilityObj, field, -1);
 	if (${table}_set (interp, utilityObj, $pointer, fieldIds[i]) == TCL_ERROR) {
 	    Tcl_DecrRefCount (utilityObj);
