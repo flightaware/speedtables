@@ -39,12 +39,22 @@ foo import $key $values field field field field field
 
 or all fields if no fields are specified
 
+Status:  Implemented
+
 I might also want to import from an array
 
 foo set $key -array arrayName  - do all of the fields in the array
  
 foo set $key -array arrayName field field field field - do only the specified
 fields
+
+Set From Array Status: Not Implemented
+
+Note: There is no easy way from a C extension to tell what the elements of
+an array are without Eval'ing Tcl code, so we will probably require the
+fields.  This can also easily be done by doing a
+
+foo set key field1 $array(field1) field2 $array(field2) ...
 
 
 GETTING FOR THE FUTURE
@@ -65,6 +75,9 @@ foo get $key -pairs field field field field
 returns
 
 key value key value key value
+
+key-value fetch status:  Implemented
+
 
 
 ==========
@@ -103,9 +116,53 @@ gets assigned in turn
 
 if no fields are named, it expects them all to be there
 
+Status: Implemented
+
 ========
 
 For "foreach" and "names" methods, accept an optional argument that's
 a Tcl_Match pattern.
+
+Status:  Implemented
+
+
+========
+
+TRACKING FIELDS THAT CHANGE AND TAKING ACTIONS WHEN THINGS CHANGE
+
+I have an interest in knowing that fields of changed.  If a field hasn't
+changed, then it doesn't have to be included when, say, generating an
+update back to a SQL database.
+
+However, a CTable user may not always want this capability, so ideally
+you could specify whether you want a CTable you were generating to include
+code (and bit fields) for this or not.
+
+When using this capability, a "dead band" should also be specifiable.  For
+instance, we may be uninterested in recording a change in a floating point
+field unless it has deviated by, say, more than 0.02 from its current
+value.
+
+Finally, it could be useful to have some kind of trigger processing.  You
+would define limits for a value and if a value was set within those various
+limits, than pre-specified actions would be taken.  For example, alarms
+would be generated.
+
+In conjunction with the above deadband, or actually specifically related
+to alarms, a deadband would prevent an alarm from "fibrillating".
+
+For example, say there was an alarm generated when a disk drive hit
+95% of its capacity, and due to activity on the disk, it was flipping between
+94.99% and 95.01% of capacity several times a minute.  Rather than generating
+numerous alarms and return-to-normals per minute, deadband processing might
+require, for instance, that the drive usage drop to 94.0% before a return
+to normal was issued.
+
+This work has previously been implemented by Karl as Itcl alarm classes.
+
+It would be acceptable for limit trips to cause Tcl code to be interpreted --
+i.e. I don't think it would be necessary to try to avoid Tcl processing of
+alarm processing code by supporting handling trigger processing directly in C,
+although that isn't to say that we couldn't.
 
 
