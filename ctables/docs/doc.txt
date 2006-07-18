@@ -1,0 +1,276 @@
+Super basic documentation.
+
+$Id$
+
+Let's define a ctable:
+
+package require ctable
+
+CExtension cable 1.1 {
+
+CTable cable_info {
+    inet ip
+    mac  mac
+    varstring name
+    varstring address
+    varstring addressNumber
+    varstring geos
+    int i
+    int j
+    long ij
+    #tclobj extraStuff
+}
+
+}
+
+
+
+
+Everything is defined in the CExtension.  This will generate a C extension
+named Cable, compile it and link it.
+
+Afterwards, you can do a "package require Cable" or "package require Cable 1.1"
+and it will load the extension.
+
+This will create one new command, cable_info.
+
+cable_info create x - creates a new object, x, that is a new command that
+will manage and manipulate zero or more rows of the cable_info table.
+
+You can say 
+
+     set obj [cable_info create #auto]
+
+to get a new instance without having to generate a unique name for it.
+
+You can also say
+
+    cable_info info - which currently does nothing (boring)
+
+    cable_info null_value \\N - which sets the default null value for all
+      fields to, in this case, \N -- note eventually we will be able to
+      override this within specific instances.
+
+     cable_info method foo bar - and it will register a new method named
+     foo and then invoke the proc bar with the arguments being
+     the name of the object followed by whatever arguments were passed.
+
+Now the nitty gritty:
+
+get, set, array_get, array_get_with_nulls, exists, delete, count, foreach, type, import, import_postgres_result, export, fields, fieldtype, needs_quoting, names, reset, destroy, statistics, write_tabsep, or read_tabsep, or one of the registered methods: foo
+
+
+cable_info create x
+
+
+x set
+
+    x set key field value ?field value...?
+
+The key is required, it must be unique, it can contain anything you want.
+It's not an element of the table.  We may change this in the future to
+not require any keys (there is already a provision for this) and also to
+allow more than one key.  But for now, lame or not, this is how it works,
+and as peter says, for more than one key, you can always do some kind of
+compound key.
+
+    % x set peter ip 127.0.0.1 name "Peter da Silva" i 501 
+
+
+fields - return a list of defined fields, in order
+
+    % x fields
+    ip mac name address addressNumber geos i j ij
+
+get - get fields.  get specified fields, or all fields if none are 
+specified.
+
+    % x get peter
+    127.0.0.1 {} {Peter da Silva} {} {} {} 501 {} {}
+
+    % x get peter ip name
+    127.0.0.1 {Peter da Silva}
+
+array_get - get specified fields, or all fields if none are specified, in
+"array get" (key-value pair) format.  Note that if a field contains the null
+value, it is not fetched.
+
+    % x array_get peter
+    ip 127.0.0.1 name {Peter da Silva} i 501
+
+    % x array_get peter ip name mac
+    ip 127.0.0.1 name {Peter da Silva}
+
+array_get_with_nulls - get specified fields, or all fields if none are 
+specified, in "array get" (key-value pair) format.  If a field contains the
+null value, it is fetched anyway.
+
+    % x array_get_with_nulls peter
+    ip 127.0.0.1 mac {} name {Peter da Silva} address {} addressNumber {} geos {} i 501 j {} ij {}
+    % x array_get_with_nulls peter ip name mac
+    ip 127.0.0.1 name {Peter da Silva} mac {}
+
+
+exists - return 1 if the specified key exists, 0 otherwise
+
+    % x exists peter
+    1
+    % x exists karl
+    0
+
+delete - delete the specified row from the table.  Returns 1 if the row
+existed, 0 otherwise.
+
+    % x delete karl
+    0
+    % x set karl
+    % x delete karl
+    1
+    % x delete karl
+    0
+
+count - count the number of rows in the table.  Very fast.
+
+    % x count
+    1
+
+foreach - iterate over all of the rows in the table, executing tcl code
+on them.
+
+    % x foreach key {
+        puts $key
+	puts ""
+    }
+
+    If you want to do something with the keys, like access data in the row,
+    use get, array_get or array_get_with_nulls, etc, within the code body.
+
+    x foreach varName codeBody ?pattern? - an optional match pattern in
+    "string match" format will restrict what is presented to the code body.
+
+type - return the "type" of the object, i.e. the name of the object-creating
+command that created it.
+
+    % x type
+    cable_info
+
+import - execute a proc repeatedly and efficiently to import data.
+
+    x import proc ?field field...?
+
+    ...runs proc repeatedly.  The proc is expected to return a list.
+    If the list is empty, the import is complete.  Otherwise the list
+    must contain the same number of elements expected.  This is more
+    efficient that using "x set" in a loop because the field positions
+    are only calculated once regardless of the number of rows generated
+    by proc.
+
+x import_postgres_result pgTclResultHandle
+
+    Given a Pgtcl result handle, import_postgresql_result will iterate over
+    all of the results and create corresponding rows in the table.
+
+    This is extremely fast as it does not do any intermediate Tcl on a
+    per-row basis.
+
+    How you use it is, first, exec some kind of query:
+
+    set res [pg_exec $connection "select * from mytable"
+
+    Check for an error
+
+    if {[pg_result $res -status] != "PGRES_RESULT_OK"} something
+
+    x import_postgres_result $res
+
+
+export - call a proc repeatedly with exported fields in a list as an argument
+
+    proc export_handler {list} {...}
+
+    x export export_handler
+
+    ...a list of fields can be specified.  More efficient than looping with
+    foreach and doing get, etc, as fields are precalculated.
+
+
+fieldtype - give the datatype of a field
+
+    foreach field [x fields] {
+        puts "$field type is [x fieldtype $field]"
+    }
+
+    ip type is inet
+    mac type is mac
+    name type is varstring
+    address type is varstring
+    addressNumber type is varstring
+    geos type is varstring
+    i type is int
+    j type is int
+    ij type is long
+
+
+needs_quoting - given a field name, return 1 if it might need quoting.
+For example, varstrings and strings need quoting, integers, floats,
+IP addresses, MAC addresses, etc, do not.
+
+names - return a list of all of the keys in the table.  This can be inefficient
+for large tables -- use foreach or export instead.
+
+reset - clear everything out of the table.
+
+    % x count
+    652343
+    % x reset
+    % x count
+    0
+
+destroy - clear everything out of the table and destroy the object.
+
+    % x destroy
+    % x asdf
+    invalid command name "x"
+
+statistics - report hashtable statistics on the object.
+
+    % x statistics
+    0 entries in table, 4 buckets
+    number of buckets with 0 entries: 4
+    number of buckets with 1 entries: 0
+    number of buckets with 2 entries: 0
+    number of buckets with 3 entries: 0
+    number of buckets with 4 entries: 0
+    number of buckets with 5 entries: 0
+    number of buckets with 6 entries: 0
+    number of buckets with 7 entries: 0
+    number of buckets with 8 entries: 0
+    number of buckets with 9 entries: 0
+    number of buckets with 10 or more entries: 0
+    average search distance for entry: nan
+
+
+write_tabsep - write the table tab_separated to a channel, with optional fields
+specified, else all fields.
+
+    set fp [open /tmp/output.tsv w]
+    x write_tabsep $fp
+    close $fp
+
+The first field written will be the key whether you like it or not.
+
+
+
+read_tabsep - read tab-separated entries from a channel, with optional fields
+specified, else all fields.
+
+    set fp [open /tmp/output.tsv r]
+    x read_tabsep $fp
+    close $fp
+
+The first field is expected to be the key and is not included in the list of
+fields.
+
+It's an error if the number of fields read doesn't match the number expecgted.
+
+
