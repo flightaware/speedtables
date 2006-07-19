@@ -1,6 +1,10 @@
 
 $Id$
 
+7/19/2006 karl
+    * Fairly decent job of documenting things as they are, although currently
+      only in a "straight text" style.
+
 7/10/2006 karl
     * Detect defining a table with no fields and report as an error rather
       than generating stuff the C compiler can't understand.
