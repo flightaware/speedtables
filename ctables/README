@@ -66,6 +66,12 @@ table.  The cursor will be able to:
 
 * read and write values in the row being pointed to
 
+INSTALLING
+----------
+
+set INSTDIR in the Makefile to where you want the package to be installed,
+typically /usr/local/lib/ctable.  Do a "make".
+
 -----
 
 It also generates code to read and write the table.
