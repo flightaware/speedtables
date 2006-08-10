@@ -17,6 +17,8 @@ namespace eval ctable {
     variable ctableErrorInfo
     variable withPgtcl
 
+    variable pgtcl_ver 1.5
+
     variable leftCurly
     variable rightCurly
 
@@ -2595,6 +2597,7 @@ proc gen_preamble {} {
 proc compile {fileFragName version} {
     global tcl_platform
     variable buildPath
+    variable pgtcl_ver
 
     set debug 0
 
@@ -2616,7 +2619,7 @@ proc compile {fileFragName version} {
 
 	    exec gcc -pipe $optflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
-	    exec ld -Bshareable $optflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl1.6 -L/usr/local/lib/pgtcl1.6 -lpgtcl1.6 -L/usr/local/lib -lpq -L/usr/local/lib $stub
+	    exec ld -Bshareable $optflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub
 	}
 
 	"Darwin" {
@@ -2632,12 +2635,12 @@ proc compile {fileFragName version} {
 
 	    exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
-	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl1.6 -lpgtcl1.6 $stub
-	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl1.6 -lpgtcl -L/sc/lib $stub
+	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver $stub
+	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl -L/sc/lib $stub
 	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
 	    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
 
-	    # -L/sc/lib -lpq -L/sc/lib/pgtcl1.6 -lpgtcl1.6
+	    # -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver
 	    # took $lib off the end?
 	}
 
