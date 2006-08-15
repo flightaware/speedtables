@@ -1,6 +1,10 @@
 
 $Id$
 
+8/15/2006 karl
+    * Make the optional match pattern on "foreach" precede the code body
+      rather than come after it.
+
 7/19/2006 karl
     * Fairly decent job of documenting things as they are, although currently
       only in a "straight text" style.

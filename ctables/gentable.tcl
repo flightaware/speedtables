@@ -487,14 +487,16 @@ set cmdBodySource {
 	  Tcl_HashSearch  hashSearch;
 	  char           *pattern = (char *) NULL;
 	  char           *key;
+	  int             codeIndex = 3;
 
 	  if ((objc < 4) || (objc > 5)) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "varName codeBody ?pattern?");
+	      Tcl_WrongNumArgs (interp, 2, objv, "varName ?pattern? codeBody");
 	      return TCL_ERROR;
 	  }
 
 	  if (objc == 5) {
-	      pattern = Tcl_GetString (objv[4]);
+	      pattern = Tcl_GetString (objv[3]);
+	      codeIndex = 4;
 	  }
 
 	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
@@ -503,7 +505,7 @@ set cmdBodySource {
 	      if (Tcl_ObjSetVar2 (interp, objv[2], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
 	          return TCL_ERROR;
 	      }
-	      switch (Tcl_EvalObjEx (interp, objv[3], 0)) {
+	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
 	        case TCL_ERROR:
 		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
 		  return TCL_ERROR;
@@ -521,7 +523,6 @@ set cmdBodySource {
 	  }
 	  return TCL_OK;
       }
-
 
       case OPT_NAMES: {
           Tcl_Obj        *resultObj = Tcl_GetObjResult (interp);

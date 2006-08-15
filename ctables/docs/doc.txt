@@ -33,17 +33,19 @@ twenty times the space consumed by the data itself used up by the
 Tcl objects, lists, array, etc, used to hold them.  Even on a modern
 machine, using 20 gigabytes of memory to store a gigabyte of data is
 at a minimum kind of gross and at worst makes the solution unusable.)
-(Arrays also store the field name with each value, yet another example
-of the inefficiency of this approach.)
+(Tcl arrays also store the field name along with each value, which is
+inherently necessary given their design but is yet another example of the 
+inefficiency of this approach.)
 
-Second is that they are computationally inefficient.  Constructing
-complicated structures out of lists, arrays, etc, traversing and
-updating them is realtively CPU time-consuming.
+The second problem with rolling your own complex structures is that they
+are computationally inefficient.  Constructing complicated structures out 
+of lists, arrays, etc, traversing and updating them is realtively CPU 
+time-consuming.
 
 Finally, such approaches are often clumsy and obtuse.  A combination of 
 upvar and namespaces and lists and arrays to represent a complex structure,
 for example, creates a relatively opaque way of expressing and manipulating 
-that structure, making the code weird, hard to follow, hard to teach, hard
+that structure, making the code twisted, hard to follow, hard to teach, hard
 to modify, and hard to hand off.
 
 CTables reads a structure definition and emits C code to define that structure.
@@ -328,7 +330,7 @@ foreach
     }
 
 
-    x foreach varName codeBody ?pattern? - an optional match pattern in
+    x foreach varName ?pattern? codeBody - an optional match pattern in
     "string match" format will restrict what is presented to the code body.
 
     The normal Tcl semantics for loops are followed; that is, you can
