@@ -130,18 +130,22 @@ Status:  Implemented
 
 TRACKING FIELDS THAT CHANGE AND TAKING ACTIONS WHEN THINGS CHANGE
 
-I have an interest in knowing that fields of changed.  If a field hasn't
+I have an interest in knowing that fields have changed.  If a field hasn't
 changed, then it doesn't have to be included when, say, generating an
 update back to a SQL database.
 
-However, a CTable user may not always want this capability, so ideally
-you could specify whether you want a CTable you were generating to include
-code (and bit fields) for this or not.
+However, a CTable user may not always want this capability, so if we
+implement this you will be able to specify whether you want a CTable you 
+were generating to include code (and bit fields) for this or not.
 
 When using this capability, a "dead band" should also be specifiable.  For
 instance, we may be uninterested in recording a change in a floating point
 field unless it has deviated by, say, more than 0.02 from its current
-value.
+value.  This would mean that we would need to keep two values for numeric
+fields, the last value emitted and the last value read, so that gets would
+return the last value read but deadband checks would be against the last
+value emitted (or if not emitted, the first value set), to guard against
+any sort of deadband creep.
 
 Finally, it could be useful to have some kind of trigger processing.  You
 would define limits for a value and if a value was set within those various
@@ -164,5 +168,4 @@ It would be acceptable for limit trips to cause Tcl code to be interpreted --
 i.e. I don't think it would be necessary to try to avoid Tcl processing of
 alarm processing code by supporting handling trigger processing directly in C,
 although that isn't to say that we couldn't.
-
 
