@@ -769,36 +769,53 @@ set cmdBodySource {
       case OPT_READ_TABSEP: {
         int              fieldIds[$nFields];
 	int              i;
+	int              objIdx = 3;
 	int              nFields = 0;
+	char            *pattern = NULL;
+	char            *channel;
 
 	if (objc < 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?field field...?");
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?field field...?");
 	  return TCL_ERROR;
 	}
 
-	if (objc > $nFields + 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?field field...?");
+	objc -= 3;
+	if (objc > 0) {
+	    if (strcmp (Tcl_GetString(objv[objIdx++]), "-glob") == 0) {
+	        if (objc == 1) {
+		    Tcl_AppendResult (interp, "-glob not followed by pattern", (char *)NULL);
+		    return TCL_ERROR;
+		}
+		pattern = Tcl_GetString (objv[objIdx++]);
+	    }
+	    objc -= 2;
+	}
+
+	if (objc > $nFields) {
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?field field...?");
           Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
 	  return TCL_ERROR;
 	}
 
-	if (objc == 3) {
+	if (objc == 0) {
 	    nFields = $nFields;
 	    for (i = 0; i < $nFields; i++) {
 	        fieldIds[i] = i;
 	    }
 	} else {
-	    for (i = 3; i < objc; i++) {
-	        if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIds[nFields++]) != TCL_OK) {
+	    for (i = 0; i < objc; i++) {
+	        if (Tcl_GetIndexFromObj (interp, objv[objIdx++], ${table}_fields, "field", TCL_EXACT, &fieldIds[i]) != TCL_OK) {
 		    return TCL_ERROR;
 		}
 	    }
 	}
 
+	channel = Tcl_GetString (objv[2]);
+
 	if (optIndex == OPT_WRITE_TABSEP) {
-	    return ${table}_export_tabsep (interp, tbl_ptr, Tcl_GetString (objv[2]), fieldIds, nFields);
+	    return ${table}_export_tabsep (interp, tbl_ptr, channel, fieldIds, nFields, pattern);
 	} else {
-	    return ${table}_import_tabsep (interp, tbl_ptr, Tcl_GetString (objv[2]), fieldIds, nFields);
+	    return ${table}_import_tabsep (interp, tbl_ptr, channel, fieldIds, nFields, pattern);
 	}
       }
 
@@ -1061,12 +1078,13 @@ ${table}_dstring_append_get_tabsep (char *key, struct $table *$pointer, int *fie
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields) {
+${table}_export_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields, char *pattern) {
     Tcl_Channel    channel;
     int            mode;
     Tcl_DString    dString;
     Tcl_HashSearch hashSearch;
     Tcl_HashEntry *hashEntry;
+    char          *key;
     struct ${table} *$pointer;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
@@ -1081,10 +1099,14 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr,
     Tcl_DStringInit (&dString);
 
     for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+
+	key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
+	if ((pattern != NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
+
         Tcl_DStringSetLength (&dString, 0);
 	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
 
-	${table}_dstring_append_get_tabsep (Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry), $pointer, fieldNums, nFields, &dString);
+	${table}_dstring_append_get_tabsep (key, $pointer, fieldNums, nFields, &dString);
 
 	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
@@ -1120,10 +1142,11 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_pt
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields) {
+${table}_import_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields, char *pattern) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = Tcl_NewObj();
+    char            *string;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -1135,9 +1158,24 @@ ${table}_import_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr,
     }
 
     while (1) {
+	char             c;
+	char            *strPtr;
+
         Tcl_SetStringObj (lineObj, "", 0);
         if (Tcl_GetsObj (channel, lineObj) <= 0) break;
-	if (${table}_set_from_tabsep (interp, tbl_ptr, Tcl_GetString (lineObj), fieldNums, nFields) == TCL_ERROR) {
+
+	string = Tcl_GetString (lineObj);
+
+	// if pattern exists, see if it does not match key and if so, skip
+	if (pattern != NULL) {
+	    for (strPtr = string; *strPtr != '\t' && *strPtr != '\0'; strPtr++) continue;
+	    c = *strPtr;
+	    *strPtr = '\0';
+	    if ((pattern != NULL) && (!Tcl_StringCaseMatch (string, pattern, 1))) continue;
+	    *strPtr = c;
+	}
+
+	if (${table}_set_from_tabsep (interp, tbl_ptr, string, fieldNums, nFields) == TCL_ERROR) {
 	    Tcl_DecrRefCount (lineObj);
 	    return TCL_ERROR;
 	}

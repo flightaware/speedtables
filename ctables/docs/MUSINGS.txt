@@ -169,3 +169,7 @@ i.e. I don't think it would be necessary to try to avoid Tcl processing of
 alarm processing code by supporting handling trigger processing directly in C,
 although that isn't to say that we couldn't.
 
+========
+
+When loading a file, allow globbing of the key field as requested by Peter.
+

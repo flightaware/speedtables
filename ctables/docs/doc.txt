@@ -495,7 +495,7 @@ statistics
 
 write_tabsep
 
-    x write_tabsep channel ?field...?
+    x write_tabsep channel ?-glob pattern? ?field...?
 
     Write the table tab_separated to a channel, with the names of desired
     fields specified, else all fields if none are specified.
@@ -513,6 +513,8 @@ write_tabsep
 
 
 read_tabsep
+
+    x read_tabsep channel ?-glob pattern? ?field...?
 
     read tab-separated entries from a channel, with a list of fields
     specified, or all fields if none are specified.

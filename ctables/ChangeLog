@@ -1,6 +1,12 @@
 
 $Id$
 
+9/9/2006 karl
+    * Add an ability to specify a pattern when reading and writing
+      tab-separated data.  Currently supports "-glob pattern" in
+      the read_tabsep and write_tabsep methods.  Pattern is compared
+      to the key field.
+
 8/15/2006 karl
     * Make the optional match pattern on "foreach" precede the code body
       rather than come after it.
