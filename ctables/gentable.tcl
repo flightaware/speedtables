@@ -781,14 +781,15 @@ set cmdBodySource {
 
 	objc -= 3;
 	if (objc > 0) {
-	    if (strcmp (Tcl_GetString(objv[objIdx++]), "-glob") == 0) {
+	    if (strcmp (Tcl_GetString(objv[objIdx]), "-glob") == 0) {
+		objIdx++;
 	        if (objc == 1) {
 		    Tcl_AppendResult (interp, "-glob not followed by pattern", (char *)NULL);
 		    return TCL_ERROR;
 		}
 		pattern = Tcl_GetString (objv[objIdx++]);
+		objc -= 2;
 	    }
-	    objc -= 2;
 	}
 
 	if (objc > $nFields) {
@@ -803,6 +804,7 @@ set cmdBodySource {
 	        fieldIds[i] = i;
 	    }
 	} else {
+	    nFields = objc;
 	    for (i = 0; i < objc; i++) {
 	        if (Tcl_GetIndexFromObj (interp, objv[objIdx++], ${table}_fields, "field", TCL_EXACT, &fieldIds[i]) != TCL_OK) {
 		    return TCL_ERROR;
