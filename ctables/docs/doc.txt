@@ -199,14 +199,18 @@ For the examples, assume we have done a "cable_info create x"
 set
 
     x set key field value ?field value...?
+    
+    or
+    
+    x set key keyValueList 
 
-    The key is required, it must be unique, it can contain anything you want.
-    It's not also an element of the table.  We may change this in the future to
-    make it possible to have tables that do not require any keys (there is 
-    already a provision for this, though incomplete) and also to allow more 
-    than one key.  But for now, lame or not, this is how it works, and as 
-    Peter says, for more than one key, you can always create some kind of 
-    compound key.
+    The key is required and it must be unique.  It can contain anything you 
+    want.  It's not also an element of the table.  We may change this in the 
+    future to make it possible to have tables that do not require any keys 
+    (there is already a provision for this, though incomplete) and also to 
+    allow more than one key.  But for now, lame or not, this is how it works, 
+    and as Peter says, for more than one key, you can always create some kind 
+    of compound key.
 
     % x set peter ip 127.0.0.1 name "Peter da Silva" i 501 
 
@@ -215,6 +219,14 @@ set
     da Silva", and an "i" value of 501.  All fields in the row that have
     not been set will be marked as null.  (Also any field set with the
     null value will also be marked as null.)
+
+    % set values [list ip 127.0.0.1 name "Peter da Silva" i 501]
+    % x set peter $values
+
+    In this example, we specify the value as a list of key-value pairs.
+    This is a natural way to pull an array into a keytable:
+
+    % x set key [array get dataArray]
 
 
 fields

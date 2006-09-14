@@ -668,13 +668,35 @@ set cmdBodySource {
 
       case OPT_SET: {
         int       i;
+	int       listObjc;
+	Tcl_Obj **listObjv;
 
-	if ((objc < 3) || (objc % 2) != 1) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key field value ?field value...?");
+	if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "key pairList or key field value ?field value...?");
 	    return TCL_ERROR;
 	}
 
         $pointer = ${table}_find_or_create (tbl_ptr, Tcl_GetString (objv[2]), &new);
+
+	if (objc == 4) {
+	    if (Tcl_ListObjGetElements (interp, objv[3], &listObjc, &listObjv) == TCL_ERROR) {
+		Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
+	    if ((listObjc % 2) != 0) {
+		Tcl_AppendResult (interp, "key-value list must contain an even number of elements", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
+	    for (i = 0; i < listObjc; i+= 2) {
+		if (${table}_set_fieldobj (interp, listObjv[i+1], $pointer, listObjv[i]) == TCL_ERROR) {
+		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		    return TCL_ERROR;
+		}
+	    }
+	    break;
+	}
 
 	for (i = 3; i < objc; i += 2) {
 	    // printf ("i = %d\n", i);
