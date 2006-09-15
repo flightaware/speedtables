@@ -175,7 +175,7 @@ set floatSetSource {
 }
 
 #
-# shortSetSource - code we run subst over to generate a set of a float.
+# shortSetSource - code we run subst over to generate a set of a short.
 #
 set shortSetSource {
       case $optname: {
@@ -350,6 +350,125 @@ set tclobjSetSource {
 	Tcl_IncrRefCount (obj);
 	$pointer->_${field}IsNull = 0;
 	break;
+      }
+}
+
+#
+# boolCompSource - code we run subst over to generate a compare of a 
+# boolean (bit)
+#
+set boolCompSource {
+      case $optname: {
+
+	switch (compType) {
+	  case COMP_TRUE:
+	     result = $pointer->$field;
+	     break;
+
+	  case COMP_FALSE:
+	    result = (!$pointer->$field);
+	    break;
+	}
+      }
+}
+
+#
+# numberCompSource - code we run subst over to generate a compare of a standard
+#  number such as an integer, long, double, and wide integer.  (We have to 
+#  handle shorts and floats specially due to type coercion requirements.)
+#
+set numberCompSource {
+      case $optname: {
+
+        switch (compType) {
+	    case COMP_LT:
+	        result = ($pointer->$field < $value);
+		break;
+
+	    case COMP_LE:
+	        result = ($pointer->$field <= $value);
+		break;
+
+	    case COMP_EQ:
+	        result = ($pointer->$field == $value);
+		break;
+
+	    case COMP_GE:
+	        result = ($pointer->$field >= $value);
+		break;
+
+	    case COMP_GT:
+	        result = ($pointer->$field > $value);
+		break;
+	}
+      }
+}
+
+#
+# varstringCompSource - code we run subst over to generate a compare of 
+# a string.
+#
+set varstringCompSource {
+      case $optname: {
+        int strcmpResult;
+
+        strcmpResult = strcmp ($pointer->$field, $value);
+
+        switch (compType) {
+	    case COMP_LT:
+	        result = (strcmpResult < 0);
+		break;
+
+	    case COMP_LE:
+	        result = (strcmpResult <= 0);
+		break;
+
+	    case COMP_EQ:
+	        result = (strcmpResult == 0);
+		break;
+
+	    case COMP_GE:
+	        result = (strcmpResult >= 0);
+		break;
+
+	    case COMP_GT:
+	        result = (strcmpResult > 0);
+		break;
+	}
+      }
+}
+
+#
+# fixedstringCompSource - code we run subst over to generate a comapre of a 
+# fixed-length string.
+#
+set fixedstringCompSource {
+      case $optname: {
+        int strcmpResult;
+
+        strcmpResult = strncmp ($pointer->$field, $value, $length);
+
+        switch (compType) {
+	    case COMP_LT:
+	        result = (strcmpResult < 0);
+		break;
+
+	    case COMP_LE:
+	        result = (strcmpResult <= 0);
+		break;
+
+	    case COMP_EQ:
+	        result = (strcmpResult == 0);
+		break;
+
+	    case COMP_GE:
+	        result = (strcmpResult >= 0);
+		break;
+
+	    case COMP_GT:
+	        result = (strcmpResult > 0);
+		break;
+	}
       }
 }
 
