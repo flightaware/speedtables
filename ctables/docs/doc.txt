@@ -792,4 +792,9 @@ and are on the "to do" list.
 Karl Lehenbauer
 7/19/06
 
-
+NOTE - Tcl appears to examine a shared library name and stop at the first
+numeric digit in an apparently somewhat inadequate attempt to make sure it 
+doesn't include shared library version numbers in the expected *_Init and
+*_SafeInit function names for the library being generated.  Consequently
+when you're defining a C extension via the CExtension command, do not
+include any digits in your C extension's name.
