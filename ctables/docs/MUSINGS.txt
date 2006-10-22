@@ -206,4 +206,14 @@ ctable code.
 
 x select varList expression code
 
+=======
 
+Shared memory?
+
+Super fast queries?
+
+Pretty fast queries?
+
+Sorting query results?
+
+Threaded server?
