@@ -13,4 +13,5 @@ INSTDIR=/usr/local/lib/ctable
 install:
 	-mkdir $(INSTDIR)
 	-cp -f *.tcl *-subst queue.h $(INSTDIR)
+	cd $(INSTDIR); echo "pkg_mkIndex ." | tclsh8.4
 
