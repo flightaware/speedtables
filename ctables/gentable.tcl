@@ -744,7 +744,7 @@ set cmdBodySource {
 	  struct ${table}SortStruct sortControl;
 
 	  if ((objc < 5) || (objc > 6)) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "field varName ?pattern? codeBody");
+	      Tcl_WrongNumArgs (interp, 2, objv, "fieldList varName ?pattern? codeBody");
 	      return TCL_ERROR;
 	  }
 
@@ -765,7 +765,6 @@ set cmdBodySource {
 		  return TCL_ERROR;
 	      }
 	  }
-
 
 	  hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * tbl_ptr->count);
 

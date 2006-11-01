@@ -6,7 +6,7 @@ lp	*	26	26	Printing Services	/var/spool/cups	/usr/bin/false
 postfix	*	27	27	Postfix User	/var/spool/postfix	/usr/bin/false
 www	*	70	70	World Wide Web Server	/Library/WebServer	/usr/bin/false
 eppc	*	71	71	Apple Events User	/var/empty	/usr/bin/false
-mysql	*	74	74	MySQL Server	/var/empty	/usr/bin/false
+mysql	*	74	74	PuSQL Server	/var/empty	/usr/bin/false
 sshd	*	75	75	sshd Privilege separation	/var/empty	/usr/bin/false
 qtss	*	76	76	QuickTime Streaming Server	/var/empty	/usr/bin/false
 cyrusimap	*	77	6	Cyrus IMAP User	/var/imap	/usr/bin/false
@@ -22,3 +22,5 @@ windowserver	*	88	88	WindowServer	/var/empty	/usr/bin/false
 tokend	*	91	91	Token Daemon	/var/empty	/usr/bin/false
 securityagent	*	92	92	SecurityAgent	/var/empty	/usr/bin/false
 unknown	*	99	99	Unknown User	/var/empty	/usr/bin/false
+noway	*	99	74	User with same group as PuSQL	/var/empty	/usr/bin/false
+shonuf	*	114	74	Another user with same group as PuSQL	/var/empty	/usr/bin/false
