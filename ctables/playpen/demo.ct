@@ -1,0 +1,51 @@
+#
+# 
+#
+# $Id$
+#
+
+package require ctable
+
+CExtension urk 1.0 {
+
+CTable fa_position {
+    long timestamp
+    short latitude
+    short longitude
+    short groundspeed
+    short altitude
+    char altitudeStatus " "
+    char updateType "Z"
+    char altitudeChange " "
+    fixedstring subident 4 "----"
+    fixedstring facility 3 "---"
+    double testDouble
+    float testFloat
+}
+
+CTable fa_trackstream {
+    boolean inAir 0
+    boolean debug 0
+    boolean blocked 0
+    boolean trackArchived 0
+
+    varstring name
+    varstring prefix
+    varstring type
+    varstring suffix
+    varstring origin "KSGR"
+    varstring destination
+
+    long departureTime
+    long arrivalTime
+    long oldestTimeSeen
+    long newestTimeSeen
+    long newestTimeSaved
+
+    short lowLatitude
+    short lowLongitude
+    short highLatitude
+    short highLongitude
+}
+
+}

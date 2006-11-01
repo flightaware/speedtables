@@ -1,0 +1,14 @@
+#
+# 
+#
+#
+
+package require ctable
+
+CExtension dummy 1.0 {
+
+CTable dummy_table {
+    messup
+}
+
+}

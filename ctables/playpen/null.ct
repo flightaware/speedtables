@@ -1,0 +1,13 @@
+#
+# 
+#
+#
+
+package require ctable
+
+CExtension null 1.0 {
+
+CTable null_table {
+}
+
+}

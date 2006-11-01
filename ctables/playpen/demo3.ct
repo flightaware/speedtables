@@ -1,0 +1,21 @@
+#
+# 
+#
+# $Id$
+#
+# 00:90:83:00:00:00 {Ida Mahler} {5341 Waterford Dr} 75150 010100000090A8101A9D2858C0FEA0BB5E036B4040 
+
+CTableBuildPath /tmp
+
+CExtension cabletest 1.0 {
+
+CTable cable_info {
+    varstring name "\\N"
+    varstring address
+    varstring addressNumber
+    varstring geos
+    int i
+    int j
+    long ij
+}
+
