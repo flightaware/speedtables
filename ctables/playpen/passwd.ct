@@ -1,0 +1,24 @@
+#
+# 
+#
+# $Id$
+#
+#
+#unknown:*:99:99:Unknown User:/var/empty:/usr/bin/false
+#
+
+package require ctable
+
+CExtension yewnix 1.1 {
+
+CTable passwd_info {
+    varstring password
+    int       userID
+    int       groupID
+    varstring name
+    varstring home
+    varstring shell
+}
+
+}
+
