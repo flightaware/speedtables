@@ -354,6 +354,171 @@ set tclobjSetSource {
 }
 
 #
+# gen_sort_comp - emit code to compare fields for sorting
+#
+proc gen_sort_comp {pointer1 pointer2} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+    variable cmdBodyHeader
+
+    foreach myfield $fieldList {
+        catch {unset field}
+	array set field $fields($myfield)
+
+	switch $field(type) {
+	    int {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    long {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    wide {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    double {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    short {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    float {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    char {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    fixedstring {
+		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+	    }
+
+	    varstring {
+		emit [subst -nobackslashes -nocommands $varstringSortSource]
+	    }
+
+	    boolean {
+		emit [subst -nobackslashes -nocommands $boolSortSource]
+	    }
+
+	    inet {
+	        set length "sizeof(struct ether_addr)"
+		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+	    }
+
+	    mac {
+		set length "sizeof(tstruct in_addr)"
+		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+	    }
+
+	    tclobj {
+		emit [subst -nobackslashes -nocommands $tclobjSortSource]
+	    }
+
+	    default {
+	        error "attempt to emit sort compare source for field of unknown type $field(type)"
+	    }
+	}
+    }
+}
+
+#
+# boolSortSource - code we run subst over to generate a compare of a 
+# boolean (bit) for use in a sort.
+#
+set boolSortSource {
+	case $optname: {
+          if ($pointer1->$field && !$pointer2->$field) {
+	      result = -1;
+	      break;
+	  }
+
+	  if (!$pointer1->$field && $pointer2->$field) {
+	      result = 1;
+	  }
+
+	  result = 0;
+	  break;
+      }
+}
+
+#
+# numberSortSource - code we run subst over to generate a compare of a standard
+#  number such as an integer, long, double, and wide integer for use in a sort.
+#
+set numberSortSource {
+      case $optname: {
+
+        if ($pointer1->$field < $pointer2->$field) {
+	    result = -1;
+	    break;
+	}
+
+	if ($pointer1->$field > $pointer2->$field) {
+	    result = 1;
+	    break;
+	}
+
+	result = 0;
+	break;
+      }
+}
+
+#
+# varstringSortSource - code we run subst over to generate a compare of 
+# a string for use in a sort.
+#
+set varstringSortSource {
+      case $optname: {
+        if ($pointer1->$field == NULL) {
+	    if ($pointer2->$field == NULL) {
+	        return 0;
+	    }
+
+	    return 1;
+	} else if ($pointer2->$field == NULL) {
+	    return -1;
+	}
+
+        result = strcmp ($pointer1->$field, $pointer2->$field);
+	break;
+      }
+}
+
+#
+# fixedstringSortSource - code we run subst over to generate a comapre of a 
+# fixed-length string for use in a sort.
+#
+set fixedstringSortSource {
+      case $optname: {
+        result = strncmp ($pointer1->$field, $pointer2->$field, $length);
+	break;
+      }
+}
+
+#
+# tclobjSortSource - code we run subst over to generate a compare of 
+# a tclobj for use in a sort.
+#
+set tclobjSortSource {
+      case $optname: {
+        result = strcmp Tcl_GetString ($pointer1->$field), Tcl_GetString ($pointer2->$field);
+	break;
+      }
+}
+
+
+
+#
 # boolCompSource - code we run subst over to generate a compare of a 
 # boolean (bit)
 #
@@ -499,9 +664,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "sort", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_SORT, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
 
 }
 
@@ -640,6 +805,75 @@ set cmdBodySource {
 		  return TCL_RETURN;
 	      }
 	  }
+	  return TCL_OK;
+      }
+
+      case OPT_SORT: {
+	  Tcl_HashSearch  hashSearch;
+	  char           *pattern = (char *) NULL;
+	  char           *key;
+	  int             codeIndex = 4;
+	  Tcl_HashEntry **hashSortTable;
+	  int             sortCount = 0;
+	  int             sortIndex;
+	  int             (*comparisonFunction) (void *, const void *, const void *);
+	  extern int (*${table}_compar_function (char *))(void *, const void *, const void *);
+
+	  if ((objc < 5) || (objc > 6)) {
+	      Tcl_WrongNumArgs (interp, 2, objv, "field varName ?pattern? codeBody");
+	      return TCL_ERROR;
+	  }
+
+	  if (objc == 6) {
+	      pattern = Tcl_GetString (objv[4]);
+	      codeIndex = 5;
+	  }
+
+	  hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * tbl_ptr->count);
+
+          /* Build up a table of ptrs to hash entries of rows of the table.
+	   * Optional match pattern on the primary key means we may end up
+	   * with fewer than the total number.
+	   */
+	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
+	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
+
+	      hashSortTable[sortCount++] = hashEntry;
+	}
+
+	comparisonFunction = ${table}_compar_function(Tcl_GetString (objv[1]));
+
+	qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), NULL, *comparisonFunction);
+
+	for (sortIndex = 0; sortIndex < sortCount; sortIndex++) {
+	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
+
+	      if (Tcl_ObjSetVar2 (interp, objv[2], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
+	          ckfree ((char *)hashSortTable);
+	          return TCL_ERROR;
+	      }
+
+	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
+	        case TCL_ERROR:
+		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
+		  ckfree ((char *)hashSortTable);
+		  return TCL_ERROR;
+
+		case TCL_OK:
+		case TCL_CONTINUE:
+		  break;
+
+		case TCL_BREAK:
+		  ckfree ((char *)hashSortTable);
+		  return TCL_OK;
+
+		case TCL_RETURN:
+		  ckfree ((char *)hashSortTable);
+		  return TCL_RETURN;
+	      }
+	  }
+	  ckfree ((char *)hashSortTable);
 	  return TCL_OK;
       }
 
@@ -2760,6 +2994,7 @@ proc gen_preamble {} {
 
     emit "#include <tcl.h>"
     emit "#include <string.h>"
+    emit "#include <stdlib.h>"
     emit "#include \"queue.h\""
     emit ""
     emit "#include <sys/types.h>"
