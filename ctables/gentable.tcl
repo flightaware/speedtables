@@ -777,6 +777,8 @@ set cmdBodySource {
 	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
 	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 
+	      assert (sortCount < tbl_ptr->count);
+printf ("filling sort table %d -> hash entry %lx\n", sortCount, hashEntry);
 	      hashSortTable[sortCount++] = hashEntry;
 	}
 
@@ -2958,6 +2960,8 @@ int ${table}_sort_compare(void *clientData, const void *hashEntry1, const void *
 
     pointer1 = (struct $table *) Tcl_GetHashValue ((Tcl_HashEntry *)hashEntry1);
     pointer2 = (struct $table *) Tcl_GetHashValue ((Tcl_HashEntry *)hashEntry2);
+
+printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", hashEntry1, hashEntry2, pointer1, pointer2);
 
     for (i = 0; i < sortControl->nFields; i++) $leftCurly
         switch (sortControl->fields[i]) $leftCurly
