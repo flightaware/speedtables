@@ -1,6 +1,12 @@
 
 $Id$
 
+11/1/2006 karl
+    * Add a sort method that lets you sort on multiple fields and call
+      through to a callback that processes them in order, like foreach.
+      Can't currently do descending and arguments are positional --
+      would like to have a "walk" method that can sort, etc.
+
 9/14/2006 karl
     * Expand the set command to allow it to take a list of key-value
       pairs in addition to its existing functionality.  This allows
