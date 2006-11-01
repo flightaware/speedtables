@@ -778,7 +778,7 @@ set cmdBodySource {
 	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 
 	      assert (sortCount < tbl_ptr->count);
-printf ("filling sort table %d -> hash entry %lx\n", sortCount, hashEntry);
+// printf ("filling sort table %d -> hash entry %lx (%s)\n", sortCount, (long unsigned int)hashEntry, key);
 	      hashSortTable[sortCount++] = hashEntry;
 	}
 
@@ -2931,6 +2931,7 @@ proc gen_preamble {} {
     }
 
     emit "#include <tcl.h>"
+    emit "#include <assert.h>"
     emit "#include <string.h>"
     emit "#include <stdlib.h>"
     emit "#include \"queue.h\""
@@ -2952,16 +2953,16 @@ struct ${table}SortStruct {
     int *fields;
 };
 
-int ${table}_sort_compare(void *clientData, const void *hashEntry1, const void *hashEntry2) $leftCurly
+int ${table}_sort_compare(void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2) $leftCurly
     struct ${table}SortStruct *sortControl = (struct ${table}SortStruct *)clientData;
     struct ${table} *pointer1, *pointer2;
     int              i;
     int              result = 0;
 
-    pointer1 = (struct $table *) Tcl_GetHashValue ((Tcl_HashEntry *)hashEntry1);
-    pointer2 = (struct $table *) Tcl_GetHashValue ((Tcl_HashEntry *)hashEntry2);
+    pointer1 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr1);
+    pointer2 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr2);
 
-printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", hashEntry1, hashEntry2, pointer1, pointer2);
+// printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)pointer1, (long unsigned int)pointer2);
 
     for (i = 0; i < sortControl->nFields; i++) $leftCurly
         switch (sortControl->fields[i]) $leftCurly
