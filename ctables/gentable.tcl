@@ -216,7 +216,7 @@ set varstringSetSource {
 	int   length;
 
 	if ($pointer->$field != (char *) NULL) {
-	    ckfree ($pointer->$field);
+	    ckfree ((void *)$pointer->$field);
 	    $pointer->$field = NULL;
 	}
 
@@ -354,95 +354,17 @@ set tclobjSetSource {
 }
 
 #
-# gen_sort_comp - emit code to compare fields for sorting
-#
-proc gen_sort_comp {pointer1 pointer2} {
-    variable table
-    variable booleans
-    variable fields
-    variable fieldList
-    variable leftCurly
-    variable rightCurly
-    variable cmdBodyHeader
-
-    foreach myfield $fieldList {
-        catch {unset field}
-	array set field $fields($myfield)
-
-	switch $field(type) {
-	    int {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
-	    }
-
-	    long {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
-	    }
-
-	    wide {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
-	    }
-
-	    double {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
-	    }
-
-	    short {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
-	    }
-
-	    float {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
-	    }
-
-	    char {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
-	    }
-
-	    fixedstring {
-		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
-	    }
-
-	    varstring {
-		emit [subst -nobackslashes -nocommands $varstringSortSource]
-	    }
-
-	    boolean {
-		emit [subst -nobackslashes -nocommands $boolSortSource]
-	    }
-
-	    inet {
-	        set length "sizeof(struct ether_addr)"
-		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
-	    }
-
-	    mac {
-		set length "sizeof(tstruct in_addr)"
-		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
-	    }
-
-	    tclobj {
-		emit [subst -nobackslashes -nocommands $tclobjSortSource]
-	    }
-
-	    default {
-	        error "attempt to emit sort compare source for field of unknown type $field(type)"
-	    }
-	}
-    }
-}
-
-#
 # boolSortSource - code we run subst over to generate a compare of a 
 # boolean (bit) for use in a sort.
 #
 set boolSortSource {
-	case $optname: {
-          if ($pointer1->$field && !$pointer2->$field) {
+	case $fieldEnum: {
+          if (pointer1->$field && !pointer2->$field) {
 	      result = -1;
 	      break;
 	  }
 
-	  if (!$pointer1->$field && $pointer2->$field) {
+	  if (!pointer1->$field && pointer2->$field) {
 	      result = 1;
 	  }
 
@@ -456,14 +378,14 @@ set boolSortSource {
 #  number such as an integer, long, double, and wide integer for use in a sort.
 #
 set numberSortSource {
-      case $optname: {
+      case $fieldEnum: {
 
-        if ($pointer1->$field < $pointer2->$field) {
+        if (pointer1->$field < pointer2->$field) {
 	    result = -1;
 	    break;
 	}
 
-	if ($pointer1->$field > $pointer2->$field) {
+	if (pointer1->$field > pointer2->$field) {
 	    result = 1;
 	    break;
 	}
@@ -478,18 +400,18 @@ set numberSortSource {
 # a string for use in a sort.
 #
 set varstringSortSource {
-      case $optname: {
-        if ($pointer1->$field == NULL) {
-	    if ($pointer2->$field == NULL) {
+      case $fieldEnum: {
+        if (pointer1->$field == NULL) {
+	    if (pointer2->$field == NULL) {
 	        return 0;
 	    }
 
 	    return 1;
-	} else if ($pointer2->$field == NULL) {
+	} else if (pointer2->$field == NULL) {
 	    return -1;
 	}
 
-        result = strcmp ($pointer1->$field, $pointer2->$field);
+        result = strcmp (pointer1->$field, pointer2->$field);
 	break;
       }
 }
@@ -499,8 +421,8 @@ set varstringSortSource {
 # fixed-length string for use in a sort.
 #
 set fixedstringSortSource {
-      case $optname: {
-        result = strncmp ($pointer1->$field, $pointer2->$field, $length);
+      case $fieldEnum: {
+        result = strncmp (pointer1->$field, pointer2->$field, $length);
 	break;
       }
 }
@@ -510,8 +432,8 @@ set fixedstringSortSource {
 # a tclobj for use in a sort.
 #
 set tclobjSortSource {
-      case $optname: {
-        result = strcmp Tcl_GetString ($pointer1->$field), Tcl_GetString ($pointer2->$field);
+      case $fieldEnum: {
+        result = strcmp Tcl_GetString (pointer1->$field), Tcl_GetString (pointer2->$field);
 	break;
       }
 }
@@ -763,7 +685,7 @@ set cmdBodySource {
       case OPT_STATISTICS: {
           CONST char *stats = Tcl_HashStats (tbl_ptr->keyTablePtr);
 	  Tcl_SetStringObj (Tcl_GetObjResult (interp), stats, -1);
-	  ckfree ((char *)stats);
+	  ckfree ((void *)stats);
 	  return TCL_OK;
       }
 
@@ -816,8 +738,10 @@ set cmdBodySource {
 	  Tcl_HashEntry **hashSortTable;
 	  int             sortCount = 0;
 	  int             sortIndex;
-	  int             (*comparisonFunction) (void *, const void *, const void *);
-	  extern int (*${table}_compar_function (char *))(void *, const void *, const void *);
+	  int             fieldsObjc;
+	  int             i;
+	  Tcl_Obj       **fieldsObjv;
+	  struct ${table}SortStruct sortControl;
 
 	  if ((objc < 5) || (objc > 6)) {
 	      Tcl_WrongNumArgs (interp, 2, objv, "field varName ?pattern? codeBody");
@@ -828,6 +752,20 @@ set cmdBodySource {
 	      pattern = Tcl_GetString (objv[4]);
 	      codeIndex = 5;
 	  }
+
+	  if (Tcl_ListObjGetElements (interp, objv[2], &fieldsObjc, &fieldsObjv) == TCL_ERROR) {
+	      return TCL_ERROR;
+	  }
+
+	  sortControl.nFields = fieldsObjc;
+	  sortControl.fields = (int *)ckalloc (sizeof (int) * fieldsObjc);
+	  for (i = 0; i < fieldsObjc; i++) {
+	      if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], ${table}_fields, "field", TCL_EXACT, &sortControl.fields[i]) != TCL_OK) {
+	          ckfree ((void *)sortControl.fields);
+		  return TCL_ERROR;
+	      }
+	  }
+
 
 	  hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * tbl_ptr->count);
 
@@ -842,38 +780,34 @@ set cmdBodySource {
 	      hashSortTable[sortCount++] = hashEntry;
 	}
 
-	comparisonFunction = ${table}_compar_function(Tcl_GetString (objv[1]));
-
-	qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), NULL, *comparisonFunction);
+	qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), &sortControl, ${table}_sort_compare);
 
 	for (sortIndex = 0; sortIndex < sortCount; sortIndex++) {
 	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
 
-	      if (Tcl_ObjSetVar2 (interp, objv[2], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-	          ckfree ((char *)hashSortTable);
+	      if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
+	        err:
+	          ckfree ((void *)hashSortTable);
+		  ckfree ((void *)sortControl.fields);
 	          return TCL_ERROR;
 	      }
 
 	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
 	        case TCL_ERROR:
 		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		  ckfree ((char *)hashSortTable);
-		  return TCL_ERROR;
+		  goto err;
 
 		case TCL_OK:
 		case TCL_CONTINUE:
 		  break;
 
 		case TCL_BREAK:
-		  ckfree ((char *)hashSortTable);
-		  return TCL_OK;
-
 		case TCL_RETURN:
-		  ckfree ((char *)hashSortTable);
-		  return TCL_RETURN;
+		  goto err;
 	      }
 	  }
-	  ckfree ((char *)hashSortTable);
+	  ckfree ((void *)hashSortTable);
+	  ckfree ((void *)sortControl.fields);
 	  return TCL_OK;
       }
 
@@ -1245,7 +1179,7 @@ set cmdBodySource {
 
 	      switch (Tcl_EvalObjv (interp, 2, evalObjv, 0)) {
 	        case TCL_ERROR:
-		  ckfree ((char *)listObjv);
+		  ckfree ((void *)listObjv);
 		  Tcl_AppendResult (interp, " while processing export proc", (char *) NULL);
 		  return TCL_ERROR;
 
@@ -1254,15 +1188,15 @@ set cmdBodySource {
 		  break;
 
 		case TCL_BREAK:
-		  ckfree ((char *)listObjv);
+		  ckfree ((void *)listObjv);
 		  return TCL_OK;
 
 		case TCL_RETURN:
-		  ckfree ((char *)listObjv);
+		  ckfree ((void *)listObjv);
 		  return TCL_RETURN;
 	      }
         }
-        ckfree ((char *)listObjv);
+        ckfree ((void *)listObjv);
 	return TCL_OK;
       }
 
@@ -1976,11 +1910,11 @@ proc gen_delete_subr {subr struct pointer} {
 
 	switch $field(type) {
 	    varstring {
-	        emit "    if ($pointer->$myfield != (char *) NULL) ckfree ($pointer->$myfield);"
+	        emit "    if ($pointer->$myfield != (char *) NULL) ckfree ((void *)$pointer->$myfield);"
 	    }
 	}
     }
-    emit "    ckfree ((char *)$pointer);"
+    emit "    ckfree ((void *)$pointer);"
 
     emit "}"
     emit ""
@@ -2499,6 +2433,8 @@ proc gen_code {} {
 
     gen_get_function $table $pointer
 
+    gen_sort_compare_function
+
     emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
     emit [subst -nobackslashes -nocommands $cmdBodySource]
@@ -3006,6 +2942,138 @@ proc gen_preamble {} {
     emit "#ifdef WITH_PGTCL"
     emit "#include <libpq-fe.h>"
     emit "#endif"
+}
+
+set sortCompareHeaderSource {
+struct ${table}SortStruct {
+    int nFields;
+    int *fields;
+};
+
+int ${table}_sort_compare(void *clientData, const void *hashEntry1, const void *hashEntry2) $leftCurly
+    struct ${table}SortStruct *sortControl = (struct ${table}SortStruct *)clientData;
+    struct ${table} *pointer1, *pointer2;
+    int              i;
+    int              result = 0;
+
+    pointer1 = (struct $table *) Tcl_GetHashValue ((Tcl_HashEntry *)hashEntry1);
+    pointer2 = (struct $table *) Tcl_GetHashValue ((Tcl_HashEntry *)hashEntry2);
+
+    for (i = 0; i < sortControl->nFields; i++) $leftCurly
+        switch (sortControl->fields[i]) $leftCurly
+}
+
+set sortCompareTrailerSource {
+        $rightCurly // end of switch
+
+	// if they're not equal, we're done.  if they are, we may need to
+	// compare a subordinate sort field (if there is one)
+	if (result != 0) {
+	    break;
+	}
+    $rightCurly // end of for loop on sort fields
+    return result;
+$rightCurly
+}
+
+proc gen_sort_compare_function {} {
+    variable table
+    variable leftCurly
+    variable rightCurly
+    variable sortCompareHeaderSource
+    variable sortCompareTrailerSource
+
+    emit [subst -nobackslashes -nocommands $sortCompareHeaderSource]
+
+    gen_sort_comp
+
+    emit [subst -nobackslashes -nocommands $sortCompareTrailerSource]
+}
+
+#
+# gen_sort_comp - emit code to compare fields for sorting
+#
+proc gen_sort_comp {} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+    variable cmdBodyHeader
+
+    variable numberSortSource
+    variable fixedstringSortSource
+    variable varstringSortSource
+    variable boolSortSource
+    variable tclobjSortSource
+
+    foreach field $fieldList {
+        catch {unset fieldData}
+	array set fieldData $fields($field)
+	set fieldEnum [field_to_enum $field]
+
+	switch $fieldData(type) {
+	    int {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    long {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    wide {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    double {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    short {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    float {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    char {
+		emit [subst -nobackslashes -nocommands $numberSortSource]
+	    }
+
+	    fixedstring {
+	        set length $fieldData(length)
+		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+	    }
+
+	    varstring {
+		emit [subst -nobackslashes -nocommands $varstringSortSource]
+	    }
+
+	    boolean {
+		emit [subst -nobackslashes -nocommands $boolSortSource]
+	    }
+
+	    inet {
+	        set length "sizeof(struct ether_addr)"
+		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+	    }
+
+	    mac {
+		set length "sizeof(tstruct in_addr)"
+		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+	    }
+
+	    tclobj {
+		emit [subst -nobackslashes -nocommands $tclobjSortSource]
+	    }
+
+	    default {
+	        error "attempt to emit sort compare source for field of unknown type $fieldData(type)"
+	    }
+	}
+    }
 }
 
 #
