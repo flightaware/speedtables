@@ -144,3 +144,5 @@ DONE Make an export function that works like import insofar as calling code
 
 Do something like GNU autoconf/configure or dig compiler switches, etc, out
 of tclConfig.sh.
+
+Add an "incr" method.
