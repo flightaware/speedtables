@@ -349,6 +349,33 @@ foreach
     execute "continue" and "break" to resume the code with the next
     row and break out of the foreach loop, respectively.
 
+sort
+
+    Iterate over all of the rows in the table, or just the rows in the table
+    matching a string match wildcard, sorting the picked rows (usually all
+    of them) in order of the fields in the field list where the first one
+    is the most significant, then executing a tcl code body on each of them.
+
+    % x sort fieldList ?pattern? key {
+        puts $key
+	puts ""
+    }
+
+    If you want to do something with the keys, like access data in the row,
+    use get, array_get or array_get_with_nulls, etc, within the code body.
+
+    % x sort fieldList key {
+        catch {unset data}
+        array set data [x array_get $key]
+	puts "$key:"
+	parray data
+	puts ""
+    }
+
+    The normal Tcl semantics for loops are followed; that is, you can
+    execute "continue" and "break" to resume the code with the next
+    row and break out of the foreach loop, respectively.
+
 
 type
 
