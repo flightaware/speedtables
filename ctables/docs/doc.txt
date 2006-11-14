@@ -163,6 +163,13 @@ Additional metatable methods are, for example:
 
 	...then proc "bar" would be called with the arguments "x a b c d".
 
+NOTE - Tcl appears to examine a shared library name and stop at the first
+numeric digit in an apparently somewhat inadequate attempt to make sure it 
+doesn't include shared library version numbers in the expected *_Init and
+*_SafeInit function names for the library being generated.  Consequently
+when you're defining a C extension via the CExtension command, do not
+include any digits in your C extension's name.
+
 
 Where Stuff Is Built
 --------------------
@@ -806,6 +813,9 @@ For fixed strings and varstrings, no copying is performed.
 *_delete_all_rows - give a pointer to the StructTable for an instance,
 delete all the rows.
 
+Interfaceing with Ctables From C
+--------------------------------
+
 At the time of this writing, no C code has been written to use any of these
 routines that is not part of the CTable code itself.  We envision providing
 a way to write C code inline within the CTable definition and, for more
@@ -816,12 +826,86 @@ C routines you'd be calling, and many other things currently going
 straight into the C code.  These changes are fairly straightforward, however,
 and are on the "to do" list.
 
+Using Copy In For Super Fast Ctable-to-PostgreSQL Transfers
+-----------------------------------------------------------
+
+Here's the PostgreSQL syntax for copying from a file (or stdin) to a table:
+
+    COPY tablename [ ( column [, ...] ) ]
+	FROM { 'filename' | STDIN }
+	[ [ WITH ] 
+	      [ BINARY ]
+	      [ OIDS ]
+	      [ DELIMITER [ AS ] 'delimiter' ]
+	      [ NULL [ AS ] 'null string' ]
+	      [ CSV [ HEADER ]
+		    [ QUOTE [ AS ] 'quote' ] 
+		    [ ESCAPE [ AS ] 'escape' ]
+		    [ FORCE NOT NULL column [, ...] ]
+
+
+Here's an example of taking a ctable and copying it it to a PostgreSQL table.
+
+
+    package require Pgtcl
+
+    source cpescan.ct
+
+    package require Cpe_scan
+
+    cpe_scan null_value \\N
+    cpe_scan create cpe
+
+    set fp [open junk]
+    #cpe read_tabsep $fp ip_address status ubr k_docsifcmstatustxpower k_docsifdownchannelpower k_docsifsigqsignalnoise k_docsifsigqmicroreflections
+    #cpe read_tabsep $fp -glob *:e1 ip_address status ubr
+    #cpe read_tabsep $fp -glob *:e1 
+
+    cpe read_tabsep $fp
+
+    close $fp
+
+    puts [cpe count]
+
+    set db [pg_connect www]
+
+    #
+    # note double-backslashing on the null value and that we set the null value
+    # to match the null_value set with the ctable.
+    #
+    set res [pg_exec $db "copy kfoo from stdin with delimiter as '\t' null as '\\\\N'"]
+
+    #
+    # after you've started it, you expect the postgres response handle's status
+    # to be PGRES_COPY_IN
+    #
+    if {[pg_result $res -status] != "PGRES_COPY_IN"} {
+	puts "[pg_result $res -status] - bailing"
+	puts "[pg_result $res -error]"
+	exit
+    }
+
+    #
+    # next you use the write_tabsep method of the ctable to write 
+    # TO THE DATABASE HANDLE
+    #
+    #cpe write_tabsep $db ip_address status ubr
+    cpe write_tabsep $db
+
+    #
+    # then send a special EOF sequence.
+    #
+    puts $db "\\."
+
+    #
+    # the result handle previously returned will now have magically changed
+    # its status to the normal PGRES_COMMAND_OK response.
+    #
+    puts [pg_result $res -status]
+
+
+NOTE that all the records must be accepted, i.e. not violate any constraints, etc, or none of them will be.
+
 Karl Lehenbauer
 7/19/06
 
-NOTE - Tcl appears to examine a shared library name and stop at the first
-numeric digit in an apparently somewhat inadequate attempt to make sure it 
-doesn't include shared library version numbers in the expected *_Init and
-*_SafeInit function names for the library being generated.  Consequently
-when you're defining a C extension via the CExtension command, do not
-include any digits in your C extension's name.
