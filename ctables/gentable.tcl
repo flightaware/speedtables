@@ -17,6 +17,11 @@ namespace eval ctable {
     variable ctableErrorInfo
     variable withPgtcl
 
+    variable genCompilerDebug
+
+    # set to 1 to build with debugging and link to tcl debugging libraries
+    set genCompilerDebug 0
+
     variable pgtcl_ver 1.5
 
     variable leftCurly
@@ -423,6 +428,17 @@ set varstringSortSource {
 set fixedstringSortSource {
       case $fieldEnum: {
         result = strncmp (pointer1->$field, pointer2->$field, $length);
+	break;
+      }
+}
+
+#
+# binaryDataSortSource - code we run subst over to generate a comapre of a 
+# inline binary arrays (inets and mac addrs) for use in a sort.
+#
+set binaryDataSortSource {
+      case $fieldEnum: {
+        result = memcmp (&pointer1->$field, &pointer2->$field, $length);
 	break;
       }
 }
@@ -1083,7 +1099,7 @@ set cmdBodySource {
 	int              nFields = 0;
 	char            *pattern = NULL;
 	char            *channel;
-	in               noKeys = 0;
+	int              noKeys = 0;
 
 	if (objc < 3) {
 	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
@@ -1096,7 +1112,7 @@ set cmdBodySource {
 	    char *possibleSwitch;
 
 	    possibleSwitch = Tcl_GetString(objv[objIdx]);
-	    if (*possibleSwitch != "-") break;
+	    if (*possibleSwitch != '-') break;
 
 	    if (strcmp (possibleSwitch, "-glob") == 0) {
 		objIdx++;
@@ -1108,6 +1124,7 @@ set cmdBodySource {
 		objc -= 2;
 	    } else if (strcmp (possibleSwitch, "-nokeys") == 0) {
 		objIdx++;
+		objc--;
 		noKeys = 1;
 	    } else {
 		Tcl_AppendResult (interp, "unknown switch: ", possibleSwitch, (char *)NULL);
@@ -1447,7 +1464,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr,
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, char *string, int *fieldIds, int nFields, noKey, recordNumber) {
+${table}_set_from_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, char *string, int *fieldIds, int nFields, int noKey, int recordNumber) {
     struct $table *$pointer;
     char          *key;
     char          *field;
@@ -3034,6 +3051,7 @@ proc gen_sort_comp {} {
 
     variable numberSortSource
     variable fixedstringSortSource
+    variable binaryDataSortSource
     variable varstringSortSource
     variable boolSortSource
     variable tclobjSortSource
@@ -3087,12 +3105,12 @@ proc gen_sort_comp {} {
 
 	    inet {
 	        set length "sizeof(struct ether_addr)"
-		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+		emit [subst -nobackslashes -nocommands $binaryDataSortSource]
 	    }
 
 	    mac {
 		set length "sizeof(tstruct in_addr)"
-		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+		emit [subst -nobackslashes -nocommands $binaryDataSortSource]
 	    }
 
 	    tclobj {
@@ -3113,8 +3131,7 @@ proc compile {fileFragName version} {
     global tcl_platform
     variable buildPath
     variable pgtcl_ver
-
-    set debug 1
+    variable genCompilerDebug
 
     set buildFragName $buildPath/$fileFragName-$version
     set sourceFile $buildFragName.c
@@ -3122,7 +3139,7 @@ proc compile {fileFragName version} {
 
     switch $tcl_platform(os) {
 	"FreeBSD" {
-	    if {$debug} {
+	    if {$genCompilerDebug} {
 		set optflag "-g"
 		set stub "-ltclstub84g"
 		set lib "-ltcl84g"
@@ -3138,7 +3155,7 @@ proc compile {fileFragName version} {
 	}
 
 	"Darwin" {
-	    if {$debug} {
+	    if {$genCompilerDebug} {
 		set optflag "-g"
 		set stub "-ltclstub8.4g"
 		set lib "-ltcl8.4g"

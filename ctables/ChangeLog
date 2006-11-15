@@ -2,10 +2,18 @@
 $Id$
 
 11/15/2006 karl
+    * Switch debugging off by default.
+
     * Add the -nokey switch to import_tabsep and export_tabsep.  If set,
       export_tabsep will not include the key in what it emits, and 
       import_tabsep will self-generate an ascending integer key when
       importing.
+
+    * Make linking with debug libraries and generating with compiler
+      debugging more parameterized.
+
+    * Make sort comparison of MAC and IP addresses work better or,
+      more to the point, work at all.
 
 11/1/2006 karl
     * Add a sort method that lets you sort on multiple fields and call
