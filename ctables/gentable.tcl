@@ -3104,12 +3104,12 @@ proc gen_sort_comp {} {
 	    }
 
 	    inet {
-	        set length "sizeof(struct ether_addr)"
+	        set length "sizeof(struct in_addr)"
 		emit [subst -nobackslashes -nocommands $binaryDataSortSource]
 	    }
 
 	    mac {
-		set length "sizeof(tstruct in_addr)"
+		set length "sizeof(struct ether_addr)"
 		emit [subst -nobackslashes -nocommands $binaryDataSortSource]
 	    }
 
