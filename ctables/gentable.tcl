@@ -1529,7 +1529,11 @@ ${table}_import_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr,
 	}
 
 	if (${table}_set_from_tabsep (interp, tbl_ptr, string, fieldNums, nFields, noKeys, recordNumber) == TCL_ERROR) {
+	    char lineNumberString[32];
+
 	    Tcl_DecrRefCount (lineObj);
+	    sprintf (lineNumberString, "%d", recordNumber + 1);
+            Tcl_AppendResult (interp, " while reading line ", lineNumberString, " of input", (char *)NULL);
 	    return TCL_ERROR;
 	}
 

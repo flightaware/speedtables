@@ -15,6 +15,11 @@ $Id$
     * Make sort comparison of MAC and IP addresses work better or,
       more to the point, work at all.
 
+    * When a row fails input checks during read_tabsep, report the line
+      number in the error message.
+
+    * Update documentation.
+
 11/1/2006 karl
     * Add a sort method that lets you sort on multiple fields and call
       through to a callback that processes them in order, like foreach.

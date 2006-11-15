@@ -541,7 +541,7 @@ statistics
 
 write_tabsep
 
-    x write_tabsep channel ?-glob pattern? ?field...?
+    x write_tabsep channel ?-glob pattern? ?-nokeys? ?field...?
 
     Write the table tab_separated to a channel, with the names of desired
     fields specified, else all fields if none are specified.
@@ -550,7 +550,11 @@ write_tabsep
     x write_tabsep $fp
     close $fp
 
-    The first field written will be the key whether you like it or not.
+    If the glob pattern is specified and the key of a row does not match
+    the glob pattern, the row is not written.
+
+    The first field written will be the key whether you like it or not, unless
+    if -nokeys is specified, the key value is not written to the destination.
 
     NOTE - We do not currently quote any tabs that occur in the data, so
     if there are tab characters in any of the strings in a row, that row
@@ -560,7 +564,7 @@ write_tabsep
 
 read_tabsep
 
-    x read_tabsep channel ?-glob pattern? ?field...?
+    x read_tabsep channel ?-glob pattern? ?-nokeys? ?field...?
 
     read tab-separated entries from a channel, with a list of fields
     specified, or all fields if none are specified.
@@ -569,12 +573,26 @@ read_tabsep
     x read_tabsep $fp
     close $fp
 
-    The first field is expected to be the key and is not included in the list 
-    of fields.  So if you name five fields, for example, each row in the
-    input file (or socket or whatever) should contain six.
+    The first field is expected to be the key (unless -nokeys is specified)
+    and is not included in the list of fields.  So if you name five fields, 
+    for example, each row in the input file (or socket or whatever) should 
+    contain six elements.
 
     It's an error if the number of fields read doesn't match the number 
     expected.
+
+    If the glob pattern is defined it's applied to the key (first field in
+    the row) and if it doesn't match, the row is not inserted.
+
+    If -nokeys is specified, the first field of each row is not used as
+    the key -- rather, the key is automatically created as an ascending
+    integer starting from 0.
+
+    If you subsequently do another read_tabsep, the key will again begin at
+    0.
+
+    If you later want to insert at the end of the table, you can do a set
+    with the key being the table's count.
 
 
 The C Code Generated And C Routines Made Available
