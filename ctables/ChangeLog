@@ -1,6 +1,12 @@
 
 $Id$
 
+11/15/2006 karl
+    * Add the -nokey switch to import_tabsep and export_tabsep.  If set,
+      export_tabsep will not include the key in what it emits, and 
+      import_tabsep will self-generate an ascending integer key when
+      importing.
+
 11/1/2006 karl
     * Add a sort method that lets you sort on multiple fields and call
       through to a callback that processes them in order, like foreach.
