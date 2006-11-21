@@ -148,10 +148,19 @@ proc remote_invoke {sock line} {
 	    $ctable foreach ZZ
 	}
 
+	get_tabsep {
+	    set cmd [linsert $remoteArgs 0 $ctable write_tabsep $sock]
+	    puts '$cmd'
+	    puts $sock "m"
+	    set result [eval $cmd]
+	    puts $sock ""
+	    return $result
+	}
+
 	default {
 	    set cmd [linsert $remoteArgs 0 $ctable $command]
 	    puts '$cmd'
-	    eval $cmd
+	    return [eval $cmd]
 	}
     }
 }
