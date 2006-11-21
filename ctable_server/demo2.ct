@@ -1,0 +1,25 @@
+#
+# 
+#
+# $Id$
+#
+#{Ida Mahler} {5341 Waterford Dr} 75150 010100000090A8101A9D2858C0FEA0BB5E036B4040 00:90:83:00:00:00
+
+package require ctable
+
+CExtension cable 1.0 {
+
+CTable cable_info {
+    inet ip 
+    mac  mac
+    varstring name
+    varstring address
+    varstring addressNumber
+    varstring geos
+    int i
+    int j
+    long ij
+    tclobj extraStuff
+}
+
+}
