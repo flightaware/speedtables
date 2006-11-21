@@ -6,7 +6,7 @@
 #
 
 proc remote_ctable {host tableName} {
-    proc $tableName {x} [list remote_ctable_invoke $tableName $host \$x]
+    proc $tableName {args} "remote_ctable_invoke $tableName $host \$args"
 }
 
 proc remote_ctable_invoke {tableName host command} {
