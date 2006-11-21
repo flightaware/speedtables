@@ -1,4 +1,8 @@
-
+#
+# demo server
+#
+# $Id$
+#
 
 source demo2.ct
 package require Cable

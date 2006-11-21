@@ -1,8 +1,7 @@
 #
+# Ctable Server 
 #
-#
-#
-#
+# $Id$
 #
 
 package require Tclx
@@ -10,22 +9,34 @@ package require Tclx
 namespace eval ::ctable_server {
   variable registeredCtables
 
+#
+# register - register a table for remote access
+#
 proc register {table {type ""}} {
     variable registeredCtables
 
     set registeredCtables($table) $type
 }
 
+#
+# register_instantiator - register a ctable creator
+#
 proc register_instantiator {cTable} {
     variable registeredCtableCreators
 
     set registeredCtableCreators($cTable) ""
 }
 
+#
+# setup - setup our server socket
+#
 proc setup {} {
     set serverSock [socket -server ::ctable_server::accept_connection 11111]
 }
 
+#
+# accept_connection - accept a client connection
+#
 proc accept_connection {sock ip port} {
     puts "connect from $sock $ip $port"
 
@@ -33,6 +44,9 @@ proc accept_connection {sock ip port} {
     fileevent $sock readable [list ::ctable_server::remote_receive $sock]
 }
 
+#
+# remote_receive - receive data from the remote side
+#
 proc remote_receive {sock} {
     global errorCode errorInfo
 
