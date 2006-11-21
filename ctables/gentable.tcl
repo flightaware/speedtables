@@ -449,7 +449,7 @@ set binaryDataSortSource {
 #
 set tclobjSortSource {
       case $fieldEnum: {
-        result = strcmp Tcl_GetString (pointer1->$field), Tcl_GetString (pointer2->$field);
+        result = strcmp (Tcl_GetString (pointer1->$field), Tcl_GetString (pointer2->$field));
 	break;
       }
 }
