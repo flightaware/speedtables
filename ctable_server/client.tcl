@@ -39,18 +39,28 @@ proc remote_ctable_send {host command} {
 	flush $sock
     }
 
-    set line [gets $sock]
-    switch [lindex $line 0] {
-	"e" {
-	    error [lindex $line 1] [lindex $line 2] [lindex $line 3]
-	}
+    while 1 {
+	set line [gets $sock]
 
-	"k" {
-	    return [lindex $line 1]
-	}
+	switch [lindex $line 0] {
+	    "e" {
+		error [lindex $line 1] [lindex $line 2] [lindex $line 3]
+	    }
 
-	default {
-	    error "unknown command response"
+	    "k" {
+		return [lindex $line 1]
+	    }
+
+	    "m" {
+		while {[gets $sock line] > 0} {
+		    puts "multiline response: $line"
+		}
+		break
+	    }
+
+	    default {
+		error "unknown command response"
+	    }
 	}
     }
 }
