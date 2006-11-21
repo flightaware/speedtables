@@ -8,6 +8,9 @@ package require Tclx
 
 namespace eval ::ctable_server {
   variable registeredCtables
+  variable evalEnabled
+
+  set evalEnabled 1
 
 #
 # register - register a table for remote access
@@ -83,7 +86,8 @@ proc instantiate {ctableCreator ctable} {
     }
 
     if {[info exists registeredCtables($ctable)]} {
-	error "ctable '$ctable' of creator '$ctableCreator' already exists" "" CTABLE
+	#error "ctable '$ctable' of creator '$ctableCreator' already exists" "" CTABLE
+	return ""
     }
 
     register $ctable
@@ -93,37 +97,46 @@ proc instantiate {ctableCreator ctable} {
 proc remote_invoke {sock line} {
     variable registeredCtables
     variable registeredCtableCreators
+    variable evalEnabled
 
     puts "remote_invoke '$sock' '$line'"
 
-    set args [lassign $line ctable command]
+    set remoteArgs [lassign $line command ctable]
+    puts "command '$command' ctable '$ctable' args '$remoteArgs'"
 
-    puts "ctable '$ctable' command '$command' args '$args'"
-
-    if {$command == ""} {
-	switch $ctable {
-	    "quit" {
-		close $sock
-		error "quit" "" ctable_quit
-	    }
-
-	    "tablemakers" {
-		return [lsort [array names registeredCtableCreators]]
-	    }
-
-	    "tables" {
-		set result ""
-		foreach table [array names registeredCtables] {
-		    lappend $result $table
-		    lappend $result $registeredCtables($table)
-		}
-		return $result
-	    }
+    switch $command {
+	"quit" {
+	    close $sock
+	    error "quit" "" ctable_quit
 	}
-    }
 
-    if {$command == "create"} {
-	return [instantiate $ctable [lindex $args 0]]
+	"create" {
+	    return [instantiate $ctable [lindex $remoteArgs 0]]
+	}
+
+	"tablemakers" {
+	    return [lsort [array names registeredCtableCreators]]
+	}
+
+	"tables" {
+	    set result ""
+	    foreach table [array names registeredCtables] {
+		lappend result $table $registeredCtables($table)
+	    }
+	    return $result
+	}
+
+	"eval" {
+	    if {!$evalEnabled} {
+		error "not permitted"
+	    }
+
+	    return [uplevel #0 $ctable $remoteArgs]
+	}
+
+	"help" {
+	    return "quit; create tableCreator tableName; tablemakers; tables; or a ctable name"
+	}
     }
 
     if {![info exists registeredCtables($ctable)]} {
@@ -131,20 +144,14 @@ proc remote_invoke {sock line} {
     }
 
     switch $command {
-	destroy {
-	    error "forbidden" "" CTABLE
-	}
-
-	create {
-	    error "should not get here" "" CTABLE
-	}
-
 	foreach {
 	    $ctable foreach ZZ
 	}
 
 	default {
-	    eval $ctable $command $args
+	    set cmd [linsert $remoteArgs 0 $ctable $command]
+	    puts '$cmd'
+	    eval $cmd
 	}
     }
 }
