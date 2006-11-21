@@ -1405,9 +1405,10 @@ ${table}_get_string (struct $table *$pointer, int field, int *lengthPtr, Tcl_Obj
 set tabSepFunctionsSource {
 void
 ${table}_dstring_append_get_tabsep (char *key, struct $table *$pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey) {
-    int        i;
-    int        nChars;
-    Tcl_Obj   *utilityObj = Tcl_NewObj();
+    int              i;
+    CONST char      *string;
+    int              nChars;
+    Tcl_Obj         *utilityObj = Tcl_NewObj();
 
     if (!noKey) {
 	Tcl_DStringAppend (dsPtr, key, -1);
@@ -1416,8 +1417,15 @@ ${table}_dstring_append_get_tabsep (char *key, struct $table *$pointer, int *fie
     for (i = 0; i < nFields; i++) {
 	if (!noKey || (i > 0)) {
 	    Tcl_DStringAppend (dsPtr, "\t", 1);
+	    // Tcl_DStringAppend (dsPtr, "|", 1);
 	}
-	Tcl_DStringAppend (dsPtr, ${table}_get_string ($pointer, fieldNums[i], &nChars, utilityObj), nChars);
+
+	string = ${table}_get_string ($pointer, fieldNums[i], &nChars, utilityObj);
+	if (nChars != 0) {
+// printf("${table}_dstring_append_get_tabsep appending '%s'\n", string);
+	    Tcl_DStringAppend (dsPtr, string, nChars);
+	}
+// printf("${table}_dstring_append_get_tabsep i %d fieldNums[i] %d nChars %d\n", i, fieldNums[i], nChars);
     }
     Tcl_DStringAppend (dsPtr, "\n", 1);
     Tcl_DecrRefCount (utilityObj);

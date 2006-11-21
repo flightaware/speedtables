@@ -594,6 +594,12 @@ read_tabsep
     If you later want to insert at the end of the table, you can do a set
     with the key being the table's count.
 
+    read_tabsep stops when it reaches end of file OR when it reads an
+    empty line.  Since you must have a key and at least one field, this
+    is safe.  However it might not be safe with -nokeys.
+
+    The nice thing about it is you can indicate end of input with an
+    empty line and then do something else with the data that follows.
 
 The C Code Generated And C Routines Made Available
 --------------------------------------------------
