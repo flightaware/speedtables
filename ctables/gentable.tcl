@@ -461,15 +461,15 @@ set tclobjSortSource {
 # boolean (bit)
 #
 set boolCompSource {
-      case $optname: {
+      case $fieldEnum: {
 
 	switch (compType) {
 	  case COMP_TRUE:
-	     result = $pointer->$field;
+	     exclude = (!pointer->$field);
 	     break;
 
 	  case COMP_FALSE:
-	    result = (!$pointer->$field);
+	    exclude = pointer->$field;
 	    break;
 	}
       }
@@ -481,30 +481,30 @@ set boolCompSource {
 #  handle shorts and floats specially due to type coercion requirements.)
 #
 set numberCompSource {
-      case $optname: {
+        case $fieldEnum: {
 
-        switch (compType) {
+          switch (compType) {
 	    case COMP_LT:
-	        result = ($pointer->$field < $value);
+	        exclude = !(pointer->$field < $value);
 		break;
 
 	    case COMP_LE:
-	        result = ($pointer->$field <= $value);
+	        exclude = !(pointer->$field <= $value);
 		break;
 
 	    case COMP_EQ:
-	        result = ($pointer->$field == $value);
+	        exclude = !(pointer->$field == $value);
 		break;
 
 	    case COMP_GE:
-	        result = ($pointer->$field >= $value);
+	        exclude = !(pointer->$field >= $value);
 		break;
 
 	    case COMP_GT:
-	        result = ($pointer->$field > $value);
+	        exclude = !(pointer->$field > $value);
 		break;
-	}
-      }
+	  }
+        }
 }
 
 #
@@ -512,33 +512,33 @@ set numberCompSource {
 # a string.
 #
 set varstringCompSource {
-      case $optname: {
-        int strcmpResult;
+        case $fieldEnum: {
+          int strcmpResult;
 
-        strcmpResult = strcmp ($pointer->$field, $value);
+          strcmpResult = strcmp (pointer->$field, $value);
 
-        switch (compType) {
+          switch (compType) {
 	    case COMP_LT:
-	        result = (strcmpResult < 0);
+	        exclude = !(strcmpResult < 0);
 		break;
 
 	    case COMP_LE:
-	        result = (strcmpResult <= 0);
+	        exclude = !(strcmpResult <= 0);
 		break;
 
 	    case COMP_EQ:
-	        result = (strcmpResult == 0);
+	        exclude = !(strcmpResult == 0);
 		break;
 
 	    case COMP_GE:
-	        result = (strcmpResult >= 0);
+	        exclude = !(strcmpResult >= 0);
 		break;
 
 	    case COMP_GT:
-	        result = (strcmpResult > 0);
+	        exclude = !(strcmpResult > 0);
 		break;
-	}
-      }
+	  }
+        }
 }
 
 #
@@ -546,33 +546,68 @@ set varstringCompSource {
 # fixed-length string.
 #
 set fixedstringCompSource {
-      case $optname: {
-        int strcmpResult;
+        case $fieldEnum: {
+          int strcmpResult;
 
-        strcmpResult = strncmp ($pointer->$field, $value, $length);
+          strcmpResult = strncmp (pointer->$field, $value, $length);
 
-        switch (compType) {
+          switch (compType) {
 	    case COMP_LT:
-	        result = (strcmpResult < 0);
+	        exclude = !(strcmpResult < 0);
 		break;
 
 	    case COMP_LE:
-	        result = (strcmpResult <= 0);
+	        exclude = !(strcmpResult <= 0);
 		break;
 
 	    case COMP_EQ:
-	        result = (strcmpResult == 0);
+	        exclude = !(strcmpResult == 0);
 		break;
 
 	    case COMP_GE:
-	        result = (strcmpResult >= 0);
+	        exclude = !(strcmpResult >= 0);
 		break;
 
 	    case COMP_GT:
-	        result = (strcmpResult > 0);
+	        exclude = !(strcmpResult > 0);
 		break;
-	}
-      }
+  	  }
+        }
+}
+
+#
+# tclobjCompSource - code we run subst over to generate a compare of 
+# a tclobj for use in a search.
+#
+set tclobjCompSource {
+        case $fieldEnum: {
+          int strcmpResult;
+
+          strcmpResult = strcmp (Tcl_GetString (pointer1->$field), $value);
+
+          switch (compType) {
+	    case COMP_LT:
+	        exclude = !(strcmpResult < 0);
+		break;
+
+	    case COMP_LE:
+	        exclude = !(strcmpResult <= 0);
+		break;
+
+	    case COMP_EQ:
+	        exclude = !(strcmpResult == 0);
+		break;
+
+	    case COMP_GE:
+	        exclude = !(strcmpResult >= 0);
+		break;
+
+	    case COMP_GT:
+	        exclude = !(strcmpResult > 0);
+		break;
+	  }
+	  break;
+        }
 }
 
 #
@@ -602,9 +637,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "sort", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "sort", "walk", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_SORT, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
+    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_SORT, OPT_WALK, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
 
 }
 
@@ -747,6 +782,88 @@ set cmdBodySource {
       }
 
       case OPT_SORT: {
+	  Tcl_HashSearch  hashSearch;
+	  char           *pattern = (char *) NULL;
+	  char           *key;
+	  int             codeIndex = 4;
+	  Tcl_HashEntry **hashSortTable;
+	  int             sortCount = 0;
+	  int             sortIndex;
+	  int             fieldsObjc;
+	  int             i;
+	  Tcl_Obj       **fieldsObjv;
+	  struct ${table}SortStruct sortControl;
+
+	  if ((objc < 5) || (objc > 6)) {
+	      Tcl_WrongNumArgs (interp, 2, objv, "fieldList varName ?pattern? codeBody");
+	      return TCL_ERROR;
+	  }
+
+	  if (objc == 6) {
+	      pattern = Tcl_GetString (objv[4]);
+	      codeIndex = 5;
+	  }
+
+	  if (Tcl_ListObjGetElements (interp, objv[2], &fieldsObjc, &fieldsObjv) == TCL_ERROR) {
+	      return TCL_ERROR;
+	  }
+
+	  sortControl.nFields = fieldsObjc;
+	  sortControl.fields = (int *)ckalloc (sizeof (int) * fieldsObjc);
+	  for (i = 0; i < fieldsObjc; i++) {
+	      if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], ${table}_fields, "field", TCL_EXACT, &sortControl.fields[i]) != TCL_OK) {
+	          ckfree ((void *)sortControl.fields);
+		  return TCL_ERROR;
+	      }
+	  }
+
+	  hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * tbl_ptr->count);
+
+          /* Build up a table of ptrs to hash entries of rows of the table.
+	   * Optional match pattern on the primary key means we may end up
+	   * with fewer than the total number.
+	   */
+	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
+	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
+
+	      assert (sortCount < tbl_ptr->count);
+// printf ("filling sort table %d -> hash entry %lx (%s)\n", sortCount, (long unsigned int)hashEntry, key);
+	      hashSortTable[sortCount++] = hashEntry;
+	}
+
+	qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), &sortControl, ${table}_sort_compare);
+
+	for (sortIndex = 0; sortIndex < sortCount; sortIndex++) {
+	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
+
+	      if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
+	        err:
+	          ckfree ((void *)hashSortTable);
+		  ckfree ((void *)sortControl.fields);
+	          return TCL_ERROR;
+	      }
+
+	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
+	        case TCL_ERROR:
+		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
+		  goto err;
+
+		case TCL_OK:
+		case TCL_CONTINUE:
+		  break;
+
+		case TCL_BREAK:
+		case TCL_RETURN:
+		  goto err;
+	      }
+	  }
+	  ckfree ((void *)hashSortTable);
+	  ckfree ((void *)sortControl.fields);
+	  return TCL_OK;
+      }
+
+      case OPT_WALK: {
 	  Tcl_HashSearch  hashSearch;
 	  char           *pattern = (char *) NULL;
 	  char           *key;
@@ -2491,6 +2608,8 @@ proc gen_code {} {
 
     gen_sort_compare_function
 
+    gen_search_compare_function
+
     emit [subst -nobackslashes -nocommands $cmdBodyHeader]
 
     emit [subst -nobackslashes -nocommands $cmdBodySource]
@@ -3019,8 +3138,7 @@ int ${table}_sort_compare(void *clientData, const void *hashEntryPtr1, const voi
 // printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)pointer1, (long unsigned int)pointer2);
 
     for (i = 0; i < sortControl->nFields; i++) $leftCurly
-        switch (sortControl->fields[i]) $leftCurly
-}
+        switch (sortControl->fields[i]) $leftCurly }
 
 set sortCompareTrailerSource {
         $rightCurly // end of switch
@@ -3035,6 +3153,10 @@ set sortCompareTrailerSource {
 $rightCurly
 }
 
+#
+# gen_sort_compare_function - generate a function that will compare fields
+# in two ctable structures for use by qsort
+#
 proc gen_sort_compare_function {} {
     variable table
     variable leftCurly
@@ -3135,6 +3257,146 @@ proc gen_sort_comp {} {
 	}
     }
 }
+
+set searchCompareHeaderSource {
+struct ${table}SearchStruct {
+    int nFields;
+    int *fields;
+};
+
+int ${table}_search_compare(void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2) $leftCurly
+    struct ${table}SearchStruct *searchControl = (struct ${table}SearchStruct *)clientData;
+    struct ${table} *pointer1, *pointer2;
+    int              i;
+    int              exclude = 0;
+
+    pointer1 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr1);
+    pointer2 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr2);
+
+// printf ("search comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)pointer1, (long unsigned int)pointer2);
+
+    for (i = 0; i < searchControl->nFields; i++) $leftCurly
+      switch (searchControl->fields[i]) $leftCurly }
+
+set searchCompareTrailerSource {
+       $rightCurly // end of switch
+
+        // if exclude got set, we're done.
+	if (exclude) {
+	    break;
+	}
+    $rightCurly // end of for loop on search fields
+    return exclude;
+$rightCurly
+}
+
+#
+# gen_search_compare_function - generate a function that see if a row in
+# a ctable matches the search criteria
+#
+proc gen_search_compare_function {} {
+    variable table
+    variable leftCurly
+    variable rightCurly
+    variable searchCompareHeaderSource
+    variable searchCompareTrailerSource
+
+    emit [subst -nobackslashes -nocommands $searchCompareHeaderSource]
+
+    gen_search_comp
+
+    emit [subst -nobackslashes -nocommands $searchCompareTrailerSource]
+}
+
+#
+# gen_search_comp - emit code to compare fields for searching
+#
+proc gen_search_comp {} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+    variable cmdBodyHeader
+
+    variable numberCompSource
+    variable fixedstringCompSource
+    variable binaryDataCompSource
+    variable varstringCompSource
+    variable boolCompSource
+    variable tclobjCompSource
+
+    set value sandbag
+
+    foreach field $fieldList {
+        catch {unset fieldData}
+	array set fieldData $fields($field)
+	set fieldEnum [field_to_enum $field]
+
+	switch $fieldData(type) {
+	    int {
+		emit [subst -nobackslashes -nocommands $numberCompSource]
+	    }
+
+	    long {
+		emit [subst -nobackslashes -nocommands $numberCompSource]
+	    }
+
+	    wide {
+		emit [subst -nobackslashes -nocommands $numberCompSource]
+	    }
+
+	    double {
+		emit [subst -nobackslashes -nocommands $numberCompSource]
+	    }
+
+	    short {
+		emit [subst -nobackslashes -nocommands $numberCompSource]
+	    }
+
+	    float {
+		emit [subst -nobackslashes -nocommands $numberCompSource]
+	    }
+
+	    char {
+		emit [subst -nobackslashes -nocommands $numberCompSource]
+	    }
+
+	    fixedstring {
+	        set length $fieldData(length)
+		emit [subst -nobackslashes -nocommands $fixedstringCompSource]
+	    }
+
+	    varstring {
+		emit [subst -nobackslashes -nocommands $varstringCompSource]
+	    }
+
+	    boolean {
+		emit [subst -nobackslashes -nocommands $boolCompSource]
+	    }
+
+	    inet {
+	        set length "sizeof(struct in_addr)"
+		emit [subst -nobackslashes -nocommands $binaryDataCompSource]
+	    }
+
+	    mac {
+		set length "sizeof(struct ether_addr)"
+		emit [subst -nobackslashes -nocommands $binaryDataCompSource]
+	    }
+
+	    tclobj {
+		emit [subst -nobackslashes -nocommands $tclobjCompSource]
+	    }
+
+	    default {
+	        error "attempt to emit sort compare source for field of unknown type $fieldData(type)"
+	    }
+	}
+    }
+}
+
 
 #
 # compile - compile and link the shared library
