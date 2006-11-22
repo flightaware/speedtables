@@ -1,0 +1,30 @@
+$Id$
+
+modifications for sorting:
+
+generate comparison routine for each field into the source ctable puts out.
+The routines will take two pointers to hashtable entries, dereference them
+to get to the C table structures, compare the field, and return -1, 0
+or 1 in accordance with qsort docs.
+
+when sort is called:
+
+malloc an array of pointers to hashtable entries the size of the table.
+
+walk the hashtable and fill the array of pointers.
+
+invoke qsort 
+
+iteratively callout to a specified function with each key as the argument,
+in turn.
+
+API:
+
+$ctable sort key_name code
+
+peter wants to also be able to specify a pattern
+
+
+
+foo walk -sort {field1 {field2 desc}} -glob -regexp --
+

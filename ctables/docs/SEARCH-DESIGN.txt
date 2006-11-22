@@ -1,0 +1,42 @@
+
+$Id$
+
+modifications for searching:
+
+This is going to be search with an optional sort on the search results.
+
+Building on ideas from the sort implementation, we'll allocate an array of
+pointers equal to the number of elements in the ctable.
+
+We'll run our query, which will be a logical AND of comparisons against
+multiple fields.
+
+We'll also have, like trackstream, a countOnly option, an optional offset
+and limit.
+
+We'll be able to sort the final table if we want to.
+
+generate search comparison routine for each field into the source ctable puts 
+out. 
+
+The routines will take a pointer to a hashtable entries and an array of
+comparison structures identifying the field to be compared, the type
+of comparison, and the value to compare it to.
+
+We'll then execute a callout on every match.
+
+when search is called:
+
+malloc an array of pointers to hashtable entries the size of the table.
+
+walk the hashtable and fill the array of pointers.
+
+invoke qsort 
+
+iteratively callout to a specified function with each key as the argument,
+in turn.
+
+API:
+
+$ctable search ?-sort {field1 {field2 desc}}? ?-glob pattern? ?-regexp pattern? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-lt field value? ?-le field value? ?-eq field value? ?-ge field value? ?-gt field value? ?-false value? ?-true value? 
+
