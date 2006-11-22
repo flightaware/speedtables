@@ -462,6 +462,10 @@ set tclobjSortSource {
 #
 set boolCompSource {
       case $fieldEnum: {
+	if (pointer->_${field}IsNull) {
+	    exclude = 1;
+	    break;
+	}
 
 	switch (compType) {
 	  case COMP_TRUE:
@@ -482,26 +486,36 @@ set boolCompSource {
 #
 set numberCompSource {
         case $fieldEnum: {
+	  if (pointer->_${field}IsNull) {
+	      exclude = 1;
+	      break;
+	  }
 
           switch (compType) {
+	    $type value;
+
+	    if ($getObjCmd (interp, searchControl->obj, &value) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+
 	    case COMP_LT:
-	        exclude = !(pointer->$field < $value);
+	        exclude = !(pointer->$field < value);
 		break;
 
 	    case COMP_LE:
-	        exclude = !(pointer->$field <= $value);
+	        exclude = !(pointer->$field <= value);
 		break;
 
 	    case COMP_EQ:
-	        exclude = !(pointer->$field == $value);
+	        exclude = !(pointer->$field == value);
 		break;
 
 	    case COMP_GE:
-	        exclude = !(pointer->$field >= $value);
+	        exclude = !(pointer->$field >= value);
 		break;
 
 	    case COMP_GT:
-	        exclude = !(pointer->$field > $value);
+	        exclude = !(pointer->$field > value);
 		break;
 	  }
         }
@@ -513,9 +527,16 @@ set numberCompSource {
 #
 set varstringCompSource {
         case $fieldEnum: {
-          int strcmpResult;
+	  char   *value;
+          int     strcmpResult;
 
-          strcmpResult = strcmp (pointer->$field, $value);
+	  if (pointer->_${field}IsNull) {
+	      exclude = 1;
+	      break;
+	  }
+
+	  value = Tcl_GetString (searchControl->obj);
+          strcmpResult = strcmp (pointer->$field, value);
 
           switch (compType) {
 	    case COMP_LT:
@@ -547,9 +568,16 @@ set varstringCompSource {
 #
 set fixedstringCompSource {
         case $fieldEnum: {
-          int strcmpResult;
+	  char   *value;
+          int     strcmpResult;
 
-          strcmpResult = strncmp (pointer->$field, $value, $length);
+	  if (pointer->_${field}IsNull) {
+	      exclude = 1;
+	      break;
+	  }
+
+	  value = Tcl_GetString (searchControl->obj);
+          strcmpResult = strncmp (pointer->field, $value, $length);
 
           switch (compType) {
 	    case COMP_LT:
@@ -581,9 +609,16 @@ set fixedstringCompSource {
 #
 set tclobjCompSource {
         case $fieldEnum: {
-          int strcmpResult;
+	  char    *value;
+          int      strcmpResult;
 
-          strcmpResult = strcmp (Tcl_GetString (pointer1->$field), $value);
+	  if (pointer->_${field}IsNull) {
+	      exclude = 1;
+	      break;
+	  }
+
+	  value = Tcl_GetString (searchControl->obj);
+          strcmpResult = strcmp (Tcl_GetString (pointer->$field), value);
 
           switch (compType) {
 	    case COMP_LT:
@@ -3333,65 +3368,79 @@ proc gen_search_comp {} {
         catch {unset fieldData}
 	array set fieldData $fields($field)
 	set fieldEnum [field_to_enum $field]
+	set type $fieldData(type)
 
-	switch $fieldData(type) {
+	switch $type {
 	    int {
+		set getObjCmd Tcl_GetIntFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    long {
+		set getObjCmd Tcl_GetLongFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    wide {
+		set getObjCmd Tcl_GetWideIntFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    double {
+		set getObjCmd Tcl_GetDoubleFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    short {
+		set getObjCmd Tcl_GetIntFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    float {
+		set getObjCmd Tcl_GetDoubleFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    char {
+		set getObjCmd Tcl_GetIntFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    fixedstring {
+		set getObjCmd Tcl_GetString
 	        set length $fieldData(length)
 		emit [subst -nobackslashes -nocommands $fixedstringCompSource]
 	    }
 
 	    varstring {
+		set getObjCmd Tcl_GetString
 		emit [subst -nobackslashes -nocommands $varstringCompSource]
 	    }
 
 	    boolean {
+		set getObjCmd Tcl_GetBooleanFromObj
 		emit [subst -nobackslashes -nocommands $boolCompSource]
 	    }
 
 	    inet {
+		set getObjCmd Tcl_GetStringFromObj
 	        set length "sizeof(struct in_addr)"
 		emit [subst -nobackslashes -nocommands $binaryDataCompSource]
 	    }
 
 	    mac {
+		set getObjCmd Tcl_GetStringFromObj
 		set length "sizeof(struct ether_addr)"
 		emit [subst -nobackslashes -nocommands $binaryDataCompSource]
 	    }
 
 	    tclobj {
+		set getObjCmd Tcl_GetStringFromObj
 		emit [subst -nobackslashes -nocommands $tclobjCompSource]
 	    }
 
 	    default {
-	        error "attempt to emit sort compare source for field of unknown type $fieldData(type)"
+	        error "attempt to emit search compare source for field of unknown type $fieldData(type)"
 	    }
 	}
     }
