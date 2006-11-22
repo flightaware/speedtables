@@ -1,0 +1,17 @@
+#
+#
+#
+#
+#
+#
+#
+
+package require ctable_client
+
+remote_ctable_create localhost cable_info foo
+
+remote_ctable localhost foo
+
+    This creates a new command, foo, that is mostly a mirror of the ctable foo on the remote machine.
+
+

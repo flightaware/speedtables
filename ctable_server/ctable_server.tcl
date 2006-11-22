@@ -33,8 +33,8 @@ proc register_instantiator {cTable} {
 #
 # setup - setup our server socket
 #
-proc setup {} {
-    set serverSock [socket -server ::ctable_server::accept_connection 11111]
+proc setup {{port 11111}} {
+    set serverSock [socket -server ::ctable_server::accept_connection $port]
 }
 
 #
