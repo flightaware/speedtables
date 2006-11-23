@@ -1,7 +1,5 @@
 /*
- *
- *
- *
+ * Ctable search routines
  *
  * $Id$
  *
@@ -416,3 +414,17 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
     return TCL_OK;
 }
 
+int
+ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, CONST char **fieldNames) {
+    struct ctableSearchStruct search;
+
+    if (ctable_SetupSearch (interp, objv, objc, &search, fieldNames) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    if (ctable_PerformSearch (interp, Tcl_HashTable *keyTablePtr, &search, int count) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
