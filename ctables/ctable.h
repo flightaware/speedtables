@@ -33,6 +33,12 @@
 #define CTABLE_COMP_GE 8
 #define CTABLE_COMP_GT 9
 
+// ctable sort struct - this controls everything about a sort
+struct ctableSortStruct {
+    int nFields;
+    int *fields;
+};
+
 // ctable search component struct - one for each search expression in a
 // ctable search
 struct ctableSearchComponentStruct {
@@ -57,11 +63,7 @@ struct ctableSearchStruct {
     Tcl_Obj                             *codeBody;
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
-};
-
-// ctable sort struct - this controls everything about a sort
-struct ctableSortStruct {
-    int nFields;
-    int *fields;
+    int (*search_compare) (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr);
+    int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
 };
 

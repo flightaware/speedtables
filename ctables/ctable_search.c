@@ -6,41 +6,8 @@
  * $Id$
  *
  */
-#include <tcl.h>
 
-#define CTABLE_COMP_FALSE 0
-#define CTABLE_COMP_TRUE 1
-#define CTABLE_COMP_NULL 2
-#define CTABLE_COMP_NOTNULL 3
-#define CTABLE_COMP_LT 4
-#define CTABLE_COMP_LE 5
-#define CTABLE_COMP_EQ 6
-#define CTABLE_COMP_NE 7
-#define CTABLE_COMP_GE 8
-#define CTABLE_COMP_GT 9
-
-struct ctableSearchComponentStruct {
-    int             fieldID;
-    int             comparisonType;
-    Tcl_Obj        *comparedToObject;
-};
-
-struct ctableSearchStruct {
-    int                                  nComponents;
-    struct ctableSearchComponentStruct **components;
-    int                                  countOnly;
-    int                                  countMax;
-    int                                  offset;
-    int                                  limit;
-    char                                *pattern;
-    struct ctableSortStruct              sortControl;
-    int                                 *retrieveFields;
-    int                                  nRetrieveFields;
-    int                                  noKeys;
-    Tcl_Obj                             *codeBody;
-    Tcl_Channel                          tabsepChannel;
-    int                                  writingTabsep;
-};
+#include "ctable.h"
 
 /*
  * ctable_ParseFieldList - given a Tcl list object and an array of pointers
@@ -150,14 +117,13 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
     return TCL_OK;
 }
 
-
 //
 // ctable_PerformSearch - 
 //
 //
 //
-static int
-ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct ctableSearchStruct *search, int search_compare (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr), int count) {
+int
+ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct ctableSearchStruct *search), int count) {
     Tcl_Obj        **componentList;
     int              componentIdx;
     int              componentListCount;
@@ -173,6 +139,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
     int              field;
     int              compareResult;
     int              maxMatches = 0;
+    int              matchCount = 0;
 
     Tcl_HashEntry **hashSortTable = NULL;
 
@@ -194,7 +161,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 
 	if ((search->pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, search->pattern, 1))) continue;
 
-	compareResult = (*search_compare) (interp, search, hashEntry);
+	compareResult = (*search->search_compare) (interp, search, hashEntry);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
 	}
@@ -211,9 +178,9 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
         /* Are we not sorting? */
 	if (hashSortTable == NULL) {
 	    /* if we haven't met the start point, blow it off */
-	    if (++matchCount < offset) continue;
+	    if (++matchCount < search->offset) continue;
 
-	    if (matchCount >= limit) {
+	    if (matchCount >= search->limit) {
 	        return TCL_OK;
 	    }
 
@@ -221,13 +188,13 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 	} else {
 	    /* We are sorting, grab it, we gotta sort before we can run
 	     * against start and limit and stuff */
-	    assert (sortCount < count);
-	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", sortCount, (long unsigned int)hashEntry, key);
-	    hashSortTable[sortCount++] = hashEntry;
+	    assert (matchCount < count);
+	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", matchCount, (long unsigned int)hashEntry, key);
+	    hashSortTable[matchCount++] = hashEntry;
 
-	    qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), &search->sortControl, ${table}_sort_compare);
+	    qsort_r (hashSortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, search->sort_compare);
 
-	    for (sortIndex = 0; sortIndex < sortCount; sortIndex++) {
+	    for (sortIndex = 0; sortIndex < matchCount; sortIndex++) {
 		  key = Tcl_GetHashKey (keyTablePtr, hashSortTable[sortIndex]);
 
 		  if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
@@ -401,3 +368,4 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
     }
 }
 
+#error "still need to set search_compare and sort_compare elements of the search structure"
