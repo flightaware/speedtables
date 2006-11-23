@@ -157,17 +157,22 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 //
 //
 static int
-ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct ctableSearchStruct *search, int *search_compare (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr), int count) {
-    Tcl_Obj    **componentList;
-    int          componentIdx;
-    int          componentListCount;
+ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct ctableSearchStruct *search, int search_compare (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr), int count) {
+    Tcl_Obj        **componentList;
+    int              componentIdx;
+    int              componentListCount;
 
-    Tcl_Obj    **termList;
-    int          term;
-    int          termListCount;
+    Tcl_HashEntry   *hashEntry;
+    Tcl_HashSearch   hashSearch;
+    char            *key;
 
-    int          field;
-    int          maxMatches = 0;
+    Tcl_Obj        **termList;
+    int              term;
+    int              termListCount;
+
+    int              field;
+    int              compareResult;
+    int              maxMatches = 0;
 
     Tcl_HashEntry **hashSortTable = NULL;
 
@@ -175,7 +180,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
         return TCL_OK;
     }
 
-    if ((search->sortControl.nFields > 0) && (!countOnly)) {
+    if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
 	hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * count);
     }
 
@@ -183,20 +188,20 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
      * Optional match pattern on the primary key means we may end up
      * with fewer than the total number.
     */
-    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+    for (hashEntry = Tcl_FirstHashEntry (keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 
-	key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
+	key = Tcl_GetHashKey (keyTablePtr, hashEntry);
 
 	if ((search->pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, search->pattern, 1))) continue;
 
-	compareResult = (*searchcompare) (interp, search, hashEntry);
+	compareResult = (*search_compare) (interp, search, hashEntry);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
 	}
 
 	if (compareResult == TCL_ERROR) {
 	    if (hashSortTable != NULL) {
-		ckfree (hashSortTable);
+		ckfree ((void *)hashSortTable);
 	    }
 	    return TCL_ERROR;
 	}
@@ -223,7 +228,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 	    qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), &search->sortControl, ${table}_sort_compare);
 
 	    for (sortIndex = 0; sortIndex < sortCount; sortIndex++) {
-		  key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
+		  key = Tcl_GetHashKey (keyTablePtr, hashSortTable[sortIndex]);
 
 		  if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
 		    search_err:
