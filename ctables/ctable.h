@@ -51,16 +51,25 @@ struct ctableSearchComponentStruct {
 struct ctableSearchStruct {
     int                                  nComponents;
     struct ctableSearchComponentStruct **components;
+
     int                                  countOnly;
     int                                  countMax;
     int                                  offset;
     int                                  limit;
+
     char                                *pattern;
+
     struct ctableSortStruct              sortControl;
+
     int                                 *retrieveFields;
     int                                  nRetrieveFields;
+
     int                                  noKeys;
     Tcl_Obj                             *codeBody;
+    Tcl_Obj                             *varNameObj;
+    int                                  useArraySet;
+    int                                  useListSet;
+
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
     int (*search_compare) (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr);

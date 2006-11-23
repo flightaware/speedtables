@@ -140,6 +140,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
     int              compareResult;
     int              maxMatches = 0;
     int              matchCount = 0;
+    int              sortIndex;
 
     Tcl_HashEntry **hashSortTable = NULL;
 
@@ -194,17 +195,19 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 
 	    qsort_r (hashSortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, search->sort_compare);
 
+	    /* it's sorted, we will now walk it */
+
 	    for (sortIndex = 0; sortIndex < matchCount; sortIndex++) {
 		  key = Tcl_GetHashKey (keyTablePtr, hashSortTable[sortIndex]);
 
-		  if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
+		  if (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
 		    search_err:
 		      ckfree ((void *)hashSortTable);
 		      ckfree ((void *)search->sortControl.fields);
 		      return TCL_ERROR;
 		  }
 
-		  switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
+		  switch (Tcl_EvalObjEx (interp, search->codeBody, 0)) {
 		    case TCL_ERROR:
 		      Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
 		      goto search_err;
@@ -237,13 +240,13 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
     Tcl_Obj       **fieldsObjv;
     int             searchTerm = 0;
 
-    static CONST char *searchOptions[] = {"-sort", "-fields", "-glob" "-regexp", "-compare", "-countOnly", "-offset", "-limit", "-code", "-write_tabsep", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array", "-code", "-compare", "-countOnly", "-fields", "-glob", "-limit", "-list", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_SORT, SEARCH_OPT_FIELDS, SEARCH_OPT_GLOB, SEARCH_OPT_REGEXP, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_OFFSET, SEARCH_OPT_LIMIT, SEARCH_OPT_CODE, SEARCH_OPT_WRITE_TABSEP};
+    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GLOB, SEARCH_OPT_LIMIT, SEARCH_OPT_LIST_NAMEOBJ, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP};
 
     if (objc < 2) {
       wrong_args:
-	Tcl_WrongNumArgs (interp, 2, objv, "?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-contOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?");
+	Tcl_WrongNumArgs (interp, 2, objv, "?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-noKeys 0|1? ?-contOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?");
 	return TCL_ERROR;
     }
 
@@ -260,11 +263,14 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
     search->retrieveFields = NULL;
     search->nRetrieveFields = 0;
     search->noKeys = 0;
+    search->varNameObj = NULL;
+    search->useArraySet = 0;
+    search->useListSet = 0;
     search->codeBody = NULL;
     search->writingTabsep = 0;
 
     for (i = 2; i < objc; ) {
-	if (Tcl_GetIndexFromObj (interp, objv[i++], searchTerms, "search option", TCL_EXACT, &searchTerm) != TCL_OK) {
+	if (Tcl_GetIndexFromObj (interp, objv[i++], searchOptions, "search option", TCL_EXACT, &searchTerm) != TCL_OK) {
 	    return TCL_ERROR;
 	}
 
@@ -293,7 +299,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 	    break;
 	  }
 
-	  case SEARCH_OPT_INCLUDE_KEY: {
+	  case SEARCH_OPT_DONT_INCLUDE_KEY: {
 	    if (Tcl_GetBooleanFromObj (interp, objv[i++], &search->noKeys) == TCL_ERROR) {
 	        Tcl_AppendResult (interp, " while processing search noKeys", (char *) NULL);
 	        return TCL_ERROR;
@@ -301,8 +307,20 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 	    break;
 	  }
 
+	  case SEARCH_OPT_ARRAY_NAMEOBJ: {
+	    search->varNameObj = objv[i++];
+	    search->useArraySet = 1;
+	    break;
+	  }
+
+	  case SEARCH_OPT_LIST_NAMEOBJ: {
+	    search->varNameObj = objv[i++];
+	    search->useListSet = 1;
+	    break;
+          }
+
 	  case SEARCH_OPT_GLOB: {
-	    search->pattern = Tcl_GetString (objv[i++);
+	    search->pattern = Tcl_GetString (objv[i++]);
 	    break;
 	  }
 
@@ -349,10 +367,20 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 	  }
 
 	  case SEARCH_OPT_WRITE_TABSEP: {
-	    if ((search->tabsepChannel = Tcl_GetChannel (interp, Tcl_GetString (objv[i++]), TCL_WRITABLE)) == NULL) {
+	    int        mode;
+	    char      *channelName;
+
+	    channelName = Tcl_GetString (objv[i++]);
+	    if ((search->tabsepChannel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
 	        Tcl_AppendResult (interp, " while processing write_tabsep channel", (char *) NULL);
 	        return TCL_ERROR;
 	    }
+
+	    if (!(mode & TCL_WRITABLE)) {
+		Tcl_AppendResult (interp, "channel \"", channelName, "\" not writable", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
 	    search->writingTabsep = 1;
 	  }
 	}
@@ -367,6 +395,24 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 	Tcl_AppendResult (interp, "it's nuts to -sort something that's a -countOnly anyway", (char *) NULL);
 	return TCL_ERROR;
     }
+
+    if (search->useArraySet && search->useListSet) {
+	Tcl_AppendResult (interp, "-array and -list options are mutually exclusive", (char *) NULL);
+	return TCL_ERROR;
+    }
+
+    if (!search->useArraySet && !search->useListSet && !search->writingTabsep) {
+        Tcl_AppendResult (interp, "one of -array, -list or -write_tabsep must be specified", (char *)NULL);
+	return TCL_ERROR;
+    }
+
+    if (search->useArraySet || search->useListSet) {
+        if (!search->codeBody) {
+	    Tcl_AppendResult (interp, "-code must be set if -array or -list is set", (char *)NULL);
+	    return TCL_ERROR;
+	}
+    }
+
+    return TCL_OK;
 }
 
-#error "still need to set search_compare and sort_compare elements of the search structure"
