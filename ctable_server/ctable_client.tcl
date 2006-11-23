@@ -81,3 +81,5 @@ proc remote_ctable_invoke {tableName host command} {
     return [remote_ctable_send $host [linsert [lrange $command 1 end] 0 [lindex $command 0] $tableName]]
 }
 
+package provide ctable_client 1.0
+

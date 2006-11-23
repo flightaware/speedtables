@@ -2,35 +2,44 @@
 $Id$
 
 This is a server for ctables.  What's cool about it is on the server side there
-is one piece of code for serving any ctables you want to serve.
+is one piece of code for serving any ctables you want to serve.  On the client
+side, once you've declared the ctable, you use it almost exactly as you'd
+use a ctable in your own process' address space.
 
-When you start the server you load up all of the ctable creators you want to support and then register them.
+When you start the server you load up all of the ctable creators you want to 
+support and then register them.  Clients can then create tables on the server 
+using those ctable creators>
 
-Clients can then create tables using ctable creators.  The server can also.
+Alternatively or simultaneously, you can precreate your ctables on the server,
+load them from your database, etc, and register the ctables themselves for 
+remote access.
 
+Here's all the ctable methods that work identically:
 
+    get
+    set
+    array_get
+    array_get_with_nulls
+    exists
+    delete
+    count
+    type
+    fields
+    fieldtype
+    needs_quoting
+    names
+    reset
+    destroy
+    statistics
 
+Here are all the ones that don't work or only partially work or don't work
+in quite the same way:
 
-
-
-I think really there's some stuff you want to do that may not be an exact map.
-
-I want to set values in one row or many.
-
-I want to retrieve values from one row or many, possibly not all the fields.
-
-I want to delete rows.
-
-I want to insert rows.
-
-Here's all the stuff we've got:
-
-get, set, array_get, array_get_with_nulls, exists, delete, count, foreach, sort, type, import, import_postgres_result, export, fields, fieldtype, needs_quoting, names, reset, destroy, statistics, write_tabsep, or read_tabsep, or one of the registered methods:
-
-
-
-
-
-tclsh8.4 test-server.tcl
-
+    foreach
+    sort
+    import
+    import_postgres_result
+    export
+    write_tabsep
+    read_tabsep
 
