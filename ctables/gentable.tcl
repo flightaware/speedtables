@@ -1317,7 +1317,7 @@ proc gen_ctable_type_stuff {} {
     }
     emit "[string range $typeEnum 0 end-1]\n$rightCurly;\n"
 
-    emit "char *ctableTypes\[\] = $leftCurly"
+    emit "static char *ctableTypes\[\] = $leftCurly"
     foreach type $ctableTypes {
         emit "    \"$type\","
     }
