@@ -38,5 +38,5 @@ in turn.
 
 API:
 
-$ctable search ?-sort {field1 {field2 desc}}? ?-glob pattern? ?-regexp pattern? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-lt field value? ?-le field value? ?-eq field value? ?-ge field value? ?-gt field value? ?-false value? ?-true value? 
+$ctable walk ?-sort {field1 {field2 desc}}? ?-glob pattern? ?-regexp pattern? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-lt field value? ?-le field value? ?-eq field value? ?-ge field value? ?-gt field value? ?-false value? ?-true value?  -code ?codeBody?
 

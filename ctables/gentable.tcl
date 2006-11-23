@@ -119,6 +119,48 @@ proc field_to_enum {field} {
 }
 
 #
+# preambleCannedSource -- stuff that goes at the start of the file we generate
+#
+set preambleCannedSource {
+#include <tcl.h>
+#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
+#include "queue.h"
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <net/ethernet.h>
+
+#ifdef WITH_PGTCL
+#include <libpq-fe.h>
+#endif
+
+#define CTABLE_COMP_FALSE 0
+#define CTABLE_COMP_TRUE 1
+#define CTABLE_COMP_LT 2
+#define CTABLE_COMP_LE 3
+#define CTABLE_COMP_EQ 4
+#define CTABLE_COMP_NE 5
+#define CTABLE_COMP_GE 6
+#define CTABLE_COMP_GT 7
+
+struct ctableSearchComponentStruct {
+    int             fieldID;
+    int             comparisonType;
+    Tcl_Obj        *comparedToObject;
+};
+
+struct ctableSearchStruct {
+    int                                 nComponents;
+    struct ctableSearchComponentStruct *components;
+};
+
+}
+
+#
 # boolSetSource - code we run subst over to generate a set of a boolean (bit)
 #
 set boolSetSource {
@@ -474,11 +516,11 @@ set boolCompSource {
 	}
 
 	switch (compType) {
-	  case COMP_TRUE:
+	  case CTABLE_COMP_TRUE:
 	     exclude = (!pointer->$field);
 	     break;
 
-	  case COMP_FALSE:
+	  case CTABLE_COMP_FALSE:
 	    exclude = pointer->$field;
 	    break;
 	}
@@ -492,40 +534,41 @@ set boolCompSource {
 #
 set numberCompSource {
         case $fieldEnum: {
+	  $type compValue = 0;
+
 	  if (pointer->_${field}IsNull) {
 	      exclude = 1;
 	      break;
 	  }
 
           switch (compType) {
-	    $type value;
 
-	    if ($getObjCmd (interp, searchControl->obj, &value) == TCL_ERROR) {
+	    if ($getObjCmd (interp, compareObj, &compValue) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 
-	    case COMP_LT:
-	        exclude = !(pointer->$field < value);
+	    case CTABLE_COMP_LT:
+	        exclude = !(pointer->$field < compValue);
 		break;
 
-	    case COMP_LE:
-	        exclude = !(pointer->$field <= value);
+	    case CTABLE_COMP_LE:
+	        exclude = !(pointer->$field <= compValue);
 		break;
 
-	    case COMP_EQ:
-	        exclude = !(pointer->$field == value);
+	    case CTABLE_COMP_EQ:
+	        exclude = !(pointer->$field == compValue);
 		break;
 
-	    case COMP_NE:
-	        exclude = !(pointer->$field != value);
+	    case CTABLE_COMP_NE:
+	        exclude = !(pointer->$field != compValue);
 		break;
 
-	    case COMP_GE:
-	        exclude = !(pointer->$field >= value);
+	    case CTABLE_COMP_GE:
+	        exclude = !(pointer->$field >= compValue);
 		break;
 
-	    case COMP_GT:
-	        exclude = !(pointer->$field > value);
+	    case CTABLE_COMP_GT:
+	        exclude = !(pointer->$field > compValue);
 		break;
 	  }
         }
@@ -545,31 +588,31 @@ set varstringCompSource {
 	      break;
 	  }
 
-	  value = Tcl_GetString (searchControl->obj);
+	  value = Tcl_GetString (compareObj);
           strcmpResult = strcmp (pointer->$field, value);
 
           switch (compType) {
-	    case COMP_LT:
+	    case CTABLE_COMP_LT:
 	        exclude = !(strcmpResult < 0);
 		break;
 
-	    case COMP_LE:
+	    case CTABLE_COMP_LE:
 	        exclude = !(strcmpResult <= 0);
 		break;
 
-	    case COMP_EQ:
+	    case CTABLE_COMP_EQ:
 	        exclude = !(strcmpResult == 0);
 		break;
 
-	    case COMP_NE:
+	    case CTABLE_COMP_NE:
 	        exclude = !(strcmpResult != 0);
 		break;
 
-	    case COMP_GE:
+	    case CTABLE_COMP_GE:
 	        exclude = !(strcmpResult >= 0);
 		break;
 
-	    case COMP_GT:
+	    case CTABLE_COMP_GT:
 	        exclude = !(strcmpResult > 0);
 		break;
 	  }
@@ -590,31 +633,31 @@ set fixedstringCompSource {
 	      break;
 	  }
 
-	  value = Tcl_GetString (searchControl->obj);
+	  value = Tcl_GetString (compareObj);
           strcmpResult = strncmp (pointer->field, $value, $length);
 
           switch (compType) {
-	    case COMP_LT:
+	    case CTABLE_COMP_LT:
 	        exclude = !(strcmpResult < 0);
 		break;
 
-	    case COMP_LE:
+	    case CTABLE_COMP_LE:
 	        exclude = !(strcmpResult <= 0);
 		break;
 
-	    case COMP_EQ:
+	    case CTABLE_COMP_EQ:
 	        exclude = !(strcmpResult == 0);
 		break;
 
-	    case COMP_NE:
+	    case CTABLE_COMP_NE:
 	        exclude = !(strcmpResult != 0);
 		break;
 
-	    case COMP_GE:
+	    case CTABLE_COMP_GE:
 	        exclude = !(strcmpResult >= 0);
 		break;
 
-	    case COMP_GT:
+	    case CTABLE_COMP_GT:
 	        exclude = !(strcmpResult > 0);
 		break;
   	  }
@@ -635,31 +678,31 @@ set tclobjCompSource {
 	      break;
 	  }
 
-	  value = Tcl_GetString (searchControl->obj);
+	  value = Tcl_GetString (compareObj);
           strcmpResult = strcmp (Tcl_GetString (pointer->$field), value);
 
           switch (compType) {
-	    case COMP_LT:
+	    case CTABLE_COMP_LT:
 	        exclude = !(strcmpResult < 0);
 		break;
 
-	    case COMP_LE:
+	    case CTABLE_COMP_LE:
 	        exclude = !(strcmpResult <= 0);
 		break;
 
-	    case COMP_EQ:
+	    case CTABLE_COMP_EQ:
 	        exclude = !(strcmpResult == 0);
 		break;
 
-	    case COMP_NE:
+	    case CTABLE_COMP_NE:
 	        exclude = !(strcmpResult != 0);
 		break;
 
-	    case COMP_GE:
+	    case CTABLE_COMP_GE:
 	        exclude = !(strcmpResult >= 0);
 		break;
 
-	    case COMP_GT:
+	    case CTABLE_COMP_GT:
 	        exclude = !(strcmpResult > 0);
 		break;
 	  }
@@ -2446,6 +2489,7 @@ proc gen_gets_string_cases {pointer} {
 #
 proc gen_preamble {} {
     variable withPgtcl
+    variable preambleCannedSource
 
     emit "/* autogenerated [clock format [clock seconds]] */"
     emit ""
@@ -2454,21 +2498,8 @@ proc gen_preamble {} {
         emit ""
     }
 
-    emit "#include <tcl.h>"
-    emit "#include <assert.h>"
-    emit "#include <string.h>"
-    emit "#include <stdlib.h>"
-    emit "#include \"queue.h\""
-    emit ""
-    emit "#include <sys/types.h>"
-    emit "#include <sys/socket.h>"
-    emit "#include <netinet/in.h>"
-    emit "#include <arpa/inet.h>"
-    emit "#include <net/ethernet.h>"
-    emit ""
-    emit "#ifdef WITH_PGTCL"
-    emit "#include <libpq-fe.h>"
-    emit "#endif"
+    emit $preambleCannedSource
+
 }
 
 set sortCompareHeaderSource {
@@ -2611,50 +2642,33 @@ proc gen_sort_comp {} {
 
 set searchCompareHeaderSource {
 
-#define COMP_FALSE 0
-#define COMP_TRUE 1
-#define COMP_LT 2
-#define COMP_LE 3
-#define COMP_EQ 4
-#define COMP_NE 5
-#define COMP_GE 6
-#define COMP_GT 7
-
-struct ${table}SearchComponentStruct {
-    int             fieldID;
-    int             comparisonType;
-    Tcl_Obj        *comparedToObject;
-};
-
-struct ${table}SearchStruct {
-    int nComponents;
-    struct ${table}SearchComponentStruct *components;
-};
-
-int ${table}_search_compare(void *clientData, const void *hashEntryPtr, const void *hashEntryPtr2) $leftCurly
-    struct ${table}SearchStruct *searchControl = (struct ${table}SearchStruct *)clientData;
+// compare a row to a block of search components and see if it matches
+int ${table}_search_compare(Tcl_Interp *interp, void *clientData, const void *hashEntryPtr) $leftCurly
+    struct ctableSearchStruct *searchControl = (struct ctableSearchStruct *)clientData;
     struct ${table} *pointer;
     int              i;
     int              exclude = 0;
     int              compType;
-    struct ${table}SearchComponentStruct *component;
+    Tcl_Obj         *compareObj;
+    struct ctableSearchComponentStruct *component;
 
     pointer = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr);
 
     for (i = 0; i < searchControl->nComponents; i++) $leftCurly
-      component = searchControl->components[i];
+      component = &searchControl->components[i];
       compType = component->comparisonType;
-      switch (components->fieldID) $leftCurly }
+      compareObj = component->comparedToObject;
+      switch (component->fieldID) $leftCurly }
 
 set searchCompareTrailerSource {
-       $rightCurly // end of switch
+       $rightCurly // end of switch on field ID
 
         // if exclude got set, we're done.
 	if (exclude) {
-	    break;
+	    return TCL_CONTINUE;
 	}
     $rightCurly // end of for loop on search fields
-    return exclude;
+    return TCL_OK;
 $rightCurly
 }
 

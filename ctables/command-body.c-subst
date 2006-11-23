@@ -189,7 +189,7 @@
 	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
 
 	      if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-	        err:
+	        sort_err:
 	          ckfree ((void *)hashSortTable);
 		  ckfree ((void *)sortControl.fields);
 	          return TCL_ERROR;
@@ -198,7 +198,7 @@
 	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
 	        case TCL_ERROR:
 		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		  goto err;
+		  goto sort_err;
 
 		case TCL_OK:
 		case TCL_CONTINUE:
@@ -206,7 +206,7 @@
 
 		case TCL_BREAK:
 		case TCL_RETURN:
-		  goto err;
+		  goto sort_err;
 	      }
 	  }
 	  ckfree ((void *)hashSortTable);
@@ -271,7 +271,7 @@
 	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
 
 	      if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-	        err:
+	        search_err:
 	          ckfree ((void *)hashSortTable);
 		  ckfree ((void *)sortControl.fields);
 	          return TCL_ERROR;
@@ -280,7 +280,7 @@
 	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
 	        case TCL_ERROR:
 		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		  goto err;
+		  goto search_err;
 
 		case TCL_OK:
 		case TCL_CONTINUE:
@@ -288,7 +288,7 @@
 
 		case TCL_BREAK:
 		case TCL_RETURN:
-		  goto err;
+		  goto search_err;
 	      }
 	  }
 	  ckfree ((void *)hashSortTable);
@@ -699,4 +699,3 @@
 	return TCL_OK;
       }
 
-}
