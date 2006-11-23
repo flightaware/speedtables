@@ -1,6 +1,11 @@
 
 $Id$
 
+11/22/2006 karl
+    * Factored out a 702-line piece of code for the main body of
+      generated ctable code into its own file to make things
+      more manageable.
+
 11/21/2006 karl
     * write_tabsep now works (or again works) if no field names
       are specified.

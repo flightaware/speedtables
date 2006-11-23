@@ -61,6 +61,14 @@ set extensionFragmentSource [read $fp]
 close $fp
 
 #
+# cmdBodySource - code we run subst over to generate the second chunk of the
+#  body that implements the methods that work on the table.
+#
+set fp [open $srcDir/command-body.c-subst]
+set cmdBodySource [read $fp]
+close $fp
+
+#
 # emit - emit a string to the file being generated
 #
 proc emit {text} {
@@ -454,8 +462,6 @@ set tclobjSortSource {
       }
 }
 
-
-
 #
 # boolCompSource - code we run subst over to generate a compare of a 
 # boolean (bit)
@@ -510,6 +516,10 @@ set numberCompSource {
 	        exclude = !(pointer->$field == value);
 		break;
 
+	    case COMP_NE:
+	        exclude = !(pointer->$field != value);
+		break;
+
 	    case COMP_GE:
 	        exclude = !(pointer->$field >= value);
 		break;
@@ -549,6 +559,10 @@ set varstringCompSource {
 
 	    case COMP_EQ:
 	        exclude = !(strcmpResult == 0);
+		break;
+
+	    case COMP_NE:
+	        exclude = !(strcmpResult != 0);
 		break;
 
 	    case COMP_GE:
@@ -592,6 +606,10 @@ set fixedstringCompSource {
 	        exclude = !(strcmpResult == 0);
 		break;
 
+	    case COMP_NE:
+	        exclude = !(strcmpResult != 0);
+		break;
+
 	    case COMP_GE:
 	        exclude = !(strcmpResult >= 0);
 		break;
@@ -631,6 +649,10 @@ set tclobjCompSource {
 
 	    case COMP_EQ:
 	        exclude = !(strcmpResult == 0);
+		break;
+
+	    case COMP_NE:
+	        exclude = !(strcmpResult != 0);
 		break;
 
 	    case COMP_GE:
@@ -675,713 +697,6 @@ $leftCurly
     static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "sort", "walk", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
 
     enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_SORT, OPT_WALK, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
-
-}
-
-#
-# cmdBodySource - code we run subst over to generate the second chunk of the
-#  body that implements the methods that work on the table.
-#
-set cmdBodySource {
-
-    if (objc == 1) {
-        Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
-	return TCL_ERROR;
-    }
-
-    if (Tcl_GetIndexFromObj (interp, objv[1], options, "option", TCL_EXACT, &optIndex) != TCL_OK) {
-	Tcl_Obj      **calloutObjv;
-	int           i;
-	int           result;
-
-	hashEntry = Tcl_FindHashEntry (tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[1]));
-
-	if (hashEntry == (Tcl_HashEntry *) NULL) {
-	    Tcl_HashSearch hashSearch;
-
-	    Tcl_AppendResult (interp, ", or one of the registered methods:", (char *)NULL);
-
-	    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->registeredProcTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	        char *key = Tcl_GetHashKey (tbl_ptr->registeredProcTablePtr, hashEntry);
-		Tcl_AppendResult (interp, " ", key, (char *)NULL);
-	    }
-	    return TCL_ERROR;
-	}
-
-	calloutObjv = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj *) * objc);
-	calloutObjv[0] = (Tcl_Obj *)Tcl_GetHashValue (hashEntry);
-	calloutObjv[1] = objv[0];
-	for (i = 2; i < objc; i++) {
-	    calloutObjv[i] = objv[i];
-	}
-	result = Tcl_EvalObjv (interp, objc, calloutObjv, 0);
-	ckfree ((void *)calloutObjv);
-	return result;
-    }
-
-    switch ((enum options) optIndex) $leftCurly
-      case OPT_TYPE: {
-          Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
-	  return TCL_OK;
-      }
-
-      case OPT_FIELDS: {
-          int i;
-	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
-
-	  for (i = 0; ${table}_fields[i] != (char *) NULL; i++) {
-	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (${table}_fields[i], -1)) == TCL_ERROR) {
-	          return TCL_ERROR;
-	      }
-	  }
-          return TCL_OK;
-      }
-
-      case OPT_FIELDTYPE: {
-        int fieldIndex;
-
-	if (objc != 3) {
-            Tcl_WrongNumArgs (interp, 2, objv, "fieldName");
-	    return TCL_ERROR;
-	}
-
-	if (Tcl_GetIndexFromObj (interp, objv[2], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-	    return TCL_ERROR;
-	}
-	Tcl_SetStringObj (Tcl_GetObjResult (interp), ctableTypes[(int)${table}_types[fieldIndex]], -1);
-	return TCL_OK;
-      }
-
-      case OPT_NEEDSQUOTING: {
-        int fieldIndex;
-
-	if (objc != 3) {
-            Tcl_WrongNumArgs (interp, 2, objv, "fieldName");
-	    return TCL_ERROR;
-	}
-
-	if (Tcl_GetIndexFromObj (interp, objv[2], ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-	    return TCL_ERROR;
-	}
-	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), ${table}_needs_quoting[fieldIndex]);
-	return TCL_OK;
-      }
-
-
-      case OPT_STATISTICS: {
-          CONST char *stats = Tcl_HashStats (tbl_ptr->keyTablePtr);
-	  Tcl_SetStringObj (Tcl_GetObjResult (interp), stats, -1);
-	  ckfree ((void *)stats);
-	  return TCL_OK;
-      }
-
-      case OPT_FOREACH: {
-	  Tcl_HashSearch  hashSearch;
-	  char           *pattern = (char *) NULL;
-	  char           *key;
-	  int             codeIndex = 3;
-
-	  if ((objc < 4) || (objc > 5)) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "varName ?pattern? codeBody");
-	      return TCL_ERROR;
-	  }
-
-	  if (objc == 5) {
-	      pattern = Tcl_GetString (objv[3]);
-	      codeIndex = 4;
-	  }
-
-	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
-	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
-	      if (Tcl_ObjSetVar2 (interp, objv[2], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-	          return TCL_ERROR;
-	      }
-	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
-	        case TCL_ERROR:
-		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		  return TCL_ERROR;
-
-		case TCL_OK:
-		case TCL_CONTINUE:
-		  break;
-
-		case TCL_BREAK:
-		  return TCL_OK;
-
-		case TCL_RETURN:
-		  return TCL_RETURN;
-	      }
-	  }
-	  return TCL_OK;
-      }
-
-      case OPT_SORT: {
-	  Tcl_HashSearch  hashSearch;
-	  char           *pattern = (char *) NULL;
-	  char           *key;
-	  int             codeIndex = 4;
-	  Tcl_HashEntry **hashSortTable;
-	  int             sortCount = 0;
-	  int             sortIndex;
-	  int             fieldsObjc;
-	  int             i;
-	  Tcl_Obj       **fieldsObjv;
-	  struct ${table}SortStruct sortControl;
-
-	  if ((objc < 5) || (objc > 6)) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "fieldList varName ?pattern? codeBody");
-	      return TCL_ERROR;
-	  }
-
-	  if (objc == 6) {
-	      pattern = Tcl_GetString (objv[4]);
-	      codeIndex = 5;
-	  }
-
-	  if (Tcl_ListObjGetElements (interp, objv[2], &fieldsObjc, &fieldsObjv) == TCL_ERROR) {
-	      return TCL_ERROR;
-	  }
-
-	  sortControl.nFields = fieldsObjc;
-	  sortControl.fields = (int *)ckalloc (sizeof (int) * fieldsObjc);
-	  for (i = 0; i < fieldsObjc; i++) {
-	      if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], ${table}_fields, "field", TCL_EXACT, &sortControl.fields[i]) != TCL_OK) {
-	          ckfree ((void *)sortControl.fields);
-		  return TCL_ERROR;
-	      }
-	  }
-
-	  hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * tbl_ptr->count);
-
-          /* Build up a table of ptrs to hash entries of rows of the table.
-	   * Optional match pattern on the primary key means we may end up
-	   * with fewer than the total number.
-	   */
-	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
-	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
-
-	      assert (sortCount < tbl_ptr->count);
-// printf ("filling sort table %d -> hash entry %lx (%s)\n", sortCount, (long unsigned int)hashEntry, key);
-	      hashSortTable[sortCount++] = hashEntry;
-	}
-
-	qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), &sortControl, ${table}_sort_compare);
-
-	for (sortIndex = 0; sortIndex < sortCount; sortIndex++) {
-	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
-
-	      if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-	        err:
-	          ckfree ((void *)hashSortTable);
-		  ckfree ((void *)sortControl.fields);
-	          return TCL_ERROR;
-	      }
-
-	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
-	        case TCL_ERROR:
-		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		  goto err;
-
-		case TCL_OK:
-		case TCL_CONTINUE:
-		  break;
-
-		case TCL_BREAK:
-		case TCL_RETURN:
-		  goto err;
-	      }
-	  }
-	  ckfree ((void *)hashSortTable);
-	  ckfree ((void *)sortControl.fields);
-	  return TCL_OK;
-      }
-
-      case OPT_WALK: {
-	  Tcl_HashSearch  hashSearch;
-	  char           *pattern = (char *) NULL;
-	  char           *key;
-	  int             codeIndex = 4;
-	  Tcl_HashEntry **hashSortTable;
-	  int             sortCount = 0;
-	  int             sortIndex;
-	  int             fieldsObjc;
-	  int             i;
-	  Tcl_Obj       **fieldsObjv;
-	  struct ${table}SortStruct sortControl;
-
-	  if ((objc < 5) || (objc > 6)) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "fieldList varName ?pattern? codeBody");
-	      return TCL_ERROR;
-	  }
-
-	  if (objc == 6) {
-	      pattern = Tcl_GetString (objv[4]);
-	      codeIndex = 5;
-	  }
-
-	  if (Tcl_ListObjGetElements (interp, objv[2], &fieldsObjc, &fieldsObjv) == TCL_ERROR) {
-	      return TCL_ERROR;
-	  }
-
-	  sortControl.nFields = fieldsObjc;
-	  sortControl.fields = (int *)ckalloc (sizeof (int) * fieldsObjc);
-	  for (i = 0; i < fieldsObjc; i++) {
-	      if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], ${table}_fields, "field", TCL_EXACT, &sortControl.fields[i]) != TCL_OK) {
-	          ckfree ((void *)sortControl.fields);
-		  return TCL_ERROR;
-	      }
-	  }
-
-	  hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * tbl_ptr->count);
-
-          /* Build up a table of ptrs to hash entries of rows of the table.
-	   * Optional match pattern on the primary key means we may end up
-	   * with fewer than the total number.
-	   */
-	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
-	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
-
-	      assert (sortCount < tbl_ptr->count);
-// printf ("filling sort table %d -> hash entry %lx (%s)\n", sortCount, (long unsigned int)hashEntry, key);
-	      hashSortTable[sortCount++] = hashEntry;
-	}
-
-	qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), &sortControl, ${table}_sort_compare);
-
-	for (sortIndex = 0; sortIndex < sortCount; sortIndex++) {
-	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
-
-	      if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-	        err:
-	          ckfree ((void *)hashSortTable);
-		  ckfree ((void *)sortControl.fields);
-	          return TCL_ERROR;
-	      }
-
-	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
-	        case TCL_ERROR:
-		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		  goto err;
-
-		case TCL_OK:
-		case TCL_CONTINUE:
-		  break;
-
-		case TCL_BREAK:
-		case TCL_RETURN:
-		  goto err;
-	      }
-	  }
-	  ckfree ((void *)hashSortTable);
-	  ckfree ((void *)sortControl.fields);
-	  return TCL_OK;
-      }
-
-      case OPT_NAMES: {
-          Tcl_Obj        *resultObj = Tcl_GetObjResult (interp);
-	  Tcl_HashSearch  hashSearch;
-	  char           *pattern = (char *) NULL;
-	  char           *key;
-
-	  if (objc > 3) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "varName codeBody ?pattern?");
-	      return TCL_ERROR;
-	  }
-
-	  if (objc == 3) {
-	      pattern = Tcl_GetString (objv[2]);
-	  }
-
-	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
-	      if ((pattern != (char *) NULL)  && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
-	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (key, -1)) == TCL_ERROR) {
-	          return TCL_ERROR;
-	      }
-	  }
-	  return TCL_OK;
-      }
-
-      case OPT_RESET: {
-	  ${table}_delete_all_rows (tbl_ptr);
-	  Tcl_InitCustomHashTable (tbl_ptr->keyTablePtr, TCL_STRING_KEYS, (Tcl_HashKeyType *)NULL);
-	  TAILQ_INIT (&tbl_ptr->rows);
-	  return TCL_OK;
-      }
-
-      case OPT_DESTROY: {
-	  ${table}_delete_all_rows (tbl_ptr);
-          Tcl_DeleteCommandFromToken (interp, tbl_ptr->commandInfo);
-	  return TCL_OK;
-      }
-
-      case OPT_DELETE: {
-	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
-
-	if (hashEntry == (Tcl_HashEntry *) NULL) {
-	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 0);
-	    return TCL_OK;
-	}
-
-	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
-	${table}_delete($pointer);
-	Tcl_DeleteHashEntry (hashEntry);
-	tbl_ptr->count--;
-	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
-	return TCL_OK;
-      }
-
-      case OPT_COUNT: {
-          Tcl_SetIntObj (Tcl_GetObjResult (interp), tbl_ptr->count);
-	  return TCL_OK;
-      }
-
-      case OPT_EXISTS: {
-	hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, Tcl_GetString (objv[2]));
-
-	if (hashEntry == (Tcl_HashEntry *) NULL) {
-	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 0);
-	} else {
-	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
-	}
-	return TCL_OK;
-      }
-
-      case OPT_IMPORT: {
-        int    fieldIds[$nFields];
-	int    i;
-	int    nFields = 0;
-
-	if (objc < 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
-	  return TCL_ERROR;
-	}
-
-	if (objc > $nFields + 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
-          Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
-	  return TCL_ERROR;
-	}
-
-	if (objc == 3) {
-	    nFields = $nFields;
-	    for (i = 0; i < $nFields; i++) {
-	        fieldIds[i] = i;
-	    }
-	} else {
-	    for (i = 3; i < objc; i++) {
-	        if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIds[nFields++]) != TCL_OK) {
-		    return TCL_ERROR;
-		}
-	    }
-	}
-
-	while (1) {
-	    switch (Tcl_EvalObjEx (interp, objv[2], 0)) {
-	      int       new;
-	      int       listObjc;
-	      Tcl_Obj **listObjv;
-
-	      case TCL_ERROR:
-	        Tcl_AppendResult (interp, " while processing import code body", (char *)NULL);
-	        return TCL_ERROR;
-
-	      case TCL_OK:
-	      case TCL_CONTINUE:
-	        if (Tcl_ListObjGetElements (interp, Tcl_GetObjResult (interp), &listObjc, &listObjv) == TCL_ERROR) {
-		    Tcl_AppendResult (interp, " while processing code result", (char *)NULL);
-	            return TCL_ERROR;
-	        }
-
-	        if (listObjc == 0) {
-	            return TCL_OK;
-	        }
-
-	        if (nFields + 1 != listObjc) {
-		    Tcl_SetObjResult (interp, Tcl_NewStringObj ("number of fields in list does not match what was expected", -1));
-	            return TCL_ERROR;
-	        }
-
-	        $pointer = ${table}_find_or_create (tbl_ptr, Tcl_GetString (listObjv[0]), &new);
-	        for (i = 1; i <= nFields; i++) {
-	            if (${table}_set (interp, listObjv[i], $pointer, fieldIds[i - 1]) == TCL_ERROR) {
-		        return TCL_ERROR;
-		    }
-	        }
-	        break;
-
-	      case TCL_BREAK:
-	        return TCL_OK;
-
-	      case TCL_RETURN:
-	        return TCL_RETURN;
-	    }
-	}
-      }
-
-      case OPT_SET: {
-        int       i;
-	int       listObjc;
-	Tcl_Obj **listObjv;
-
-	if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key pairList or key field value ?field value...?");
-	    return TCL_ERROR;
-	}
-
-        $pointer = ${table}_find_or_create (tbl_ptr, Tcl_GetString (objv[2]), &new);
-
-	if (objc == 4) {
-	    if (Tcl_ListObjGetElements (interp, objv[3], &listObjc, &listObjv) == TCL_ERROR) {
-		Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
-		return TCL_ERROR;
-	    }
-
-	    if ((listObjc % 2) != 0) {
-		Tcl_AppendResult (interp, "key-value list must contain an even number of elements", (char *)NULL);
-		return TCL_ERROR;
-	    }
-
-	    for (i = 0; i < listObjc; i+= 2) {
-		if (${table}_set_fieldobj (interp, listObjv[i+1], $pointer, listObjv[i]) == TCL_ERROR) {
-		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
-		    return TCL_ERROR;
-		}
-	    }
-	    break;
-	}
-
-	for (i = 3; i < objc; i += 2) {
-	    // printf ("i = %d\n", i);
-	    if (${table}_set_fieldobj (interp, objv[i+1], $pointer, objv[i]) == TCL_ERROR) {
-	        return TCL_ERROR;
-	    }
-	}
-        break;
-      }
-
-      case OPT_IMPORT_POSTGRES_RESULT: {
-#ifdef WITH_PGTCL
-          const PGresult   *res;
-	  char             *fieldName;
-	  char             *key;
-	  char             *value;
-	  int              *fieldList;
-	  int               fieldIndex;
-	  int               nFields;
-	  int               nTuples;
-	  int               field;
-	  int               row;
-	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
-	  Tcl_Obj          *valueObj = Tcl_NewObj();
-
-          if (objc != 3) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle");
-	    return TCL_ERROR;
-	  }
-
-	  extern PGresult *PgGetResultId (Tcl_Interp *interp, CONST char *id, void **resultidPtr);
-
-	  res = PgGetResultId (interp, Tcl_GetString (objv[2]), NULL);
-	  if (res == NULL) {
-	      Tcl_SetStringObj (Tcl_GetObjResult (interp), Tcl_GetString (objv[2]), -1);
-	      Tcl_AppendResult (interp, " is not a valid query result", NULL);
-	      return TCL_ERROR;
-	  }
-
-          nFields = PQnfields (res);
-
-	  fieldList = (int *) ckalloc ( nFields * sizeof (int));
-
-	  // the first field in the query result must be the key
-	  for (field = 1; field < nFields; field++) {
-	      fieldName = PQfname (res, field);
-
-	      Tcl_SetStringObj (fieldNameObj, fieldName, -1);
-
-	      if (Tcl_GetIndexFromObj (interp, fieldNameObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-		  Tcl_AppendResult (interp, " while matching postgres field \"", fieldName, "\" with fields from table \"${table}\"", (char *)NULL);
-		  return TCL_ERROR;
-	      }
-
-	      fieldList[field] = fieldIndex;
-	  }
-
-	  nTuples = PQntuples (res);
-
-	  for (row = 0; row < nTuples; row++) {
-	      key = PQgetvalue (res, row, 0);
-	      if (key == NULL) {
-	          key = "";
-              }
-
-	      $pointer = ${table}_find_or_create (tbl_ptr, key, &new);
-
-	      for (field = 1; field < nFields; field++) {
-	          value = PQgetvalue (res, row, field);
-
-		  if (value == NULL) {
-		      if (PQgetisnull (res, row, field)) {
-			 ${table}_set_null ($pointer, fieldList[field]);
-		          continue;
-		      } else {
-		          valueObj = ${table}_DefaultEmptyStringObj;
-		      }
-		  }
-		  Tcl_SetStringObj (valueObj, value, -1);
-		  ${table}_set (interp, valueObj, $pointer, fieldList[field]);
-	      }
-	  }
-
-	  return TCL_OK;
-#else
-        Tcl_SetStringObj (Tcl_GetObjResult (interp), "this version of ctables was built without postgresql support", -1);
-        return TCL_ERROR;
-#endif
-      }
-
-      case OPT_WRITE_TABSEP:
-      case OPT_READ_TABSEP: {
-        int              fieldIds[$nFields];
-	int              i;
-	int              objIdx = 3;
-	int              nFields = 0;
-	char            *pattern = NULL;
-	char            *channel;
-	int              noKeys = 0;
-
-	if (objc < 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
-	  return TCL_ERROR;
-	}
-
-	objc -= 3;
-
-	while (objc > 0) {
-	    char *possibleSwitch;
-
-	    possibleSwitch = Tcl_GetString(objv[objIdx]);
-	    if (*possibleSwitch != '-') break;
-
-	    if (strcmp (possibleSwitch, "-glob") == 0) {
-		objIdx++;
-	        if (objc == 1) {
-		    Tcl_AppendResult (interp, "-glob not followed by pattern", (char *)NULL);
-		    return TCL_ERROR;
-		}
-		pattern = Tcl_GetString (objv[objIdx++]);
-		objc -= 2;
-	    } else if (strcmp (possibleSwitch, "-nokeys") == 0) {
-		objIdx++;
-		objc--;
-		noKeys = 1;
-	    } else {
-		Tcl_AppendResult (interp, "unknown switch: ", possibleSwitch, (char *)NULL);
-		return TCL_ERROR;
-	    }
-	}
-
-	if (objc > $nFields) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
-          Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
-	  return TCL_ERROR;
-	}
-
-	if (objc == 0) {
-	    nFields = $nFields;
-	    for (i = 0; i < $nFields; i++) {
-	        fieldIds[i] = i;
-	    }
-	} else {
-	    nFields = objc;
-	    for (i = 0; i < objc; i++) {
-	        if (Tcl_GetIndexFromObj (interp, objv[objIdx++], ${table}_fields, "field", TCL_EXACT, &fieldIds[i]) != TCL_OK) {
-		    return TCL_ERROR;
-		}
-	    }
-	}
-
-	channel = Tcl_GetString (objv[2]);
-
-	if (optIndex == OPT_WRITE_TABSEP) {
-	    return ${table}_export_tabsep (interp, tbl_ptr, channel, fieldIds, nFields, pattern, noKeys);
-	} else {
-	    return ${table}_import_tabsep (interp, tbl_ptr, channel, fieldIds, nFields, pattern, noKeys);
-	}
-      }
-
-      case OPT_EXPORT: {
-        int              fieldIds[$nFields];
-	int              i;
-	int              nFields = 0;
-        Tcl_Obj        **listObjv;
-	Tcl_Obj         *evalObjv[2];
-        Tcl_HashSearch   hashSearch;
-	char            *key;
-
-	if (objc < 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
-	  return TCL_ERROR;
-	}
-
-	if (objc > $nFields + 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "proc ?field field...?");
-          Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
-	  return TCL_ERROR;
-	}
-
-	if (objc == 3) {
-	    nFields = $nFields;
-	    for (i = 0; i < $nFields; i++) {
-	        fieldIds[i] = i;
-	    }
-	} else {
-	    for (i = 3; i < objc; i++) {
-	        if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &fieldIds[nFields++]) != TCL_OK) {
-		    return TCL_ERROR;
-		}
-	    }
-	}
-
-	listObjv = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj *) * (nFields + 1));
-	evalObjv[0] = objv[2];
-
-        for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	    key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
-	    listObjv[0] = Tcl_NewStringObj (key, -1);
-	    ${table}_ptr = (struct $table *) Tcl_GetHashValue (hashEntry);
-
-	    for (i = 0; i < nFields; i++) {
-	        listObjv[i + 1] = ${table}_get (interp, ${table}_ptr, fieldIds[i]);
-	    }
-
-	    evalObjv[1] = Tcl_NewListObj (nFields + 1, listObjv);
-
-	      switch (Tcl_EvalObjv (interp, 2, evalObjv, 0)) {
-	        case TCL_ERROR:
-		  ckfree ((void *)listObjv);
-		  Tcl_AppendResult (interp, " while processing export proc", (char *) NULL);
-		  return TCL_ERROR;
-
-		case TCL_OK:
-		case TCL_CONTINUE:
-		  break;
-
-		case TCL_BREAK:
-		  ckfree ((void *)listObjv);
-		  return TCL_OK;
-
-		case TCL_RETURN:
-		  ckfree ((void *)listObjv);
-		  return TCL_RETURN;
-	      }
-        }
-        ckfree ((void *)listObjv);
-	return TCL_OK;
-      }
 
 }
 
@@ -2628,6 +1943,7 @@ proc gen_code {} {
     variable cmdBodyArrayGetSource
 
     set pointer "${table}_ptr"
+    set Id {CTable template Id}
 
     set nFields [string toupper $table]_NFIELDS
 
@@ -3294,24 +2610,41 @@ proc gen_sort_comp {} {
 }
 
 set searchCompareHeaderSource {
-struct ${table}SearchStruct {
-    int nFields;
-    int *fields;
+
+#define COMP_FALSE 0
+#define COMP_TRUE 1
+#define COMP_LT 2
+#define COMP_LE 3
+#define COMP_EQ 4
+#define COMP_NE 5
+#define COMP_GE 6
+#define COMP_GT 7
+
+struct ${table}SearchComponentStruct {
+    int             fieldID;
+    int             comparisonType;
+    Tcl_Obj        *comparedToObject;
 };
 
-int ${table}_search_compare(void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2) $leftCurly
+struct ${table}SearchStruct {
+    int nComponents;
+    struct ${table}SearchComponentStruct *components;
+};
+
+int ${table}_search_compare(void *clientData, const void *hashEntryPtr, const void *hashEntryPtr2) $leftCurly
     struct ${table}SearchStruct *searchControl = (struct ${table}SearchStruct *)clientData;
-    struct ${table} *pointer1, *pointer2;
+    struct ${table} *pointer;
     int              i;
     int              exclude = 0;
+    int              compType;
+    struct ${table}SearchComponentStruct *component;
 
-    pointer1 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr1);
-    pointer2 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr2);
+    pointer = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr);
 
-// printf ("search comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)pointer1, (long unsigned int)pointer2);
-
-    for (i = 0; i < searchControl->nFields; i++) $leftCurly
-      switch (searchControl->fields[i]) $leftCurly }
+    for (i = 0; i < searchControl->nComponents; i++) $leftCurly
+      component = searchControl->components[i];
+      compType = component->comparisonType;
+      switch (components->fieldID) $leftCurly }
 
 set searchCompareTrailerSource {
        $rightCurly // end of switch
