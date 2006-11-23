@@ -32,10 +32,49 @@ struct ctableSearchStruct {
     int                                  countMax;
     int                                  offset;
     int                                  limit;
-    int                                  nSortFields;
     char                                *pattern;
     struct ctableSortStruct              sortControl;
+    int                                 *retrieveFields;
+    int                                  nRetrieveFields;
+    int                                  noKeys;
+    Tcl_Obj                             *codeBody;
+    Tcl_Channel                          tabsepChannel;
+    int                                  writingTabsep;
 };
+
+/*
+ * ctable_ParseFieldList - given a Tcl list object and an array of pointers
+ * to field names, install a field count into an integer pointer passed
+ * in and allocate an array of integers for the corresponding field indexes.
+ *
+ * It is up to the caller to free the memory pointed to through the
+ * fieldList argument.
+ *
+ * return TCL_OK if all went according to plan, else TCL_ERROR.
+ *
+ */
+int
+ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, int **fieldList, int *fieldCountPtr) {
+    int             nFields;
+    Tcl_Obj       **fieldsObjv;
+    int             i;
+
+    // the fields they want us to retrieve
+    if (Tcl_ListObjGetElements (interp, fieldListObj, &nFields, &fieldsObjv) == TCL_ERROR) {
+      return TCL_ERROR;
+    }
+
+    *fieldCountPtr = nFields;
+    *fieldList = (int *)ckalloc (sizeof (int) * nFields);
+
+    for (i = 0; i < nFields; i++) {
+	if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], fieldNames, "field", TCL_EXACT, fieldList[i]) != TCL_OK) {
+	    ckfree ((void *)(*fieldList));
+	    return TCL_ERROR;
+	  }
+    }
+    return TCL_OK;
+}
 
 static int
 ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **fieldNames, struct ctableSearchStruct *search) {
@@ -136,7 +175,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
         return TCL_OK;
     }
 
-    if ((search->nSortFields > 0) && (!countOnly)) {
+    if ((search->sortControl.nFields > 0) && (!countOnly)) {
 	hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * count);
     }
 
@@ -212,7 +251,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 }
 
 int
-ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableSearchStruct *search) {
+ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableSearchStruct *search, CONST char **fieldNames) {
     Tcl_HashSearch  hashSearch;
     char           *pattern = (char *) NULL;
     char           *key;
@@ -235,6 +274,22 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 	return TCL_ERROR;
     }
 
+    // initialize search control structure
+    search->nComponents = 0;
+    search->components = NULL;
+    search->countOnly = 0;
+    search->countMax = 0;
+    search->offset = 0;
+    search->limit = 0;
+    search->pattern = NULL;
+    search->sortControl.fields = NULL;
+    search->sortControl.nFields = 0;
+    search->retrieveFields = NULL;
+    search->nRetrieveFields = 0;
+    search->noKeys = 0;
+    search->codeBody = NULL;
+    search->writingTabsep = 0;
+
     for (i = 2; i < objc; ) {
 	if (Tcl_GetIndexFromObj (interp, objv[i++], searchTerms, "search option", TCL_EXACT, &searchTerm) != TCL_OK) {
 	    return TCL_ERROR;
@@ -247,112 +302,97 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 
 	switch (searchTerm) {
 	  case SEARCH_OPT_SORT: {
-	    if (Tcl_ListObjGetElements (interp, objv[i++], &fieldsObjc, &fieldsObjv) == TCL_ERROR) {
-	      return TCL_ERROR;
-	    }
-
-	    search->sortControl.nFields = fieldsObjc;
-	    search->sortControl.fields = (int *)ckalloc (sizeof (int) * fieldsObjc);
-	    for (i = 0; i < fieldsObjc; i++) {
-		if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], ${table}_fields, "field", TCL_EXACT, &search->sortControl.fields[i]) != TCL_OK) {
-		    ckfree ((void *)search->sortControl.fields);
-		    return TCL_ERROR;
-		  }
+	    // the fields they want us to sort on
+            if (ctable_ParseFieldList (interp, objv[i++], fieldNames, &search->sortControl.fields, &search->sortControl.nFields) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing sort options", (char *) NULL);
+	        return TCL_ERROR;
 	    }
 	    break;
 	  }
 
 	  case SEARCH_OPT_FIELDS: {
-	      // the fields they want us to retrieve
+	    // the fields they want us to retrieve
+	    if (ctable_ParseFieldList (interp, objv[i++], fieldNames, &search->retrieveFields, &search->nRetrieveFields) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing search fields", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+
+	    break;
 	  }
 
 	  case SEARCH_OPT_INCLUDE_KEY: {
-	      // set to 0 if you don't want the key included
+	    if (Tcl_GetBooleanFromObj (interp, objv[i++], &search->noKeys) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing search noKeys", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+	    break;
 	  }
 
 	  case SEARCH_OPT_GLOB: {
+	    search->pattern = Tcl_GetString (objv[i++);
+	    break;
 	  }
 
 	  case SEARCH_OPT_REGEXP: {
+	    Tcl_AppendResult (interp, "regexp not implemented yet", (char *) NULL);
+	    return TCL_ERROR;
 	  }
 
 	  case SEARCH_OPT_COMPARE: {
+	    if (ctable_ParseSearch (interp, objv[i++], fieldNames, search) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing search compare", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+	    break;
 	  }
 
 	  case SEARCH_OPT_COUNTONLY: {
+	    if (Tcl_GetBooleanFromObj (interp, objv[i++], &search->countOnly) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing search countOnly", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+	    break;
 	  }
 
 	  case SEARCH_OPT_OFFSET: {
+	    if (Tcl_GetIntFromObj (interp, objv[i++], &search->offset) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing search offset", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+	    break;
 	  }
 
 	  case SEARCH_OPT_LIMIT: {
+	    if (Tcl_GetIntFromObj (interp, objv[i++], &search->limit) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing search limit", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+	    break;
 	  }
 
 	  case SEARCH_OPT_CODE: {
+	      search->codeBody = objv[i++];
+	      break;
 	  }
 
 	  case SEARCH_OPT_WRITE_TABSEP: {
+	    if ((search->tabsepChannel = Tcl_GetChannel (interp, Tcl_GetString (objv[i++]), TCL_WRITABLE)) == NULL) {
+	        Tcl_AppendResult (interp, " while processing write_tabsep channel", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+	    search->writingTabsep = 1;
 	  }
 	}
     }
 
-
-    if (objc == 6) {
-      pattern = Tcl_GetString (objv[4]);
-      codeIndex = 5;
+    if (search->writingTabsep && search->codeBody != NULL) {
+	Tcl_AppendResult (interp, "can't use -code and -write_tabsep together", (char *) NULL);
+	return TCL_ERROR;
     }
 
-
-
-
+    if (search->sortControl.nFields && search->countOnly) {
+	Tcl_AppendResult (interp, "it's nuts to -sort something that's a -countOnly anyway", (char *) NULL);
+	return TCL_ERROR;
+    }
 }
 
-
-
-}
-
-	  hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * tbl_ptr->count);
-
-          /* Build up a table of ptrs to hash entries of rows of the table.
-	   * Optional match pattern on the primary key means we may end up
-	   * with fewer than the total number.
-	   */
-	  for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
-	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
-
-	      assert (sortCount < tbl_ptr->count);
-// printf ("filling sort table %d -> hash entry %lx (%s)\n", sortCount, (long unsigned int)hashEntry, key);
-	      hashSortTable[sortCount++] = hashEntry;
-	}
-
-	qsort_r (hashSortTable, sortCount, sizeof (Tcl_HashEntry *), &sortControl, ${table}_sort_compare);
-
-	for (sortIndex = 0; sortIndex < sortCount; sortIndex++) {
-	      key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashSortTable[sortIndex]);
-
-	      if (Tcl_ObjSetVar2 (interp, objv[3], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-	        search_err:
-	          ckfree ((void *)hashSortTable);
-		  ckfree ((void *)sortControl.fields);
-	          return TCL_ERROR;
-	      }
-
-	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
-	        case TCL_ERROR:
-		  Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		  goto search_err;
-
-		case TCL_OK:
-		case TCL_CONTINUE:
-		  break;
-
-		case TCL_BREAK:
-		case TCL_RETURN:
-		  goto search_err;
-	      }
-	  }
-	  ckfree ((void *)hashSortTable);
-	  ckfree ((void *)sortControl.fields);
-	  return TCL_OK;
-      }
