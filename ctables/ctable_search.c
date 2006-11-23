@@ -122,7 +122,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 //
 //
 //
-int
+static int
 ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct ctableSearchStruct *search), int count) {
     Tcl_Obj        **componentList;
     int              componentIdx;
@@ -220,9 +220,10 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 	      }
 	}
     }
+    return TCL_OK;
 }
 
-int
+static int
 ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableSearchStruct *search, CONST char **fieldNames) {
     Tcl_HashSearch  hashSearch;
     char           *pattern = (char *) NULL;

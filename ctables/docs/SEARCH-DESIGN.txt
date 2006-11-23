@@ -52,4 +52,4 @@ i think the list thing gives us more control and flexibility for the future.  I 
 
 
 
-$ctable search ?-sort {field1 {field2 desc}}? ?-glob pattern? ?-regexp pattern? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-lt field value? ?-le field value? ?-eq field value? ?-ge field value? ?-gt field value? ?-false value? ?-true value?  ?-null field? -code ?codeBody?
+$ctable search ?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?
