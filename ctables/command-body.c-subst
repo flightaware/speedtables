@@ -1,4 +1,4 @@
-    // \$Id$
+    // $Id$
 
     if (objc == 1) {
         Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
@@ -214,7 +214,7 @@
 	  return TCL_OK;
       }
 
-      case OPT_WALK: {
+      case OPT_SEARCH: {
 	  Tcl_HashSearch  hashSearch;
 	  char           *pattern = (char *) NULL;
 	  char           *key;
