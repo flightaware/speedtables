@@ -41,5 +41,5 @@ proc ca_cache {command name} {
   return $name
 }
 
-package provide ::ctable_server_cache 1.0
+package provide ctable_server_cache 1.0
 
