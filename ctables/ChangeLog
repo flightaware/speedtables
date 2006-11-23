@@ -1,6 +1,10 @@
 
 $Id$
 
+11/23/2006
+    * Migrate standardized structures that are not custom-generated
+      into a new include file, ctable.h
+
 11/22/2006 karl
     * Factored out a 702-line piece of code for the main body of
       generated ctable code into its own file to make things

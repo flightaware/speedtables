@@ -122,49 +122,7 @@ proc field_to_enum {field} {
 # preambleCannedSource -- stuff that goes at the start of the file we generate
 #
 set preambleCannedSource {
-#include <tcl.h>
-#include <assert.h>
-#include <string.h>
-#include <stdlib.h>
-#include "queue.h"
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <net/ethernet.h>
-
-#ifdef WITH_PGTCL
-#include <libpq-fe.h>
-#endif
-
-#define CTABLE_COMP_FALSE 0
-#define CTABLE_COMP_TRUE 1
-#define CTABLE_COMP_NULL 2
-#define CTABLE_COMP_NOTNULL 3
-#define CTABLE_COMP_LT 4
-#define CTABLE_COMP_LE 5
-#define CTABLE_COMP_EQ 6
-#define CTABLE_COMP_NE 7
-#define CTABLE_COMP_GE 8
-#define CTABLE_COMP_GT 9
-
-struct ctableSearchComponentStruct {
-    int             fieldID;
-    int             comparisonType;
-    Tcl_Obj        *comparedToObject;
-};
-
-struct ctableSearchStruct {
-    int                                 nComponents;
-    struct ctableSearchComponentStruct *components;
-};
-
-struct ctableSortStruct {
-    int nFields;
-    int *fields;
-};
-
+#include "ctable.h"
 }
 
 #
