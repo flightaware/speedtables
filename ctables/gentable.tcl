@@ -140,12 +140,14 @@ set preambleCannedSource {
 
 #define CTABLE_COMP_FALSE 0
 #define CTABLE_COMP_TRUE 1
-#define CTABLE_COMP_LT 2
-#define CTABLE_COMP_LE 3
-#define CTABLE_COMP_EQ 4
-#define CTABLE_COMP_NE 5
-#define CTABLE_COMP_GE 6
-#define CTABLE_COMP_GT 7
+#define CTABLE_COMP_NULL 2
+#define CTABLE_COMP_NOTNULL 3
+#define CTABLE_COMP_LT 4
+#define CTABLE_COMP_LE 5
+#define CTABLE_COMP_EQ 6
+#define CTABLE_COMP_NE 7
+#define CTABLE_COMP_GE 8
+#define CTABLE_COMP_GT 9
 
 struct ctableSearchComponentStruct {
     int             fieldID;
@@ -156,6 +158,11 @@ struct ctableSearchComponentStruct {
 struct ctableSearchStruct {
     int                                 nComponents;
     struct ctableSearchComponentStruct *components;
+};
+
+struct ctableSortStruct {
+    int nFields;
+    int *fields;
 };
 
 }
@@ -2503,13 +2510,9 @@ proc gen_preamble {} {
 }
 
 set sortCompareHeaderSource {
-struct ${table}SortStruct {
-    int nFields;
-    int *fields;
-};
 
 int ${table}_sort_compare(void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2) $leftCurly
-    struct ${table}SortStruct *sortControl = (struct ${table}SortStruct *)clientData;
+    struct ctableSortStruct *sortControl = (struct ctableSortStruct *)clientData;
     struct ${table} *pointer1, *pointer2;
     int              i;
     int              result = 0;

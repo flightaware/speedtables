@@ -143,7 +143,7 @@
 	  int             fieldsObjc;
 	  int             i;
 	  Tcl_Obj       **fieldsObjv;
-	  struct ${table}SortStruct sortControl;
+	  struct ctableSortStruct sortControl;
 
 	  if ((objc < 5) || (objc > 6)) {
 	      Tcl_WrongNumArgs (interp, 2, objv, "fieldList varName ?pattern? codeBody");
@@ -225,7 +225,7 @@
 	  int             fieldsObjc;
 	  int             i;
 	  Tcl_Obj       **fieldsObjv;
-	  struct ${table}SortStruct sortControl;
+	  struct ctableSortStruct sortControl;
 
 	  if ((objc < 5) || (objc > 6)) {
 	      Tcl_WrongNumArgs (interp, 2, objv, "fieldList varName ?pattern? codeBody");

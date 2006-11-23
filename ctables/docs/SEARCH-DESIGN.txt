@@ -38,5 +38,18 @@ in turn.
 
 API:
 
-$ctable walk ?-sort {field1 {field2 desc}}? ?-glob pattern? ?-regexp pattern? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-lt field value? ?-le field value? ?-eq field value? ?-ge field value? ?-gt field value? ?-false value? ?-true value?  -code ?codeBody?
+$ctable search ?-sort {field1 {field2 desc}}? ?-glob pattern? ?-regexp pattern? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-lt field value? ?-le field value? ?-eq field value? ?-ge field value? ?-gt field value? ?-false value? ?-true value?  ?-null field? -code ?codeBody?
 
+If sort isn't specified, would be nice to bypass using the array of pointers.
+
+-comparisons [list [list < field value] [list ne field value lt field valut
+
+that looks painful
+
+but i don't like the syntax of having the -eq all spread out in the search parameters and it makes it harder than with a list because with a list i can know how many elements there are for me to allocate.
+
+i think the list thing gives us more control and flexibility for the future.  I already am thinking about multiple sets of search terms.
+
+
+
+$ctable search ?-sort {field1 {field2 desc}}? ?-glob pattern? ?-regexp pattern? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-lt field value? ?-le field value? ?-eq field value? ?-ge field value? ?-gt field value? ?-false value? ?-true value?  ?-null field? -code ?codeBody?
