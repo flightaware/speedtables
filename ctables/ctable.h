@@ -35,6 +35,7 @@
 struct ctableCreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int  nextAutoCounter;
+    CONST char       **fieldNames;
     int (*search_compare) (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr);
     int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
 };

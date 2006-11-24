@@ -217,3 +217,10 @@ Pretty fast queries?
 Sorting query results?
 
 Threaded server?
+
+----
+
+In search have a select-into type thing where you're copying to another table,
+possibly with different fields in them.
+
+

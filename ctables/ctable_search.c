@@ -415,14 +415,17 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 }
 
 int
-ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, CONST char **fieldNames) {
-    struct ctableSearchStruct search;
+ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableTable *ctable) {
+    struct ctableSearchStruct    search;
+    CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
+    Tcl_HashTable               *keyTablePtr = ctable->keyTablePtr;
+    int                          count = ctable->count;
 
     if (ctable_SetupSearch (interp, objv, objc, &search, fieldNames) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
-    if (ctable_PerformSearch (interp, Tcl_HashTable *keyTablePtr, &search, int count) == TCL_ERROR) {
+    if (ctable_PerformSearch (interp, keyTablePtr, &search, count) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
