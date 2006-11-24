@@ -27,7 +27,7 @@
     tableCreatorPtr->search_compare = ${table}_search_compare;
     tableCreatorPtr->sort_compare = ${table}_sort_compare;
     tableCreatorPtr->get_field_obj = ${table}_get;
-    tableCreatorPtr->dstring_append_get_tabsep = ${table}_destring_append_get_tabsep;
+    tableCreatorPtr->dstring_append_get_tabsep = ${table}_dstring_append_get_tabsep;
 
     ${table}_setup ();
 

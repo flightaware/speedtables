@@ -846,7 +846,8 @@ ${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, struct $table *$
 
 set fieldGetSource {
 Tcl_Obj *
-${table}_get (Tcl_Interp *interp, struct $table *$pointer, int field) $leftCurly
+${table}_get (Tcl_Interp *interp, void *vPointer, int field) $leftCurly
+    struct $table *$pointer = vPointer;
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
@@ -865,11 +866,12 @@ ${table}_get_string (struct $table *$pointer, int field, int *lengthPtr, Tcl_Obj
 
 set tabSepFunctionsSource {
 void
-${table}_dstring_append_get_tabsep (char *key, struct $table *$pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey) {
+${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey) {
     int              i;
     CONST char      *string;
     int              nChars;
     Tcl_Obj         *utilityObj = Tcl_NewObj();
+    struct $table *$pointer = vPointer;
 
     if (!noKey) {
 	Tcl_DStringAppend (dsPtr, key, -1);

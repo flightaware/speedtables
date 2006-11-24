@@ -115,7 +115,6 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 static int
 ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, Tcl_HashTable *keyTablePtr, Tcl_HashEntry *hashEntry) {
     char           *key;
-    Tcl_HashEntry **hashSortTable = NULL;
     void           *pointer;
     int             i;
 
