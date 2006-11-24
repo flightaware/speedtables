@@ -168,12 +168,19 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    /* if we haven't met the start point, blow it off */
 	    if (++matchCount < search->offset) continue;
 
-	    if (matchCount >= search->limit) {
+	    // if there is a limit and it's been exceeded, we're done
+	    if ((search->limit != 0) && (matchCount >= search->limit)) {
 	        return TCL_OK;
 	    }
 
-	    /* match, handle action or tabsep write */
+	    /* we want to take the match actions here --
+	     * we're here when we aren't sorting
+	     */
+
+	// match, handle action or tabsep write
 	} else {
+	    int limit;
+
 	    /* We are sorting, grab it, we gotta sort before we can run
 	     * against start and limit and stuff */
 	    assert (matchCount < count);
@@ -182,31 +189,48 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
 	    qsort_r (hashSortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
 
-	    /* it's sorted, we will now walk it */
+	    // it's sorted
 
-	    for (sortIndex = 0; sortIndex < matchCount; sortIndex++) {
-		  key = Tcl_GetHashKey (keyTablePtr, hashSortTable[sortIndex]);
+	    // now let's see what we've got within the offset and limit
 
-		  if (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-		    search_err:
-		      ckfree ((void *)hashSortTable);
-		      ckfree ((void *)search->sortControl.fields);
-		      return TCL_ERROR;
-		  }
+	    // if the offset's more than the matchCount, they got nuthin'
+	    if (search->offset > matchCount) {
+		return TCL_OK;
+	    }
 
-		  switch (Tcl_EvalObjEx (interp, search->codeBody, 0)) {
-		    case TCL_ERROR:
-		      Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		      goto search_err;
+	    // determine
+	    // matches to the limit
+	    if ((search->limit > 0) && (search->limit < (matchCount - search->offset))) {
+		limit = search->offset + search->limit;
+	    }
 
-		    case TCL_OK:
-		    case TCL_CONTINUE:
-		      break;
+	    for (sortIndex = search->offset; sortIndex < limit; sortIndex++) {
 
-		    case TCL_BREAK:
-		    case TCL_RETURN:
-		      goto search_err;
-		  }
+		/* here is where we want to take the match actions
+		 * when we are sorting
+		 */
+		key = Tcl_GetHashKey (keyTablePtr, hashSortTable[sortIndex]);
+
+		if (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
+		  search_err:
+		    ckfree ((void *)hashSortTable);
+		    ckfree ((void *)search->sortControl.fields);
+		    return TCL_ERROR;
+		}
+
+		switch (Tcl_EvalObjEx (interp, search->codeBody, 0)) {
+		  case TCL_ERROR:
+		    Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
+		    goto search_err;
+
+		  case TCL_OK:
+		  case TCL_CONTINUE:
+		    break;
+
+		  case TCL_BREAK:
+		  case TCL_RETURN:
+		    goto search_err;
+		}
 	      }
 	}
     }
