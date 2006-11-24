@@ -12,5 +12,5 @@ INSTDIR=/sc/lib/ctable
 
 install:
 	-mkdir $(INSTDIR)
-	-cp -f *.tcl *-subst *.h $(INSTDIR)
+	-cp -f *.tcl *-subst *.h *.c $(INSTDIR)
 

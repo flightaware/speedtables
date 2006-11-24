@@ -48,12 +48,9 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
     int          componentListCount;
 
     Tcl_Obj    **termList;
-    int          term;
     int          termListCount;
 
     int          field;
-
-    int          sortCount = 0;
 
     struct ctableSearchComponentStruct **components;
     struct ctableSearchComponentStruct  *component;
@@ -122,21 +119,11 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 //
 static int
 ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct ctableSearchStruct *search, int count) {
-    Tcl_Obj        **componentList;
-    int              componentIdx;
-    int              componentListCount;
-
     Tcl_HashEntry   *hashEntry;
     Tcl_HashSearch   hashSearch;
     char            *key;
 
-    Tcl_Obj        **termList;
-    int              term;
-    int              termListCount;
-
-    int              field;
     int              compareResult;
-    int              maxMatches = 0;
     int              matchCount = 0;
     int              sortIndex;
 
@@ -225,17 +212,8 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 }
 
 static int
-ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableSearchStruct *search, CONST char **fieldNames) {
-    Tcl_HashSearch  hashSearch;
-    char           *pattern = (char *) NULL;
-    char           *key;
-    int             codeIndex = 4;
-    Tcl_HashEntry **hashSortTable;
-    int             sortCount = 0;
-    int             sortIndex;
-    int             fieldsObjc;
+ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableSearchStruct *search, CONST char **fieldNames) {
     int             i;
-    Tcl_Obj       **fieldsObjv;
     int             searchTerm = 0;
 
     static CONST char *searchOptions[] = {"-array", "-code", "-compare", "-countOnly", "-fields", "-glob", "-limit", "-list", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
@@ -415,7 +393,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 }
 
 int
-ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj **CONST objv, int objc, struct ctableTable *ctable) {
+ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable) {
     struct ctableSearchStruct    search;
     CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
     Tcl_HashTable               *keyTablePtr = ctable->keyTablePtr;

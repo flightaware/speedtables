@@ -122,7 +122,8 @@ proc field_to_enum {field} {
 # preambleCannedSource -- stuff that goes at the start of the file we generate
 #
 set preambleCannedSource {
-#include "ctable.h"
+//#include "ctable.h"
+#include "ctable_search.c"
 }
 
 #
@@ -2874,13 +2875,14 @@ proc save_extension_code {name version code} {
 }
 
 #
-# install_h_files - install .h in the target dir if something like it
+# install_ch_files - install .h in the target dir if something like it
 #  isn't there already
 #
-proc install_h_files {targetDir} {
+proc install_ch_files {targetDir} {
     variable srcDir
 
     file copy -force $srcDir/ctable.h $targetDir
+    file copy -force $srcDir/ctable_search.c $targetDir
 }
 
 #
@@ -2912,7 +2914,7 @@ proc CExtension {name version code} {
 
     file mkdir $::ctable::buildPath
 
-    ::ctable::install_h_files $::ctable::buildPath
+    ::ctable::install_ch_files $::ctable::buildPath
 
     if {[::ctable::extension_already_built $name $version $code]} {
         #puts stdout "extension $name $version unchanged"
