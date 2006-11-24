@@ -63,9 +63,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 	    row_tbl_ptr = (struct ctableTable *)ckalloc (sizeof(struct ctableTable));
-
-	    row_tbl_ptr->registeredProcTablePtr = row_head_tbl_ptr->registeredProcTablePtr;
-
+	    row_tbl_ptr->creatorTable = row_head_tbl_ptr;
 	    row_tbl_ptr->keyTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
 	    row_tbl_ptr->count = 0;
 	    Tcl_InitCustomHashTable (row_tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);

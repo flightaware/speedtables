@@ -7,8 +7,16 @@ $Id$
       ctable -- we hide the differences behind the value of the
       hashtable and cast in our custom-generated code.
 
+    * Get rid of the TAILQ stuff -- it wasn't fully implemeneted and
+      was a good idea but it's also hackish in terms of it's cpp
+      macros that create all the forward and backward casts -- needs
+      thought.
+
     * Migrate standardized structures that are not custom-generated
       into a new include file, ctable.h
+
+    * Reference the registered proc table pointer from the master
+      structure for the ctable type.
 
 11/22/2006 karl
     * Factored out a 702-line piece of code for the main body of

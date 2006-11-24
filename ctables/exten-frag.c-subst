@@ -18,9 +18,11 @@
      */
     hashTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
     Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
-    tableCreatorPtr->registeredProcTablePtr = hashTablePtr;
 
+    tableCreatorPtr->registeredProcTablePtr = hashTablePtr;
     tableCreatorPtr->nextAutoCounter = 0;
+    tableCreatorPtr->search_compare = ${table}_search_compare;
+    tableCreatorPtr->sort_compare = ${table}_sort_compare;
 
     ${table}_setup ();
 

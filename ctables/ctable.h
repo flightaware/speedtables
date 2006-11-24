@@ -35,13 +35,15 @@
 struct ctableCreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int  nextAutoCounter;
+    int (*search_compare) (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr);
+    int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
 };
 
 struct ctableTable {
-    Tcl_HashTable     *registeredProcTablePtr;
-    Tcl_HashTable     *keyTablePtr;
-    Tcl_Command        commandInfo;
-    long               count;
+    struct ctableCreatorTable *creatorTable;
+    Tcl_HashTable             *keyTablePtr;
+    Tcl_Command                commandInfo;
+    long                       count;
 };
 
 // ctable sort struct - this controls everything about a sort

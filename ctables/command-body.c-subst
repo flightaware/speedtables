@@ -10,15 +10,15 @@
 	int           i;
 	int           result;
 
-	hashEntry = Tcl_FindHashEntry (tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[1]));
+	hashEntry = Tcl_FindHashEntry (tbl_ptr->creatorTable->registeredProcTablePtr, Tcl_GetString (objv[1]));
 
 	if (hashEntry == (Tcl_HashEntry *) NULL) {
 	    Tcl_HashSearch hashSearch;
 
 	    Tcl_AppendResult (interp, ", or one of the registered methods:", (char *)NULL);
 
-	    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->registeredProcTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	        char *key = Tcl_GetHashKey (tbl_ptr->registeredProcTablePtr, hashEntry);
+	    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->creatorTable->registeredProcTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	        char *key = Tcl_GetHashKey (tbl_ptr->creatorTable->registeredProcTablePtr, hashEntry);
 		Tcl_AppendResult (interp, " ", key, (char *)NULL);
 	    }
 	    return TCL_ERROR;
