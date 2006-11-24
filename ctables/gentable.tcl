@@ -2577,8 +2577,7 @@ proc gen_sort_comp {} {
 set searchCompareHeaderSource {
 
 // compare a row to a block of search components and see if it matches
-int ${table}_search_compare(Tcl_Interp *interp, void *clientData, const void *hashEntryPtr) $leftCurly
-    struct ctableSearchStruct *searchControl = (struct ctableSearchStruct *)clientData;
+int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searchControl, Tcl_HashEntry *hashEntryPtr) $leftCurly
     struct ${table} *pointer;
     int              i;
     int              exclude = 0;
@@ -2586,7 +2585,7 @@ int ${table}_search_compare(Tcl_Interp *interp, void *clientData, const void *ha
     Tcl_Obj         *compareObj;
     struct ctableSearchComponentStruct *component;
 
-    pointer = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr);
+    pointer = (struct $table *) Tcl_GetHashValue (hashEntryPtr);
 
     for (i = 0; i < searchControl->nComponents; i++) $leftCurly
       component = searchControl->components[i];

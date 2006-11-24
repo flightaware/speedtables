@@ -32,21 +32,6 @@
 #define CTABLE_COMP_GE 8
 #define CTABLE_COMP_GT 9
 
-struct ctableCreatorTable {
-    Tcl_HashTable     *registeredProcTablePtr;
-    long unsigned int  nextAutoCounter;
-    CONST char       **fieldNames;
-    int (*search_compare) (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr);
-    int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
-};
-
-struct ctableTable {
-    struct ctableCreatorTable *creatorTable;
-    Tcl_HashTable             *keyTablePtr;
-    Tcl_Command                commandInfo;
-    long                       count;
-};
-
 // ctable sort struct - this controls everything about a sort
 struct ctableSortStruct {
     int nFields;
@@ -87,6 +72,21 @@ struct ctableSearchStruct {
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
 };
+struct ctableCreatorTable {
+    Tcl_HashTable     *registeredProcTablePtr;
+    long unsigned int  nextAutoCounter;
+    CONST char       **fieldNames;
+    int (*search_compare) (Tcl_Interp *interp, struct ctableSearchStruct *searchControl, Tcl_HashEntry *hashEntryPtr);
+    int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
+};
+
+struct ctableTable {
+    struct ctableCreatorTable *creatorTable;
+    Tcl_HashTable             *keyTablePtr;
+    Tcl_Command                commandInfo;
+    long                       count;
+};
+
 
 // extern int ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable);
 
