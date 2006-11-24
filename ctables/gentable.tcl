@@ -1035,7 +1035,8 @@ set cmdBodyGetSource {
 	}
 
 	if (objc == 3) {
-	    return ${table}_genlist (interp, $pointer);
+	    Tcl_SetObjResult (interp, ${table}_genlist (interp, $pointer));
+	    return TCL_OK;
 	}
 
 	for (i = 3; i < objc; i++) {
@@ -1066,7 +1067,8 @@ set cmdBodyArrayGetSource {
 	}
 
 	if (objc == 3) {
-	    return ${table}_gen_keyvalue_list (interp, $pointer);
+	    Tcl_SetObjResult (interp,  ${table}_gen_keyvalue_list (interp, $pointer));
+	    return TCL_OK;
 	}
 
 	for (i = 3; i < objc; i++) {
@@ -2151,7 +2153,8 @@ proc gen_list {} {
 
     set lengthDef [string toupper $table]_NFIELDS
 
-    emit "int ${table}_genlist (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
+    emit "Tcl_Obj *${table}_genlist (Tcl_Interp *interp, void *vPointer) $leftCurly"
+    emit "    struct $table *$pointer = vPointer;"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef];"
     emit ""
@@ -2166,8 +2169,7 @@ proc gen_list {} {
 	incr position
     }
 
-    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef, listObjv));"
-    emit "    return TCL_OK;"
+    emit "    return Tcl_NewListObj ($lengthDef, listObjv);"
     emit "$rightCurly"
     emit ""
 }
@@ -2188,7 +2190,8 @@ proc gen_keyvalue_list {} {
 
     set lengthDef [string toupper $table]_NFIELDS
 
-    emit "int ${table}_gen_keyvalue_list (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
+    emit "Tcl_Obj *${table}_gen_keyvalue_list (Tcl_Interp *interp, void *vPointer) $leftCurly"
+    emit "    struct $table *$pointer = vPointer;"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
     emit ""

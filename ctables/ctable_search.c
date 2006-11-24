@@ -141,19 +141,27 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	Tcl_Obj *listObj = Tcl_NewObj();
 	int      evalResult;
 
-	for (i = 0; i < search->nRetrieveFields; i++) {
-	    obj = (*ctable->creatorTable->get_field_obj) (interp, pointer, search->retrieveFields[i]);
+	if (search->nRetrieveFields == 0) {
+	    if (search->useListSet) {
+		listObj = (*ctable->creatorTable->gen_list) (interp, pointer);
+	    } else if (search->useArraySet) {
+		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, pointer);
+	    }
+	} else {
+	    for (i = 0; i < search->nRetrieveFields; i++) {
+		obj = (*ctable->creatorTable->get_field_obj) (interp, pointer, search->retrieveFields[i]);
 
-	    // if it's array style, add the field name to the list we're making
-	    if (search->useArraySet) {
-		if (Tcl_ListObjAppendElement (interp, listObj, ctable->creatorTable->nameObjList[i]) == TCL_ERROR) {
+		// if it's array style, add the field name to the list we're making
+		if (search->useArraySet) {
+		    if (Tcl_ListObjAppendElement (interp, listObj, ctable->creatorTable->nameObjList[i]) == TCL_ERROR) {
+			return TCL_ERROR;
+		    }
+		}
+
+		// in either case, add the value
+		if (Tcl_ListObjAppendElement (interp, listObj, obj) == TCL_ERROR) {
 		    return TCL_ERROR;
 		}
-	    }
-
-	    // in either case, add the value
-	    if (Tcl_ListObjAppendElement (interp, listObj, obj) == TCL_ERROR) {
-		return TCL_ERROR;
 	    }
 	}
 
