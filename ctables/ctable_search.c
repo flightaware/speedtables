@@ -415,7 +415,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableS
 }
 
 int
-ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj **objv, int objc, struct ctableTable *ctable) {
+ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj **CONST objv, int objc, struct ctableTable *ctable) {
     struct ctableSearchStruct    search;
     CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
     Tcl_HashTable               *keyTablePtr = ctable->keyTablePtr;
