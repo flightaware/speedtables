@@ -112,6 +112,73 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
     return TCL_OK;
 }
 
+static int
+ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, Tcl_HashTable *keyTablePtr, Tcl_HashEntry *hashEntry) {
+    char           *key;
+    Tcl_HashEntry **hashSortTable = NULL;
+    void           *pointer;
+    int             i;
+
+    key = Tcl_GetHashKey (keyTablePtr, hashEntry);
+
+    if (search->writingTabsep) {
+	Tcl_DString     dString;
+
+	Tcl_DStringInit (&dString);
+	pointer = Tcl_GetHashValue (hashEntry);
+
+	(*ctable->creatorTable->dstring_append_get_tabsep) (key, pointer, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
+
+	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
+	    return TCL_ERROR;
+	}
+
+	Tcl_DStringFree (&dString);
+	return TCL_OK;
+    }
+
+    if (search->codeBody != NULL) {
+	Tcl_Obj *obj;
+	Tcl_Obj *listObj = Tcl_NewObj();
+	int      evalResult;
+
+	for (i = 0; i < search->nRetrieveFields; i++) {
+	    obj = (*ctable->creatorTable->get_field_obj) (interp, pointer, search->retrieveFields[i]);
+
+	    // if it's array style, add the field name to the list we're making
+	    if (search->useArraySet) {
+		if (Tcl_ListObjAppendElement (interp, listObj, ctable->creatorTable->nameObjList[i]) == TCL_ERROR) {
+		    return TCL_ERROR;
+		}
+	    }
+
+	    // in either case, add the value
+	    if (Tcl_ListObjAppendElement (interp, listObj, obj) == TCL_ERROR) {
+		return TCL_ERROR;
+	    }
+	}
+
+	if (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, listObj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
+	    return TCL_ERROR;
+	}
+
+	evalResult = Tcl_EvalObjEx (interp, search->codeBody, 0);
+	switch (evalResult) {
+	  case TCL_ERROR:
+	    Tcl_AppendResult (interp, " while processing search code body", (char *) NULL);
+	    return TCL_ERROR;
+
+	  case TCL_OK:
+	  case TCL_CONTINUE:
+	  case TCL_BREAK:
+	  case TCL_RETURN:
+	    return evalResult;
+	}
+    }
+
+    return TCL_OK;
+}
+
 //
 // ctable_PerformSearch - 
 //
@@ -209,28 +276,9 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 		/* here is where we want to take the match actions
 		 * when we are sorting
 		 */
-		key = Tcl_GetHashKey (keyTablePtr, hashSortTable[sortIndex]);
-
-		if (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-		  search_err:
-		    ckfree ((void *)hashSortTable);
-		    ckfree ((void *)search->sortControl.fields);
-		    return TCL_ERROR;
-		}
-
-		switch (Tcl_EvalObjEx (interp, search->codeBody, 0)) {
-		  case TCL_ERROR:
-		    Tcl_AppendResult (interp, " while processing foreach code body", (char *) NULL);
-		    goto search_err;
-
-		  case TCL_OK:
-		  case TCL_CONTINUE:
-		    break;
-
-		  case TCL_BREAK:
-		  case TCL_RETURN:
-		    goto search_err;
-		}
+		 if (ctable_SearchAction (interp, ctable, search, keyTablePtr, hashSortTable[sortIndex]) == TCL_ERROR) {
+		     return TCL_ERROR;
+		 }
 	      }
 	}
     }
@@ -242,9 +290,9 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
     int             i;
     int             searchTerm = 0;
 
-    static CONST char *searchOptions[] = {"-array", "-code", "-compare", "-countOnly", "-fields", "-glob", "-limit", "-list", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array", "-code", "-compare", "-countOnly", "-fields", "-glob", "-key", "-limit", "-list", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GLOB, SEARCH_OPT_LIMIT, SEARCH_OPT_LIST_NAMEOBJ, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP};
+    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_LIMIT, SEARCH_OPT_LIST_NAMEOBJ, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP};
 
     if (objc < 2) {
       wrong_args:
@@ -266,6 +314,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
     search->nRetrieveFields = 0;
     search->noKeys = 0;
     search->varNameObj = NULL;
+    search->keyVarNameObj = NULL;
     search->useArraySet = 0;
     search->useListSet = 0;
     search->codeBody = NULL;
@@ -314,6 +363,11 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
 	    search->useArraySet = 1;
 	    break;
 	  }
+
+	  case SEARCH_OPT_KEYVAR_NAMEOBJ: {
+	    search->keyVarNameObj = objv[i++];
+	    break;
+          }
 
 	  case SEARCH_OPT_LIST_NAMEOBJ: {
 	    search->varNameObj = objv[i++];
@@ -388,8 +442,8 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
 	}
     }
 
-    if (search->writingTabsep && search->codeBody != NULL) {
-	Tcl_AppendResult (interp, "can't use -code and -write_tabsep together", (char *) NULL);
+    if (search->writingTabsep && (search->codeBody != NULL || search->keyVarNameObj != NULL || search->varNameObj != NULL)) {
+	Tcl_AppendResult (interp, "can't use -code, -key, -array or -list along with -write_tabsep", (char *) NULL);
 	return TCL_ERROR;
     }
 

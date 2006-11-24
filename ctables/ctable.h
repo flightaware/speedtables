@@ -48,6 +48,7 @@ struct ctableSearchComponentStruct {
 
 // ctable search struct - this controls everything about a search
 struct ctableSearchStruct {
+    struct ctableTable                  *ctable;
     int                                  nComponents;
     struct ctableSearchComponentStruct **components;
 
@@ -66,18 +67,23 @@ struct ctableSearchStruct {
     int                                  noKeys;
     Tcl_Obj                             *codeBody;
     Tcl_Obj                             *varNameObj;
+    Tcl_Obj                             *keyVarNameObj;
     int                                  useArraySet;
     int                                  useListSet;
 
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
 };
+
 struct ctableCreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int  nextAutoCounter;
     CONST char       **fieldNames;
+    Tcl_Obj          **nameObjList;
     int (*search_compare) (Tcl_Interp *interp, struct ctableSearchStruct *searchControl, Tcl_HashEntry *hashEntryPtr);
     int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
+    Tcl_Obj *(*get_field_obj) (Tcl_Interp *interp, void *pointer, int field);
+    void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey);
 };
 
 struct ctableTable {

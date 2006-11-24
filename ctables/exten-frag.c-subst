@@ -21,9 +21,13 @@
 
     tableCreatorPtr->registeredProcTablePtr = hashTablePtr;
     tableCreatorPtr->nextAutoCounter = 0;
+    tableCreatorPtr->fieldNames = ${table}_fields;
+    tableCreatorPtr->nameObjList = ${table}_NameObjList;
+
     tableCreatorPtr->search_compare = ${table}_search_compare;
     tableCreatorPtr->sort_compare = ${table}_sort_compare;
-    tableCreatorPtr->fieldNames = ${table}_fields;
+    tableCreatorPtr->get_field_obj = ${table}_get;
+    tableCreatorPtr->dstring_append_get_tabsep = ${table}_destring_append_get_tabsep;
 
     ${table}_setup ();
 

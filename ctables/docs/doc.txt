@@ -326,8 +326,9 @@ count
     % x count
     1
 
+$ctable search ?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?
 
-foreach
+foreach   DEPRECATED
 
     Iterate over all of the rows in the table, or just the rows in the table
     matching a string match wildcard, executing tcl code on each of them.
@@ -356,7 +357,7 @@ foreach
     execute "continue" and "break" to resume the code with the next
     row and break out of the foreach loop, respectively.
 
-sort
+sort    DEPRECATED
 
     Iterate over all of the rows in the table, or just the rows in the table
     matching a string match wildcard, sorting the picked rows (usually all
