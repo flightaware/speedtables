@@ -680,7 +680,7 @@ set tclobjCompSource {
 #  code body that implements the methods that work on the table.
 #
 set cmdBodyHeader {
-void ${table}_delete_all_rows(struct ${table}StructTable *tbl_ptr) {
+void ${table}_delete_all_rows(struct ctableTable *tbl_ptr) {
     Tcl_HashSearch hashSearch;
     Tcl_HashEntry *hashEntry;
     struct ${table} *$pointer;
@@ -696,7 +696,7 @@ void ${table}_delete_all_rows(struct ${table}StructTable *tbl_ptr) {
 
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 $leftCurly
-    struct $rowStructTable *tbl_ptr = (struct $rowStructTable *)cData;
+    struct ctableTable *tbl_ptr = (struct ctableTable *)cData;
     struct $table *$pointer;
     int optIndex;
     Tcl_HashEntry *hashEntry;
@@ -708,23 +708,8 @@ $leftCurly
 
 }
 
-set tableHeadSource {
-struct ${table}StructHeadTable {
-    Tcl_HashTable     *registeredProcTablePtr;
-    long unsigned int  nextAutoCounter;
-};
-
-struct ${table}StructTable {
-    Tcl_HashTable *registeredProcTablePtr;
-    Tcl_HashTable *keyTablePtr;
-    Tcl_Command    commandInfo;
-    long           count;
-    TAILQ_HEAD (${table}Head, $table) rows;
-};
-}
-
 set fieldObjSetSource {
-struct $table *${table}_find_or_create (struct ${table}StructTable *tbl_ptr, char *key, int *newPtr) {
+struct $table *${table}_find_or_create (struct ctableTable *tbl_ptr, char *key, int *newPtr) {
     struct $table *${table}_ptr;
 
     Tcl_HashEntry *hashEntry = Tcl_CreateHashEntry (tbl_ptr->keyTablePtr, key, newPtr);
@@ -764,7 +749,7 @@ ${table}_set (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int fie
 }
 
 set fieldObjGetSource {
-struct $table *${table}_find (struct ${table}StructTable *tbl_ptr, char *key) {
+struct $table *${table}_find (struct ctableTable *tbl_ptr, char *key) {
     Tcl_HashEntry *hashEntry;
 
     hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, key);
@@ -907,7 +892,7 @@ ${table}_dstring_append_get_tabsep (char *key, struct $table *$pointer, int *fie
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
+${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
     Tcl_Channel    channel;
     int            mode;
     Tcl_DString    dString;
@@ -947,7 +932,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr,
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, char *string, int *fieldIds, int nFields, int noKey, int recordNumber) {
+${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, char *string, int *fieldIds, int nFields, int noKey, int recordNumber) {
     struct $table *$pointer;
     char          *key;
     char          *field;
@@ -977,7 +962,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_pt
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, struct ${table}StructTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
+${table}_import_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = Tcl_NewObj();
@@ -1514,7 +1499,7 @@ proc gen_struct {} {
 
     emit "struct $table {"
     #putfield TAILQ_ENTRY($table) ${table}_link
-    putfield TAILQ_ENTRY($table) _link
+    #putfield TAILQ_ENTRY($table) _link
 
     foreach myfield $nonBooleans {
         catch {unset field}
@@ -1756,15 +1741,6 @@ proc gen_set_null_function {table} {
 }
 
 #
-# gen_table_head_source - emit the code to define the head structures
-#
-proc gen_table_head_source {table} {
-    variable tableHeadSource
-
-    emit [subst -nobackslashes -nocommands $tableHeadSource]
-}
-
-#
 # put_metatable_source - emit the code to define the meta table (table-defining
 # command)
 #
@@ -1799,7 +1775,7 @@ proc put_init_extension_source {extension extensionVersion} {
 
     set structHeadTablePointers ""
     foreach name $tables {
-        append structHeadTablePointers "    struct ${name}StructHeadTable *${name}StructHeadTablePtr;\n";
+        append structHeadTablePointers "    struct ctableCreatorTable *tableCreatorPtr;\n";
     }
 
     set Id {init extension Id}
@@ -1955,8 +1931,6 @@ proc gen_code {} {
 
     set nFields [string toupper $table]_NFIELDS
 
-    set rowStructTable ${table}StructTable
-    set rowStructHeadTable ${table}StructHeadTable
     set rowStruct $table
 
     gen_set_function $table $pointer
@@ -2616,7 +2590,7 @@ int ${table}_search_compare(Tcl_Interp *interp, void *clientData, const void *ha
     pointer = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr);
 
     for (i = 0; i < searchControl->nComponents; i++) $leftCurly
-      component = &searchControl->components[i];
+      component = searchControl->components[i];
       compType = component->comparisonType;
       compareObj = component->comparedToObject;
       switch (component->fieldID) $leftCurly }
@@ -2903,15 +2877,13 @@ proc save_extension_code {name version code} {
 }
 
 #
-# install_queue_h - install queue.h in the target dir if something like it
+# install_h_files - install .h in the target dir if something like it
 #  isn't there already
 #
-proc install_queue_h {targetDir} {
+proc install_h_files {targetDir} {
     variable srcDir
 
-    if {![file readable $targetDir/queue.h]} {
-        file copy $srcDir/queue.h $targetDir
-    }
+    file copy -force $srcDir/ctable.h $targetDir
 }
 
 #
@@ -2943,7 +2915,7 @@ proc CExtension {name version code} {
 
     file mkdir $::ctable::buildPath
 
-    ::ctable::install_queue_h $::ctable::buildPath
+    ::ctable::install_h_files $::ctable::buildPath
 
     if {[::ctable::extension_already_built $name $version $code]} {
         #puts stdout "extension $name $version unchanged"
@@ -2981,8 +2953,6 @@ proc CTable {name data} {
     ::ctable::sanity_check
 
     ::ctable::gen_struct
-
-    ::ctable::gen_table_head_source $name
 
     ::ctable::gen_field_names
 

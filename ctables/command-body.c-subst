@@ -324,7 +324,7 @@
       case OPT_RESET: {
 	  ${table}_delete_all_rows (tbl_ptr);
 	  Tcl_InitCustomHashTable (tbl_ptr->keyTablePtr, TCL_STRING_KEYS, (Tcl_HashKeyType *)NULL);
-	  TAILQ_INIT (&tbl_ptr->rows);
+	  // TAILQ_INIT (&tbl_ptr->rows);
 	  return TCL_OK;
       }
 

@@ -9,7 +9,8 @@
      *  define the following variables and subst this:
      *   table
      */
-    ${table}StructHeadTablePtr = (struct ${table}StructHeadTable *)ckalloc (sizeof (struct ${table}StructHeadTable));
+
+    tableCreatorPtr = (struct ctableCreatorTable *)ckalloc (sizeof (struct ctableCreatorTable));
 
     /* create the table for registering Tcl commands to appear as methods
      * of the table class and pass it in through Tcl's client data
@@ -17,9 +18,9 @@
      */
     hashTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
     Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
-    ${table}StructHeadTablePtr->registeredProcTablePtr = hashTablePtr;
+    tableCreatorPtr->registeredProcTablePtr = hashTablePtr;
 
-    ${table}StructHeadTablePtr->nextAutoCounter = 0;
+    tableCreatorPtr->nextAutoCounter = 0;
 
     ${table}_setup ();
 
@@ -27,5 +28,5 @@
      * Itcl class in that it can create its own commands with their
      * own data spaces, etc.
      */
-    Tcl_CreateObjCommand(interp, "${table}", (Tcl_ObjCmdProc *) ${table}MetaObjCmd, (ClientData)${table}StructHeadTablePtr, (Tcl_CmdDeleteProc *)NULL);
+    Tcl_CreateObjCommand(interp, "${table}", (Tcl_ObjCmdProc *) ${table}MetaObjCmd, (ClientData)tableCreatorPtr, (Tcl_CmdDeleteProc *)NULL);
 

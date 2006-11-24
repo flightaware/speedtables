@@ -35,10 +35,9 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
         OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD
     };
 
-    // struct $table *row_ptr;
-    struct ${table}StructHeadTable *row_head_tbl_ptr = (struct ${table}StructHeadTable *)clientData;
+    struct ctableCreatorTable *row_head_tbl_ptr = (struct ctableCreatorTable *)clientData;
 
-    struct ${table}StructTable *row_tbl_ptr;
+    struct ctableTable *row_tbl_ptr;
 
     if (objc < 2 || objc > 4) {
       err:
@@ -63,10 +62,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		return TCL_ERROR;
 	    }
 
-	    row_tbl_ptr = (struct ${table}StructTable *)ckalloc (sizeof(struct ${table}StructTable));
-
-	    /* initialize the positions linked list */
-	    TAILQ_INIT (&row_tbl_ptr->rows);
+	    row_tbl_ptr = (struct ctableTable *)ckalloc (sizeof(struct ctableTable));
 
 	    row_tbl_ptr->registeredProcTablePtr = row_head_tbl_ptr->registeredProcTablePtr;
 

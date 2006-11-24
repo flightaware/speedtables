@@ -9,7 +9,6 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include "queue.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -32,6 +31,18 @@
 #define CTABLE_COMP_NE 7
 #define CTABLE_COMP_GE 8
 #define CTABLE_COMP_GT 9
+
+struct ctableCreatorTable {
+    Tcl_HashTable     *registeredProcTablePtr;
+    long unsigned int  nextAutoCounter;
+};
+
+struct ctableTable {
+    Tcl_HashTable     *registeredProcTablePtr;
+    Tcl_HashTable     *keyTablePtr;
+    Tcl_Command        commandInfo;
+    long               count;
+};
 
 // ctable sort struct - this controls everything about a sort
 struct ctableSortStruct {

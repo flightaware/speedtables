@@ -2,6 +2,11 @@
 $Id$
 
 11/23/2006
+    * Simplify things by using standardized table creator and table
+      structures rather than generating custom ones for each 
+      ctable -- we hide the differences behind the value of the
+      hashtable and cast in our custom-generated code.
+
     * Migrate standardized structures that are not custom-generated
       into a new include file, ctable.h
 
