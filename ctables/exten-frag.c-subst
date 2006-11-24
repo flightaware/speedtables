@@ -23,6 +23,7 @@
     tableCreatorPtr->nextAutoCounter = 0;
     tableCreatorPtr->search_compare = ${table}_search_compare;
     tableCreatorPtr->sort_compare = ${table}_sort_compare;
+    tableCreatorPtr->fieldNames = ${table}_fields;
 
     ${table}_setup ();
 

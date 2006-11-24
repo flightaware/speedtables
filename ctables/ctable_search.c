@@ -118,7 +118,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 //
 //
 static int
-ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct ctableSearchStruct *search, int count) {
+ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, int count) {
     Tcl_HashEntry   *hashEntry;
     Tcl_HashSearch   hashSearch;
     char            *key;
@@ -128,6 +128,8 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
     int              sortIndex;
 
     Tcl_HashEntry **hashSortTable = NULL;
+
+    Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
 
     if (count == 0) {
         return TCL_OK;
@@ -147,7 +149,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 
 	if ((search->pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, search->pattern, 1))) continue;
 
-	compareResult = (*search->search_compare) (interp, search, hashEntry);
+	compareResult = (*ctable->creatorTable->search_compare) (interp, search, hashEntry);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
 	}
@@ -178,7 +180,7 @@ ctable_PerformSearch (Tcl_Interp *interp, Tcl_HashTable *keyTablePtr, struct cta
 	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", matchCount, (long unsigned int)hashEntry, key);
 	    hashSortTable[matchCount++] = hashEntry;
 
-	    qsort_r (hashSortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, search->sort_compare);
+	    qsort_r (hashSortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
 
 	    /* it's sorted, we will now walk it */
 
@@ -396,14 +398,13 @@ int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable) {
     struct ctableSearchStruct    search;
     CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
-    Tcl_HashTable               *keyTablePtr = ctable->keyTablePtr;
     int                          count = ctable->count;
 
     if (ctable_SetupSearch (interp, objv, objc, &search, fieldNames) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
-    if (ctable_PerformSearch (interp, keyTablePtr, &search, count) == TCL_ERROR) {
+    if (ctable_PerformSearch (interp, ctable, &search, count) == TCL_ERROR) {
         return TCL_ERROR;
     }
 

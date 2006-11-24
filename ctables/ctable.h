@@ -86,8 +86,6 @@ struct ctableSearchStruct {
 
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
-    int (*search_compare) (Tcl_Interp *interp, void *clientData, const void *hashEntryPtr);
-    int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
 };
 
 // extern int ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable);

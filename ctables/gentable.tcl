@@ -20,7 +20,7 @@ namespace eval ctable {
     variable genCompilerDebug
 
     # set to 1 to build with debugging and link to tcl debugging libraries
-    set genCompilerDebug 0
+    set genCompilerDebug 1
 
     variable pgtcl_ver 1.5
 

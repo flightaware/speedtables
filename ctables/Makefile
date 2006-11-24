@@ -8,7 +8,7 @@
 # $Id$
 #
 
-INSTDIR=/sc/lib/ctable
+INSTDIR=/usr/local/lib/ctable
 
 install:
 	-mkdir $(INSTDIR)
