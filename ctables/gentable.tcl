@@ -1643,7 +1643,6 @@ proc gen_sets {pointer} {
     variable fieldList
     variable leftCurly
     variable rightCurly
-    variable cmdBodyHeader
 
     foreach myfield $fieldList {
         catch {unset field}
@@ -2498,7 +2497,6 @@ proc gen_sort_comp {} {
     variable fieldList
     variable leftCurly
     variable rightCurly
-    variable cmdBodyHeader
 
     variable numberSortSource
     variable fixedstringSortSource
@@ -2635,7 +2633,6 @@ proc gen_search_comp {} {
     variable fieldList
     variable leftCurly
     variable rightCurly
-    variable cmdBodyHeader
 
     variable numberCompSource
     variable fixedstringCompSource

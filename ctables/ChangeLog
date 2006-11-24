@@ -2,6 +2,9 @@
 $Id$
 
 11/23/2006
+    * The "foreach" and "sort" methods are deprecated in favor of
+      "search" but will be left in until legacy code can be updated.
+
     * Simplify things by using standardized table creator and table
       structures rather than generating custom ones for each 
       ctable -- we hide the differences behind the value of the
