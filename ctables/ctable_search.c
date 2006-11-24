@@ -250,7 +250,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    /* we want to take the match actions here --
 	     * we're here when we aren't sorting
 	     */
-	     if (ctable_SearchAction (interp, ctable, search, keyTablePtr, hashSortTable[sortIndex]) == TCL_ERROR) {
+	     if (ctable_SearchAction (interp, ctable, search, keyTablePtr, hashEntry) == TCL_ERROR) {
 		 return TCL_ERROR;
 	     }
 	// match, handle action or tabsep write
