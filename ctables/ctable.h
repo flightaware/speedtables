@@ -50,7 +50,7 @@ struct ctableSearchComponentStruct {
 struct ctableSearchStruct {
     struct ctableTable                  *ctable;
     int                                  nComponents;
-    struct ctableSearchComponentStruct **components;
+    struct ctableSearchComponentStruct  *components;
 
     int                                  countOnly;
     int                                  countMax;

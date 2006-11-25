@@ -54,7 +54,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 
     int          field;
 
-    struct ctableSearchComponentStruct **components;
+    struct ctableSearchComponentStruct  *components;
     struct ctableSearchComponentStruct  *component;
     
     // these terms must line up with the CTABLE_COMP_* defines
@@ -71,7 +71,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 
     search->nComponents = componentListCount;
 
-    components = (struct ctableSearchComponentStruct **)ckalloc (componentListCount * sizeof (struct ctableSearchComponentStruct));
+    components = (struct ctableSearchComponentStruct *)ckalloc (componentListCount * sizeof (struct ctableSearchComponentStruct));
 
     search->components = components;
 
@@ -98,19 +98,27 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 	    goto err;
 	}
 
-	component = components[componentIdx];
+	component = &components[componentIdx];
 
 	component->comparisonType = term;
 	component->fieldID = field;
 
-	if (field == CTABLE_COMP_FALSE || field == CTABLE_COMP_TRUE || field == CTABLE_COMP_NULL || field == CTABLE_COMP_NOTNULL) {
+	if (term == CTABLE_COMP_FALSE || term == CTABLE_COMP_TRUE || term == CTABLE_COMP_NULL || term == CTABLE_COMP_NOTNULL) {
 	    component->comparedToObject = NULL;
+	    if (termListCount != 2) {
+		Tcl_AppendResult (interp, "false, true, null and notnull search expressions must have only two fields", (char *) NULL);
+		return TCL_ERROR;
+	    }
 	}  else {
+	    if (termListCount != 3) {
+		Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 3 arguments (term, field, value)", (char *) NULL);
+		return TCL_ERROR;
+	    }
 	    component->comparedToObject = termList[2];
 	}
     }
 
-    ckfree ((char *)components);
+    // it worked, leave the components allocated
     return TCL_OK;
 }
 
@@ -557,6 +565,10 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 
     if (ctable_PerformSearch (interp, ctable, &search, count) == TCL_ERROR) {
         return TCL_ERROR;
+    }
+
+    if (search.components != NULL) {
+	ckfree ((void *)search.components);
     }
 
     return TCL_OK;

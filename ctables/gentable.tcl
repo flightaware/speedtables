@@ -2634,7 +2634,7 @@ int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searc
     pointer = (struct $table *) Tcl_GetHashValue (hashEntryPtr);
 
     for (i = 0; i < searchControl->nComponents; i++) $leftCurly
-      component = searchControl->components[i];
+      component = &searchControl->components[i];
       compType = component->comparisonType;
       compareObj = component->comparedToObject;
       switch (component->fieldID) $leftCurly }
