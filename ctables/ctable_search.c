@@ -117,21 +117,21 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 static int
 ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, Tcl_HashTable *keyTablePtr, Tcl_HashEntry *hashEntry) {
     char           *key;
-    void           *pointer;
+    void           *p;
     int             i;
 
     key = Tcl_GetHashKey (keyTablePtr, hashEntry);
+    p = Tcl_GetHashValue (hashEntry);
 
     if (search->writingTabsep) {
 	Tcl_DString     dString;
 
 	Tcl_DStringInit (&dString);
-	pointer = Tcl_GetHashValue (hashEntry);
 
         if (search->nRetrieveFields < 0) {
-	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, pointer, ctable->creatorTable->fieldList, ctable->creatorTable->nFields, &dString, search->noKeys);
+	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, p, ctable->creatorTable->fieldList, ctable->creatorTable->nFields, &dString, search->noKeys);
 	} else {
-	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, pointer, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
+	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, p, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
 	}
 
 	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
@@ -149,13 +149,13 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 
 	if (search->nRetrieveFields < 0) {
 	    if (search->useListSet) {
-		listObj = (*ctable->creatorTable->gen_list) (interp, pointer);
+		listObj = (*ctable->creatorTable->gen_list) (interp, p);
 	    } else if (search->useArraySet) {
-		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, pointer);
+		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, p);
 	    }
 	} else {
 	    for (i = 0; i < search->nRetrieveFields; i++) {
-		obj = (*ctable->creatorTable->get_field_obj) (interp, pointer, search->retrieveFields[i]);
+		obj = (*ctable->creatorTable->get_field_obj) (interp, p, search->retrieveFields[i]);
 
 		// if it's array style, add the field name to the list we're making
 		if (search->useArraySet) {
