@@ -78,7 +78,6 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 
 	if (Tcl_ListObjGetElements (interp, componentList[componentIdx], &termListCount, &termList) == TCL_ERROR) {
 	  err:
-	    ckfree ((char *)search);
 	    ckfree ((char *)components);
 	    return TCL_ERROR;
 	}
@@ -109,6 +108,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 	}
     }
 
+    ckfree ((char *)components);
     return TCL_OK;
 }
 
@@ -141,7 +141,7 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	Tcl_Obj *listObj = Tcl_NewObj();
 	int      evalResult;
 
-	if (search->nRetrieveFields == 0) {
+	if (search->nRetrieveFields < 0) {
 	    if (search->useListSet) {
 		listObj = (*ctable->creatorTable->gen_list) (interp, pointer);
 	    } else if (search->useArraySet) {
@@ -229,10 +229,8 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	}
 
 	if (compareResult == TCL_ERROR) {
-	    if (hashSortTable != NULL) {
-		ckfree ((void *)hashSortTable);
-	    }
-	    return TCL_ERROR;
+	    actionResult = TCL_ERROR;
+	    goto clean_and_return;
 	}
 
 	/* It's a Match */
@@ -244,14 +242,25 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
 	    // if there is a limit and it's been exceeded, we're done
 	    if ((search->limit != 0) && (matchCount >= search->limit)) {
-	        return TCL_OK;
+		actionResult = TCL_OK;
+		goto clean_and_return;
 	    }
 
 	    /* we want to take the match actions here --
 	     * we're here when we aren't sorting
 	     */
-	     if (ctable_SearchAction (interp, ctable, search, keyTablePtr, hashEntry) == TCL_ERROR) {
-		 return TCL_ERROR;
+	     actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, hashEntry);
+	     if (actionResult == TCL_ERROR) {
+		  goto clean_and_return;
+	     }
+
+	     if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
+		 continue;
+	     }
+
+	     if (actionResult == TCL_BREAK || actionResult == TCL_RETURN) {
+		  actionResult = TCL_OK;
+		  goto clean_and_return;
 	     }
 	// match, handle action or tabsep write
 	} else {
@@ -262,36 +271,58 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    assert (matchCount < count);
 	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", matchCount, (long unsigned int)hashEntry, key);
 	    hashSortTable[matchCount++] = hashEntry;
-
-	    qsort_r (hashSortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
-
-	    // it's sorted
-
-	    // now let's see what we've got within the offset and limit
-
-	    // if the offset's more than the matchCount, they got nuthin'
-	    if (search->offset > matchCount) {
-		return TCL_OK;
-	    }
-
-	    // determine
-	    // matches to the limit
-	    if ((search->limit > 0) && (search->limit < (matchCount - search->offset))) {
-		limit = search->offset + search->limit;
-	    }
-
-	    for (sortIndex = search->offset; sortIndex < limit; sortIndex++) {
-
-		/* here is where we want to take the match actions
-		 * when we are sorting
-		 */
-		 if (ctable_SearchAction (interp, ctable, search, keyTablePtr, hashSortTable[sortIndex]) == TCL_ERROR) {
-		     return TCL_ERROR;
-		 }
-	      }
 	}
     }
-    return TCL_OK;
+
+    // if we're not sorting, we're done -- we did 'em all on the fly
+    if (hashSortTable == NULL) {
+	actionResult = TCL_OK;
+	goto clean_and_return;
+    }
+
+    qsort_r (hashSortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
+
+    // it's sorted
+    // now let's see what we've got within the offset and limit
+
+    // if the offset's more than the matchCount, they got nuthin'
+    if (search->offset > matchCount) {
+	actionResult = TCL_OK;
+	goto clean_and_return;
+    }
+
+    // determine start and limit
+    if ((search->limit > 0) && (search->limit < (matchCount - search->offset))) {
+	limit = search->offset + search->limit;
+    }
+
+    // walk the result
+    for (sortIndex = search->offset; sortIndex < limit; sortIndex++) {
+
+	/* here is where we want to take the match actions
+	 * when we are sorting
+	 */
+	 actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, hashSortTable[sortIndex]);
+	 if (actionResult == TCL_ERROR) {
+	     goto clean_and_return;
+	 }
+
+	 if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
+	     continue;
+	 }
+
+	 if (actionResult == TCL_BREAK || actionResult == TCL_RETURN) {
+	     actionResult = TCL_OK;
+	     goto clean_and_return;
+	 }
+    }
+
+  clean_and_return:
+    if (hashSortTable != NULL) {
+	ckfree ((void *)hashSortTable);
+    }
+
+    return actionResult;
 }
 
 static int
@@ -320,7 +351,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
     search->sortControl.fields = NULL;
     search->sortControl.nFields = 0;
     search->retrieveFields = NULL;
-    search->nRetrieveFields = 0;
+    search->nRetrieveFields = -1;   // -1 = all, 0 = none
     search->noKeys = 0;
     search->varNameObj = NULL;
     search->keyVarNameObj = NULL;

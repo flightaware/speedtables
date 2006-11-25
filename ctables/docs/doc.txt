@@ -326,7 +326,30 @@ count
     % x count
     1
 
+
+search
+
+    Search for matching rows and take actions on them, with optional sorting.
+
 $ctable search ?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?
+
+    Write everything in the table tab-separated to channel $channel
+
+	$ctable search -write_tabsep $channel
+
+    Write everything in the table with coolness > 50 and hipness > 50
+
+	$ctable search -write_tabsep $channel -compare {{> coolness 50} {> hipness 50}}
+
+    Run some code every everything in the table matching above
+
+	$ctable search -compare {{> coolness 50} {> hipness 50}} -key key -array_get data -code {
+	    puts "key -> $key, data -> $data"
+	}
+
+      
+
+
 
 foreach   DEPRECATED
 

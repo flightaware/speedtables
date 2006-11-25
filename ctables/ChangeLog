@@ -1,6 +1,10 @@
 
 $Id$
 
+11/24/2006
+    * If no reference fields are specified with a search (-fields list),
+      you get all fields by default.
+
 11/23/2006
     * The "foreach" and "sort" methods are deprecated in favor of
       "search" but will be left in until legacy code can be updated.
