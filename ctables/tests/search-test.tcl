@@ -41,6 +41,11 @@ t set j name "Meatwad" address "Next-door to Carl" coolness 10 realness 0 aliven
 t set k name "Master Shake" address "Next-door to Carl" coolness 15 realness 0 aliveness 1
 t set l name "Frylock" address "Next-door to Carl" coolness 5 realness 0 aliveness 1
 
+puts "search with write_tabsep / sort on coolness / descending / limit 1"
+t search -write_tabsep stdout -sort -coolness -limit 1
+puts ""
+
+
 puts "search with implicit fields, tabsep, not realness and not aliveness"
 t search -write_tabsep stdout -compare {{false realness} {false aliveness}}
 puts ""
