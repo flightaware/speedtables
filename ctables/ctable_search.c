@@ -161,13 +161,13 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	       int i;
 
 	       for (i = 0; i < ctable->creatorTable->nFields; i++) {
-		   ctable->creatorTable->lappend_field (interp, listObj, p, i);
+		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, p, i);
 	       }
 	    } else {
 	       int i;
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   ctable->creatorTable->lappend_field (interp, listObj, p, search->retrieveFields[i]);
+		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, p, search->retrieveFields[i]);
 	       }
 	    }
 	} else if (search->useArrayGetWithNulls) {
@@ -175,7 +175,7 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, p);
 	    } else {
 		for (i = 0; i < search->nRetrieveFields; i++) {
-		    ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, p, search->retrieveFields[i]);
+		    ctable->creatorTable->lappend_field_and_name (interp, listObj, p, search->retrieveFields[i]);
 		}
 	    }
 	} else {
