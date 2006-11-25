@@ -93,7 +93,6 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 	if (Tcl_GetIndexFromObj (interp, termList[0], searchTerms, "term", TCL_EXACT, &term) != TCL_OK) {
 	    goto err;
 	}
-printf("term is %d, source %s, reverse is %s\n", term, Tcl_GetString (termList[0]), searchTerms[term]);
 
 	if (Tcl_GetIndexFromObj (interp, termList[1], fieldNames, "field", TCL_EXACT, &field) != TCL_OK) {
 	    goto err;

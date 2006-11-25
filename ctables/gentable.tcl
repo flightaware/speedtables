@@ -490,6 +490,7 @@ set boolCompSource {
 	    exclude = pointer->$field;
 	    break;
 	}
+	break;
       }
 }
 
@@ -536,6 +537,7 @@ set numberCompSource {
 	        exclude = !(pointer->$field > compValue);
 		break;
 	  }
+	  break;
         }
 }
 
@@ -581,6 +583,7 @@ set varstringCompSource {
 	        exclude = !(strcmpResult > 0);
 		break;
 	  }
+	  break;
         }
 }
 
@@ -626,6 +629,7 @@ set fixedstringCompSource {
 	        exclude = !(strcmpResult > 0);
 		break;
   	  }
+	  break;
         }
 }
 
