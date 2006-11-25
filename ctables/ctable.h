@@ -68,8 +68,9 @@ struct ctableSearchStruct {
     Tcl_Obj                             *codeBody;
     Tcl_Obj                             *varNameObj;
     Tcl_Obj                             *keyVarNameObj;
-    int                                  useArraySet;
-    int                                  useListSet;
+    int                                  useArrayGet;
+    int                                  useArrayGetWithNulls;
+    int                                  useGet;
 
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
@@ -93,8 +94,8 @@ struct ctableCreatorTable {
     Tcl_Obj *(*gen_list) (Tcl_Interp *interp, void *pointer);
     Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, void *pointer);
     Tcl_Obj *(*gen_nonnull_keyvalue_list) (Tcl_Interp *interp, void *pointer);
-    int (*lappend_field_and_nameobj) (Tcl_Interp *interp, void *p, Tcl_Obj *fieldObj);
-    int (*lappend_nonnull_field_and_nameobj) (Tcl_Interp *interp, void *p, Tcl_Obj *fieldObj);
+    int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
+    int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
 };
 
 struct ctableTable {

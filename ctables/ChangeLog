@@ -2,6 +2,9 @@
 $Id$
 
 11/24/2006
+    * Rename search's -list option to -get.  Rename its -array to -array_get
+      and add -array-get_with_nulls.
+
     * Pull the number of fields, array of field types and array of elements
       needing quoting into the table creator structure.
 

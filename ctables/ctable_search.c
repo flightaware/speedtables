@@ -148,9 +148,9 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	int      evalResult;
 
 	if (search->nRetrieveFields < 0) {
-	    if (search->useListSet) {
+	    if (search->useGet) {
 		listObj = (*ctable->creatorTable->gen_list) (interp, p);
-	    } else if (search->useArraySet) {
+	    } else if (search->useArrayGet) {
 		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, p);
 	    }
 	} else {
@@ -159,7 +159,7 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 		obj = (*ctable->creatorTable->get_field_obj) (interp, p, fieldNum);
 
 		// if it's array style, add the field name to the list we're making
-		if (search->useArraySet) {
+		if (search->useArrayGet) {
 		    if (Tcl_ListObjAppendElement (interp, listObj, ctable->creatorTable->nameObjList[fieldNum]) == TCL_ERROR) {
 			return TCL_ERROR;
 		    }
@@ -346,9 +346,9 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
     int             i;
     int             searchTerm = 0;
 
-    static CONST char *searchOptions[] = {"-array", "-code", "-compare", "-countOnly", "-fields", "-glob", "-key", "-limit", "-list", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_LIMIT, SEARCH_OPT_LIST_NAMEOBJ, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP};
+    enum searchOptions {SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP};
 
     if (objc < 2) {
       wrong_args:
@@ -371,8 +371,9 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
     search->noKeys = 0;
     search->varNameObj = NULL;
     search->keyVarNameObj = NULL;
-    search->useArraySet = 0;
-    search->useListSet = 0;
+    search->useArrayGet = 0;
+    search->useArrayGetWithNulls = 0;
+    search->useGet = 0;
     search->codeBody = NULL;
     search->writingTabsep = 0;
 
@@ -414,9 +415,15 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
 	    break;
 	  }
 
-	  case SEARCH_OPT_ARRAY_NAMEOBJ: {
+	  case SEARCH_OPT_ARRAYGET_NAMEOBJ: {
 	    search->varNameObj = objv[i++];
-	    search->useArraySet = 1;
+	    search->useArrayGet = 1;
+	    break;
+	  }
+
+	  case SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ: {
+	    search->varNameObj = objv[i++];
+	    search->useArrayGetWithNulls = 1;
 	    break;
 	  }
 
@@ -425,9 +432,9 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
 	    break;
           }
 
-	  case SEARCH_OPT_LIST_NAMEOBJ: {
+	  case SEARCH_OPT_GET_NAMEOBJ: {
 	    search->varNameObj = objv[i++];
-	    search->useListSet = 1;
+	    search->useGet = 1;
 	    break;
           }
 
@@ -499,7 +506,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
     }
 
     if (search->writingTabsep && (search->codeBody != NULL || search->keyVarNameObj != NULL || search->varNameObj != NULL)) {
-	Tcl_AppendResult (interp, "can't use -code, -key, -array or -list along with -write_tabsep", (char *) NULL);
+	Tcl_AppendResult (interp, "can't use -code, -key, -array_get, -array_get_with_nulls  or -get along with -write_tabsep", (char *) NULL);
 	return TCL_ERROR;
     }
 
@@ -508,19 +515,19 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
 	return TCL_ERROR;
     }
 
-    if (search->useArraySet && search->useListSet) {
-	Tcl_AppendResult (interp, "-array and -list options are mutually exclusive", (char *) NULL);
+    if (search->useArrayGet + search->useArrayGetWithNulls + search->useGet > 1) {
+	Tcl_AppendResult (interp, "-array_get, -array_get_with_nulls and -get options are mutually exclusive", (char *) NULL);
 	return TCL_ERROR;
     }
 
-    if (!search->useArraySet && !search->useListSet && !search->writingTabsep) {
-        Tcl_AppendResult (interp, "one of -array, -list or -write_tabsep must be specified", (char *)NULL);
+    if (!search->useArrayGet && !search->useArrayGetWithNulls && !search->useGet && !search->writingTabsep) {
+        Tcl_AppendResult (interp, "one of -array_get, -array_get_with_nulls, -get or -write_tabsep must be specified", (char *)NULL);
 	return TCL_ERROR;
     }
 
-    if (search->useArraySet || search->useListSet) {
+    if (search->useArrayGet || search->useArrayGetWithNulls || search->useGet) {
         if (!search->codeBody) {
-	    Tcl_AppendResult (interp, "-code must be set if -array or -list is set", (char *)NULL);
+	    Tcl_AppendResult (interp, "-code must be set if -array_get, -array_get_with_nulls or -get is set", (char *)NULL);
 	    return TCL_ERROR;
 	}
     }

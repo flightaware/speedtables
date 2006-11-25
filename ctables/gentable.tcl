@@ -732,13 +732,13 @@ struct $table *${table}_find_or_create (struct ctableTable *tbl_ptr, char *key, 
 int
 ${table}_set_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, Tcl_Obj *fieldObj)
 {
-    int fieldIndex;
+    int field;
 
-    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return TCL_ERROR;
     }
 
-    return ${table}_set (interp, obj, $pointer, fieldIndex);
+    return ${table}_set (interp, obj, $pointer, field);
 }
 }
 
@@ -764,13 +764,13 @@ struct $table *${table}_find (struct ctableTable *tbl_ptr, char *key) {
 Tcl_Obj *
 ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
 {
-    int fieldIndex;
+    int field;
 
-    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return (Tcl_Obj *)NULL;
     }
 
-    return ${table}_get (interp, $pointer, fieldIndex);
+    return ${table}_get (interp, $pointer, field);
 }
 
 int
@@ -793,56 +793,70 @@ ${table}_lappend_fieldobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj
 
 set lappendFieldAndNameObjSource {
 int
-${table}_lappend_field_and_nameobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
+${table}_lappend_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer, int field)
 {
     struct $table *p = vPointer;
-    int        fieldIndex;
     Tcl_Obj   *obj;
 
-    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_NameObjList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
-    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_NameObjList[fieldIndex]) == TCL_ERROR) {
-        return TCL_ERROR;
-    }
-
-    obj = ${table}_get (interp, $pointer, fieldIndex);
-    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), obj) == TCL_ERROR) {
+    obj = ${table}_get (interp, $pointer, field);
+    if (Tcl_ListObjAppendElement (interp, destListObj, obj) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
     return TCL_OK;
+}
+
+int
+${table}_lappend_field_and_nameobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
+{
+    int        field;
+
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    return ${table}_lappend_field_and_name (interp, Tcl_GetObjResult (interp), vPointer, field); 
 }
 
 }
 
 set lappendNonnullFieldAndNameObjSource {
 int
-${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
+${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer, int field)
 {
     struct $table *p = vPointer;
-    int        fieldIndex;
     Tcl_Obj   *obj;
 
-    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-        return TCL_ERROR;
-    }
-
-    obj = ${table}_get (interp, $pointer, fieldIndex);
+    obj = ${table}_get (interp, $pointer, field);
     if (obj == ${table}_NullValueObj) {
         return TCL_OK;
     }
 
-    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_NameObjList[fieldIndex]) == TCL_ERROR) {
+    if (Tcl_ListObjAppendElement (interp, destListObj, ${table}_NameObjList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
-    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), obj) == TCL_ERROR) {
+    if (Tcl_ListObjAppendElement (interp, destListObj, obj) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
     return TCL_OK;
+}
+
+int
+${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
+{
+    int        field;
+
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    return ${table}_lappend_nonnull_field_and_name (interp, Tcl_GetObjResult (interp), vPointer, field);
 }
 
 }
