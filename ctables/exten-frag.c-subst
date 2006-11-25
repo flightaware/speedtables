@@ -33,6 +33,8 @@
     t->nFields = $NFIELDS;
     t->fieldTypes = ${table}_types;
     t->fieldsThatNeedQuoting = ${table}_needs_quoting;
+    t->lappend_field_and_nameobj = ${table}_lappend_field_and_nameobj;
+    t->lappend_nonnull_field_and_nameobj = ${table}_lappend_nonnull_field_and_nameobj;
 
     // make a field list -- sure it's a little hokey but it works with
     // other places that take a number of fields and list of fields

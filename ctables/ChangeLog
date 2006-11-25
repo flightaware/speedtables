@@ -3,7 +3,10 @@ $Id$
 
 11/24/2006
     * Pull the number of fields, array of field types and array of elements
-      needing quoting into the table crator structure.
+      needing quoting into the table creator structure.
+
+    * Bring pointers to functions lappend_field_and_nameobj and
+      lappend_nonnull_field_and_nameobj into the table creator structure.
 
     * If no reference fields are specified with a search (-fields list),
       you get all fields by default.

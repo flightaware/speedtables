@@ -774,8 +774,9 @@ ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fie
 }
 
 int
-${table}_lappend_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
+${table}_lappend_fieldobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
 {
+    struct $table *p = vPointer;
     Tcl_Obj *obj = ${table}_get_fieldobj (interp, $pointer, fieldObj);
 
     if (obj == NULL) {
@@ -792,8 +793,9 @@ ${table}_lappend_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj 
 
 set lappendFieldAndNameObjSource {
 int
-${table}_lappend_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
+${table}_lappend_field_and_nameobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
 {
+    struct $table *p = vPointer;
     int        fieldIndex;
     Tcl_Obj   *obj;
 
@@ -817,8 +819,9 @@ ${table}_lappend_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer,
 
 set lappendNonnullFieldAndNameObjSource {
 int
-${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
+${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
 {
+    struct $table *p = vPointer;
     int        fieldIndex;
     Tcl_Obj   *obj;
 
