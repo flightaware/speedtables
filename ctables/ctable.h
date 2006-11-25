@@ -94,6 +94,7 @@ struct ctableCreatorTable {
     Tcl_Obj *(*gen_list) (Tcl_Interp *interp, void *pointer);
     Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, void *pointer);
     Tcl_Obj *(*gen_nonnull_keyvalue_list) (Tcl_Interp *interp, void *pointer);
+    int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
 };

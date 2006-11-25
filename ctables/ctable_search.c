@@ -143,33 +143,43 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
     }
 
     if (search->codeBody != NULL) {
-	Tcl_Obj *obj;
 	Tcl_Obj *listObj = Tcl_NewObj();
 	int      evalResult;
 
-	if (search->nRetrieveFields < 0) {
-	    if (search->useGet) {
+	if (search->useGet) {
+	    if (search->nRetrieveFields < 0) {
 		listObj = (*ctable->creatorTable->gen_list) (interp, p);
-	    } else if (search->useArrayGet) {
+	    } else {
+	       int i;
+
+	       for (i = 0; i < search->nRetrieveFields; i++) {
+		   ctable->creatorTable->lappend_field (interp, listObj, p, ctable->creatorTable->fieldList[i]);
+	       }
+	    }
+	} else if (search->useArrayGet) {
+	    if (search->nRetrieveFields < 0) {
+	       int i;
+
+	       for (i = 0; i < ctable->creatorTable->nFields; i++) {
+		   ctable->creatorTable->lappend_field (interp, listObj, p, i);
+	       }
+	    } else {
+	       int i;
+
+	       for (i = 0; i < search->nRetrieveFields; i++) {
+		   ctable->creatorTable->lappend_field (interp, listObj, p, search->retrieveFields[i]);
+	       }
+	    }
+	} else if (search->useArrayGetWithNulls) {
+	    if (search->nRetrieveFields < 0) {
 		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, p);
+	    } else {
+		for (i = 0; i < search->nRetrieveFields; i++) {
+		    ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, p, search->retrieveFields[i]);
+		}
 	    }
 	} else {
-	    for (i = 0; i < search->nRetrieveFields; i++) {
-		int fieldNum = search->retrieveFields[i];
-		obj = (*ctable->creatorTable->get_field_obj) (interp, p, fieldNum);
-
-		// if it's array style, add the field name to the list we're making
-		if (search->useArrayGet) {
-		    if (Tcl_ListObjAppendElement (interp, listObj, ctable->creatorTable->nameObjList[fieldNum]) == TCL_ERROR) {
-			return TCL_ERROR;
-		    }
-		}
-
-		// in either case, add the value
-		if (Tcl_ListObjAppendElement (interp, listObj, obj) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
-	    }
+	    panic ("code path shuld have matched useArrayGet or useArrayGetWithNulls");
 	}
 
 	// if the key var is defined, set the key into it

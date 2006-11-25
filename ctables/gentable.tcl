@@ -774,6 +774,20 @@ ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fie
 }
 
 int
+${table}_lappend_field (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer, int field)
+{
+    struct $table *p = vPointer;
+
+    Tcl_Obj *obj = ${table}_get (interp, p, field);
+
+    if (Tcl_ListObjAppendElement (interp, destListObj, obj) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+
+int
 ${table}_lappend_fieldobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
 {
     struct $table *p = vPointer;

@@ -33,6 +33,7 @@
     t->nFields = $NFIELDS;
     t->fieldTypes = ${table}_types;
     t->fieldsThatNeedQuoting = ${table}_needs_quoting;
+    t->lappend_field = ${table}_lappend_field;
     t->lappend_field_and_name = ${table}_lappend_field_and_name;
     t->lappend_nonnull_field_and_name = ${table}_lappend_nonnull_field_and_name;
 
