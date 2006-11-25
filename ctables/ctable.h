@@ -82,7 +82,8 @@ struct ctableCreatorTable {
     Tcl_Obj          **nameObjList;
 
     int                nFields;
-    int               *fieldTypes;
+    int               *fieldList;
+    enum ctable_types *fieldTypes;
     int               *fieldsThatNeedQuoting;
 
     int (*search_compare) (Tcl_Interp *interp, struct ctableSearchStruct *searchControl, Tcl_HashEntry *hashEntryPtr);

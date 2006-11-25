@@ -1781,7 +1781,7 @@ proc put_init_extension_source {extension extensionVersion} {
 
     set structHeadTablePointers ""
     foreach name $tables {
-        append structHeadTablePointers "    struct ctableCreatorTable *tableCreatorPtr;\n";
+        append structHeadTablePointers "    struct ctableCreatorTable *t;\n";
     }
 
     set Id {init extension Id}
@@ -2214,7 +2214,7 @@ proc gen_keyvalue_list {} {
 
     #emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef * 2, listObjv));"
     #emit "    return TCL_OK;"
-    emit "    return Tcl_NewListObj ($lengthDef * 2, listObjv));"
+    emit "    return Tcl_NewListObj ($lengthDef * 2, listObjv);"
     emit "$rightCurly"
     emit ""
 }

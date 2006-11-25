@@ -126,7 +126,11 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	Tcl_DStringInit (&dString);
 	pointer = Tcl_GetHashValue (hashEntry);
 
-	(*ctable->creatorTable->dstring_append_get_tabsep) (key, pointer, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
+        if (search->nRetrieveFields < 0) {
+	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, pointer, ctable->creatorTable->fieldList, ctable->creatorTable->nFields, &dString, search->noKeys);
+	} else {
+	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, pointer, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
+	}
 
 	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    return TCL_ERROR;

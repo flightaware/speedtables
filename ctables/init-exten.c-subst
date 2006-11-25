@@ -65,6 +65,7 @@ ${extension}_Init(Tcl_Interp *interp)
 {
 $structHeadTablePointers
     Tcl_HashTable *hashTablePtr;
+    int            i;
 
     /*
      * This may work with 8.0, but we are using strictly stubs here,

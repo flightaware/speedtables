@@ -10,7 +10,7 @@
      *   table
      */
 
-    tableCreatorPtr = (struct ctableCreatorTable *)ckalloc (sizeof (struct ctableCreatorTable));
+    t = (struct ctableCreatorTable *)ckalloc (sizeof (struct ctableCreatorTable));
 
     /* create the table for registering Tcl commands to appear as methods
      * of the table class and pass it in through Tcl's client data
@@ -19,20 +19,28 @@
     hashTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
     Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
 
-    tableCreatorPtr->registeredProcTablePtr = hashTablePtr;
-    tableCreatorPtr->nextAutoCounter = 0;
-    tableCreatorPtr->fieldNames = ${table}_fields;
-    tableCreatorPtr->nameObjList = ${table}_NameObjList;
+    t->registeredProcTablePtr = hashTablePtr;
+    t->nextAutoCounter = 0;
+    t->fieldNames = ${table}_fields;
+    t->nameObjList = ${table}_NameObjList;
 
-    tableCreatorPtr->search_compare = ${table}_search_compare;
-    tableCreatorPtr->sort_compare = ${table}_sort_compare;
-    tableCreatorPtr->get_field_obj = ${table}_get;
-    tableCreatorPtr->gen_list = ${table}_genlist;
-    tableCreatorPtr->gen_keyvalue_list = ${table}_gen_keyvalue_list;
-    tableCreatorPtr->dstring_append_get_tabsep = ${table}_dstring_append_get_tabsep;
-    tableCreatorPtr->nFields = $NFIELDS;
-    tableCreatorPtr->fieldTypes = ${table}_types;
-    tableCreatorPtr->fieldsThatNeedQuoting = ${table}_needs_quoting;
+    t->search_compare = ${table}_search_compare;
+    t->sort_compare = ${table}_sort_compare;
+    t->get_field_obj = ${table}_get;
+    t->gen_list = ${table}_genlist;
+    t->gen_keyvalue_list = ${table}_gen_keyvalue_list;
+    t->dstring_append_get_tabsep = ${table}_dstring_append_get_tabsep;
+    t->nFields = $NFIELDS;
+    t->fieldTypes = ${table}_types;
+    t->fieldsThatNeedQuoting = ${table}_needs_quoting;
+
+    // make a field list -- sure it's a little hokey but it works with
+    // other places that take a number of fields and list of fields
+    // and with this you can always get all of them
+    t->fieldList = (int *)ckalloc (t->nFields * sizeof (int));
+    for (i = 0; i < t->nFields; i++) {
+	t->fieldList[i] = i;
+    }
 
     ${table}_setup ();
 
@@ -40,5 +48,5 @@
      * Itcl class in that it can create its own commands with their
      * own data spaces, etc.
      */
-    Tcl_CreateObjCommand(interp, "${table}", (Tcl_ObjCmdProc *) ${table}MetaObjCmd, (ClientData)tableCreatorPtr, (Tcl_CmdDeleteProc *)NULL);
+    Tcl_CreateObjCommand(interp, "${table}", (Tcl_ObjCmdProc *) ${table}MetaObjCmd, (ClientData)t, (Tcl_CmdDeleteProc *)NULL);
 
