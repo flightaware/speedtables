@@ -146,3 +146,7 @@ Do something like GNU autoconf/configure or dig compiler switches, etc, out
 of tclConfig.sh.
 
 Add an "incr" method.
+
+Create a search capability.
+
+Allos sorts to descend as well as ascend.

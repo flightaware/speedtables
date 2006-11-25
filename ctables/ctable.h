@@ -36,6 +36,7 @@
 struct ctableSortStruct {
     int nFields;
     int *fields;
+    int *directions;
 };
 
 // ctable search component struct - one for each search expression in a
