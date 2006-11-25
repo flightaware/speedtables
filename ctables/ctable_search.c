@@ -200,6 +200,9 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     int              compareResult;
     int              matchCount = 0;
     int              sortIndex;
+    int              actionResult = TCL_OK;
+    int              limit;
+
 
     Tcl_HashEntry **hashSortTable = NULL;
 
@@ -264,8 +267,6 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	     }
 	// match, handle action or tabsep write
 	} else {
-	    int limit;
-
 	    /* We are sorting, grab it, we gotta sort before we can run
 	     * against start and limit and stuff */
 	    assert (matchCount < count);
