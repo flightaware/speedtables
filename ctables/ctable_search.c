@@ -326,6 +326,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     }
 
     // determine start and limit
+    limit = matchCount - search->offset;
     if ((search->limit > 0) && (search->limit < (matchCount - search->offset))) {
 	limit = search->offset + search->limit;
     }
