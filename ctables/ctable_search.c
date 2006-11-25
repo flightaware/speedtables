@@ -171,6 +171,14 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	    }
 	}
 
+	// if the key var is defined, set the key into it
+	if (search->keyVarNameObj != NULL) {
+	    if (Tcl_ObjSetVar2 (interp, search->keyVarNameObj, (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
+		return TCL_ERROR;
+	    }
+	}
+
+	// set the returned list into the value var
 	if (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, listObj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
 	    return TCL_ERROR;
 	}
