@@ -2,8 +2,18 @@
 $Id$
 
 11/24/2006
+    * Pull the number of fields, array of field types and array of elements
+      needing quoting into the table crator structure.
+
     * If no reference fields are specified with a search (-fields list),
       you get all fields by default.
+
+    * Convert ${table}_gen_nonnull_keyvalue_list and 
+      ${table}_gen_keyvalue_list to return a Tcl_Obj rather than
+      setting the interpreter result object and return TCL_OK
+      so that they're more general purpose.  Modify code that
+      previously called this to set the interpreter obj result
+      with the result.
 
 11/23/2006
     * The "foreach" and "sort" methods are deprecated in favor of

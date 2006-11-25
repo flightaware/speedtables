@@ -30,6 +30,9 @@
     tableCreatorPtr->gen_list = ${table}_genlist;
     tableCreatorPtr->gen_keyvalue_list = ${table}_gen_keyvalue_list;
     tableCreatorPtr->dstring_append_get_tabsep = ${table}_dstring_append_get_tabsep;
+    tableCreatorPtr->nFields = $NFIELDS;
+    tableCreatorPtr->fieldTypes = ${table}_types;
+    tableCreatorPtr->fieldsThatNeedQuoting = ${table}_needs_quoting;
 
     ${table}_setup ();
 

@@ -1093,7 +1093,8 @@ set cmdBodyArrayGetSource {
 	}
 
 	if (objc == 3) {
-	    return ${table}_gen_nonnull_keyvalue_list (interp, $pointer);
+	    Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (interp, $pointer));
+	    return TCL_OK;
 	}
 
 	for (i = 3; i < objc; i++) {
@@ -1765,6 +1766,7 @@ proc put_init_command_source {table} {
     variable extensionFragmentSource
 
     set Id {init extension Id}
+    set NFIELDS [string toupper $table]_NFIELDS
 
     emit [subst -nobackslashes -nocommands $extensionFragmentSource]
 }
@@ -2210,8 +2212,9 @@ proc gen_keyvalue_list {} {
 	emit ""
     }
 
-    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef * 2, listObjv));"
-    emit "    return TCL_OK;"
+    #emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef * 2, listObjv));"
+    #emit "    return TCL_OK;"
+    emit "    return Tcl_NewListObj ($lengthDef * 2, listObjv));"
     emit "$rightCurly"
     emit ""
 }
@@ -2232,7 +2235,7 @@ proc gen_nonnull_keyvalue_list {} {
 
     set lengthDef [string toupper $table]_NFIELDS
 
-    emit "int ${table}_gen_nonnull_keyvalue_list (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
+    emit "Tcl_Obj *${table}_gen_nonnull_keyvalue_list (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
     emit "    int position = 0;"
@@ -2250,8 +2253,9 @@ proc gen_nonnull_keyvalue_list {} {
 	emit "    $rightCurly"
     }
 
-    emit "    Tcl_SetObjResult (interp, Tcl_NewListObj (position, listObjv));"
-    emit "    return TCL_OK;"
+    #emit "    Tcl_SetObjResult (interp, Tcl_NewListObj (position, listObjv));"
+    #emit "    return TCL_OK;"
+    emit "    return Tcl_NewListObj (position, listObjv);"
     emit "$rightCurly"
     emit ""
 }
