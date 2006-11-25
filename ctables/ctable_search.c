@@ -58,7 +58,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
     struct ctableSearchComponentStruct  *component;
     
     // these terms must line up with the CTABLE_COMP_* defines
-    static CONST char *searchTerms[] = {"false", "true", "null" "notnull", "<", "<=", "=", "!=", ">=", ">", (char *)NULL};
+    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", (char *)NULL};
 
     if (Tcl_ListObjGetElements (interp, componentListObj, &componentListCount, &componentList) == TCL_ERROR) {
         return TCL_ERROR;
@@ -93,6 +93,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 	if (Tcl_GetIndexFromObj (interp, termList[0], searchTerms, "term", TCL_EXACT, &term) != TCL_OK) {
 	    goto err;
 	}
+printf("term is %d, source %s, reverse is %s\n", term, Tcl_GetString (termList[0]), searchTerms[term]);
 
 	if (Tcl_GetIndexFromObj (interp, termList[1], fieldNames, "field", TCL_EXACT, &field) != TCL_OK) {
 	    goto err;

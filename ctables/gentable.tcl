@@ -507,12 +507,11 @@ set numberCompSource {
 	      break;
 	  }
 
+	  if ($getObjCmd (interp, compareObj, &compValue) == TCL_ERROR) {
+	      return TCL_ERROR;
+	  }
+
           switch (compType) {
-
-	    if ($getObjCmd (interp, compareObj, &compValue) == TCL_ERROR) {
-	        return TCL_ERROR;
-	    }
-
 	    case CTABLE_COMP_LT:
 	        exclude = !(pointer->$field < compValue);
 		break;
