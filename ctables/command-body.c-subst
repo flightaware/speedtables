@@ -590,10 +590,10 @@
         for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	    key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
 	    listObjv[0] = Tcl_NewStringObj (key, -1);
-	    ${table}_ptr = (struct $table *) Tcl_GetHashValue (hashEntry);
+	    $pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
 
 	    for (i = 0; i < nFields; i++) {
-	        listObjv[i + 1] = ${table}_get (interp, ${table}_ptr, fieldIds[i]);
+	        listObjv[i + 1] = ${table}_get (interp, $pointer, fieldIds[i]);
 	    }
 
 	    evalObjv[1] = Tcl_NewListObj (nFields + 1, listObjv);

@@ -1932,7 +1932,9 @@ proc gen_code {} {
     variable cmdBodyGetSource
     variable cmdBodyArrayGetSource
 
-    set pointer "${table}_ptr"
+    #set pointer "${table}_ptr"
+    set pointer p
+
     set Id {CTable template Id}
 
     set nFields [string toupper $table]_NFIELDS
@@ -2151,7 +2153,9 @@ proc gen_list {} {
     variable leftCurly
     variable rightCurly
 
-    set pointer ${table}_ptr
+    # we are becoming more standardized
+    #set pointer ${table}_ptr
+    set pointer p
 
     set lengthDef [string toupper $table]_NFIELDS
 
@@ -2188,7 +2192,8 @@ proc gen_keyvalue_list {} {
     variable leftCurly
     variable rightCurly
 
-    set pointer ${table}_ptr
+    #set pointer ${table}_ptr
+    set pointer p
 
     set lengthDef [string toupper $table]_NFIELDS
 
@@ -2231,7 +2236,8 @@ proc gen_nonnull_keyvalue_list {} {
     variable leftCurly
     variable rightCurly
 
-    set pointer ${table}_ptr
+    #set pointer ${table}_ptr
+    set pointer p
 
     set lengthDef [string toupper $table]_NFIELDS
 

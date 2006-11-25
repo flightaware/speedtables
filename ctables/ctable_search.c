@@ -19,10 +19,11 @@
  *
  */
 int
-ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, int **fieldList, int *fieldCountPtr) {
+ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, int **fieldListPtr, int *fieldCountPtr) {
     int             nFields;
     Tcl_Obj       **fieldsObjv;
     int             i;
+    int            *fieldList;
 
     // the fields they want us to retrieve
     if (Tcl_ListObjGetElements (interp, fieldListObj, &nFields, &fieldsObjv) == TCL_ERROR) {
@@ -30,11 +31,12 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **f
     }
 
     *fieldCountPtr = nFields;
-    *fieldList = (int *)ckalloc (sizeof (int) * nFields);
+    *fieldListPtr = fieldList = (int *)ckalloc (sizeof (int) * nFields);
 
     for (i = 0; i < nFields; i++) {
-	if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], fieldNames, "field", TCL_EXACT, fieldList[i]) != TCL_OK) {
-	    ckfree ((void *)(*fieldList));
+	if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], fieldNames, "field", TCL_EXACT, &fieldList[i]) != TCL_OK) {
+	    ckfree ((void *)fieldList);
+	    *fieldListPtr = NULL;
 	    return TCL_ERROR;
 	  }
     }
