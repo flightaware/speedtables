@@ -8,9 +8,11 @@
 #include "ctable.h"
 
 /*
- * ctable_ParseFieldList - given a Tcl list object and an array of pointers
- * to field names, install a field count into an integer pointer passed
- * in and allocate an array of integers for the corresponding field indexes.
+ * ctable_ParseFieldList - given a Tcl list object and a pointer to an array
+ * of integer field numbers and a pointer to an integer for field counts,
+ * install the field count into the field count and allocate an array of 
+ * integers for the corresponding field indexes and fill that array with the 
+ * field numbers corresponding to the field names in the list.
  *
  * It is up to the caller to free the memory pointed to through the
  * fieldList argument.
@@ -37,6 +39,63 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **f
 	if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], fieldNames, "field", TCL_EXACT, &fieldList[i]) != TCL_OK) {
 	    ckfree ((void *)fieldList);
 	    *fieldListPtr = NULL;
+	    return TCL_ERROR;
+	  }
+    }
+    return TCL_OK;
+}
+
+/*
+ * ctable_ParseSortFieldList - given a Tcl list object, and a pointer to a
+ * ctable sort structure, store the number of fields in the list in the
+ * sort structure's field count.  allocate an array of integers for the
+ * field numbers and directions and store them into the sort structure passed.
+ *
+ * Strip the prepending dash of each field, if present, and do the lookup
+ * and store the field number in the corresponding field number array.
+ *
+ * If the dash was present set the corresponding direction in the direction
+ * array to 0 else set it to 1.
+ *
+ * It is up to the caller to free the memory pointed to through the
+ * fieldList argument.
+ *
+ * return TCL_OK if all went according to plan, else TCL_ERROR.
+ *
+ */
+int
+ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, struct ctableSortStruct *sort) {
+    int             nFields;
+    Tcl_Obj       **fieldsObjv;
+    Tcl_Obj        *fieldNameObj;
+    int             i;
+    char           *fieldName;
+
+    // the fields they want us to retrieve
+    if (Tcl_ListObjGetElements (interp, fieldListObj, &nFields, &fieldsObjv) == TCL_ERROR) {
+      return TCL_ERROR;
+    }
+
+    sort->nFields = nFields;
+    sort->fields =  (int *)ckalloc (sizeof (int) * nFields);
+    sort->directions =  (int *)ckalloc (sizeof (int) * nFields);
+
+    for (i = 0; i < nFields; i++) {
+        fieldName = Tcl_GetString (fieldsObjv[i]);
+	if (fieldName[0] == '-') {
+	    sort->directions[i] = -1;
+	    fieldName++;
+	    fieldNameObj = Tcl_NewStringObj (fieldName, -1);
+	} else {
+	    fieldNameObj = fieldsObjv[i];
+	    sort->directions[i] = 1;
+	}
+
+	if (Tcl_GetIndexFromObj (interp, fieldNameObj, fieldNames, "field", TCL_EXACT, &sort->fields[i]) != TCL_OK) {
+	    ckfree ((void *)sort->fields);
+	    ckfree ((void *)sort->directions);
+	    sort->fields = NULL;
+	    sort->directions = NULL;
 	    return TCL_ERROR;
 	  }
     }
@@ -384,6 +443,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
     search->limit = 0;
     search->pattern = NULL;
     search->sortControl.fields = NULL;
+    search->sortControl.directions = NULL;
     search->sortControl.nFields = 0;
     search->retrieveFields = NULL;
     search->nRetrieveFields = -1;   // -1 = all, 0 = none
@@ -409,7 +469,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
 	switch (searchTerm) {
 	  case SEARCH_OPT_SORT: {
 	    // the fields they want us to sort on
-            if (ctable_ParseFieldList (interp, objv[i++], fieldNames, &search->sortControl.fields, &search->sortControl.nFields) == TCL_ERROR) {
+	    if (ctable_ParseSortFieldList (interp, objv[i++], fieldNames, &search->sortControl) == TCL_ERROR) {
 	        Tcl_AppendResult (interp, " while processing sort options", (char *) NULL);
 	        return TCL_ERROR;
 	    }
@@ -570,6 +630,11 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 
     if (search.components != NULL) {
 	ckfree ((void *)search.components);
+    }
+
+    if (search.sortControl.fields != NULL) {
+        ckfree ((void *)search.sortControl.fields);
+        ckfree ((void *)search.sortControl.directions);
     }
 
     return TCL_OK;

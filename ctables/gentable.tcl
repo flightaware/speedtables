@@ -20,7 +20,7 @@ namespace eval ctable {
     variable genCompilerDebug
 
     # set to 1 to build with debugging and link to tcl debugging libraries
-    set genCompilerDebug 1
+    set genCompilerDebug 0
 
     variable pgtcl_ver 1.5
 
@@ -381,12 +381,12 @@ set tclobjSetSource {
 set boolSortSource {
 	case $fieldEnum: {
           if (pointer1->$field && !pointer2->$field) {
-	      result = -1;
+	      result = -direction;
 	      break;
 	  }
 
 	  if (!pointer1->$field && pointer2->$field) {
-	      result = 1;
+	      result = direction;
 	  }
 
 	  result = 0;
@@ -402,12 +402,12 @@ set numberSortSource {
       case $fieldEnum: {
 
         if (pointer1->$field < pointer2->$field) {
-	    result = -1;
+	    result = -direction;
 	    break;
 	}
 
 	if (pointer1->$field > pointer2->$field) {
-	    result = 1;
+	    result = direction;
 	    break;
 	}
 
@@ -427,12 +427,12 @@ set varstringSortSource {
 	        return 0;
 	    }
 
-	    return 1;
+	    return direction;
 	} else if (pointer2->$field == NULL) {
-	    return -1;
+	    return -direction;
 	}
 
-        result = strcmp (pointer1->$field, pointer2->$field);
+        result = direction * strcmp (pointer1->$field, pointer2->$field);
 	break;
       }
 }
@@ -443,7 +443,7 @@ set varstringSortSource {
 #
 set fixedstringSortSource {
       case $fieldEnum: {
-        result = strncmp (pointer1->$field, pointer2->$field, $length);
+        result = direction * strncmp (pointer1->$field, pointer2->$field, $length);
 	break;
       }
 }
@@ -454,7 +454,7 @@ set fixedstringSortSource {
 #
 set binaryDataSortSource {
       case $fieldEnum: {
-        result = memcmp (&pointer1->$field, &pointer2->$field, $length);
+        result = direction * memcmp (&pointer1->$field, &pointer2->$field, $length);
 	break;
       }
 }
@@ -465,7 +465,7 @@ set binaryDataSortSource {
 #
 set tclobjSortSource {
       case $fieldEnum: {
-        result = strcmp (Tcl_GetString (pointer1->$field), Tcl_GetString (pointer2->$field));
+        result = direction * strcmp (Tcl_GetString (pointer1->$field), Tcl_GetString (pointer2->$field));
 	break;
       }
 }
@@ -2496,6 +2496,7 @@ int ${table}_sort_compare(void *clientData, const void *hashEntryPtr1, const voi
     struct ctableSortStruct *sortControl = (struct ctableSortStruct *)clientData;
     struct ${table} *pointer1, *pointer2;
     int              i;
+    int              direction;
     int              result = 0;
 
     pointer1 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr1);
@@ -2504,6 +2505,7 @@ int ${table}_sort_compare(void *clientData, const void *hashEntryPtr1, const voi
 // printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)pointer1, (long unsigned int)pointer2);
 
     for (i = 0; i < sortControl->nFields; i++) $leftCurly
+        direction = sortControl->directions[i];
         switch (sortControl->fields[i]) $leftCurly }
 
 set sortCompareTrailerSource {
@@ -2513,6 +2515,11 @@ set sortCompareTrailerSource {
 	// compare a subordinate sort field (if there is one)
 	if (result != 0) {
 	    break;
+	}
+
+	// if this fields is sort-descending, flip the sense of the result
+	if (!sortControl->directions[i]) {
+	    result = -result;
 	}
     $rightCurly // end of for loop on sort fields
     return result;
@@ -2825,7 +2832,7 @@ proc compile {fileFragName version} {
 	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
 	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
 
-	    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/Library/Frameworks/Tcl.framework/Versions/8.4 $stub
+	    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub
 
 	    # -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver
 	    # took $lib off the end?

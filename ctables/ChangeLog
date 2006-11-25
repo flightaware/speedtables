@@ -1,7 +1,11 @@
 
 $Id$
 
-11/24/2006
+11/25/2006 karl
+    * In search's -sort option, fields in the field list that begin with
+      a dash are sorted in descending order rather than ascending order.
+
+11/24/2006 karl
     * Rename search's -list option to -get.  Rename its -array to -array_get
       and add -array-get_with_nulls.
 
@@ -21,7 +25,7 @@ $Id$
       previously called this to set the interpreter obj result
       with the result.
 
-11/23/2006
+11/23/2006 karl
     * The "foreach" and "sort" methods are deprecated in favor of
       "search" but will be left in until legacy code can be updated.
 
