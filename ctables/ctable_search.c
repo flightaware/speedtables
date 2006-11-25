@@ -155,11 +155,12 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	    }
 	} else {
 	    for (i = 0; i < search->nRetrieveFields; i++) {
-		obj = (*ctable->creatorTable->get_field_obj) (interp, p, search->retrieveFields[i]);
+		int fieldNum = search->retrieveFields[i];
+		obj = (*ctable->creatorTable->get_field_obj) (interp, p, fieldNum);
 
 		// if it's array style, add the field name to the list we're making
 		if (search->useArraySet) {
-		    if (Tcl_ListObjAppendElement (interp, listObj, ctable->creatorTable->nameObjList[i]) == TCL_ERROR) {
+		    if (Tcl_ListObjAppendElement (interp, listObj, ctable->creatorTable->nameObjList[fieldNum]) == TCL_ERROR) {
 			return TCL_ERROR;
 		    }
 		}
