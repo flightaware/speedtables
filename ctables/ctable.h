@@ -31,6 +31,8 @@
 #define CTABLE_COMP_NE 7
 #define CTABLE_COMP_GE 8
 #define CTABLE_COMP_GT 9
+#define CTABLE_COMP_MATCH 10
+#define CTABLE_COMP_MATCH_CASE 11
 
 // ctable sort struct - this controls everything about a sort
 struct ctableSortStruct {

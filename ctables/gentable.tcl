@@ -591,6 +591,7 @@ set standardCompSwitchSource {
 	  break;
 }
 
+
 #
 # varstringCompSource - code we run subst over to generate a compare of 
 # a string.
@@ -602,6 +603,17 @@ set varstringCompSource {
 
 	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
 	  value = Tcl_GetString (compareObj);
+
+	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE)) {
+	      if (pointer->_${field}IsNull) {
+		  exclude = 1;
+		  break;
+	      }
+
+	      exclude = !(Tcl_StringCaseMatch (pointer->$field, value, (compType == CTABLE_COMP_MATCH)));
+	      break;
+	  }
+
           strcmpResult = strcmp (pointer->$field, value);
 	  $standardCompSwitchSource
         }
@@ -2772,6 +2784,8 @@ int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searc
       component = &searchControl->components[i];
       compType = component->comparisonType;
       compareObj = component->comparedToObject;
+
+
       switch (component->fieldID) $leftCurly }
 
 set searchCompareTrailerSource {

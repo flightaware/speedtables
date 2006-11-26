@@ -117,7 +117,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
     struct ctableSearchComponentStruct  *component;
     
     // these terms must line up with the CTABLE_COMP_* defines
-    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", (char *)NULL};
+    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "match_case", (char *)NULL};
 
     if (Tcl_ListObjGetElements (interp, componentListObj, &componentListCount, &componentList) == TCL_ERROR) {
         return TCL_ERROR;
