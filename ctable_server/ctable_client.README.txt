@@ -15,3 +15,7 @@ remote_ctable localhost foo
     This creates a new command, foo, that is mostly a mirror of the ctable foo on the remote machine.
 
 
+
+$ctable search {-sort -severity -compare {{>= severity 50}}} line {
+    puts $line
+}

@@ -66,8 +66,10 @@ proc remote_receive {sock} {
 	    # back to them -- it exposes stuff about us they don't care
 	    # about
 	    if {$errorCode == "ctable_quit"} return
+	    puts stdout [list e $result "" $errorCode]
 	    puts $sock [list e $result "" $errorCode]
 	} else {
+	    puts stdout [list k $result]
 	    puts $sock [list k $result]
 	}
 	flush $sock
@@ -144,17 +146,16 @@ proc remote_invoke {sock line} {
     }
 
     switch $command {
-	foreach {
-	    $ctable foreach ZZ
-	}
-
-	get_tabsep {
-	    set cmd [linsert $remoteArgs 0 $ctable write_tabsep $sock]
+	search {
+	    set cmd [linsert $remoteArgs 0 $ctable search -write_tabsep $sock]
 	    puts '$cmd'
+	    puts "start multiline response"
 	    puts $sock "m"
-	    set result [eval $cmd]
-	    puts $sock ""
-	    return $result
+	    set code [catch {eval $cmd} result]
+	    puts $sock "\\."
+	    puts "start sent multiline terminal response"
+	    flush $sock
+	    return -code $code $result
 	}
 
 	default {

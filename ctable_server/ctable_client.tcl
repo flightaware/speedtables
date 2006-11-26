@@ -52,10 +52,13 @@ proc remote_ctable_send {host command} {
 	    }
 
 	    "m" {
-		while {[gets $sock line] > 0} {
+		while {[gets $sock line] >= 0} {
 		    puts "multiline response: $line"
+		    if {$line == "\\."} {
+		       puts "terminator line seen"
+		       break
+		    }
 		}
-		break
 	    }
 
 	    default {

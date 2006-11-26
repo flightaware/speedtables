@@ -43,3 +43,18 @@ in quite the same way:
     write_tabsep
     read_tabsep
 
+
+
+
+DESIGN NOTES
+
+client/server searching, here you go. 
+
+one way for search to work is, you will specify a reader proc that will get called with the socket/file to read from, and that proc is expected to read that socket/file until it sees \. and then return, not closing the file/socket
+
+the other way will be like array_get or array_get_with_nulls
+
+
+
+
+
