@@ -20,7 +20,7 @@ namespace eval ctable {
     variable genCompilerDebug
 
     # set to 1 to build with debugging and link to tcl debugging libraries
-    set genCompilerDebug 0
+    set genCompilerDebug 1
 
     variable pgtcl_ver 1.5
 
@@ -476,11 +476,7 @@ set tclobjSortSource {
 #
 set boolCompSource {
       case $fieldEnum: {
-	if (pointer->_${field}IsNull) {
-	    exclude = 1;
-	    break;
-	}
-
+        if (pointer->_${field}IsNull) $standardCompNullCheckSource
 	switch (compType) {
 	  case CTABLE_COMP_TRUE:
 	     exclude = (!pointer->$field);
@@ -503,15 +499,10 @@ set numberCompSource {
         case $fieldEnum: {
 	  $type compValue = 0;
 
-	  if (pointer->_${field}IsNull) {
-	      exclude = 1;
-	      break;
-	  }
-
+	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
 	  if ($getObjCmd (interp, compareObj, &compValue) == TCL_ERROR) {
 	      return TCL_ERROR;
 	  }
-
           switch (compType) {
 	    case CTABLE_COMP_LT:
 	        exclude = !(pointer->$field < compValue);
@@ -540,6 +531,27 @@ set numberCompSource {
 	  break;
         }
 }
+
+#
+# standardCompNullCheckSource - variable to substitute to do null
+# handling in all comparison types
+#
+set standardCompNullCheckSource { {
+	      if (compType == CTABLE_COMP_NULL) {
+		  break;
+	      }
+	      exclude = 1;
+	      break;
+          }
+
+	  if (compType == CTABLE_COMP_NULL) {
+	      exclude = 1;
+	      break;
+	  }
+
+	  if (compType == CTABLE_COMP_NOTNULL) {
+	      break;
+	  } }
 
 set standardCompSwitchSource {
           switch (compType) {
@@ -579,14 +591,9 @@ set varstringCompSource {
 	  char   *value;
           int     strcmpResult;
 
-	  if (pointer->_${field}IsNull) {
-	      exclude = 1;
-	      break;
-	  }
-
+	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
 	  value = Tcl_GetString (compareObj);
           strcmpResult = strcmp (pointer->$field, value);
-
 	  $standardCompSwitchSource
         }
 }
@@ -600,14 +607,9 @@ set fixedstringCompSource {
 	  char   *value;
           int     strcmpResult;
 
-	  if (pointer->_${field}IsNull) {
-	      exclude = 1;
-	      break;
-	  }
-
+	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
 	  value = Tcl_GetString (compareObj);
           strcmpResult = strncmp (pointer->$field, value, $length);
-
 	  $standardCompSwitchSource
         }
 }
@@ -622,14 +624,9 @@ set binaryDataCompSource {
           int     strcmpResult;
 	  int     byteArrayLength;
 
-	  if (pointer->_${field}IsNull) {
-	      exclude = 1;
-	      break;
-	  }
-
+	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
 	  value = Tcl_GetByteArrayFromObj (compareObj, &byteArrayLength);
           strcmpResult = memcmp ((void *)&pointer->$field, (void *)value, $length);
-
 	  $standardCompSwitchSource
         }
 }
@@ -643,14 +640,9 @@ set tclobjCompSource {
 	  char    *value;
           int      strcmpResult;
 
-	  if (pointer->_${field}IsNull) {
-	      exclude = 1;
-	      break;
-	  }
-
+	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
 	  value = Tcl_GetString (compareObj);
           strcmpResult = strcmp (Tcl_GetString (pointer->$field), value);
-
 	  $standardCompSwitchSource
         }
 }
@@ -2674,6 +2666,7 @@ proc gen_search_comp {} {
     variable tclobjCompSource
 
     variable standardCompSwitchSource
+    variable standardCompNullCheckSource
 
     set value sandbag
 
@@ -2758,7 +2751,6 @@ proc gen_search_comp {} {
 	}
     }
 }
-
 
 #
 # compile - compile and link the shared library

@@ -27,8 +27,8 @@ package require Searchtest
 testTable create t
 
 
-t set a name Hendrix address "Heaven" coolness 100 realness 1 aliveness 0
-t set b name Joplin address "Heaven" coolness 60 realness 1 aliveness 0
+t set a name Hendrix address "Heaven" coolness 100 realness 1 aliveness 0 karma 5
+t set b name Joplin address "Heaven" coolness 60 realness 1 aliveness 0 karma 5
 t set c name Brock address "Venture Compound" coolness 50 realness 0 aliveness 1
 t set d name Hank address "Venture Compound" coolness 0 realness 0 aliveness 1
 t set d name "Doctor Jonas Venture" address "Venture Compound" coolness 10 realness 0 aliveness 0
@@ -40,6 +40,17 @@ t set i name "Number 21" address "The Cocoon" coolness 10 realness 0 aliveness 1
 t set j name "Meatwad" address "Next-door to Carl" coolness 10 realness 0 aliveness 1
 t set k name "Master Shake" address "Next-door to Carl" coolness 15 realness 0 aliveness 1
 t set l name "Frylock" address "Next-door to Carl" coolness 5 realness 0 aliveness 1
+
+puts "search with write_tabsep / notnull karma"
+t search -write_tabsep stdout -compare {{notnull karma}}
+puts ""
+
+puts "search with write_tabsep / null karma and coolness >= 25 / sort on coolness"
+t search -write_tabsep stdout -compare {{null karma} {>= coolness 25}} -sort coolness
+puts ""
+
+exit 0
+
 
 puts "search with write_tabsep / sort on coolness / descending / limit 1"
 t search -write_tabsep stdout -sort -coolness -limit 1

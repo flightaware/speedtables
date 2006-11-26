@@ -39,3 +39,12 @@ of tclConfig.sh.
 Add an "incr" method.
 
 
+
+In search, make it store the native value being compared in a union in
+the search component structure or something.  Compare that directly
+rather than repetitively digging it out with Tcl_GetIntFromObj or
+whatever, even though it's fast when it's native.
+
+
+
+
