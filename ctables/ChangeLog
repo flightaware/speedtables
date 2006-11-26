@@ -11,6 +11,11 @@ $Id$
       to see what was allocated, we can reuse what's there if it's
       enough.
 
+    * Add "incr" method.  It can take key-value pairs or a list of
+      key-value pairs.  It will increment each numeric field by
+      the corresponding amount and return a list of the new values
+      of all incremented fields.
+
 11/25/2006 karl
     * In search's -sort option, fields in the field list that begin with
       a dash are sorted in descending order rather than ascending order.

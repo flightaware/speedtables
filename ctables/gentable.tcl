@@ -683,9 +683,9 @@ $leftCurly
     Tcl_HashEntry *hashEntry;
     int new;
 
-    static CONST char *options[] = {"get", "set", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "sort", "search", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "sort", "search", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_SORT, OPT_SEARCH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
+    enum options {OPT_GET, OPT_SET, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_SORT, OPT_SEARCH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
 
 }
 
@@ -1652,6 +1652,149 @@ proc emit_set_fixedstring_field {field pointer length} {
     emit [subst -nobackslashes -nocommands $fixedstringSetSource]
 } 
 
+set fieldIncrSource {
+int
+${table}_incr (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int field) $leftCurly
+
+    switch ((enum ${table}_fields) field) $leftCurly
+}
+
+#
+# numberIncrSource - code we run subst over to generate a set of a standard
+#  number such as an integer, long, double, and wide integer.  (We have to 
+#  handle shorts and floats specially due to type coercion requirements.)
+#
+set numberIncrSource {
+      case $optname: {
+	int incrAmount;
+
+	if (Tcl_GetIntFromObj (interp, obj, &incrAmount) == TCL_ERROR) {
+	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
+	    return TCL_ERROR;
+	}
+
+	if ($pointer->_${field}IsNull) {
+	    $pointer->_${field}IsNull = 0;
+	    $pointer->$field = incrAmount;
+	    break;
+	}
+
+	$pointer->$field += incrAmount;
+	$pointer->_${field}IsNull = 0;
+	break;
+      }
+}
+
+set illegalIncrSource {
+      case $optname: {
+	Tcl_AppendResult (interp, "can't incr non-numeric field '$field'", (char *)NULL);
+	    return TCL_ERROR;
+	}
+}
+
+set incrFieldObjSource {
+int
+${table}_incr_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, Tcl_Obj *fieldObj)
+{
+    int field;
+
+    if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    return ${table}_incr (interp, obj, $pointer, field);
+}
+}
+
+#
+# emit_incr_num_field - emit code to incr a numeric field
+#
+proc emit_incr_num_field {field pointer} {
+    variable numberIncrSource
+    variable table
+
+    set optname [field_to_enum $field]
+
+    emit [subst -nobackslashes -nocommands $numberIncrSource]
+}
+
+proc emit_incr_illegal_field {field} {
+    variable illegalIncrSource
+
+    set optname [field_to_enum $field]
+    emit [subst -nobackslashes -nocommands $illegalIncrSource]
+}
+
+#
+# gen_incrs - emit code to incr all of the incr'able fields of the table being 
+# defined
+#
+proc gen_incrs {pointer} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    foreach myfield $fieldList {
+        catch {unset field}
+	array set field $fields($myfield)
+
+	switch $field(type) {
+	    int {
+		emit_incr_num_field $myfield $pointer
+	    }
+
+	    long {
+		emit_incr_num_field $myfield $pointer
+	    }
+
+	    wide {
+		emit_incr_num_field $myfield $pointer
+	    }
+
+	    double {
+		emit_incr_num_field $myfield $pointer
+	    }
+
+	    short {
+		emit_incr_num_field $myfield $pointer
+	    }
+
+	    float {
+	        emit_incr_num_field $myfield $pointer
+	    }
+
+	    default {
+	        emit_incr_illegal_field $myfield
+	    }
+	}
+    }
+}
+
+#
+# gen_incr_function - create a *_incr routine that takes a pointer to the
+# tcl interp, an object, a pointer to a table row and a field number,
+# and incrs that field in that row by the the value extracted from the obj
+#
+proc gen_incr_function {table pointer} {
+    variable fieldIncrSource
+    variable incrFieldObjSource
+    variable leftCurly
+    variable rightCurly
+
+    emit [subst -nobackslashes -nocommands $fieldIncrSource]
+
+    gen_incrs $pointer
+
+    emit "    $rightCurly"
+    emit "    return TCL_OK;"
+    emit "$rightCurly"
+
+    emit [subst -nobackslashes -nocommands $incrFieldObjSource]
+}
+
 #
 # gen_sets - emit code to set all of the fields of the table being defined
 #
@@ -1959,6 +2102,8 @@ proc gen_code {} {
     gen_set_null_function $table
 
     gen_get_function $table $pointer
+
+    gen_incr_function $table $pointer
 
     gen_sort_compare_function
 

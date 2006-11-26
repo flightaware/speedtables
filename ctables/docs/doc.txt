@@ -408,6 +408,17 @@ sort    DEPRECATED
     row and break out of the foreach loop, respectively.
 
 
+incr
+
+    Increment the specified numeric values, returning a list of the
+    new incremented values
+
+    % x incr $key a 4 b 5
+
+    ...will increment $key's a field by 4 and b field by 5, returning
+    a list containing the new incremented values of a and b.
+
+
 type
 
     Return the "type" of the object, i.e. the name of the object-creating

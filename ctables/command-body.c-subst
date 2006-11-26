@@ -401,6 +401,72 @@
         break;
       }
 
+      case OPT_INCR: {
+        int       i;
+	int       listObjc;
+	Tcl_Obj **listObjv;
+
+	if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "key pairList or key field value ?field value...?");
+	    return TCL_ERROR;
+	}
+
+        $pointer = ${table}_find_or_create (tbl_ptr, Tcl_GetString (objv[2]), &new);
+
+	if (objc == 4) {
+	    if (Tcl_ListObjGetElements (interp, objv[3], &listObjc, &listObjv) == TCL_ERROR) {
+		Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
+	    if ((listObjc % 2) != 0) {
+		Tcl_AppendResult (interp, "key-value list must contain an even number of elements", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
+	    for (i = 0; i < listObjc; i+= 2) {
+		int field;
+
+		if (Tcl_GetIndexFromObj (interp, listObjv[i], ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
+		    return TCL_ERROR;
+		}
+
+		if (${table}_incr (interp, listObjv[i+1], $pointer, field) == TCL_ERROR) {
+		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		    return TCL_ERROR;
+		} else {
+
+		    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_get (interp, $pointer, field)) == TCL_ERROR) {
+			Tcl_AppendResult (interp, " while appending incremented value", (char *)NULL);
+			return TCL_ERROR;
+		    }
+		}
+	    }
+	    break;
+	}
+
+	for (i = 3; i < objc; i += 2) {
+	    // printf ("i = %d\n", i);
+	    int field;
+
+	    if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
+		return TCL_ERROR;
+	    }
+
+	    if (${table}_incr (interp, objv[i+1], $pointer, field) == TCL_ERROR) {
+		Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+	        return TCL_ERROR;
+	    }
+
+	    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_get (interp, $pointer, field)) == TCL_ERROR) {
+		Tcl_AppendResult (interp, " while appending incremented value", (char *)NULL);
+		return TCL_ERROR;
+	    }
+	}
+        break;
+      }
+
+
       case OPT_IMPORT_POSTGRES_RESULT: {
 #ifdef WITH_PGTCL
           const PGresult   *res;

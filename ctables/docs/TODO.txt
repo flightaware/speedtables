@@ -36,15 +36,10 @@ Make set return a 1 if it created the row and a 0 if it already exists.
 Do something like GNU autoconf/configure or dig compiler switches, etc, out
 of tclConfig.sh.
 
-Add an "incr" method.
-
-
+DONE Add an "incr" method.
 
 In search, make it store the native value being compared in a union in
 the search component structure or something.  Compare that directly
 rather than repetitively digging it out with Tcl_GetIntFromObj or
 whatever, even though it's fast when it's native.
-
-
-
 
