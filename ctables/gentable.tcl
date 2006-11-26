@@ -236,11 +236,6 @@ set varstringSetSource {
 	char *string;
 	int   length;
 
-	if ($pointer->$field != (char *) NULL) {
-	    ckfree ((void *)$pointer->$field);
-	    $pointer->$field = NULL;
-	}
-
 	if (${table}_obj_is_null (obj)) {
 	    $pointer->_${field}IsNull = 1;
 	    break;
@@ -250,12 +245,26 @@ set varstringSetSource {
 	string = Tcl_GetStringFromObj (obj, &length);
 	if (length == $defaultLength) {
 	    if (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0)) {
-	        $pointer->$field = NULL;
-		$pointer->_${field}Length = 0;
+		if ($pointer->$field != (char *) NULL) {
+		    ckfree ((void *)$pointer->$field);
+		    $pointer->$field = NULL;
+		    $pointer->_${field}AllocatedLength = 0;
+		    $pointer->_${field}Length = 0;
+		}
 		break;
 	    }
 	}
-	$pointer->$field = ckalloc (length + 1);
+
+	// are they feeding us what we already have, we're outta here
+	if ((length == $pointer->_${field}Length) && (*$pointer->$field == *string) && (strncmp ($pointer->$field, string, length) == 0)) break;
+
+	// if the allocated length is less than what we need, get more,
+	// else reuse the previously allocagted space
+	if ($pointer->_${field}AllocatedLength <= length) {
+	    ckfree ((void *)$pointer->$field);
+	    $pointer->$field = ckalloc (length + 1);
+	    $pointer->_${field}AllocatedLength = length + 1;
+	}
 	strncpy ($pointer->$field, string, length + 1);
 	$pointer->_${field}Length = length;
 	break;
@@ -422,13 +431,13 @@ set numberSortSource {
 #
 set varstringSortSource {
       case $fieldEnum: {
-        if (pointer1->$field == NULL) {
-	    if (pointer2->$field == NULL) {
+        if (pointer1->_${field}IsNull) {
+	    if (pointer2->_${field}IsNull) {
 	        return 0;
 	    }
 
 	    return direction;
-	} else if (pointer2->$field == NULL) {
+	} else if (pointer2->_${field}IsNull) {
 	    return -direction;
 	}
 
@@ -1348,6 +1357,7 @@ proc gen_defaults_subr {subr struct pointer} {
 	    varstring {
 	        emit "        $baseCopy.$myfield = (char *) NULL;"
 		emit "        $baseCopy._${myfield}Length = 0;"
+		emit "        $baseCopy._${myfield}AllocatedLength = 0;"
 
 		if {[info exists field(default)]} {
 		    emit "        $baseCopy._${myfield}IsNull = 0;"
@@ -1517,6 +1527,7 @@ proc gen_struct {} {
 	    varstring {
 		putfield char "*$field(name)"
 		putfield int  "_$field(name)Length"
+		putfield int  "_$field(name)AllocatedLength"
 	    }
 
 	    fixedstring {
@@ -2400,7 +2411,7 @@ proc gen_gets_string_cases {pointer} {
 
 	switch $field(type) {
 	  "varstring" {
-	    emit "        if ($pointer->$myField == NULL) $leftCurly"
+	    emit "        if ($pointer->_${myField}IsNull) $leftCurly"
 
 	    if {![info exists field(default)] || $field(default) == ""} {
 	        set source ${table}_DefaultEmptyStringObj

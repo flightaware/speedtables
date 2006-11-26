@@ -6,6 +6,11 @@ $Id$
       -write_tabsepo, will make the first line be the field names
       to match.
 
+    * Manage varstring space a little more efficiently by not freeing
+      the string whenever it gets set if it's already set.  By looking
+      to see what was allocated, we can reuse what's there if it's
+      enough.
+
 11/25/2006 karl
     * In search's -sort option, fields in the field list that begin with
       a dash are sorted in descending order rather than ascending order.

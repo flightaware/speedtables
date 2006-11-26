@@ -235,3 +235,7 @@ the table structure and the user-specified C expression, compiled into
 C, gives you a select / skip.
 
 
+
+Make varstringSetSource cache an allocated length and not free and malloc
+new memory whenever a value is set.  Possibly even do a strncmp to see
+if they're the same and do nothing.
