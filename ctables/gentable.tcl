@@ -634,6 +634,53 @@ set fixedstringCompSource {
 }
 
 #
+# binaryDataCompSource - code we run subst over to generate a comapre of a 
+# binary data.
+#
+set binaryDataCompSource {
+        case $fieldEnum: {
+	  char   *value;
+          int     strcmpResult;
+	  int     byteArrayLength;
+
+	  if (pointer->_${field}IsNull) {
+	      exclude = 1;
+	      break;
+	  }
+
+	  value = Tcl_GetByteArrayFromObj (compareObj, &byteArrayLength);
+          strcmpResult = memcmp (pointer->field, $value, $length);
+
+          switch (compType) {
+	    case CTABLE_COMP_LT:
+	        exclude = !(strcmpResult < 0);
+		break;
+
+	    case CTABLE_COMP_LE:
+	        exclude = !(strcmpResult <= 0);
+		break;
+
+	    case CTABLE_COMP_EQ:
+	        exclude = !(strcmpResult == 0);
+		break;
+
+	    case CTABLE_COMP_NE:
+	        exclude = !(strcmpResult != 0);
+		break;
+
+	    case CTABLE_COMP_GE:
+	        exclude = !(strcmpResult >= 0);
+		break;
+
+	    case CTABLE_COMP_GT:
+	        exclude = !(strcmpResult > 0);
+		break;
+  	  }
+	  break;
+        }
+}
+
+#
 # tclobjCompSource - code we run subst over to generate a compare of 
 # a tclobj for use in a search.
 #
