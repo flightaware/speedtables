@@ -329,6 +329,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    }
 	    Tcl_DStringAppend(&dString, ctable->creatorTable->fieldNames[fields[i]], -1);
 	}
+	Tcl_DStringAppend(&dString, "\n", 1);
 
 	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    return TCL_ERROR;
