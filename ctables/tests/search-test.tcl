@@ -45,8 +45,8 @@ puts "search with write_tabsep / notnull karma"
 t search -write_tabsep stdout -compare {{notnull karma}}
 puts ""
 
-puts "search with write_tabsep / null karma and coolness >= 25 / sort on coolness"
-t search -write_tabsep stdout -compare {{null karma} {>= coolness 25}} -sort coolness
+puts "search with write_tabsep / null karma and coolness >= 25 / sort desc on coolness"
+t search -write_tabsep stdout -compare {{null karma} {>= coolness 25}} -sort -coolness
 puts ""
 
 exit 0

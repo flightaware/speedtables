@@ -224,3 +224,14 @@ In search have a select-into type thing where you're copying to another table,
 possibly with different fields in them.
 
 for search have -array_get varName -array_get_with_nulls varName and -get varName
+
+
+
+C EXPRESSIONS
+-------------
+
+Add a way to declare and use C expressions where you can pass a pointer to
+the table structure and the user-specified C expression, compiled into
+C, gives you a select / skip.
+
+

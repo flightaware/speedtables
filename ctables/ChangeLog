@@ -1,6 +1,11 @@
 
 $Id$
 
+11/26/2006 karl
+    * Add -include_field_names to search.  If set to true and using
+      -write_tabsepo, will make the first line be the field names
+      to match.
+
 11/25/2006 karl
     * In search's -sort option, fields in the field list that begin with
       a dash are sorted in descending order rather than ascending order.
