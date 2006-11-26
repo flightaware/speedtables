@@ -541,23 +541,7 @@ set numberCompSource {
         }
 }
 
-#
-# varstringCompSource - code we run subst over to generate a compare of 
-# a string.
-#
-set varstringCompSource {
-        case $fieldEnum: {
-	  char   *value;
-          int     strcmpResult;
-
-	  if (pointer->_${field}IsNull) {
-	      exclude = 1;
-	      break;
-	  }
-
-	  value = Tcl_GetString (compareObj);
-          strcmpResult = strcmp (pointer->$field, value);
-
+set standardCompSwitchSource {
           switch (compType) {
 	    case CTABLE_COMP_LT:
 	        exclude = !(strcmpResult < 0);
@@ -584,6 +568,26 @@ set varstringCompSource {
 		break;
 	  }
 	  break;
+}
+
+#
+# varstringCompSource - code we run subst over to generate a compare of 
+# a string.
+#
+set varstringCompSource {
+        case $fieldEnum: {
+	  char   *value;
+          int     strcmpResult;
+
+	  if (pointer->_${field}IsNull) {
+	      exclude = 1;
+	      break;
+	  }
+
+	  value = Tcl_GetString (compareObj);
+          strcmpResult = strcmp (pointer->$field, value);
+
+	  $standardCompSwitchSource
         }
 }
 
@@ -602,34 +606,9 @@ set fixedstringCompSource {
 	  }
 
 	  value = Tcl_GetString (compareObj);
-          strcmpResult = strncmp (pointer->field, $value, $length);
+          strcmpResult = strncmp (pointer->$field, value, $length);
 
-          switch (compType) {
-	    case CTABLE_COMP_LT:
-	        exclude = !(strcmpResult < 0);
-		break;
-
-	    case CTABLE_COMP_LE:
-	        exclude = !(strcmpResult <= 0);
-		break;
-
-	    case CTABLE_COMP_EQ:
-	        exclude = !(strcmpResult == 0);
-		break;
-
-	    case CTABLE_COMP_NE:
-	        exclude = !(strcmpResult != 0);
-		break;
-
-	    case CTABLE_COMP_GE:
-	        exclude = !(strcmpResult >= 0);
-		break;
-
-	    case CTABLE_COMP_GT:
-	        exclude = !(strcmpResult > 0);
-		break;
-  	  }
-	  break;
+	  $standardCompSwitchSource
         }
 }
 
@@ -649,34 +628,9 @@ set binaryDataCompSource {
 	  }
 
 	  value = Tcl_GetByteArrayFromObj (compareObj, &byteArrayLength);
-          strcmpResult = memcmp (pointer->field, $value, $length);
+          strcmpResult = memcmp ((void *)&pointer->$field, (void *)value, $length);
 
-          switch (compType) {
-	    case CTABLE_COMP_LT:
-	        exclude = !(strcmpResult < 0);
-		break;
-
-	    case CTABLE_COMP_LE:
-	        exclude = !(strcmpResult <= 0);
-		break;
-
-	    case CTABLE_COMP_EQ:
-	        exclude = !(strcmpResult == 0);
-		break;
-
-	    case CTABLE_COMP_NE:
-	        exclude = !(strcmpResult != 0);
-		break;
-
-	    case CTABLE_COMP_GE:
-	        exclude = !(strcmpResult >= 0);
-		break;
-
-	    case CTABLE_COMP_GT:
-	        exclude = !(strcmpResult > 0);
-		break;
-  	  }
-	  break;
+	  $standardCompSwitchSource
         }
 }
 
@@ -697,32 +651,7 @@ set tclobjCompSource {
 	  value = Tcl_GetString (compareObj);
           strcmpResult = strcmp (Tcl_GetString (pointer->$field), value);
 
-          switch (compType) {
-	    case CTABLE_COMP_LT:
-	        exclude = !(strcmpResult < 0);
-		break;
-
-	    case CTABLE_COMP_LE:
-	        exclude = !(strcmpResult <= 0);
-		break;
-
-	    case CTABLE_COMP_EQ:
-	        exclude = !(strcmpResult == 0);
-		break;
-
-	    case CTABLE_COMP_NE:
-	        exclude = !(strcmpResult != 0);
-		break;
-
-	    case CTABLE_COMP_GE:
-	        exclude = !(strcmpResult >= 0);
-		break;
-
-	    case CTABLE_COMP_GT:
-	        exclude = !(strcmpResult > 0);
-		break;
-	  }
-	  break;
+	  $standardCompSwitchSource
         }
 }
 
@@ -2743,6 +2672,8 @@ proc gen_search_comp {} {
     variable varstringCompSource
     variable boolCompSource
     variable tclobjCompSource
+
+    variable standardCompSwitchSource
 
     set value sandbag
 
