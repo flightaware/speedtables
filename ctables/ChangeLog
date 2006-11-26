@@ -3,22 +3,22 @@ $Id$
 
 11/26/2006 karl
     * Add -include_field_names to search.  If set to true and using
-      -write_tabsepo, will make the first line be the field names
-      to match.
+      -write_tabsep, will make the first line be the field names
+      that matching.
 
     * Manage varstring space a little more efficiently by not freeing
       the string whenever it gets set if it's already set.  By looking
-      to see what was allocated, we can reuse what's there if it's
-      enough.
+      to see what was allocated, we reuse what's there if it's big enough.
 
-    * Add "incr" method.  It can take key-value pairs or a list of
+    * Add "incr" method.  It takes take key-value pairs or a list of
       key-value pairs.  It will increment each numeric field by
       the corresponding amount and return a list of the new values
       of all incremented fields.
 
     * Add new compare methods "match" and "match_case" that perform
       a Tcl_StringMatch on the field (currently varchar-only) and
-      select it if it matches else skips it.
+      select it if it matches else skips it.  match is case-insensitive
+      and match_case is case-sensitive.
 
 11/25/2006 karl
     * In search's -sort option, fields in the field list that begin with
