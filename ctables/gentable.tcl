@@ -1687,6 +1687,7 @@ set numberIncrSource {
 
 set illegalIncrSource {
       case $optname: {
+	Tcl_ResetResult (interp);
 	Tcl_AppendResult (interp, "can't incr non-numeric field '$field'", (char *)NULL);
 	    return TCL_ERROR;
 	}
