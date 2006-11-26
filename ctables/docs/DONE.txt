@@ -1,0 +1,113 @@
+$Id$
+
+
+DONE a lot of those emit_set_*_field routines are basically the same and can
+be replaced by one that specifies which variable containing source for
+setting that field type needs to be substituted.
+
+DONE be able to get fields from a row in array get format
+
+ALREADY DONE - IT's INHERENT be able to import key-value pairs in array 
+get/set format 
+
+DONE make the *_init routine have a static internal copy of an initialization
+row and a static saying if it's been generated or not.  generate it
+the first time.  from then on, don't generate, but always do a structure
+copy of the pregenerated initialized row to the new row being initialized.
+
+DONE when issuing a bad something parsing something, maybe include the bad
+value itself.
+
+DONE
+create a direct interface to postgresql "copy in".  Make it optional.
+
+    http://www.postgresql.org/docs/8.1/static/libpq-exec.html
+    http://www.postgresql.org/docs/8.1/static/libpq-copy.html
+    http://www.postgresql.org/docs/8.1/static/sql-copy.html
+
+    We'd escape all of the strings that could contain escape characters,
+    i.e. strings, but not integers, IP addresses, MAC addresses, etc.
+
+    You'd pass us a connection handle and you'd have already issued the
+    "copy in" so the channel would be in copy_in state, and we'll
+    call PQputCopyData repeatedly and then PQputCopyEnd and send you
+    back the result / error, etc.
+
+    You'd probably tell us how many rows to batch in a single put
+    (they can be separated by a newline) or max bytes or something
+    like that.
+
+    Also you'd probably also want to do the reverse, copy in.
+
+DONE make all the types able to return text, not just to generate tcl object's.
+     from that, make a function that returns "CONST char *" for all the types.
+    NOTE - after looking at the Tcl core, how they do the Tcl_PrintDouble
+    function is to actually hoke up a Tcl object and get Tcl to create
+    a string representation in the object.  We can't do that unless we
+    access Tcl internals.  Looks like we might be doing a lot of mallocing
+    if we want to be thread safe.
+
+DONE make a way to find out the types of fields and whether quoting may be
+    required (i.e. not for ints, floats, macs, inets, needed for strings)
+    DONE create enumerated list of types that are supported.
+    DONE create a table that allows conversion between enumerated ctable and
+         their textual equivalents.
+    DONE fieldtype method returns the ctable type name for the passed-in field
+
+DONE since we will want Tcl_Objs with the names of the fields pretty often,
+at startup time generate them and increment their reference counts so
+they'll be kept around forever.
+
+DONE factor out the get routine as the set routine was factored out earlier and
+then use it from the big GET case statement.  This will facilitate using
+this stuff from C as well as having alternative ways to get stuff, like,
+for example, a routine that gets stuff in "array set" format and a routine
+that gets stuff for CSV output and stuff like that.
+
+DONE When we have default string values, create a Tcl_Obj with that string value
+and increment the reference count once, then when feeding a default string
+value to something fetching it, instead of doing a Tcl_NewStringObj on the
+default string, simply give the pointer to the pre-set Tcl_Obj.
+
+DONE factor the get value stuff a little better.  right now the only way you
+     can get a value is to cause it to be lappended onto the Tcl result object.
+     We need this to be more usable from C.  You need to be able to pass it
+     an object to set into.  Also, for strings, you need to be able to get
+     a pointer to the string and a length, plain and simple.
+
+DONE Scarf off the ctable definition and if the one we're fed next compares
+     identically, avoid generating, compiling and linking it.
+
+DONE keep track of the version info on the generator and force a rebuild if
+     it's changed.  this way if the generator is updated we rebuild even if
+     code body is identical.
+
+DONE Catch tracebacks and don't emit the entire traceback unless asked to or
+     something.
+
+DONE Add the build path to the auto path if it isn't already there.
+
+DONE Rework this whole default value thing.  Or maybe the null value is in 
+     addition to the default value.  The point is that for doubles and stuff 
+     like that, if we're getting fed from a database, there can be null 
+     values for stuff besides varstrings.  For example when reading cable 
+     modem data, if we don't have a status of "registration complete", we have 
+     null values for the signal-to-noise and transmit power and the like.
+
+DONE Create something like array_get_nonnull or a switch.
+
+DONE Gotta make varstrings be able to be defined without defaults and still
+     work properly with the whole null thing.
+
+DONE It's an error to not define at least one field.
+
+DONE create a direct interface to reading and writing CSV or tab-separated or 
+     whatever.
+
+DONE Make an export function that works like import insofar as calling code
+     repeatedly with the field names preparsed.
+
+DONE Create a high-performance search facility that doesn't involve Tcl on
+     a per row basis.
+
+DONE Make sorts be able to descend as well as ascend.
