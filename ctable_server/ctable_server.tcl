@@ -66,10 +66,10 @@ proc remote_receive {sock} {
 	    # back to them -- it exposes stuff about us they don't care
 	    # about
 	    if {$errorCode == "ctable_quit"} return
-	    puts stdout [list e $result "" $errorCode]
+	    ### puts stdout [list e $result "" $errorCode]
 	    puts $sock [list e $result "" $errorCode]
 	} else {
-	    puts stdout [list k $result]
+	    ### puts stdout [list k $result]
 	    puts $sock [list k $result]
 	}
 	flush $sock
@@ -101,10 +101,10 @@ proc remote_invoke {sock line} {
     variable registeredCtableCreators
     variable evalEnabled
 
-    puts "remote_invoke '$sock' '$line'"
+    ### puts "remote_invoke '$sock' '$line'"
 
     set remoteArgs [lassign $line command ctable]
-    puts "command '$command' ctable '$ctable' args '$remoteArgs'"
+    ### puts "command '$command' ctable '$ctable' args '$remoteArgs'"
 
     switch $command {
 	"quit" {
@@ -154,14 +154,14 @@ proc remote_invoke {sock line} {
 #puts "evaling '$cmd'"
 	    set code [catch {eval $cmd} result]
 	    puts $sock "\\."
-	    puts "start sent multiline terminal response"
+	    ### puts "start sent multiline terminal response"
 	    flush $sock
 	    return -code $code $result
 	}
 
 	default {
 	    set cmd [linsert $remoteArgs 0 $ctable $command]
-	    puts '$cmd'
+	    ### puts '$cmd'
 	    return [eval $cmd]
 	}
     }
