@@ -363,7 +363,6 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	}
 
 	/* It's a Match */
-
         /* Are we not sorting? */
 	if (hashSortTable == NULL) {
 	    /* if we haven't met the start point, blow it off */
@@ -374,6 +373,8 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 		actionResult = TCL_OK;
 		goto clean_and_return;
 	    }
+
+	    if (search->countOnly) continue;
 
 	    /* we want to take the match actions here --
 	     * we're here when we aren't sorting
@@ -448,6 +449,10 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
   clean_and_return:
     if (hashSortTable != NULL) {
 	ckfree ((void *)hashSortTable);
+    }
+
+    if (actionResult == TCL_OK && search->countOnly) {
+	Tcl_SetIntObj (Tcl_GetObjResult (interp), matchCount);
     }
 
     return actionResult;
@@ -647,8 +652,8 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
 	return TCL_ERROR;
     }
 
-    if (!search->useArrayGet && !search->useArrayGetWithNulls && !search->useGet && !search->writingTabsep) {
-        Tcl_AppendResult (interp, "one of -array_get, -array_get_with_nulls, -get or -write_tabsep must be specified", (char *)NULL);
+    if (!search->useArrayGet && !search->useArrayGetWithNulls && !search->useGet && !search->writingTabsep && !search->countOnly) {
+        Tcl_AppendResult (interp, "one of -array_get, -array_get_with_nulls, -get, -write_tabsep or -countOnly must be specified", (char *)NULL);
 	return TCL_ERROR;
     }
 
