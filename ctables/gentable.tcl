@@ -506,7 +506,7 @@ set boolCompSource {
 #
 set numberCompSource {
         case $fieldEnum: {
-	  $type compValue = 0;
+	  $typeText compValue = 0;
 
 	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
 	  if ($getObjCmd (interp, compareObj, &compValue) == TCL_ERROR) {
@@ -2846,6 +2846,7 @@ proc gen_search_comp {} {
 	array set fieldData $fields($field)
 	set fieldEnum [field_to_enum $field]
 	set type $fieldData(type)
+        set typeText $fieldData(type)
 
 	switch $type {
 	    int {
@@ -2859,6 +2860,7 @@ proc gen_search_comp {} {
 	    }
 
 	    wide {
+		set typeText "wide int"
 		set getObjCmd Tcl_GetWideIntFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
@@ -2869,16 +2871,19 @@ proc gen_search_comp {} {
 	    }
 
 	    short {
+		set typeText "int"
 		set getObjCmd Tcl_GetIntFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    float {
+		set typeText "double"
 		set getObjCmd Tcl_GetDoubleFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
 
 	    char {
+		set typeText "int"
 		set getObjCmd Tcl_GetIntFromObj
 		emit [subst -nobackslashes -nocommands $numberCompSource]
 	    }
