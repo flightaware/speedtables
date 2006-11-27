@@ -1681,7 +1681,7 @@ set numberIncrSource {
 	int incrAmount;
 
 	if (Tcl_GetIntFromObj (interp, obj, &incrAmount) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
+	    Tcl_AppendResult (interp, " while converting $field increment amount", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
