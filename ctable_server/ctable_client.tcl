@@ -22,8 +22,10 @@ proc remote_ctable {host tableName} {
 #
 # remote_ctable_send - send a command to a remote ctable server
 #
-proc remote_ctable_send {host command} {
+proc remote_ctable_send {host command {actionData ""}} {
     variable hostSockets
+
+#puts "actionData '$actionData'"
 
     if {![info exists hostSockets($host)]} {
 	set hostSockets($host) [socket $host 11111]
@@ -52,11 +54,47 @@ proc remote_ctable_send {host command} {
 	    }
 
 	    "m" {
+		array set actions $actionData
+		set firstLine 1
+
 		while {[gets $sock line] >= 0} {
-		    puts "multiline response: $line"
 		    if {$line == "\\."} {
-		       puts "terminator line seen"
-		       break
+			break
+		    }
+#puts "processing line '$line'"
+
+		    if {[info exists actions(-write_tabsep)]} {
+			puts $actions(-write_tabsep) $line
+		    } elseif {[info exists actions(-code)]} {
+			if {$firstLine} {
+			    set firstLine 0
+			    set fields $line
+			    continue
+			}
+
+#puts "fields '$fields' value '$line'"
+			set result ""
+			foreach var $fields value [split $line "\t"] {
+#puts "var '$var' value '$value"
+			    if {$var == "_key"} {
+				if {[info exists actions(keyVar)]} {
+#puts "set $actions(keyVar) $value"
+				    set $actions(keyVar) $value
+				}
+				continue
+			    }
+
+			    if {[info exists actions(-get)]} {
+				lappend result $value
+			    } else {
+				lappend result $var $value
+			    }
+			}
+
+			set $actions(bodyVar) $result
+			eval $actions(-code)
+		    } else {
+			error "no action, need -write_tabsep or -code: $actionData"
 		    }
 		}
 	    }
@@ -81,7 +119,44 @@ proc remote_ctable_create {host creatorName tableName} {
 proc remote_ctable_invoke {tableName host command} {
     variable hostSockets
 
-    return [remote_ctable_send $host [linsert [lrange $command 1 end] 0 [lindex $command 0] $tableName]]
+    set cmd [lindex $command 0]
+    set body [lrange $command 1 end]
+
+#puts "cmd '$command', pairs '$body'"
+
+    # if it's search, take out args that will freak out the remote side
+    if {$cmd == "search"} {
+	array set pairs $body
+	if {[info exists pairs(-write_tabsep)]} {
+	    set actions(-write_tabsep) $pairs(-write_tabsep)
+	    unset pairs(-write_tabsep)
+	}
+
+	if {[info exists pairs(-code)]} {
+	    set actions(-code) $pairs(-code)
+	    unset pairs(-code)
+
+	    foreach var {-key -array_get -array_get_with_nulls -get} {
+		if {[info exists pairs($var)]} {
+		    set actions($var) $pairs($var)
+		    unset pairs($var)
+
+		    if {$var == "-key"} {
+			set actions(keyVar) $actions($var)
+		    } else {
+			set actions(bodyVar) $actions($var)
+		    }
+		}
+	    }
+
+	    set pairs(-include_field_names) 1
+	}
+	set body [array get pairs]
+#puts "new body is '$body'"
+#puts "new actions is [array get actions]"
+    }
+
+    return [remote_ctable_send $host [linsert $body 0 $cmd $tableName] [array get actions]]
 }
 
 package provide ctable_client 1.0

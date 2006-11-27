@@ -148,9 +148,10 @@ proc remote_invoke {sock line} {
     switch $command {
 	search {
 	    set cmd [linsert $remoteArgs 0 $ctable search -write_tabsep $sock]
-	    puts '$cmd'
-	    puts "start multiline response"
+#puts '$cmd'
+#puts "start multiline response"
 	    puts $sock "m"
+#puts "evaling '$cmd'"
 	    set code [catch {eval $cmd} result]
 	    puts $sock "\\."
 	    puts "start sent multiline terminal response"

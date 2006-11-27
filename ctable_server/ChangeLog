@@ -1,0 +1,8 @@
+
+
+$Id$
+
+11/26/06 karl
+    * Make remote search support -tabsep, -code, -key, -array_get, -get and
+      -array_get_with_nulls.  Note that -array_get actually doesn't currently
+      exclude nulls.
