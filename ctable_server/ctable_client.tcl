@@ -92,7 +92,7 @@ proc remote_ctable_send {host command {actionData ""}} {
 			}
 
 			set $actions(bodyVar) $result
-			eval $actions(-code)
+			uplevel 1 $actions(-code)
 		    } else {
 			error "no action, need -write_tabsep or -code: $actionData"
 		    }
