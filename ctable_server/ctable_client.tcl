@@ -79,7 +79,7 @@ proc remote_ctable_send {host command {actionData ""}} {
 			    if {$var == "_key"} {
 				if {[info exists actions(keyVar)]} {
 #puts "set $actions(keyVar) $value"
-				    set $actions(keyVar) $value
+				    uplevel 1 set $actions(keyVar) $value
 				}
 				continue
 			    }
@@ -91,7 +91,7 @@ proc remote_ctable_send {host command {actionData ""}} {
 			    }
 			}
 
-			set $actions(bodyVar) $result
+			uplevel 1 set $actions(bodyVar) $result
 			uplevel 1 $actions(-code)
 		    } else {
 			error "no action, need -write_tabsep or -code: $actionData"
