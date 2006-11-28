@@ -8,6 +8,13 @@
 #
 
 #
+# Create a place to stash the stack level
+#
+namespace eval ::ctable_data {
+    variable topLevel
+}
+
+#
 # remote_ctable - declare a ctable as going to a remote host
 #
 # remote_ctable $serverHost myTable
@@ -16,7 +23,10 @@
 #  client server behind your back.
 #
 proc remote_ctable {host tableName} {
-    proc $tableName {args} "remote_ctable_invoke $tableName $host \$args"
+    proc $tableName {args} "
+	set ::ctable_data::topLevel \[info level]
+	remote_ctable_invoke $tableName $host \$args
+    "
 }
 
 #
@@ -57,6 +67,9 @@ proc remote_ctable_send {host command {actionData ""}} {
 		array set actions $actionData
 		set firstLine 1
 
+		set mylevel [info level]
+	        set upLevel [expr {$mylevel - $::ctable_data::topLevel + 1}]
+
 		while {[gets $sock line] >= 0} {
 		    if {$line == "\\."} {
 			break
@@ -91,8 +104,10 @@ proc remote_ctable_send {host command {actionData ""}} {
 			    }
 			}
 
-			uplevel 1 set $actions(bodyVar) $result
-			uplevel 1 $actions(-code)
+			uplevel $upLevel "
+			    [list set $actions(bodyVar) $result]
+			    $actions(-code)
+			"
 		    } else {
 			error "no action, need -write_tabsep or -code: $actionData"
 		    }
