@@ -1,6 +1,10 @@
 
 $Id$
 
+11/28/2006 karl
+    * Fix bug where, when searching with no sorting and a limit, you'd get
+      one less record than you'd asked for even if one more was available.
+
 11/26/2006 karl
     * Add -include_field_names to search.  If set to true and using
       -write_tabsep, will make the first line be the field names

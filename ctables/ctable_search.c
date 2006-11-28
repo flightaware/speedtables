@@ -368,13 +368,18 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    /* if we haven't met the start point, blow it off */
 	    if (++matchCount < search->offset) continue;
 
-	    // if there is a limit and it's been exceeded, we're done
-	    if ((search->limit != 0) && (matchCount >= search->limit)) {
-		actionResult = TCL_OK;
-		goto clean_and_return;
-	    }
+	    if (search->countOnly) {
+		// if there is a limit and it's been exceeded, we're done
+		if ((search->limit != 0) && (matchCount >= search->limit)) {
+		    actionResult = TCL_OK;
+		    goto clean_and_return;
+		}
 
-	    if (search->countOnly) continue;
+		// the limit hasn't been exceeded or there wasn't one,
+		// so we keep counting -- but we continue here because
+		// we don't need to do any processing on the line
+		continue;
+	    }
 
 	    /* we want to take the match actions here --
 	     * we're here when we aren't sorting
@@ -385,6 +390,11 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	     }
 
 	     if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
+		// if there was a limit and we've met it, we're done
+		if ((search->limit != 0) && (matchCount >= search->limit)) {
+		    actionResult = TCL_OK;
+		    goto clean_and_return;
+		}
 		 continue;
 	     }
 
