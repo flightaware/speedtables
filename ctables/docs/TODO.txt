@@ -43,3 +43,13 @@ the search component structure or something.  Compare that directly
 rather than repetitively digging it out with Tcl_GetIntFromObj or
 whatever, even though it's fast when it's native.
 
+fixed strings allocate one more character than requested
+
+provide a way for a ctable to provide a complete replayable definition
+of itself.  Prefer to compile this into the C code so there's no way
+it can get off from whatever files are in the vicinity.
+
+implement btree-style index option for fields with both unique and not-unique
+styles.
+
+

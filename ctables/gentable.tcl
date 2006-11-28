@@ -40,7 +40,7 @@ namespace eval ctable {
 
     set tables ""
 
-    set cvsID {CTable generator ID: $Id$}
+    set cvsID {#CTable generator ID: $Id$}
 
 set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
 
@@ -512,6 +512,7 @@ set numberCompSource {
 	  if ($getObjCmd (interp, compareObj, &compValue) == TCL_ERROR) {
 	      return TCL_ERROR;
 	  }
+
           switch (compType) {
 	    case CTABLE_COMP_LT:
 	        exclude = !(pointer->$field < compValue);
