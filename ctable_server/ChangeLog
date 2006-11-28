@@ -3,8 +3,17 @@
 $Id$
 
 11/27/06 karl
-    * Uplevel 1 the code body when handling a remote ctable search with -code
+    * Use a ctable://-style URL to identify the host, optional port, and
+      remote table when specifying a table.
+
+    * Support redirects in the client and server.
+
+    * Uplevel the code body when handling a remote ctable search with -code
       so that that code is at the right level to see variables in its context.
+
+11/28/06 karl
+    * Add an identifying message the ctable server sends upon connect
+      that the client parses.
 
 11/26/06 karl
     * Make remote search support -tabsep, -code, -key, -array_get, -get and

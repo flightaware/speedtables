@@ -15,10 +15,13 @@ namespace eval ::ctable_server {
 #
 # register - register a table for remote access
 #
-proc register {table {type ""}} {
+proc register {ctableUrl table {type ""}} {
     variable registeredCtables
+    variable registeredCtableUrls
 
+puts stderr "register $ctableUrl $table $type"
     set registeredCtables($table) $type
+    set registeredCtableUrls($ctableUrl) $table
 }
 
 #
@@ -28,6 +31,12 @@ proc register_instantiator {cTable} {
     variable registeredCtableCreators
 
     set registeredCtableCreators($cTable) ""
+}
+
+proc register_redirect {ctableUrl redirectedToCtableUrl} {
+    variable registeredCtableRedirects
+
+    set registeredCtableRedirects($ctableUrl) $redirectedToCtableUrl
 }
 
 #
@@ -45,6 +54,9 @@ proc accept_connection {sock ip port} {
 
     fconfigure $sock -blocking 0 -translation auto
     fileevent $sock readable [list ::ctable_server::remote_receive $sock]
+
+    puts $sock [list ctable_server 1.0 ready]
+    flush $sock
 }
 
 #
@@ -52,6 +64,7 @@ proc accept_connection {sock ip port} {
 #
 proc remote_receive {sock} {
     global errorCode errorInfo
+    variable registeredCtableRedirects
 
     if {[eof $sock]} {
 	puts stderr "EOF on $sock, closing"
@@ -60,7 +73,12 @@ proc remote_receive {sock} {
     }
 
     if {[gets $sock line] >= 0} {
-	if {[catch {remote_invoke $sock $line} result] == 1} {
+	lassign $line ctableUrl line 
+
+	if {[info exists registeredCtableRedirects($ctableUrl)]} {
+puts "sending redirect to $sock, $ctableUrl -> $registeredCtableRedirects($ctableUrl)"
+	    puts $sock [list r $registeredCtableRedirects($ctableUrl)]
+	} elseif {[catch {remote_invoke $sock $ctableUrl $line} result] == 1} {
 	    puts "got '$result' processing '$line' from $sock"
 	    # look at errorInfo if you want to know more, don't send it
 	    # back to them -- it exposes stuff about us they don't care
@@ -72,6 +90,7 @@ proc remote_receive {sock} {
 	    ### puts stdout [list k $result]
 	    puts $sock [list k $result]
 	}
+
 	flush $sock
     }
 }
@@ -96,14 +115,17 @@ proc instantiate {ctableCreator ctable} {
     return [$ctableCreator create $ctable]
 }
 
-proc remote_invoke {sock line} {
+proc remote_invoke {sock ctableUrl line} {
     variable registeredCtables
+    variable registeredCtableUrls
     variable registeredCtableCreators
     variable evalEnabled
 
     ### puts "remote_invoke '$sock' '$line'"
 
-    set remoteArgs [lassign $line command ctable]
+    set ctable $ctableUrl
+    set remoteArgs [lassign $line command]
+
     ### puts "command '$command' ctable '$ctable' args '$remoteArgs'"
 
     switch $command {
@@ -122,8 +144,8 @@ proc remote_invoke {sock line} {
 
 	"tables" {
 	    set result ""
-	    foreach table [array names registeredCtables] {
-		lappend result $table $registeredCtables($table)
+	    foreach table [array names registeredCtableUrls] {
+		lappend result $table $registeredCtables($registeredCtableUrls($table))
 	    }
 	    return $result
 	}
@@ -141,9 +163,10 @@ proc remote_invoke {sock line} {
 	}
     }
 
-    if {![info exists registeredCtables($ctable)]} {
-	error "ctable $ctable not registered on this server" "" CTABLE
+    if {![info exists registeredCtableUrls($ctableUrl)]} {
+	error "ctable $ctableUrl not registered on this server" "" CTABLE
     }
+    set ctable $registeredCtableUrls($ctableUrl)
 
     switch $command {
 	search {
