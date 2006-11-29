@@ -13,7 +13,6 @@
 #include <climits>
 #include <cstdlib>
 
-using std::free;
 using std::size_t;
 #else
 #include <limits.h>
@@ -34,7 +33,6 @@ struct jsw_skip {
   size_t       curh; /* Tallest available column */
   size_t       size; /* Number of items at level 0 */
   cmp_f        cmp;  /* User defined item compare function */
-  dup_f        dup;  /* User defined item copy function */
   rel_f        rel;  /* User defined delete function */
 };
 
@@ -91,10 +89,10 @@ static jsw_node_t *new_node ( void *item, size_t height )
 }
 
 /* This function does not release an item's memory */
-static void delete_node ( jsw_node_t *node )
+static void free_node ( jsw_node_t *node )
 {
-  free ( node->next );
-  free ( node );
+  ckfree ( node->next );
+  ckfree ( node );
 }
 
 /* Find an existing item, or the position before where it would be */
@@ -118,7 +116,7 @@ static jsw_node_t *locate ( jsw_skip_t *skip, void *item )
 }
 
 /* Allocate and initialize a new skip list */
-jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, dup_f dup, rel_f rel )
+jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, rel_f rel )
 {
   jsw_skip_t *skip = (jsw_skip_t *)ckalloc ( sizeof *skip );
 
@@ -131,7 +129,6 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, dup_f dup, rel_f rel )
   skip->curh = 0;
   skip->size = 0;
   skip->cmp = cmp;
-  skip->dup = dup;
   skip->rel = rel;
 
   jsw_seed ( jsw_time_seed() );
@@ -139,6 +136,9 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, dup_f dup, rel_f rel )
   return skip;
 }
 
+//
+// jsw_sdelete - delete the entire skip list
+//
 void jsw_sdelete ( jsw_skip_t *skip )
 {
   jsw_node_t *it = skip->head->next[0];
@@ -147,15 +147,19 @@ void jsw_sdelete ( jsw_skip_t *skip )
   while ( it != NULL ) {
     save = it->next[0];
     skip->rel ( it->item );
-    delete_node ( it );
+    free_node ( it );
     it = save;
   }
 
-  delete_node ( skip->head );
-  free ( skip->fix );
-  free ( skip );
+  free_node ( skip->head );
+  ckfree ( skip->fix );
+  ckfree ( skip );
 }
 
+//
+// jsw_sfind - given a skip list and an item, return the corresponding
+//             skip list node pointer or NULL if none is found.
+//
 void *jsw_sfind ( jsw_skip_t *skip, void *item )
 {
   jsw_node_t *p = locate ( skip, item )->next[0];
@@ -166,19 +170,22 @@ void *jsw_sfind ( jsw_skip_t *skip, void *item )
   return NULL;
 }
 
+//
+// jsw_sinsert - insert item into the skip list if it's not already there
+//
 int jsw_sinsert ( jsw_skip_t *skip, void *item )
 {
   void *p = locate ( skip, item )->item;
 
+  // if we got something and it compares the same, it's already there
   if ( p != NULL && skip->cmp ( item, p ) == 0 )
     return 0;
   else {
-    /* Try to allocate before making changes */
+    // it's new
     size_t h = rlevel ( skip->maxh );
-    void *dup = skip->dup ( item );
     jsw_node_t *it;
 
-    it = new_node ( dup, h );
+    it = new_node ( item, h );
 
     /* Raise height if necessary */
     if ( h > skip->curh ) {
@@ -196,6 +203,11 @@ int jsw_sinsert ( jsw_skip_t *skip, void *item )
   return 1;
 }
 
+//
+// jsw_serase - locate an item in the skip list.  if it exists, delete it.
+//
+// return 1 if it deleted and 0 if no item matched
+//
 int jsw_serase ( jsw_skip_t *skip, void *item )
 {
   jsw_node_t *p = locate ( skip, item )->next[0];
@@ -205,7 +217,8 @@ int jsw_serase ( jsw_skip_t *skip, void *item )
   else {
     size_t i;
 
-    /* Erase column */
+    // fix skip list pointers that point directly to me by traversing
+    // the fix list of stuff from the locate
     for ( i = 0; i < skip->curh; i++ ) {
       if ( skip->fix[i]->next[i] != p )
         break;
@@ -213,8 +226,11 @@ int jsw_serase ( jsw_skip_t *skip, void *item )
       skip->fix[i]->next[i] = p->next[i];
     }
 
+    // release the item through the supplied callbak
     skip->rel ( p->item );
-    delete_node ( p );
+
+    // free the node
+    free_node ( p );
 
     /* Lower height if necessary */
     while ( skip->curh > 0 ) {
