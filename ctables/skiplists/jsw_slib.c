@@ -124,11 +124,6 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, dup_f dup, rel_f rel )
 
   skip->head = new_node ( NULL, ++max );
 
-  if ( skip->head == NULL ) {
-    free ( skip );
-    return NULL;
-  }
-
   skip->fix = (jsw_node_t **)ckalloc ( max * sizeof *skip->fix );
 
   skip->curl = NULL;
@@ -183,15 +178,7 @@ int jsw_sinsert ( jsw_skip_t *skip, void *item )
     void *dup = skip->dup ( item );
     jsw_node_t *it;
 
-    if ( dup == NULL )
-      return 0;
-
     it = new_node ( dup, h );
-
-    if ( it == NULL ) {
-      skip->rel ( dup );
-      return 0;
-    }
 
     /* Raise height if necessary */
     if ( h > skip->curh ) {
