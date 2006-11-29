@@ -7,6 +7,9 @@
 # $Id$
 #
 
+package require ctable_net
+package require Tclx
+
 #
 # remote_ctable - declare a ctable as going to a remote host
 #
@@ -19,7 +22,7 @@ proc remote_ctable {cttpUrl localTableName} {
     variable ctableUrls
     variable ctableLocalTableUrls
 
-puts stderr "define remote ctable: $localTableName -> $cttpUrl"
+#puts stderr "define remote ctable: $localTableName -> $cttpUrl"
 
     set ctableUrls($localTableName) $cttpUrl
     set ctableLocalTableUrls($cttpUrl) $localTableName
@@ -37,15 +40,7 @@ proc remote_ctable_cache_connect {cttpUrl} {
        return $ctableSockets($cttpUrl)
     }
 
-    if {![regexp {^ctable://([^/]*)/(.*)} $cttpUrl dummy host remoteTable]} {
-	error "cttpUrl doesn't match ctable://host/table form"
-    }
-
-    if {[regexp {^([^:]*):(.*)} $host dummy hostFrag port]} {
-	set host $hostFrag
-    } else {
-	set port 11111
-    }
+    lassign [::ctable_net::split_ctable_url $cttpUrl] host port dir remoteTable stuff
 
     set sock [socket $host $port]
     set ctableSockets($cttpUrl) $sock
@@ -104,8 +99,8 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""}} {
 	    }
 
 	    "r" {
-puts "redirect '$line'"
-parray ctableLocalTableUrls
+#puts "redirect '$line'"
+#parray ctableLocalTableUrls
 		catch {close $sock}
 		unset ctableSockets($cttpUrl)
 		set newCttpUrl [lindex $line 1]
@@ -113,11 +108,8 @@ parray ctableLocalTableUrls
 		    set localTable $ctableLocalTableUrls($cttpUrl)
 		    unset ctableLocalTableUrls($cttpUrl)
 		    remote_ctable $newCttpUrl $localTable
-		    set sock [remote_ctable_cache_connect $newCttpUrl]
-		    break
-		} else {
-		    return [remote_ctable_send $newCttpUrl $command $actionData $callerLevel]
 		}
+		return [remote_ctable_send $newCttpUrl $command $actionData $callerLevel]
 	    }
 
 	    "m" {

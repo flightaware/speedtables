@@ -5,6 +5,7 @@
 #
 
 package require Tclx
+package require ctable_net
 
 namespace eval ::ctable_server {
   variable registeredCtables
@@ -15,13 +16,15 @@ namespace eval ::ctable_server {
 #
 # register - register a table for remote access
 #
-proc register {ctableUrl table {type ""}} {
+proc register {ctableUrl exportedTableName {type ""}} {
     variable registeredCtables
-    variable registeredCtableUrls
 
-puts stderr "register $ctableUrl $table $type"
-    set registeredCtables($table) $type
-    set registeredCtableUrls($ctableUrl) $table
+    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
+
+#puts stderr "register $ctableUrl $exportedTableName $type"
+    set registeredCtables($exportedTableName) $table
+
+    start_server $port
 }
 
 #
@@ -36,14 +39,25 @@ proc register_instantiator {cTable} {
 proc register_redirect {ctableUrl redirectedToCtableUrl} {
     variable registeredCtableRedirects
 
-    set registeredCtableRedirects($ctableUrl) $redirectedToCtableUrl
+    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
+    start_server $port
+
+    puts stderr "register redirect table $table to $redirectedToCtableUrl"
+    set registeredCtableRedirects($table:$port) $redirectedToCtableUrl
 }
 
 #
-# setup - setup our server socket
+# start_server - setup  server socket
 #
-proc setup {{port 11111}} {
+proc start_server {{port 11111}} {
+    variable portSockets
+
+    if {[info exists portSockets($port)]} {
+	return
+    }
     set serverSock [socket -server ::ctable_server::accept_connection $port]
+
+    set portSockets($port) $serverSock
 }
 
 #
@@ -52,8 +66,10 @@ proc setup {{port 11111}} {
 proc accept_connection {sock ip port} {
     puts "connect from $sock $ip $port"
 
+    set theirPort [lindex [fconfigure $sock -sockname] 2]
+
     fconfigure $sock -blocking 0 -translation auto
-    fileevent $sock readable [list ::ctable_server::remote_receive $sock]
+    fileevent $sock readable [list ::ctable_server::remote_receive $sock $theirPort]
 
     puts $sock [list ctable_server 1.0 ready]
     flush $sock
@@ -62,9 +78,10 @@ proc accept_connection {sock ip port} {
 #
 # remote_receive - receive data from the remote side
 #
-proc remote_receive {sock} {
+proc remote_receive {sock myPort} {
     global errorCode errorInfo
     variable registeredCtableRedirects
+    variable ctableUrlCache
 
     if {[eof $sock]} {
 	puts stderr "EOF on $sock, closing"
@@ -75,10 +92,22 @@ proc remote_receive {sock} {
     if {[gets $sock line] >= 0} {
 	lassign $line ctableUrl line 
 
-	if {[info exists registeredCtableRedirects($ctableUrl)]} {
-puts "sending redirect to $sock, $ctableUrl -> $registeredCtableRedirects($ctableUrl)"
-	    puts $sock [list r $registeredCtableRedirects($ctableUrl)]
-	} elseif {[catch {remote_invoke $sock $ctableUrl $line} result] == 1} {
+	if {![info exists ctableUrlCache($ctableUrl)]} {
+	    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
+
+	    if {[info exists registeredCtableRedirects($table:$myPort)]} {
+#puts "sending redirect to $sock, $ctableUrl -> $registeredCtableRedirects($table:$myPort)"
+		puts $sock [list r $registeredCtableRedirects($table:$myPort)]
+		flush $sock
+		return
+	    }
+#puts "setting ctable url cache $ctableUrl -> $table"
+	    set ctableUrlCache($ctableUrl) $table
+	} else {
+	    set table $ctableUrlCache($ctableUrl)
+	}
+
+	if {[catch {remote_invoke $sock $table $line} result] == 1} {
 	    puts "got '$result' processing '$line' from $sock"
 	    # look at errorInfo if you want to know more, don't send it
 	    # back to them -- it exposes stuff about us they don't care
@@ -115,15 +144,13 @@ proc instantiate {ctableCreator ctable} {
     return [$ctableCreator create $ctable]
 }
 
-proc remote_invoke {sock ctableUrl line} {
+proc remote_invoke {sock ctable line} {
     variable registeredCtables
-    variable registeredCtableUrls
     variable registeredCtableCreators
     variable evalEnabled
 
     ### puts "remote_invoke '$sock' '$line'"
 
-    set ctable $ctableUrl
     set remoteArgs [lassign $line command]
 
     ### puts "command '$command' ctable '$ctable' args '$remoteArgs'"
@@ -143,11 +170,7 @@ proc remote_invoke {sock ctableUrl line} {
 	}
 
 	"tables" {
-	    set result ""
-	    foreach table [array names registeredCtableUrls] {
-		lappend result $table $registeredCtables($registeredCtableUrls($table))
-	    }
-	    return $result
+	    return [array names registeredCtables]
 	}
 
 	"eval" {
@@ -155,7 +178,7 @@ proc remote_invoke {sock ctableUrl line} {
 		error "not permitted"
 	    }
 
-	    return [uplevel #0 $ctable $remoteArgs]
+	    return [uplevel #0 [linsert $remoteArgs 0 $ctable]]
 	}
 
 	"help" {
@@ -163,15 +186,16 @@ proc remote_invoke {sock ctableUrl line} {
 	}
     }
 
-    if {![info exists registeredCtableUrls($ctableUrl)]} {
-	error "ctable $ctableUrl not registered on this server" "" CTABLE
+    if {![info exists registeredCtables($ctable)]} {
+	error "ctable $ctable not registered on this server" "" CTABLE
     }
-    set ctable $registeredCtableUrls($ctableUrl)
+
+    set myCtable $registeredCtables($ctable)
 
     switch $command {
 	search {
-	    set cmd [linsert $remoteArgs 0 $ctable search -write_tabsep $sock]
-#puts '$cmd'
+	    set cmd [linsert $remoteArgs 0 $myCtable search -write_tabsep $sock]
+#puts "search command '$cmd'"
 #puts "start multiline response"
 	    puts $sock "m"
 #puts "evaling '$cmd'"
@@ -183,7 +207,8 @@ proc remote_invoke {sock ctableUrl line} {
 	}
 
 	default {
-	    set cmd [linsert $remoteArgs 0 $ctable $command]
+	    set cmd [linsert $remoteArgs 0 $myCtable $command]
+#puts "standard command '$cmd'"
 	    ### puts '$cmd'
 	    return [eval $cmd]
 	}
