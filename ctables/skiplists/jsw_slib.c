@@ -71,7 +71,9 @@ static size_t rlevel ( size_t max )
   return h;
 }
 
-/* This function does not make a copy of the item */
+//
+// new_node - construct an empty new node, does not make a copy of the item
+//
 static jsw_node_t *new_node ( void *item, size_t height )
 {
   jsw_node_t *node = (jsw_node_t *)ckalloc ( sizeof *node );
@@ -88,14 +90,18 @@ static jsw_node_t *new_node ( void *item, size_t height )
   return node;
 }
 
-/* This function does not release an item's memory */
+//
+// free_node - free a skip list node but not the item associated with it
+//
 static void free_node ( jsw_node_t *node )
 {
   ckfree ( node->next );
   ckfree ( node );
 }
 
-/* Find an existing item, or the position before where it would be */
+//
+// locate - find an existing item, or the position before where it would be
+//
 static jsw_node_t *locate ( jsw_skip_t *skip, void *item )
 {
   jsw_node_t *p = skip->head;
@@ -115,7 +121,9 @@ static jsw_node_t *locate ( jsw_skip_t *skip, void *item )
   return p;
 }
 
-/* Allocate and initialize a new skip list */
+//
+// jsw_snew - allocate and initialize a new skip list
+//
 jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, rel_f rel )
 {
   jsw_skip_t *skip = (jsw_skip_t *)ckalloc ( sizeof *skip );
@@ -247,21 +255,35 @@ int jsw_serase ( jsw_skip_t *skip, void *item )
   return 1;
 }
 
+//
+// jsw_ssize - return the size of the skip table
+//
 size_t jsw_ssize ( jsw_skip_t *skip )
 {
   return skip->size;
 }
 
+//
+// jsw_reset - invalidate traversal markers by resetting the current link
+//             for traversal to the first element in the list
+//
 void jsw_sreset ( jsw_skip_t *skip )
 {
   skip->curl = skip->head->next[0];
 }
 
+//
+// jsw_sitem - get item pointed to by the the current link or NULL if none
+//
 void *jsw_sitem ( jsw_skip_t *skip )
 {
   return skip->curl == NULL ? NULL : skip->curl->item;
 }
 
+//
+// jsw_snext - move the current link to the next item, returning 1 if there
+//             is a next item and a 0 if there isn't
+//
 int jsw_snext ( jsw_skip_t *skip )
 {
   return ( skip->curl = skip->curl->next[0] ) != NULL;
