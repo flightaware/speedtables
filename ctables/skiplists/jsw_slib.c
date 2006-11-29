@@ -181,6 +181,8 @@ void *jsw_sfind ( jsw_skip_t *skip, void *item )
 //
 // jsw_sinsert - insert item into the skip list if it's not already there
 //
+// forces there to be no duplicate row by failing if a matching row is found
+//
 int jsw_sinsert ( jsw_skip_t *skip, void *item )
 {
   void *p = locate ( skip, item )->item;
@@ -198,6 +200,38 @@ int jsw_sinsert ( jsw_skip_t *skip, void *item )
     /* Raise height if necessary */
     if ( h > skip->curh ) {
       h = ++skip->curh;
+      skip->fix[h] = skip->head;
+    }
+
+    /* Build skip links */
+    while ( --h < (size_t)-1 ) {
+      it->next[h] = skip->fix[h]->next[h];
+      skip->fix[h]->next[h] = it;
+    }
+  }
+
+  return 1;
+}
+
+//
+// jsw_sinsert_allow_dups - insert item into the skip list whether there's
+                            already a matching item or not.
+//
+//
+int jsw_sinsert_allow_dups ( jsw_skip_t *skip, void *item )
+{
+    locate ( skip, item );
+
+    // we got something or we didn't, fix is primed, proceed
+
+    size_t h = rlevel ( skip->maxh );
+    jsw_node_t *it;
+
+    it = new_node ( item, h );
+
+    /* Raise height if necessary */
+    if ( h > skip->curh ) {
+        h = ++skip->curh;
       skip->fix[h] = skip->head;
     }
 
