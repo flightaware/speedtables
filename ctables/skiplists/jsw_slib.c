@@ -1,3 +1,5 @@
+// $Id$
+
 /*
   Classic skip list library
 
@@ -11,7 +13,6 @@
 #include <climits>
 #include <cstdlib>
 
-using std::malloc;
 using std::free;
 using std::size_t;
 #else
@@ -75,18 +76,10 @@ static size_t rlevel ( size_t max )
 /* This function does not make a copy of the item */
 static jsw_node_t *new_node ( void *item, size_t height )
 {
-  jsw_node_t *node = (jsw_node_t *)malloc ( sizeof *node );
+  jsw_node_t *node = (jsw_node_t *)ckalloc ( sizeof *node );
   size_t i;
 
-  if ( node == NULL )
-    return NULL;
-
-  node->next = (jsw_node_t **)malloc ( height * sizeof *node->next );
-
-  if ( node->next == NULL ) {
-    free ( node );
-    return NULL;
-  }
+  node->next = (jsw_node_t **)ckalloc ( height * sizeof *node->next );
 
   node->item = item;
   node->height = height;
@@ -127,10 +120,7 @@ static jsw_node_t *locate ( jsw_skip_t *skip, void *item )
 /* Allocate and initialize a new skip list */
 jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, dup_f dup, rel_f rel )
 {
-  jsw_skip_t *skip = (jsw_skip_t *)malloc ( sizeof *skip );
-
-  if ( skip == NULL )
-    return NULL;
+  jsw_skip_t *skip = (jsw_skip_t *)ckalloc ( sizeof *skip );
 
   skip->head = new_node ( NULL, ++max );
 
@@ -139,13 +129,7 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, dup_f dup, rel_f rel )
     return NULL;
   }
 
-  skip->fix = (jsw_node_t **)malloc ( max * sizeof *skip->fix );
-
-  if ( skip->fix == NULL ) {
-    delete_node ( skip->head );
-    free ( skip );
-    return NULL;
-  }
+  skip->fix = (jsw_node_t **)ckalloc ( max * sizeof *skip->fix );
 
   skip->curl = NULL;
   skip->maxh = max;

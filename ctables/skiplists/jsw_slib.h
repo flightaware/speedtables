@@ -1,3 +1,5 @@
+// $Id$
+
 #ifndef JSW_SLIB_H
 #define JSW_SLIB_H
 

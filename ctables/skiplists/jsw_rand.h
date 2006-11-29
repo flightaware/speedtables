@@ -1,3 +1,5 @@
+// $Id$
+
 #ifndef JSW_RAND_H
 #define JSW_RAND_H
 
