@@ -16,13 +16,13 @@ namespace eval ::ctable_server {
 #
 # register - register a table for remote access
 #
-proc register {ctableUrl exportedTableName {type ""}} {
+proc register {ctableUrl localTableName {type ""}} {
     variable registeredCtables
 
-    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
+    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir exportedTableName options
 
 #puts stderr "register $ctableUrl $exportedTableName $type"
-    set registeredCtables($exportedTableName) $table
+    set registeredCtables($exportedTableName) $localTableName
 
     start_server $port
 }
