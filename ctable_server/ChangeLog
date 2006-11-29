@@ -2,6 +2,12 @@
 
 $Id$
 
+11/28/06 karl
+    * Parse all the variants of the ctable://-style URL including host,
+      optional port, directory, table name, and optional stuff.
+
+    * Begin a common code package between the ctable client and server.
+
 11/27/06 karl
     * Use a ctable://-style URL to identify the host, optional port, and
       remote table when specifying a table.
