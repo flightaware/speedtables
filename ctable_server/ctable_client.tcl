@@ -27,7 +27,10 @@ proc remote_ctable {cttpUrl localTableName} {
     set ctableUrls($localTableName) $cttpUrl
     set ctableLocalTableUrls($cttpUrl) $localTableName
 
-    proc $localTableName {args} "remote_ctable_invoke $localTableName [expr {[info level] - 1}] \$args"
+    proc $localTableName {args} "
+	set level \[info level]; incr level -1
+	remote_ctable_invoke $localTableName \$level \$args
+    "
 }
 
 #
@@ -138,7 +141,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""}} {
 			    if {$var == "_key"} {
 				if {[info exists actions(keyVar)]} {
 #puts "set $actions(keyVar) $value"
-				    uplevel $callerLevel set $actions(keyVar) $value
+				    uplevel #$callerLevel set $actions(keyVar) $value
 				}
 				continue
 			    }
@@ -150,7 +153,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""}} {
 			    }
 			}
 
-			uplevel $callerLevel "
+			uplevel #$callerLevel "
 			    [list set $actions(bodyVar) $result]
 			    $actions(-code)
 			"
