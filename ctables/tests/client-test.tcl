@@ -7,7 +7,8 @@
 
 package require ctable_client
 
-remote_ctable 127.0.0.1 t
+#remote_ctable ctable://127.0.0.1/testTable t
+remote_ctable ctable://127.0.0.1:11112/testTable t
 
 puts "search of t in descending coolness limit 5"
 t search -sort -coolness -limit 5 -write_tabsep stdout

@@ -49,9 +49,6 @@ puts "search with write_tabsep / null karma and coolness >= 25 / sort desc on co
 t search -write_tabsep stdout -compare {{null karma} {>= coolness 25}} -sort -coolness
 puts ""
 
-exit 0
-
-
 puts "search with write_tabsep / sort on coolness / descending / limit 1"
 t search -write_tabsep stdout -sort -coolness -limit 1
 puts ""
@@ -112,4 +109,8 @@ puts ""
 
 puts "search with write_tabsep / explicit fields / sort on name / coolness >= 50"
 t search -write_tabsep stdout -fields {name address hipness coolness karma} -sort name -compare {{>= coolness 50}}
+puts ""
+
+puts "search with write_tabsep / explicit fields / sort on name / coolness >= 50 / limit 2"
+t search -write_tabsep stdout -fields {name address hipness coolness karma} -sort name -compare {{>= coolness 50}} -limit 2
 puts ""
