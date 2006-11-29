@@ -1,0 +1,6 @@
+
+
+need some real testing, like where we know the what we expect to see
+
+need a test that demonstrates that -key and -get, or whatever, are getting
+set in the right tcl context.
