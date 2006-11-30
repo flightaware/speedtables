@@ -6,47 +6,16 @@
 
 package require ctable
 
-#CTableBuildPath /tmp
+source dumb-data.tcl
 
-CExtension searchtest 1.0 {
+#name home show dad alive gender age coolness
 
-CTable testTable {
-    varstring name
-    varstring address
-    int hipness
-    int coolness
-    double karma
-    boolean realness
-    boolean aliveness
-}
-
-}
-
-package require Searchtest
-
-testTable create t
-
-
-t set a name Hendrix address "Heaven" coolness 100 realness 1 aliveness 0 karma 5
-t set b name Joplin address "Heaven" coolness 60 realness 1 aliveness 0 karma 5
-t set c name Brock address "Venture Compound" coolness 50 realness 0 aliveness 1
-t set d name Hank address "Venture Compound" coolness 0 realness 0 aliveness 1
-t set d name "Doctor Jonas Venture" address "Venture Compound" coolness 10 realness 0 aliveness 0
-t set e name "Doctor Orpheus" address "Venture Compound" coolness 0 realness 0 aliveness 1
-t set f name "Triana" address "Venture Compound" coolness 50 realness 0 aliveness 1
-t set g name "Doctor Girlfriend" address "The Cocoon" coolness 70 realness 0 aliveness 1
-t set h name "The Monarch" address "The Cocoon" coolness 20 realness 0 aliveness 1
-t set i name "Number 21" address "The Cocoon" coolness 10 realness 0 aliveness 1
-t set j name "Meatwad" address "Next-door to Carl" coolness 10 realness 0 aliveness 1
-t set k name "Master Shake" address "Next-door to Carl" coolness 15 realness 0 aliveness 1
-t set l name "Frylock" address "Next-door to Carl" coolness 5 realness 0 aliveness 1
-
-puts "search with write_tabsep / notnull karma"
-t search -write_tabsep stdout -compare {{notnull karma}}
+puts "search with write_tabsep / notnull dad"
+t search -write_tabsep stdout -compare {{notnull dad}}
 puts ""
 
-puts "search with write_tabsep / null karma and coolness >= 25 / sort desc on coolness"
-t search -write_tabsep stdout -compare {{null karma} {>= coolness 25}} -sort -coolness
+puts "search with write_tabsep / null dad and age >= 25 / sort desc on age"
+t search -write_tabsep stdout -compare {{null dad} {>= age 25}} -sort -age
 puts ""
 
 puts "search with write_tabsep / sort on coolness / descending / limit 1"
@@ -54,8 +23,8 @@ t search -write_tabsep stdout -sort -coolness -limit 1
 puts ""
 
 
-puts "search with implicit fields, tabsep, not realness and not aliveness"
-t search -write_tabsep stdout -compare {{false realness} {false aliveness}}
+puts "search with implicit fields, tabsep, not alive"
+t search -write_tabsep stdout -compare {{false alive}}
 puts ""
 
 puts "search with write_tabsep / sort on name / limit 5"
@@ -84,7 +53,7 @@ t search -key key -get list -code {puts "$key -> $list"}
 puts ""
 
 puts "search with code body / explicit fields"
-t search -key key -get list -fields {name address karma} -code {puts "$key -> $list"}
+t search -key key -get list -fields {name show home} -code {puts "$key -> $list"}
 puts ""
 
 puts "search with code body / array get"
@@ -100,17 +69,22 @@ t search -write_tabsep stdout
 puts ""
 
 puts "search with write_tabsep / explicit fields"
-t search -write_tabsep stdout -fields {name address hipness coolness karma}
+t search -write_tabsep stdout -fields {name home gender coolness dad}
 puts ""
 
 puts "search with write_tabsep / explicit fields / sort on name"
-t search -write_tabsep stdout -fields {name address hipness coolness karma} -sort name
+t search -write_tabsep stdout -fields {name home coolness alive} -sort name
 puts ""
 
 puts "search with write_tabsep / explicit fields / sort on name / coolness >= 50"
-t search -write_tabsep stdout -fields {name address hipness coolness karma} -sort name -compare {{>= coolness 50}}
+t search -write_tabsep stdout -fields {name home show coolness gender} -sort name -compare {{>= coolness 50}}
 puts ""
 
 puts "search with write_tabsep / explicit fields / sort on name / coolness >= 50 / limit 2"
-t search -write_tabsep stdout -fields {name address hipness coolness karma} -sort name -compare {{>= coolness 50}} -limit 2
+t search -write_tabsep stdout -fields {name age} -sort name -compare {{>= coolness 50}} -limit 2
 puts ""
+
+puts "search with write_tabsep / no fields / sort on name / coolness >= 50 / limit 2"
+t search -write_tabsep stdout -fields {} -sort name -compare {{>= coolness 50}} -limit 2
+puts ""
+

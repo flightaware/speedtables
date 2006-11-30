@@ -3,15 +3,15 @@
 source dumb-data.tcl
 
 
-puts "matching *venture*"
-t search -compare {{match name *venture*}} -write_tabsep stdout
+puts "matching *VENTURE*"
+t search -fields name -compare {{match name *VENTURE*}} -write_tabsep stdout
 puts ""
 
-puts "case-matching *venture*"
-t search -compare {{match_case name *venture*}} -write_tabsep stdout
+puts "case-matching *VENTURE*"
+t search -fields name -compare {{match_case name *VENTURE*}} -write_tabsep stdout
 puts ""
 
 puts "case-matching *Tri*"
-t search -compare {{match_case name *Tri*}} -write_tabsep stdout
+t search -fields name -compare {{match_case name *Tri*}} -write_tabsep stdout
 puts ""
 
