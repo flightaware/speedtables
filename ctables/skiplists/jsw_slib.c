@@ -122,12 +122,10 @@ static jsw_node_t *locate ( jsw_skip_t *skip, void *item )
 }
 
 //
-// jsw_snew - allocate and initialize a new skip list
+// jsw_sinit - initialize a skip list
 //
-jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, rel_f rel )
+void jsw_sinit ( jsw_skip_t *skip, size_t max, cmp_f cmp, rel_f rel )
 {
-  jsw_skip_t *skip = (jsw_skip_t *)ckalloc ( sizeof *skip );
-
   skip->head = new_node ( NULL, ++max );
 
   skip->fix = (jsw_node_t **)ckalloc ( max * sizeof *skip->fix );
@@ -140,9 +138,20 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, rel_f rel )
   skip->rel = rel;
 
   jsw_seed ( jsw_time_seed() );
+}
+
+//
+// jsw_snew - allocate and initialize a new skip list
+//
+jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, rel_f rel )
+{
+  jsw_skip_t *skip = (jsw_skip_t *)ckalloc ( sizeof *skip );
+
+  jsw_init (skip, max, cmp, rel);
 
   return skip;
 }
+
 
 //
 // jsw_sdelete - delete the entire skip list
