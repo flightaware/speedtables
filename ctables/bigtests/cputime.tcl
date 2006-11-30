@@ -22,8 +22,8 @@ proc cputime {code {iterations 1}} {
     foreach var "userTimeUsed systemTimeUsed" {
 	set val [expr {($end($var) - $start($var)) / $iterations}]
 
-	append text "$val $var per iteration\n"
+	append text " / $val $var"
     }
-    return [string range $text 0 end-1]
+    return [string range $text 3 end]
 }
 
