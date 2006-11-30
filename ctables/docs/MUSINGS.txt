@@ -239,3 +239,25 @@ C, gives you a select / skip.
 Make varstringSetSource cache an allocated length and not free and malloc
 new memory whenever a value is set.  Possibly even do a strncmp to see
 if they're the same and do nothing.
+
+
+TURBO MODE IN COMPARISONS
+-------------------------
+
+If they're only comparing one thing, we can potentially speed up certain
+operations by shortcutting calling the search compare routine for the
+field, depending on the operation.
+
+For example, if it's just a null check or it's some check we do often
+that we want to be extra fast, we handle it without calling the compare
+routine.
+
+INLINE
+-----
+
+Inline the search compare routines?  can't be done, they're called through
+a pointer.
+
+
+
+
