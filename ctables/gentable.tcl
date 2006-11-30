@@ -617,7 +617,7 @@ set varstringCompSource {
 		  char *field;
 		  char *match;
 
-		  for (field = pointer->$field, match = value; *match != '\0'; match++) {
+		  for (field = pointer->$field, match = value; *match != '*' && *match != '\0'; match++, field++) {
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
 			      exclude = 1;
