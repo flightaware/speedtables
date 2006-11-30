@@ -2,6 +2,8 @@
 $Id$
 
 11/29/2006 karl
+    * Tagged 2_0 for release.
+
     * Doubled performance for searches with "match" components
       where we use ultra-fast Boyer-Moore when the search is unanchored
       (*pattern*) and not too fancy (no embedded []?*\ characters).
