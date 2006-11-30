@@ -115,13 +115,19 @@ ctable_searchMatchPatternCheck (char *s) {
 	return CTABLE_STRING_MATCH_ANCHORED;
     }
 
-    if (*s == '*') {
+    if (*s++ == '*') {
 	firstCharIsStar = 1;
     }
 
     while ((c = *s++) != '\0') {
 	switch (c) {
 	  case '*':
+	    if (*s == '\0') {
+		lastCharIsStar = 1;
+	    } else {
+		// some other * in the middle, too fancy
+		return CTABLE_STRING_MATCH_PATTERN;
+	    }
 	    break;
 
 	  case '?':
@@ -130,15 +136,6 @@ ctable_searchMatchPatternCheck (char *s) {
 	  case '\\':
 	    return CTABLE_STRING_MATCH_PATTERN;
 
-	}
-	if (c == '*') {
-	    if (*s == '\0') {
-		lastCharIsStar = 1;
-		break;
-	    } else {
-		// some other char is star, too fancy
-		return CTABLE_STRING_MATCH_PATTERN;
-	    }
 	}
     }
 
