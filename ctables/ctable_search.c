@@ -7,6 +7,8 @@
 
 #include "ctable.h"
 
+#include "boyer_moore.c"
+
 /*
  * ctable_ParseFieldList - given a Tcl list object and a pointer to an array
  * of integer field numbers and a pointer to an integer for field counts,
@@ -102,6 +104,66 @@ ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char
     return TCL_OK;
 }
 
+int
+ctable_searchMatchPatternCheck (char *s) {
+    char c;
+
+    int firstCharIsStar = 0;
+    int lastCharIsStar = 0;
+
+    if (*s == '\0') {
+	return CTABLE_STRING_MATCH_ANCHORED;
+    }
+
+    if (*s == '*') {
+	firstCharIsStar = 1;
+    }
+
+    while ((c = *s++) != '\0') {
+	switch (c) {
+	  case '*':
+	    break;
+
+	  case '?':
+	  case '[':
+	  case ']':
+	  case '\\':
+	    return CTABLE_STRING_MATCH_PATTERN;
+
+	}
+	if (c == '*') {
+	    if (*s == '\0') {
+		lastCharIsStar = 1;
+		break;
+	    } else {
+		// some other char is star, too fancy
+		return CTABLE_STRING_MATCH_PATTERN;
+	    }
+	}
+    }
+
+    if (firstCharIsStar) {
+	if (lastCharIsStar) {
+	    return CTABLE_STRING_MATCH_UNANCHORED;
+	}
+	// we could do a reverse anchored search here but i don't
+	// think this comes up often enough (*pattern) to warrant it
+	return CTABLE_STRING_MATCH_PATTERN;
+    }
+
+    if (lastCharIsStar) {
+	// first char is not star, last char is
+	return CTABLE_STRING_MATCH_ANCHORED;
+    }
+
+    // first char is not star, last char is not star, this is
+    // bad because they should be using "=" not "match" but we'll
+    // use pattern because that will actually do the right thing.
+    // alternatively we could add another string match pattern type
+    return CTABLE_STRING_MATCH_PATTERN;
+}
+
+
 static int
 ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **fieldNames, struct ctableSearchStruct *search) {
     Tcl_Obj    **componentList;
@@ -161,6 +223,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 
 	component->comparisonType = term;
 	component->fieldID = field;
+	component->clientData = NULL;
 
 	if (term == CTABLE_COMP_FALSE || term == CTABLE_COMP_TRUE || term == CTABLE_COMP_NULL || term == CTABLE_COMP_NOTNULL) {
 	    component->comparedToObject = NULL;
@@ -174,6 +237,23 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 		return TCL_ERROR;
 	    }
 	    component->comparedToObject = termList[2];
+
+	    if ((term == CTABLE_COMP_MATCH) || (term == CTABLE_COMP_MATCH_CASE)) {
+		struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct *)ckalloc (sizeof (struct ctableSearchMatchStruct));
+
+		sm->type = ctable_searchMatchPatternCheck (Tcl_GetString (component->comparedToObject));
+		sm->nocase = (term == CTABLE_COMP_MATCH);
+
+		if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
+		    char *needle;
+		    int len;
+
+		    needle = Tcl_GetStringFromObj (component->comparedToObject, &len);
+		    boyer_moore_setup (sm, needle, len, sm->nocase);
+		}
+
+		component->clientData = sm;
+	    }
 	}
     }
 
@@ -692,6 +772,22 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
     }
 
     if (search.components != NULL) {
+	int i;
+
+	// teardown components
+	for (i = 0; i < search.nComponents; i++) {
+	    struct ctableSearchComponentStruct  *component = &search.components[i];
+	    if (component->clientData != NULL) {
+		// this needs to be pluggable
+		if ((component->comparisonType == CTABLE_COMP_MATCH) || (component->comparisonType == CTABLE_COMP_MATCH_CASE)) {
+		    struct ctableSearchMatchStruct *sm = component->clientData;
+		    if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
+			boyer_moore_teardown (sm);
+		    }
+		}
+		ckfree (component->clientData);
+	    }
+	}
 	ckfree ((void *)search.components);
     }
 
@@ -702,3 +798,4 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 
     return TCL_OK;
 }
+

@@ -16,6 +16,8 @@
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 
+#include <sys/limits.h>
+
 #ifdef WITH_PGTCL
 #include <libpq-fe.h>
 #endif
@@ -41,12 +43,28 @@ struct ctableSortStruct {
     int *directions;
 };
 
+#define CTABLE_STRING_MATCH_ANCHORED 0
+#define CTABLE_STRING_MATCH_UNANCHORED 1
+#define CTABLE_STRING_MATCH_PATTERN 2
+
+struct ctableSearchMatchStruct {
+    int             type;
+    int             nocase;
+
+    // boyer-moore stuff
+    int            *skip;
+    int             occ[UCHAR_MAX+1];
+    int             nlen;
+    unsigned char  *needle;
+};
+
 // ctable search component struct - one for each search expression in a
 // ctable search
 struct ctableSearchComponentStruct {
     int             fieldID;
     int             comparisonType;
     Tcl_Obj        *comparedToObject;
+    void           *clientData;
 };
 
 // ctable search struct - this controls everything about a search

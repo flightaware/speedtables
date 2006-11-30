@@ -1,6 +1,14 @@
+//
+//
+//
+// $Id$
+//
 
 #include <string.h>
 #include <limits.h>
+#include <ctype.h>
+
+// #include <ctable.h>
 
 /* This helper function checks, whether the last "portion" bytes
  * of "needle" (which is "nlen" bytes long) exist within the "needle"
@@ -25,18 +33,10 @@ static int boyermoore_needlematch
                portion - ignore) == 0;
 }   
 
-static int max(int a, int b) { return a > b ? a : b; }
+static int bm_max(int a, int b) { return a > b ? a : b; }
 
-struct boyerMooreSearchStruct {
-    int *skip;
-    int occ[UCHAR_MAX+1];
-    int a, hpos;
-    int nlen;
-    unsigned char *needle;
-};
-
-void
-boyer_moore_setup (struct boyerMooreSearchStruct *bm, const unsigned char *needle, int nlen, int nocase) {
+static void
+boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *needle, int nlen, int nocase) {
     int a;
 
     bm->skip = (int *)ckalloc ((nlen + 1) * sizeof (int));
@@ -78,13 +78,13 @@ boyer_moore_setup (struct boyerMooreSearchStruct *bm, const unsigned char *needl
 }
 
 void
-boyer_moore_teardown (struct boyerMooreSearchStruct *bm) {
-    ckfree (bm->skip);
-    ckfree (bm->needle);
+boyer_moore_teardown (struct ctableSearchMatchStruct *bm) {
+    ckfree ((void *)bm->skip);
+    ckfree ((void *)bm->needle);
 }
 
 const unsigned char *
-boyer_moore_search (struct boyerMooreSearchStruct *bm, const unsigned char *haystack, int hlen) {
+boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, int hlen) {
     int hpos;
 
     for (hpos = 0; hpos <= hlen - bm->nlen; )
@@ -99,7 +99,7 @@ boyer_moore_search (struct boyerMooreSearchStruct *bm, const unsigned char *hays
             --npos;
         }
 
-        hpos += max(bm->skip[npos], npos - bm->occ[haystack[npos + hpos]]);
+        hpos += bm_max(bm->skip[npos], npos - bm->occ[haystack[npos + hpos]]);
     }
     return NULL;
 }

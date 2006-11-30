@@ -611,8 +611,35 @@ set varstringCompSource {
 		  break;
 	      }
 
-	      exclude = !(Tcl_StringCaseMatch (pointer->$field, value, (compType == CTABLE_COMP_MATCH)));
-	      break;
+	      struct ctableSearchMatchStruct *sm = component->clientData;
+
+	      if (sm->type == CTABLE_STRING_MATCH_ANCHORED) {
+		  char *field;
+		  char *match;
+
+		  for (field = pointer->$field, match = value; *match != '\0'; match++) {
+		      if (sm->nocase) {
+			  if (tolower (*field) != tolower (*match)) {
+			      exclude = 1;
+			      break;
+			  }
+		      } else {
+			  if (*field != *match) {
+			      exclude = 1;
+			      break;
+			  }
+		      }
+		  }
+		  break;
+	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
+	          exclude = (boyer_moore_search (sm, pointer->$field, pointer->_${field}Length) == NULL);
+		  break;
+	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
+	          exclude = !(Tcl_StringCaseMatch (pointer->$field, value, (compType == CTABLE_COMP_MATCH)));
+		  break;
+              } else {
+		  panic ("software bug, sm->type unknown match type");
+	      }
 	  }
 
           strcmpResult = strcmp (pointer->$field, value);
@@ -3085,6 +3112,7 @@ proc install_ch_files {targetDir} {
 
     file copy -force $srcDir/ctable.h $targetDir
     file copy -force $srcDir/ctable_search.c $targetDir
+    file copy -force $srcDir/boyer_moore.c $targetDir
 }
 
 #
