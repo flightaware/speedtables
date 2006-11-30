@@ -246,7 +246,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 		    int len;
 
 		    needle = Tcl_GetStringFromObj (component->comparedToObject, &len);
-		    boyer_moore_setup (sm, needle, len, sm->nocase);
+		    boyer_moore_setup (sm, needle + 1, len - 2, sm->nocase);
 		}
 
 		component->clientData = sm;
@@ -356,8 +356,17 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 }
 
 //
-// ctable_PerformSearch - 
+// ctable_PerformSearch - perform the search
 //
+// write field names if we need to
+//
+// for each row in the table, apply search compare test in turn
+//    the first one that comes up that the row should be excluded ends
+//    looking at that one
+//
+//    if nothing excluded it, we pick it -- this can mean taking the action
+//    immediately or, if sorting, picking the object for sorting and then
+//    taking the action
 //
 //
 static int
@@ -415,20 +424,30 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	Tcl_DStringFree (&dString);
     }
 
+    // if we're sorting, allocate a space for the search results that
+    // we'll then sort from -- unfortunately we don't know how many
+    // search results we may get, so we are prepared to receive all
+    // of them.  if you want to optimize this for space, you'll have to grow 
+    // the search result dynamically -- just buy more memory
+
     if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
 	hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * count);
     }
 
-    /* Build up a table of ptrs to hash entries of rows of the table.
-     * Optional match pattern on the primary key means we may end up
-     * with fewer than the total number.
-    */
+    // walk the table -- soon we hope to replace this with a skiplist walk
+    // or equivalent
     for (hashEntry = Tcl_FirstHashEntry (keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 
 	key = Tcl_GetHashKey (keyTablePtr, hashEntry);
 
+        // if we have a match pattern (for the key) and it doesn't match,
+	// skip this row
+
 	if ((search->pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, search->pattern, 1))) continue;
 
+	//
+	// run the supplied compare routine
+	//
 	compareResult = (*ctable->creatorTable->search_compare) (interp, search, hashEntry);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
@@ -439,20 +458,22 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    goto clean_and_return;
 	}
 
-	/* It's a Match */
-        /* Are we not sorting? */
+	// It's a Match 
+        // Are we not sorting? 
+
 	if (hashSortTable == NULL) {
-	    /* if we haven't met the start point, blow it off */
+	    // if we haven't met the start point, blow it off
 	    if (++matchCount < search->offset) continue;
 
 	    if (search->countOnly) {
-		// if there is a limit and it's been exceeded, we're done
+		// we're only counting -- if there is a limit and it's been 
+		// met, we're done
 		if ((search->limit != 0) && (matchCount >= search->limit)) {
 		    actionResult = TCL_OK;
 		    goto clean_and_return;
 		}
 
-		// the limit hasn't been exceeded or there wasn't one,
+		// the limit hasn't been exceeded or there isn't one,
 		// so we keep counting -- but we continue here because
 		// we don't need to do any processing on the line
 		continue;
