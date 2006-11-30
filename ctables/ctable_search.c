@@ -224,6 +224,8 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 
 	if (term == CTABLE_COMP_FALSE || term == CTABLE_COMP_TRUE || term == CTABLE_COMP_NULL || term == CTABLE_COMP_NOTNULL) {
 	    component->comparedToObject = NULL;
+	    component->comparedToString = NULL;
+	    component->comparedToStringLength = 0;
 	    if (termListCount != 2) {
 		Tcl_AppendResult (interp, "false, true, null and notnull search expressions must have only two fields", (char *) NULL);
 		return TCL_ERROR;
@@ -233,7 +235,13 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 		Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 3 arguments (term, field, value)", (char *) NULL);
 		return TCL_ERROR;
 	    }
+
+	    /* stash this as a string, we could be smarter - we sould
+	     * be smarter with a union and figure it out for the
+	     * data types that'll be lookin' for it
+	     */
 	    component->comparedToObject = termList[2];
+	    component->comparedToString = Tcl_GetStringFromObj (component->comparedToObject, &component->comparedToStringLength);
 
 	    if ((term == CTABLE_COMP_MATCH) || (term == CTABLE_COMP_MATCH_CASE)) {
 		struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct *)ckalloc (sizeof (struct ctableSearchMatchStruct));

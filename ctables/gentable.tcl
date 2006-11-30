@@ -602,11 +602,9 @@ set standardCompSwitchSource {
 #
 set varstringCompSource {
         case $fieldEnum: {
-	  char   *value;
           int     strcmpResult;
 
 	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
-	  value = Tcl_GetString (compareObj);
 
 	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE)) {
 	      if (pointer->_${field}IsNull) {
@@ -620,7 +618,7 @@ set varstringCompSource {
 		  char *field;
 		  char *match;
 
-		  for (field = pointer->$field, match = value; *match != '*' && *match != '\0'; match++, field++) {
+		  for (field = pointer->$field, match = component->comparedToString; *match != '*' && *match != '\0'; match++, field++) {
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
 			      exclude = 1;
@@ -638,14 +636,14 @@ set varstringCompSource {
 	          exclude = (boyer_moore_search (sm, (unsigned char *)pointer->$field, pointer->_${field}Length, sm->nocase) == NULL);
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
-	          exclude = !(Tcl_StringCaseMatch (pointer->$field, value, (compType == CTABLE_COMP_MATCH)));
+	          exclude = !(Tcl_StringCaseMatch (pointer->$field, component->comparedToString, (compType == CTABLE_COMP_MATCH)));
 		  break;
               } else {
 		  panic ("software bug, sm->type unknown match type");
 	      }
 	  }
 
-          strcmpResult = strcmp (pointer->$field, value);
+          strcmpResult = strcmp (pointer->$field, component->comparedToString);
 	  $standardCompSwitchSource
         }
 }
@@ -656,12 +654,10 @@ set varstringCompSource {
 #
 set fixedstringCompSource {
         case $fieldEnum: {
-	  char   *value;
           int     strcmpResult;
 
 	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
-	  value = Tcl_GetString (compareObj);
-          strcmpResult = strncmp (pointer->$field, value, $length);
+          strcmpResult = strncmp (pointer->$field, component->comparedToString, $length);
 	  $standardCompSwitchSource
         }
 }
@@ -687,14 +683,17 @@ set binaryDataCompSource {
 # tclobjCompSource - code we run subst over to generate a compare of 
 # a tclobj for use in a search.
 #
+# this could be so wrong - there may be a way to keep it from generating
+# the text -- right now we are doing a Tcl_GetStringFromObj in the
+# routine that sets this up, maybe don't do that and figure out some
+# way to compare objects (?)
+#
 set tclobjCompSource {
         case $fieldEnum: {
-	  char    *value;
           int      strcmpResult;
 
 	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
-	  value = Tcl_GetString (compareObj);
-          strcmpResult = strcmp (Tcl_GetString (pointer->$field), value);
+          strcmpResult = strcmp (Tcl_GetString (pointer->$field), component->comparedToString);
 	  $standardCompSwitchSource
         }
 }
@@ -2981,6 +2980,8 @@ proc compile {fileFragName version} {
     set sourceFile $buildFragName.c
     set objFile $buildFragName.o
 
+    # add -pg for profiling with gprof
+
     switch $tcl_platform(os) {
 	"FreeBSD" {
 	    if {$genCompilerDebug} {
@@ -2988,7 +2989,7 @@ proc compile {fileFragName version} {
 		set stub "-ltclstub84g"
 		set lib "-ltcl84g"
 	    } else {
-		set optflag "-O3"
+		set optflag "-O2"
 		set stub "-ltclstub84"
 		set lib "-ltcl84"
 	    }
