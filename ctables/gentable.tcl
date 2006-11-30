@@ -3123,9 +3123,11 @@ proc save_extension_code {name version code} {
 proc install_ch_files {targetDir} {
     variable srcDir
 
-    file copy -force $srcDir/ctable.h $targetDir
-    file copy -force $srcDir/ctable_search.c $targetDir
-    file copy -force $srcDir/boyer_moore.c $targetDir
+    set copyFiles [list $srcDir/ctable.h $srcDir/ctable_search.c $srcDir/boyer_moore.c $srcDir/jsw_rand.c $srcDir/jsw_rand.h $srcDir/jsw_slib.c $srcDir/jsw_slib.h]
+
+    foreach file $copyFiles {
+        file copy -force $file $targetDir
+    }
 }
 
 #

@@ -35,9 +35,6 @@ typedef struct jsw_skip jsw_skip_t;
 /* Application specific key comparison function */
 typedef int   (*cmp_f) ( const void *a, const void *b );
 
-/* Application specific item copying function */
-typedef void *(*dup_f) ( const void *item );
-
 /* Application specific item deletion function */
 typedef void  (*rel_f) ( void *item );
 
@@ -46,7 +43,7 @@ typedef void  (*rel_f) ( void *item );
 
   Returns: An empty skip list, or NULL on failure
 */
-jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, dup_f dup, rel_f rel );
+jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, rel_f rel );
 
 /* Release all memory used by the skip list */
 void        jsw_sdelete ( jsw_skip_t *skip );

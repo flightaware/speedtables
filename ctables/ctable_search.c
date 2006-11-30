@@ -9,6 +9,10 @@
 
 #include "boyer_moore.c"
 
+#include "jsw_rand.c"
+
+#include "jsw_slib.c"
+
 /*
  * ctable_ParseFieldList - given a Tcl list object and a pointer to an array
  * of integer field numbers and a pointer to an integer for field counts,

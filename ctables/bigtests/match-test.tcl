@@ -2,7 +2,10 @@
 
 source name-data.tcl
 
-source cputime.tcl
+#source cputime.tcl
+proc cputime {cmd} {
+    time $cmd 10
+}
 
 
 proc test1 {} {
@@ -77,3 +80,6 @@ proc test9 {} {
 }
 
 puts [cputime test9]
+
+# we don't normally need to destroy but it helps for memory debugging
+n destroy

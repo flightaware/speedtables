@@ -95,8 +95,8 @@ static jsw_node_t *new_node ( void *item, size_t height )
 //
 static void free_node ( jsw_node_t *node )
 {
-  ckfree ( node->next );
-  ckfree ( node );
+  ckfree ( (void *)node->next );
+  ckfree ( (void *)node );
 }
 
 //
@@ -147,7 +147,7 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, rel_f rel )
 {
   jsw_skip_t *skip = (jsw_skip_t *)ckalloc ( sizeof *skip );
 
-  jsw_init (skip, max, cmp, rel);
+  jsw_sinit (skip, max, cmp, rel);
 
   return skip;
 }
@@ -169,8 +169,8 @@ void jsw_sdelete ( jsw_skip_t *skip )
   }
 
   free_node ( skip->head );
-  ckfree ( skip->fix );
-  ckfree ( skip );
+  ckfree ( (void *)skip->fix );
+  ckfree ( (void *)skip );
 }
 
 //
@@ -224,7 +224,7 @@ int jsw_sinsert ( jsw_skip_t *skip, void *item )
 
 //
 // jsw_sinsert_allow_dups - insert item into the skip list whether there's
-                            already a matching item or not.
+//                          already a matching item or not.
 //
 //
 int jsw_sinsert_allow_dups ( jsw_skip_t *skip, void *item )
@@ -249,9 +249,8 @@ int jsw_sinsert_allow_dups ( jsw_skip_t *skip, void *item )
       it->next[h] = skip->fix[h]->next[h];
       skip->fix[h]->next[h] = it;
     }
-  }
 
-  return 1;
+    return 1;
 }
 
 //

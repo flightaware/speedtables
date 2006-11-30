@@ -8,9 +8,10 @@
 # $Id$
 #
 
-INSTDIR=/usr/local/lib/ctable
+#INSTDIR=/usr/local/lib/ctable
+INSTDIR=/sc/lib/ctable
 
 install:
 	-mkdir $(INSTDIR)
-	-cp -f *.tcl *-subst *.h *.c $(INSTDIR)
+	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c $(INSTDIR)
 
