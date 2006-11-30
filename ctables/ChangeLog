@@ -1,6 +1,11 @@
 
 $Id$
 
+11/30/2006 karl
+    * Created skiplist development branch.  Got skiplist code to
+      install in the ctable package and compile cleanly within 
+      ctables.  Merged development branch back into mainline.
+
 11/29/2006 karl
     * Tagged 2_0 for release.
 
