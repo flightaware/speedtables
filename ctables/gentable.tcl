@@ -632,7 +632,7 @@ set varstringCompSource {
 		  }
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
-	          exclude = (boyer_moore_search (sm, pointer->$field, pointer->_${field}Length) == NULL);
+	          exclude = (boyer_moore_search (sm, pointer->$field, pointer->_${field}Length, sm->nocase) == NULL);
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
 	          exclude = !(Tcl_StringCaseMatch (pointer->$field, value, (compType == CTABLE_COMP_MATCH)));
