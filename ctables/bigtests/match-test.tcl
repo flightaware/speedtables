@@ -2,6 +2,8 @@
 
 source name-data.tcl
 
+source cputime.tcl
+
 
 proc test1 {} {
     puts "matching *bernadine piersol*"
@@ -10,8 +12,8 @@ proc test1 {} {
     puts ""
 }
 
-puts [time test1]
-puts [time test1]
+puts [cputime test1]
+puts [cputime test1]
 
 proc test2 {} {
     puts "matching *bernadine*piersol*"
@@ -20,5 +22,5 @@ proc test2 {} {
     puts ""
 }
 
-puts [time test2]
-puts [time test2]
+puts [cputime test2]
+puts [cputime test2]
