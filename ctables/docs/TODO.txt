@@ -52,4 +52,8 @@ it can get off from whatever files are in the vicinity.
 implement btree-style index option for fields with both unique and not-unique
 styles.
 
-
+For big searches Tcl_NextHashEntry is responsible for almost 50% of the
+overhead.  Unacceptable.  At the very least do a bidirectionally linked
+list between rows in a table and traverse them that way.  (Hey, not bad.)
+Or go to fancy skip lists or whatever and traverse them that way.  Skip
+lists have easy and fast straight traversal.
