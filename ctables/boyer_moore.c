@@ -84,22 +84,24 @@ boyer_moore_teardown (struct ctableSearchMatchStruct *bm) {
 }
 
 const unsigned char *
-boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, int hlen) {
+boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, int hlen, int nocase) {
     int hpos;
 
+    // printf("bm needle '%s' %d haystack '%s' %d\n", bm->needle, bm->nlen, haystack, hlen);
     for (hpos = 0; hpos <= hlen - bm->nlen; )
     {
         int npos = bm->nlen - 1;
+	unsigned char c;
 
-        while (bm->needle[npos] == haystack[npos + hpos])
-        {
+        while ((!nocase && (bm->needle[npos] == haystack[npos + hpos])) || (nocase && (bm->needle[npos] == tolower(haystack[npos + hpos])))) {
             if (npos == 0) {
 		return haystack + hpos;
 	    }
             --npos;
         }
 
-        hpos += bm_max(bm->skip[npos], npos - bm->occ[haystack[npos + hpos]]);
+        c = !nocase ? haystack[npos + hpos] : tolower(haystack[npos + hpos]);
+        hpos += bm_max(bm->skip[npos], npos - bm->occ[c]);
     }
     return NULL;
 }
