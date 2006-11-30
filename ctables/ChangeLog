@@ -2,9 +2,11 @@
 $Id$
 
 11/29/2006 karl
-    * Major performance improvements for searches with "match" components
+    * Doubled performance for searches with "match" components
       where we use ultra-fast Boyer-Moore when the search is unanchored
       (*pattern*) and not too fancy (no embedded []?*\ characters).
+
+    * Add a switch to gentable.tcl to show compiler command lines.
 
 11/28/2006 karl
     * Fix bug where, when searching with no sorting and a limit, you'd get

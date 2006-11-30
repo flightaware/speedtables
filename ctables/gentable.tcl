@@ -18,9 +18,12 @@ namespace eval ctable {
     variable withPgtcl
 
     variable genCompilerDebug
+    variable showCompilerCommands
 
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
+
+    set showCompilerCommands 0
 
     variable pgtcl_ver 1.5
 
@@ -632,7 +635,7 @@ set varstringCompSource {
 		  }
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
-	          exclude = (boyer_moore_search (sm, pointer->$field, pointer->_${field}Length, sm->nocase) == NULL);
+	          exclude = (boyer_moore_search (sm, (unsigned char *)pointer->$field, pointer->_${field}Length, sm->nocase) == NULL);
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
 	          exclude = !(Tcl_StringCaseMatch (pointer->$field, value, (compType == CTABLE_COMP_MATCH)));
@@ -2956,6 +2959,15 @@ proc gen_search_comp {} {
     }
 }
 
+proc myexec {args} {
+    variable showCompilerCommands
+
+    if {$showCompilerCommands} {
+	puts $args
+    }
+    eval exec $args
+}
+
 #
 # compile - compile and link the shared library
 #
@@ -2981,9 +2993,9 @@ proc compile {fileFragName version} {
 		set lib "-ltcl84"
 	    }
 
-	    exec gcc -pipe $optflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
+	    myexec gcc -pipe $optflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
-	    exec ld -Bshareable $optflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub
+	    myexec ld -Bshareable $optflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub
 	}
 
 	"Darwin" {
@@ -2997,7 +3009,7 @@ proc compile {fileFragName version} {
 		set lib "-ltcl8.4"
 	    }
 
-	    exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/usr/local/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
+	    myexec gcc -pipe -pg $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/usr/local/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
 	    #exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
@@ -3006,7 +3018,7 @@ proc compile {fileFragName version} {
 	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
 	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
 
-	    exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub
+	    myexec gcc -pg -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub
 
 	    # -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver
 	    # took $lib off the end?
