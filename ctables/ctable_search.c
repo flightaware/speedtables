@@ -246,7 +246,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 		    int len;
 
 		    needle = Tcl_GetStringFromObj (component->comparedToObject, &len);
-		    boyer_moore_setup (sm, needle + 1, len - 2, sm->nocase);
+		    boyer_moore_setup (sm, (unsigned char *)needle + 1, len - 2, sm->nocase);
 		}
 
 		component->clientData = sm;
