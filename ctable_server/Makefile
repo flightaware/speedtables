@@ -10,7 +10,7 @@
 
 INSTDIR=/usr/local/lib/ctable_server
 
-pkgIndex.tcl:	ca_cache.tcl ctable_client.tcl ctable_server.tcl
+pkgIndex.tcl:	ctable_client.tcl ctable_server.tcl
 	echo "pkg_mkIndex . *.tcl" | tclsh8.4
 
 all:	pkgIndex.tcl
