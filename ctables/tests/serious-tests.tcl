@@ -40,3 +40,13 @@ search_test "unanchored match" {-sort name -compare {{match name *Doctor*}}} {do
 search_test "anchored match" {-sort name -compare {{match name Doctor*}}} {doctor_girlfriend jonas jonas_jr orpheus}
 
 
+search_test "sorted search with limit" {-sort name -limit 10} {angel baron brak brock carr carl clarence rick dad dean}
+
+search_test "sorted search with offset 0 and limit 10" {-sort name -offset 0 -limit 10} {angel baron brak brock carr carl clarence rick dad dean}
+
+search_test "sorted search with offset 5 and limit 5" {-sort name -offset 5 -limit 5} {carl clarence rick dad dean}
+
+search_test "unsorted search with offset 5 and limit 10" {-offset 5 -limit 10} {frylock baron phantom_limb hank meatwad 21 shake zorak triana brak}
+
+search_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {frylock baron phantom_limb hank meatwad}
+

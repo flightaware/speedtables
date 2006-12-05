@@ -4,6 +4,9 @@ $Id$
 12/5/2006 karl
     * Version 3.0 tagged for release.
 
+    * Resolve the bugs in search with offset and limit specified and
+      the different results whether it was sorted or unsorted.
+
     * Merge the skiplist development branch back into the mainline ctables
       CVS branch.
 

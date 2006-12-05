@@ -416,7 +416,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     int              matchCount = 0;
     int              sortIndex;
     int              actionResult = TCL_OK;
-    int              limit;
+    int              limit = search->offset + search->limit;
 
     Tcl_HashEntry **hashSortTable = NULL;
     Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
@@ -504,12 +504,12 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
 	if (hashSortTable == NULL) {
 	    // if we haven't met the start point, blow it off
-	    if (++matchCount < search->offset) continue;
+	    if (++matchCount <= search->offset) continue;
 
 	    if (search->countOnly) {
 		// we're only counting -- if there is a limit and it's been 
 		// met, we're done
-		if ((search->limit != 0) && (matchCount >= (search->offset + search->limit))) {
+		if ((search->limit != 0) && (matchCount >= limit)) {
 		    actionResult = TCL_OK;
 		    goto clean_and_return;
 		}
@@ -530,7 +530,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
 	     if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
 		// if there was a limit and we've met it, we're done
-		if ((search->limit != 0) && (matchCount >= (search->offset + search->limit))) {
+		if ((search->limit != 0) && (matchCount >= limit)) {
 		    actionResult = TCL_OK;
 		    goto clean_and_return;
 		}
@@ -568,14 +568,10 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	goto clean_and_return;
     }
 
-    // determine start and limit
-
-    // try limit as the number matched minus the offset.
-    // if there's a limit specified and it's lower than the number available,
-    // set it to that instead.
-    limit = matchCount - search->offset;
-    if ((search->limit > 0) && (search->limit < limit)) {
-	limit = search->offset + search->limit;
+    // figure out the last row they could want, if it's more than what's
+    // there, set it down to what came back
+    if (limit > matchCount) {
+        limit = matchCount;
     }
 
     // walk the result

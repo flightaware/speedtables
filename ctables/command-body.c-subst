@@ -547,7 +547,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    if (Tcl_GetIndexFromObj (interp, objv[3], ${table}_fields, "field", TCL_EXACT, &fieldNum) != TCL_OK) {
 		return TCL_ERROR;
 	    }
-	    if (ctable_ListIndex (interp, tbl_ptr, fieldNum) != TCL_OK) {
+	    if (ctable_ListIndex (interp, ctable, fieldNum) != TCL_OK) {
 	        return TCL_ERROR;
 	    }
 	    break;
