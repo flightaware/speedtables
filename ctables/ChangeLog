@@ -2,6 +2,8 @@
 $Id$
 
 12/5/2006 karl
+    * Version 3.0 tagged for release.
+
     * Merge the skiplist development branch back into the mainline ctables
       CVS branch.
 
