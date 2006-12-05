@@ -16,13 +16,13 @@ namespace eval ctable {
     variable ctableTypes
     variable ctableErrorInfo
     variable withPgtcl
+    variable reservedWords
 
     variable genCompilerDebug
     variable showCompilerCommands
 
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
-
     set showCompilerCommands 0
 
     variable pgtcl_ver 1.5
@@ -45,7 +45,9 @@ namespace eval ctable {
 
     set cvsID {#CTable generator ID: $Id$}
 
-set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
+    set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
+
+    set reservedWords "bool char short int long wide float double"
 
 if {![info exists srcDir]} {
     set srcDir .
@@ -95,12 +97,12 @@ proc cquote {string} {
   } {
     append quoted $plain
     # gratuitously make \n and friends look nice
-    set index [string first $char "\r\n\t\b\f"]
+    set index [string first $char "\r\n\t\b\f "]
     if {$index == -1} {
       scan $char %c decimal
       set plain [format {\%03o} $decimal]
     } else {
-      set plain [lindex {{\r} {\n} {\t} {\b} {\f}} $index]
+      set plain [lindex {{\r} {\n} {\t} {\b} {\f} { }} $index]
     }
     append quoted $plain
   }
@@ -125,9 +127,81 @@ proc field_to_enum {field} {
 # preambleCannedSource -- stuff that goes at the start of the file we generate
 #
 set preambleCannedSource {
-//#include "ctable.h"
-#include "ctable_search.c"
+#include "ctable.h"
 }
+
+#
+# nullCheckDuringSetSource - standard stuff for handling nulls during set
+#
+set nullCheckDuringSetSource {
+	if (${table}_obj_is_null (obj)) {
+	    if (!row->_${field}IsNull) {
+	        if (ctable->skipLists[field] != NULL) {
+		    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR)) {
+		        return TCL_ERROR;
+		    }
+
+		    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable_InsertNullIntoIndex (interp, ctable, row, field) == TCL_ERROR)) {
+		        return TCL_ERROR;
+		    }
+		}
+	        // field wasn't null but now is
+		row->_${field}IsNull = 1;
+		// row->_dirty = 1;
+	    }
+	    break;
+	}
+}
+
+#
+# gen_null_check_during_set_source - generate standard null checking
+#  for a set
+#
+proc gen_null_check_during_set_source {table field} {
+    variable nullCheckDuringSetSource
+    variable fields
+
+    array set fieldInfo $fields($field)
+
+    if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
+        return ""
+    } else {
+	return [string range [subst -nobackslashes -nocommands $nullCheckDuringSetSource] 1 end-1]
+    }
+}
+
+set unsetNullDuringSetSource {
+	if (row->_${field}IsNull) {
+	    row->_${field}IsNull = 0;
+	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
+		if (ctable_RemoveNullFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+		    return TCL_ERROR;
+		}
+	    }
+	}
+}
+
+#
+# gen_unset_null_during_set_source - generate standard null unsetting
+#  for a set
+#
+proc gen_unset_null_during_set_source {table field} {
+    variable unsetNullDuringSetSource
+    variable fields
+
+    array set fieldInfo $fields($field)
+    if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
+        return ""
+    } else {
+	return [string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource] 1 end-1]
+    }
+}
+
+#####
+#
+# Generating Code To Set Values In Rows
+#
+#####
 
 #
 # boolSetSource - code we run subst over to generate a set of a boolean (bit)
@@ -136,19 +210,12 @@ set boolSetSource {
       case $optname: {
         int boolean;
 
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
-
         if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
             Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
             return TCL_ERROR;
         }
 
-        $pointer->$field = boolean;
-	$pointer->_${field}IsNull = 0;
-        break;
+        row->$field = boolean;
       }
 }
 
@@ -159,64 +226,36 @@ set boolSetSource {
 #
 set numberSetSource {
       case $optname: {
+        $typeText value;
 
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
+[gen_null_check_during_set_source $table $field]
 
-	if ($getObjCmd (interp, obj, &$pointer->$field) == TCL_ERROR) {
+	if ($getObjCmd (interp, obj, &value) == TCL_ERROR) {
 	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
-	$pointer->_${field}IsNull = 0;
-	break;
-      }
-}
+[gen_unset_null_during_set_source $table $field]
+	  else {
+	    if (row->$field == value) {
+	        return TCL_OK;
+	    }
 
-#
-# floatSetSource - code we run subst over to generate a set of a float.
-#
-set floatSetSource {
-      case $optname: {
-	double value;
-
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
+	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists\[field] != NULL)) {
+		if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+		    return TCL_ERROR;
+		}
+	    }
 	}
 
-	if (Tcl_GetDoubleFromObj (interp, obj, &value) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
-	    return TCL_ERROR;
+	row->$field = value;
+
+	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
+	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
 	}
 
-	$pointer->$field = (float)value;
-	$pointer->_${field}IsNull = 0;
-	break;
-      }
-}
-
-#
-# shortSetSource - code we run subst over to generate a set of a short.
-#
-set shortSetSource {
-      case $optname: {
-	int value;
-
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
-
-	if (Tcl_GetIntFromObj (interp, obj, &value) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
-	    return TCL_ERROR;
-	}
-
-	$pointer->$field = (short)value;
-	$pointer->_${field}IsNull = 0;
 	break;
       }
 }
@@ -236,40 +275,83 @@ set shortSetSource {
 #
 set varstringSetSource {
       case $optname: {
-	char *string;
+	char *string = NULL;
 	int   length;
 
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
+[gen_null_check_during_set_source $table $field]
 
-	$pointer->_${field}IsNull = 0;
-	string = Tcl_GetStringFromObj (obj, &length);
-	if (length == $defaultLength) {
-	    if (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0)) {
-		if ($pointer->$field != (char *) NULL) {
-		    ckfree ((void *)$pointer->$field);
-		    $pointer->$field = NULL;
-		    $pointer->_${field}AllocatedLength = 0;
-		    $pointer->_${field}Length = 0;
+[gen_unset_null_during_set_source $table $field]
+	if (row->_${field}IsNull) {
+	    row->_${field}IsNull = 0;
+	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists\[field] != NULL)) {
+		if (ctable_RemoveNullFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+		    return TCL_ERROR;
+		}
+	    }
+	} else {
+	    string = Tcl_GetStringFromObj (obj, &length);
+	    if ((length == $defaultLength) && (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0))) {
+		if (row->$field != (char *) NULL) {
+		    // string was something but now matches the empty string
+		    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists\[field] != NULL)) {
+			if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+			    return TCL_ERROR;
+			}
+		    }
+		    ckfree ((void *)row->$field);
+
+		    // It's a change to the be default string. If we're
+		    // indexed, force the default string in there so the 
+		    // compare routine will be happy and then insert it.
+		    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] == NULL)) {
+			row->$field = Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &row->_${field}Length);
+			if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+			    return TCL_ERROR;
+			}
+		    }
+		    row->$field = NULL;
+		    row->_${field}AllocatedLength = 0;
+		    row->_${field}Length = 0;
 		}
 		break;
 	    }
+
+	    // previous field isn't null and new field isn't null and
+	    // isn't the default string
+
+	    // are they feeding us what we already have, we're outta here
+	    if ((length == row->_${field}Length) && (*row->$field == *string) && (strncmp (row->$field, string, length) == 0)) break;
+
+	    // previous field isn't null, new field isn't null, isn't
+	    // the default string, and isn't the same as the previous field
+	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists\[field] != NULL)) {
+	        if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+		    return TCL_ERROR;
+		}
+	    }
 	}
 
-	// are they feeding us what we already have, we're outta here
-	if ((length == $pointer->_${field}Length) && (*$pointer->$field == *string) && (strncmp ($pointer->$field, string, length) == 0)) break;
-
+	// new string value
 	// if the allocated length is less than what we need, get more,
 	// else reuse the previously allocagted space
-	if ($pointer->_${field}AllocatedLength <= length) {
-	    ckfree ((void *)$pointer->$field);
-	    $pointer->$field = ckalloc (length + 1);
-	    $pointer->_${field}AllocatedLength = length + 1;
+	if (row->_${field}AllocatedLength <= length) {
+	    if (row->$field != NULL) {
+		ckfree ((void *)row->$field);
+	    }
+	    row->$field = ckalloc (length + 1);
+	    row->_${field}AllocatedLength = length + 1;
 	}
-	strncpy ($pointer->$field, string, length + 1);
-	$pointer->_${field}Length = length;
+	strncpy (row->$field, string, length + 1);
+	row->_${field}Length = length;
+
+	// if we got here and this field has an index, we've removed
+	// the old index either by removing a null index or by
+	// removing the prior index, now insert the new index
+	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
+	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+	}
 	break;
       }
 }
@@ -281,14 +363,12 @@ set charSetSource {
       case $optname: {
 	char *string;
 
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
+[gen_null_check_during_set_source $table $field]
 
 	string = Tcl_GetString (obj);
-	$pointer->$field = string[0];
-	$pointer->_${field}IsNull = 0;
+	row->$field = string\[0\];
+
+[gen_unset_null_during_set_source $table $field]
 	break;
       }
 }
@@ -301,14 +381,12 @@ set fixedstringSetSource {
       case $optname: {
 	char *string;
 
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
+[gen_null_check_during_set_source $table $field]
 
 	string = Tcl_GetString (obj);
-	strncpy ($pointer->$field, string, $length);
-	$pointer->_${field}IsNull = 0;
+	strncpy (row->$field, string, $length);
+
+[gen_unset_null_during_set_source $table $field]
 	break;
       }
 }
@@ -320,17 +398,14 @@ set fixedstringSetSource {
 set inetSetSource {
       case $optname: {
 
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
+[gen_null_check_during_set_source $table $field]
 
-	if (!inet_aton (Tcl_GetString (obj), &$pointer->$field)) {
-	    Tcl_AppendResult (interp, "expected IP address but got \"", Tcl_GetString (obj), "\" parsing field \"$field\"", (char *)NULL);
+	if (!inet_aton (Tcl_GetString (obj), &row->$field)) {
+	    Tcl_AppendResult (interp, "expected IP address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$field\\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
-	$pointer->_${field}IsNull = 0;
+[gen_unset_null_during_set_source $table $field]
 	break;
       }
 }
@@ -343,19 +418,16 @@ set macSetSource {
       case $optname: {
         struct ether_addr *mac;
 
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
+[gen_null_check_during_set_source $table $field]
 
 	mac = ether_aton (Tcl_GetString (obj));
 	if (mac == (struct ether_addr *) NULL) {
-	    Tcl_AppendResult (interp, "expected MAC address but got \"", Tcl_GetString (obj), "\" parsing field \"$field\"", (char *)NULL);
+	    Tcl_AppendResult (interp, "expected MAC address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$field\\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
-	$pointer->$field = *mac;
-	$pointer->_${field}IsNull = 0;
+	row->$field = *mac;
+[gen_unset_null_during_set_source $table $field]
 
 	break;
       }
@@ -369,22 +441,25 @@ set macSetSource {
 set tclobjSetSource {
       case $optname: {
 
-	if ($pointer->$field != (Tcl_Obj *) NULL) {
-	    Tcl_DecrRefCount ($pointer->$field);
-	    $pointer->$field = NULL;
+	if (row->$field != (Tcl_Obj *) NULL) {
+	    Tcl_DecrRefCount (row->$field);
+	    row->$field = NULL;
 	}
 
-	if (${table}_obj_is_null (obj)) {
-	    $pointer->_${field}IsNull = 1;
-	    break;
-	}
+[gen_null_check_during_set_source $table $field]
 
-	$pointer->$field = obj;
+	row->$field = obj;
 	Tcl_IncrRefCount (obj);
-	$pointer->_${field}IsNull = 0;
+[gen_unset_null_during_set_source $table $field]
 	break;
       }
 }
+
+#####
+#
+# Generating Code For Sort Comparisons
+#
+#####
 
 #
 # boolSortSource - code we run subst over to generate a compare of a 
@@ -392,12 +467,12 @@ set tclobjSetSource {
 #
 set boolSortSource {
 	case $fieldEnum: {
-          if (pointer1->$field && !pointer2->$field) {
+          if (row1->$field && !row2->$field) {
 	      result = -direction;
 	      break;
 	  }
 
-	  if (!pointer1->$field && pointer2->$field) {
+	  if (!row1->$field && row2->$field) {
 	      result = direction;
 	  }
 
@@ -413,12 +488,12 @@ set boolSortSource {
 set numberSortSource {
       case $fieldEnum: {
 
-        if (pointer1->$field < pointer2->$field) {
+        if (row1->$field < row2->$field) {
 	    result = -direction;
 	    break;
 	}
 
-	if (pointer1->$field > pointer2->$field) {
+	if (row1->$field > row2->$field) {
 	    result = direction;
 	    break;
 	}
@@ -434,17 +509,17 @@ set numberSortSource {
 #
 set varstringSortSource {
       case $fieldEnum: {
-        if (pointer1->_${field}IsNull) {
-	    if (pointer2->_${field}IsNull) {
+        if (row1->_${field}IsNull) {
+	    if (row2->_${field}IsNull) {
 	        return 0;
 	    }
 
 	    return direction;
-	} else if (pointer2->_${field}IsNull) {
+	} else if (row2->_${field}IsNull) {
 	    return -direction;
 	}
 
-        result = direction * strcmp (pointer1->$field, pointer2->$field);
+        result = direction * strcmp (row1->$field, row2->$field);
 	break;
       }
 }
@@ -455,7 +530,7 @@ set varstringSortSource {
 #
 set fixedstringSortSource {
       case $fieldEnum: {
-        result = direction * strncmp (pointer1->$field, pointer2->$field, $length);
+        result = direction * strncmp (row1->$field, row2->$field, $length);
 	break;
       }
 }
@@ -466,7 +541,7 @@ set fixedstringSortSource {
 #
 set binaryDataSortSource {
       case $fieldEnum: {
-        result = direction * memcmp (&pointer1->$field, &pointer2->$field, $length);
+        result = direction * memcmp (&row1->$field, &row2->$field, $length);
 	break;
       }
 }
@@ -477,10 +552,16 @@ set binaryDataSortSource {
 #
 set tclobjSortSource {
       case $fieldEnum: {
-        result = direction * strcmp (Tcl_GetString (pointer1->$field), Tcl_GetString (pointer2->$field));
+        result = direction * strcmp (Tcl_GetString (row1->$field), Tcl_GetString (row2->$field));
 	break;
       }
 }
+
+#####
+#
+# Generating Code For Search Comparisons
+#
+#####
 
 #
 # boolCompSource - code we run subst over to generate a compare of a 
@@ -488,14 +569,14 @@ set tclobjSortSource {
 #
 set boolCompSource {
       case $fieldEnum: {
-        if (pointer->_${field}IsNull) $standardCompNullCheckSource
+        if (row->_${field}IsNull) $standardCompNullCheckSource
 	switch (compType) {
 	  case CTABLE_COMP_TRUE:
-	     exclude = (!pointer->$field);
+	     exclude = (!row->$field);
 	     break;
 
 	  case CTABLE_COMP_FALSE:
-	    exclude = pointer->$field;
+	    exclude = row->$field;
 	    break;
 	}
 	break;
@@ -511,34 +592,34 @@ set numberCompSource {
         case $fieldEnum: {
 	  $typeText compValue = 0;
 
-	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
+	  if (row->_${field}IsNull) $standardCompNullCheckSource
 	  if ($getObjCmd (interp, compareObj, &compValue) == TCL_ERROR) {
 	      return TCL_ERROR;
 	  }
 
           switch (compType) {
 	    case CTABLE_COMP_LT:
-	        exclude = !(pointer->$field < compValue);
+	        exclude = !(row->$field < compValue);
 		break;
 
 	    case CTABLE_COMP_LE:
-	        exclude = !(pointer->$field <= compValue);
+	        exclude = !(row->$field <= compValue);
 		break;
 
 	    case CTABLE_COMP_EQ:
-	        exclude = !(pointer->$field == compValue);
+	        exclude = !(row->$field == compValue);
 		break;
 
 	    case CTABLE_COMP_NE:
-	        exclude = !(pointer->$field != compValue);
+	        exclude = !(row->$field != compValue);
 		break;
 
 	    case CTABLE_COMP_GE:
-	        exclude = !(pointer->$field >= compValue);
+	        exclude = !(row->$field >= compValue);
 		break;
 
 	    case CTABLE_COMP_GT:
-	        exclude = !(pointer->$field > compValue);
+	        exclude = !(row->$field > compValue);
 		break;
 	  }
 	  break;
@@ -604,10 +685,10 @@ set varstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
 
-	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
+	  if (row->_${field}IsNull) $standardCompNullCheckSource
 
 	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE)) {
-	      if (pointer->_${field}IsNull) {
+	      if (row->_${field}IsNull) {
 		  exclude = 1;
 		  break;
 	      }
@@ -618,7 +699,7 @@ set varstringCompSource {
 		  char *field;
 		  char *match;
 
-		  for (field = pointer->$field, match = component->comparedToString; *match != '*' && *match != '\0'; match++, field++) {
+		  for (field = row->$field, match = component->comparedToString; *match != '*' && *match != '\0'; match++, field++) {
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
 			      exclude = 1;
@@ -633,17 +714,17 @@ set varstringCompSource {
 		  }
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
-	          exclude = (boyer_moore_search (sm, (unsigned char *)pointer->$field, pointer->_${field}Length, sm->nocase) == NULL);
+	          exclude = (boyer_moore_search (sm, (unsigned char *)row->$field, row->_${field}Length, sm->nocase) == NULL);
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
-	          exclude = !(Tcl_StringCaseMatch (pointer->$field, component->comparedToString, (compType == CTABLE_COMP_MATCH)));
+	          exclude = !(Tcl_StringCaseMatch (row->$field, component->comparedToString, (compType == CTABLE_COMP_MATCH)));
 		  break;
               } else {
 		  panic ("software bug, sm->type unknown match type");
 	      }
 	  }
 
-          strcmpResult = strcmp (pointer->$field, component->comparedToString);
+          strcmpResult = strcmp (row->$field, component->comparedToString);
 	  $standardCompSwitchSource
         }
 }
@@ -656,8 +737,8 @@ set fixedstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
 
-	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
-          strcmpResult = strncmp (pointer->$field, component->comparedToString, $length);
+	  if (row->_${field}IsNull) $standardCompNullCheckSource
+          strcmpResult = strncmp (row->$field, component->comparedToString, $length);
 	  $standardCompSwitchSource
         }
 }
@@ -668,13 +749,13 @@ set fixedstringCompSource {
 #
 set binaryDataCompSource {
         case $fieldEnum: {
-	  char   *value;
-          int     strcmpResult;
-	  int     byteArrayLength;
+	  unsigned char   *value;
+          int              strcmpResult;
+	  int              byteArrayLength;
 
-	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
+	  if (row->_${field}IsNull) $standardCompNullCheckSource
 	  value = Tcl_GetByteArrayFromObj (compareObj, &byteArrayLength);
-          strcmpResult = memcmp ((void *)&pointer->$field, (void *)value, $length);
+          strcmpResult = memcmp ((void *)&row->$field, (void *)value, $length);
 	  $standardCompSwitchSource
         }
 }
@@ -692,67 +773,48 @@ set tclobjCompSource {
         case $fieldEnum: {
           int      strcmpResult;
 
-	  if (pointer->_${field}IsNull) $standardCompNullCheckSource
-          strcmpResult = strcmp (Tcl_GetString (pointer->$field), component->comparedToString);
+	  if (row->_${field}IsNull) $standardCompNullCheckSource
+          strcmpResult = strcmp (Tcl_GetString (row->$field), component->comparedToString);
 	  $standardCompSwitchSource
         }
 }
 
+#####
 #
-# cmdBodyHeader - code we run subst over to generate the header of the
-#  code body that implements the methods that work on the table.
+# Generating Code To Set Fields In Rows
 #
-set cmdBodyHeader {
-void ${table}_delete_all_rows(struct ctableTable *tbl_ptr) {
-    Tcl_HashSearch hashSearch;
-    Tcl_HashEntry *hashEntry;
-    struct ${table} *$pointer;
-
-    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
-	${table}_delete($pointer);
-    }
-    Tcl_DeleteHashTable (tbl_ptr->keyTablePtr);
-
-    tbl_ptr->count = 0;
-}
-
-int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
-$leftCurly
-    struct ctableTable *tbl_ptr = (struct ctableTable *)cData;
-    struct $table *$pointer;
-    int optIndex;
-    Tcl_HashEntry *hashEntry;
-    int new;
-
-    static CONST char *options[] = {"get", "set", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "foreach", "sort", "search", "type", "import", "import_postgres_result", "export", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "write_tabsep", "read_tabsep", (char *)NULL};
-
-    enum options {OPT_GET, OPT_SET, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_FOREACH, OPT_SORT, OPT_SEARCH, OPT_TYPE, OPT_IMPORT, OPT_IMPORT_POSTGRES_RESULT, OPT_EXPORT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_READ_TABSEP};
-
-}
+#####
 
 set fieldObjSetSource {
-struct $table *${table}_find_or_create (struct ctableTable *tbl_ptr, char *key, int *newPtr) {
-    struct $table *${table}_ptr;
+struct $table *${table}_make_row_struct () {
+    struct $table *row;
 
-    Tcl_HashEntry *hashEntry = Tcl_CreateHashEntry (tbl_ptr->keyTablePtr, key, newPtr);
+    row = (struct $table *)ckalloc (sizeof (struct $table));
+    ${table}_init (row);
+
+    return row;
+}
+
+struct $table *${table}_find_or_create (struct ctableTable *ctable, char *key, int *newPtr) {
+    struct $table *row;
+
+    Tcl_HashEntry *hashEntry = Tcl_CreateHashEntry (ctable->keyTablePtr, key, newPtr);
 
     if (*newPtr) {
-        ${table}_ptr = (struct $table *)ckalloc (sizeof (struct $table));
-	${table}_init (${table}_ptr);
-	Tcl_SetHashValue (hashEntry, (ClientData)${table}_ptr);
-	tbl_ptr->count++;
+        row = ${table}_make_row_struct ();
+	Tcl_SetHashValue (hashEntry, (ClientData)row);
+	ctable->count++;
 	// printf ("created new entry for '%s'\n", key);
     } else {
-        ${table}_ptr = (struct $table *) Tcl_GetHashValue (hashEntry);
+        row = (struct $table *) Tcl_GetHashValue (hashEntry);
 	// printf ("found existing entry for '%s'\n", key);
     }
 
-    return ${table}_ptr;
+    return row;
 }
 
 int
-${table}_set_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, Tcl_Obj *fieldObj)
+${table}_set_fieldobj (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
 {
     int field;
 
@@ -760,22 +822,22 @@ ${table}_set_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer
         return TCL_ERROR;
     }
 
-    return ${table}_set (interp, obj, $pointer, field);
+    return ${table}_set (interp, ctable, obj, row, field, indexCtl);
 }
 }
 
 set fieldSetSource {
 int
-${table}_set (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int field) $leftCurly
+${table}_set (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
 set fieldObjGetSource {
-struct $table *${table}_find (struct ctableTable *tbl_ptr, char *key) {
+struct $table *${table}_find (struct ctableTable *ctable, char *key) {
     Tcl_HashEntry *hashEntry;
 
-    hashEntry = Tcl_FindHashEntry (tbl_ptr->keyTablePtr, key);
+    hashEntry = Tcl_FindHashEntry (ctable->keyTablePtr, key);
     if (hashEntry == (Tcl_HashEntry *) NULL) {
         return (struct $table *) NULL;
     }
@@ -784,7 +846,7 @@ struct $table *${table}_find (struct ctableTable *tbl_ptr, char *key) {
 }
 
 Tcl_Obj *
-${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fieldObj)
+${table}_get_fieldobj (Tcl_Interp *interp, struct $table *row, Tcl_Obj *fieldObj)
 {
     int field;
 
@@ -792,15 +854,15 @@ ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *$pointer, Tcl_Obj *fie
         return (Tcl_Obj *)NULL;
     }
 
-    return ${table}_get (interp, $pointer, field);
+    return ${table}_get (interp, row, field);
 }
 
 int
 ${table}_lappend_field (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer, int field)
 {
-    struct $table *p = vPointer;
+    struct $table *row = vPointer;
 
-    Tcl_Obj *obj = ${table}_get (interp, p, field);
+    Tcl_Obj *obj = ${table}_get (interp, row, field);
 
     if (Tcl_ListObjAppendElement (interp, destListObj, obj) == TCL_ERROR) {
         return TCL_ERROR;
@@ -812,8 +874,8 @@ ${table}_lappend_field (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer
 int
 ${table}_lappend_fieldobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj)
 {
-    struct $table *p = vPointer;
-    Tcl_Obj *obj = ${table}_get_fieldobj (interp, $pointer, fieldObj);
+    struct $table *row = vPointer;
+    Tcl_Obj *obj = ${table}_get_fieldobj (interp, row, fieldObj);
 
     if (obj == NULL) {
         return TCL_ERROR;
@@ -831,14 +893,14 @@ set lappendFieldAndNameObjSource {
 int
 ${table}_lappend_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer, int field)
 {
-    struct $table *p = vPointer;
+    struct $table *row = vPointer;
     Tcl_Obj   *obj;
 
     if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_NameObjList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
-    obj = ${table}_get (interp, $pointer, field);
+    obj = ${table}_get (interp, row, field);
     if (Tcl_ListObjAppendElement (interp, destListObj, obj) == TCL_ERROR) {
         return TCL_ERROR;
     }
@@ -864,10 +926,10 @@ set lappendNonnullFieldAndNameObjSource {
 int
 ${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer, int field)
 {
-    struct $table *p = vPointer;
+    struct $table *row = vPointer;
     Tcl_Obj   *obj;
 
-    obj = ${table}_get (interp, $pointer, field);
+    obj = ${table}_get (interp, row, field);
     if (obj == ${table}_NullValueObj) {
         return TCL_OK;
     }
@@ -897,18 +959,25 @@ ${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, void *vPointer, 
 
 }
 
+#####
+#
+# Generating Code To Get Fields From A Rows
+#
+#####
+
 set fieldGetSource {
 Tcl_Obj *
 ${table}_get (Tcl_Interp *interp, void *vPointer, int field) $leftCurly
-    struct $table *$pointer = vPointer;
+    struct $table *row = vPointer;
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
 set fieldGetStringSource {
 CONST char *
-${table}_get_string (struct $table *$pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
+${table}_get_string (const void *vPointer, int field, int *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
     int length;
+    const struct $table *row = vPointer;
 
     if (lengthPtr == (int *) NULL) {
         lengthPtr = &length;
@@ -917,6 +986,12 @@ ${table}_get_string (struct $table *$pointer, int field, int *lengthPtr, Tcl_Obj
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
+#####
+#
+# Generating Code To Read And Write Tab-Separated Rows
+#
+#####
+
 set tabSepFunctionsSource {
 void
 ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey) {
@@ -924,7 +999,7 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
     CONST char      *string;
     int              nChars;
     Tcl_Obj         *utilityObj = Tcl_NewObj();
-    struct $table *$pointer = vPointer;
+    struct $table *row = vPointer;
 
     if (!noKey) {
 	Tcl_DStringAppend (dsPtr, key, -1);
@@ -936,7 +1011,7 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
 	    // Tcl_DStringAppend (dsPtr, "|", 1);
 	}
 
-	string = ${table}_get_string ($pointer, fieldNums[i], &nChars, utilityObj);
+	string = ${table}_get_string (row, fieldNums[i], &nChars, utilityObj);
 	if (nChars != 0) {
 // printf("${table}_dstring_append_get_tabsep appending '%s'\n", string);
 	    Tcl_DStringAppend (dsPtr, string, nChars);
@@ -948,14 +1023,14 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
+${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
     Tcl_Channel    channel;
     int            mode;
     Tcl_DString    dString;
     Tcl_HashSearch hashSearch;
     Tcl_HashEntry *hashEntry;
     char          *key;
-    struct ${table} *$pointer;
+    struct ${table} *row;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -968,15 +1043,15 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, CONST c
 
     Tcl_DStringInit (&dString);
 
-    for (hashEntry = Tcl_FirstHashEntry (tbl_ptr->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+    for (hashEntry = Tcl_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 
-	key = Tcl_GetHashKey (tbl_ptr->keyTablePtr, hashEntry);
+	key = Tcl_GetHashKey (ctable->keyTablePtr, hashEntry);
 	if ((pattern != NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 
         Tcl_DStringSetLength (&dString, 0);
-	$pointer = (struct $table *) Tcl_GetHashValue (hashEntry);
+	row = (struct $table *) Tcl_GetHashValue (hashEntry);
 
-	${table}_dstring_append_get_tabsep (key, $pointer, fieldNums, nFields, &dString, noKeys);
+	${table}_dstring_append_get_tabsep (key, row, fieldNums, nFields, &dString, noKeys);
 
 	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
@@ -988,11 +1063,11 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, CONST c
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, char *string, int *fieldIds, int nFields, int noKey, int recordNumber) {
-    struct $table *$pointer;
+${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, char *string, int *fieldIds, int nFields, int noKey, int recordNumber) {
+    struct $table *row;
     char          *key;
     char          *field;
-    int            new;
+    int            indexCtl;
     int            i;
     Tcl_Obj       *utilityObj = Tcl_NewObj ();
     char           keyNumberString[32];
@@ -1003,12 +1078,12 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, char 
         sprintf (keyNumberString, "%d",recordNumber);
 	key = keyNumberString;
     }
-    $pointer = ${table}_find_or_create (tbl_ptr, key, &new);
+    row = ${table}_find_or_create (ctable, key, &indexCtl);
 
     for (i = 0; i < nFields; i++) {
         field = strsep (&string, "\t");
 	Tcl_SetStringObj (utilityObj, field, -1);
-	if (${table}_set (interp, utilityObj, $pointer, fieldIds[i]) == TCL_ERROR) {
+	if (${table}_set (interp, ctable, utilityObj, row, fieldIds[i], indexCtl) == TCL_ERROR) {
 	    Tcl_DecrRefCount (utilityObj);
 	    return TCL_ERROR;
 	}
@@ -1018,7 +1093,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, char 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
+${table}_import_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = Tcl_NewObj();
@@ -1052,7 +1127,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, CONST c
 	    *strPtr = c;
 	}
 
-	if (${table}_set_from_tabsep (interp, tbl_ptr, string, fieldNums, nFields, noKeys, recordNumber) == TCL_ERROR) {
+	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, noKeys, recordNumber) == TCL_ERROR) {
 	    char lineNumberString[32];
 
 	    Tcl_DecrRefCount (lineObj);
@@ -1067,96 +1142,6 @@ ${table}_import_tabsep (Tcl_Interp *interp, struct ctableTable *tbl_ptr, CONST c
     Tcl_DecrRefCount (lineObj);
     return TCL_OK;
 }
-}
-
-#
-# cmdBodyGetSource - chunk of the code that we run subst over to generate
-#  part of the body of the code that handles the "get" method
-#
-set cmdBodyGetSource {
-      case OPT_GET: {
-        int i;
-
-	if (objc < 3) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
-	    return TCL_ERROR;
-	}
-
-	$pointer = ${table}_find (tbl_ptr, Tcl_GetString (objv[2]));
-	if ($pointer == (struct $table *) NULL) {
-	    return TCL_OK;
-	}
-
-	if (objc == 3) {
-	    Tcl_SetObjResult (interp, ${table}_genlist (interp, $pointer));
-	    return TCL_OK;
-	}
-
-	for (i = 3; i < objc; i++) {
-	    if (${table}_lappend_fieldobj (interp, $pointer, objv[i]) == TCL_ERROR) {
-	        return TCL_ERROR;
-	    }
-	}
-        break;
-      }
-}
-
-#
-# cmdBodyArrayGetSource - chunk of the code that we run subst over to generate
-#  part of the body of the code that handles the "array_get" method
-#
-set cmdBodyArrayGetSource {
-      case OPT_ARRAY_GET_WITH_NULLS: {
-        int i;
-
-	if (objc < 3) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
-	    return TCL_ERROR;
-	}
-
-	$pointer = ${table}_find (tbl_ptr, Tcl_GetString (objv[2]));
-	if ($pointer == (struct $table *) NULL) {
-	    return TCL_OK;
-	}
-
-	if (objc == 3) {
-	    Tcl_SetObjResult (interp,  ${table}_gen_keyvalue_list (interp, $pointer));
-	    return TCL_OK;
-	}
-
-	for (i = 3; i < objc; i++) {
-	    if (${table}_lappend_field_and_nameobj (interp, $pointer, objv[i]) == TCL_ERROR) {
-	        return TCL_ERROR;
-	    }
-	}
-        break;
-      }
-
-      case OPT_ARRAY_GET: {
-        int i;
-
-	if (objc < 3) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
-	    return TCL_ERROR;
-	}
-
-	$pointer = ${table}_find (tbl_ptr, Tcl_GetString (objv[2]));
-	if ($pointer == (struct $table *) NULL) {
-	    return TCL_OK;
-	}
-
-	if (objc == 3) {
-	    Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (interp, $pointer));
-	    return TCL_OK;
-	}
-
-	for (i = 3; i < objc; i++) {
-	    if (${table}_lappend_nonnull_field_and_nameobj (interp, $pointer, objv[i]) == TCL_ERROR) {
-	        return TCL_ERROR;
-	    }
-	}
-        break;
-      }
 }
 
 #
@@ -1192,23 +1177,26 @@ proc end_table {} {
 #
 #  NB do we really?  i don't know
 #
-proc deffield {name default baseDefault args} {
+proc deffield {name argList} {
     variable fields
     variable fieldList
     variable nonBooleans
+    variable ctableTypes
+    variable reservedWords
+
+    if {[lsearch -exact $reservedWords $name] >= 0} {
+        error "illegal field name \"$name\" -- it's a reserved word"
+    }
 
     if {![regexp {^[a-zA-Z][_a-zA-Z0-9]*$} $name]} {
         error "field name \"$name\" must start with a letter and can only contain letters, numbers, and underscores"
     }
 
-    lappend args name $name
-
-    # if the default doesn't equal the baseDefault, we have a real default
-    if {$default != $baseDefault} {
-        lappend args default $default
+    if {[llength $argList] % 2 != 0} {
+        error "number of values in field '$name' definition arguments ('$argList') must be even"
     }
 
-    set fields($name) $args
+    set fields($name) [linsert $argList 0 name $name]
     lappend fieldList $name
     lappend nonBooleans $name
 }
@@ -1217,20 +1205,16 @@ proc deffield {name default baseDefault args} {
 # boolean - define a boolean field -- same contents as deffield except it
 #  appends to the booleans list instead of the nonBooleans list NB kludge
 #
-proc boolean {name {default ""}} {
+proc boolean {name args} {
     variable booleans
     variable fields
     variable fieldList
 
-    if {![regexp {^[a-zA-Z][_a-zA-Z0-9]*$} $name]} {
+    if {![regexp {^[_a-zA-Z][_a-zA-Z0-9]*$} $name]} {
         error "field name \"$name\" must start with a letter and can only contain letters, numbers, and underscores"
     }
 
-    set fields($name) [list name $name type boolean]
-
-    if {$default != ""} {
-        lappend fields($name) default $default
-    }
+    set fields($name) [linsert $args 0 name $name type boolean]
 
     lappend fieldList $name
     lappend booleans $name
@@ -1239,89 +1223,94 @@ proc boolean {name {default ""}} {
 #
 # fixedstring - define a fixed-length string field
 #
-proc fixedstring {name length {default ""}} {
-    if {[string length $default] != $length} {
-        error "fixedstring \"$name\" default string \"$default\" must match length \"$length\""
+proc fixedstring {name length args} {
+    array set fieldInfo $args
+
+    if {[info exists fieldInfo(default)]} {
+        if {[string length $fieldInfo(default)] != $length} {
+	    error "fixedstring \"$name\" default string \"$fieldInfo(default)\" must match length \"$length\""
+	}
     }
-    deffield $name $default "" type fixedstring length $length needsQuoting 1
+
+    deffield $name [linsert $args 0 type fixedstring length $length needsQuoting 1]
 }
 
 #
 # varstring - define a variable-length string field
 #
-proc varstring {name {default "DeanSaidHeKnewSanskritIWasLikeWhatever"}} {
-    deffield $name $default "DeanSaidHeKnewSanskritIWasLikeWhatever" type varstring needsQuoting 1
+proc varstring {name args} {
+    deffield $name [linsert $args 0 type varstring needsQuoting 1]
 }
 
 #
 # char - define a single character field -- this should probably just be
 #  fixedstring[1] but it's simpler.  shrug.
 #
-proc char {name {default " "}} {
-    deffield $name $default "" type char needsQuoting 1
+proc char {name args} {
+    deffield $name [linsert $args 0 type char needsQuoting 1]
 }
 
 #
 # mac - define a mac address field
 #
-proc mac {name {default ""}} {
-    deffield $name $default "" type mac
+proc mac {name args} {
+    deffield $name [linsert $args 0 type mac]
 }
 
 #
 # short - define a short integer field
 #
-proc short {name {default ""}} {
-    deffield $name $default "" type short
+proc short {name args} {
+    deffield $name [linsert $args 0 type short]
 }
 
 #
 # int - define an integer field
 #
-proc int {name {default ""}} {
-    deffield $name $default "" type int
+proc int {name args} {
+    deffield $name [linsert $args 0 type int]
 }
 
 #
 # long - define a long integer field
 #
-proc long {name {default ""}} {
-    deffield $name $default "" type long
+proc long {name args} {
+    deffield $name [linsert $args 0 type long]
 }
 
 #
 # wide - define a wide integer field -- should always be at least 64 bits
 #
-proc wide {name {default ""}} {
-    deffield $name $default "" type wide
+proc wide {name args} {
+    deffield $name [linsert $args 0 type wide]
 }
 
 #
 # float - define a floating point field
 #
-proc float {name {default ""}} {
-    deffield $name $default "" type float
+proc float {name args} {
+    deffield $name [linsert $args 0 type float]
 }
 
 #
 # double - define a double-precision floating point field
 #
-proc double {name {default ""}} {
-    deffield $name $default "" type double
+proc double {name args} {
+    deffield $name [linsert $args 0 type double]
 }
 
 #
 # inet - define an IPv4 address field
 #
-proc inet {name {default ""}} {
-    deffield $name $default "" type inet
+proc inet {name args} {
+    deffield $name [linsert $args 0 type inet]
 }
 
 #
 # tclobj - define an straight-through Tcl_Obj
 #
-proc tclobj {name} {
-    deffield $name "" "" type tclobj needsQuoting 1
+proc tclobj {name args} {
+    deffield $name [linsert $args 0 type tclobj needsQuoting 1]
 }
 
 #
@@ -1347,19 +1336,12 @@ proc ctable_type_to_enum {type} {
 }
 
 #
-# gen_ctable_type_stuff - generate enumerated type for all of the supported
-# ctable fields and generated an array of char pointers to the type names
+# gen_ctable_type_stuff - # generate an array of char pointers to the type names
 #
 proc gen_ctable_type_stuff {} {
     variable ctableTypes
     variable leftCurly
     variable rightCurly
-
-    set typeEnum "enum ctable_types $leftCurly"
-    foreach type $ctableTypes {
-        append typeEnum "\n    [ctable_type_to_enum $type],"
-    }
-    emit "[string range $typeEnum 0 end-1]\n$rightCurly;\n"
 
     emit "static char *ctableTypes\[\] = $leftCurly"
     foreach type $ctableTypes {
@@ -1375,7 +1357,7 @@ set ctableTypes "boolean fixedstring varstring char mac short int long wide floa
 #
 # gen_defaults_subr - gen code to set a row to default values
 #
-proc gen_defaults_subr {subr struct pointer} {
+proc gen_defaults_subr {subr struct} {
     variable table
     variable fields
     variable fieldList
@@ -1384,12 +1366,15 @@ proc gen_defaults_subr {subr struct pointer} {
 
     set baseCopy ${struct}_basecopy
 
-    emit "void ${subr}(struct $struct *$pointer) $leftCurly"
+    emit "void ${subr}(struct $struct *row) $leftCurly"
     emit "    static int firstPass = 1;"
     emit "    static struct $struct $baseCopy;"
     emit ""
     emit "    if (firstPass) $leftCurly"
     emit "        firstPass = 0;"
+    emit ""
+    emit "        // $baseCopy.__dirtyIsNull = 0;"
+    emit "        // $baseCopy._dirty = 1;"
 
     foreach myfield $fieldList {
         catch {unset field}
@@ -1462,7 +1447,7 @@ proc gen_defaults_subr {subr struct pointer} {
 
     emit "    $rightCurly"
     emit ""
-    emit "    *$pointer = $baseCopy;"
+    emit "    *row = $baseCopy;"
 
     emit "$rightCurly"
     emit ""
@@ -1471,14 +1456,14 @@ proc gen_defaults_subr {subr struct pointer} {
 #
 # gen_delete_subr - gen code to delete (free) a row
 #
-proc gen_delete_subr {subr struct pointer} {
+proc gen_delete_subr {subr struct} {
     variable table
     variable fields
     variable fieldList
     variable leftCurly
     variable rightCurly
 
-    emit "void ${subr}(struct $struct *$pointer) {"
+    emit "void ${subr}(struct $struct *row) {"
 
     foreach myfield $fieldList {
         catch {unset field}
@@ -1486,11 +1471,11 @@ proc gen_delete_subr {subr struct pointer} {
 
 	switch $field(type) {
 	    varstring {
-	        emit "    if ($pointer->$myfield != (char *) NULL) ckfree ((void *)$pointer->$myfield);"
+	        emit "    if (row->$myfield != (char *) NULL) ckfree ((void *)row->$myfield);"
 	    }
 	}
     }
-    emit "    ckfree ((void *)$pointer);"
+    emit "    ckfree ((void *)row);"
 
     emit "}"
     emit ""
@@ -1531,7 +1516,7 @@ proc gen_obj_is_null_subr {} {
     variable table
     variable isNullSubrSource
 
-    emit [subst -nobackslashes -nocommands $isNullSubrSource]
+    emit [string range [subst -nobackslashes -nocommands $isNullSubrSource] 1 end-1]
 }
 
 #
@@ -1576,6 +1561,10 @@ proc gen_struct {} {
 		putfield char "$field(name)\[$field(length)]"
 	    }
 
+	    wide {
+		putfield "Tcl_WideInt" $field(name)
+	    }
+
 	    mac {
 		putfield "struct ether_addr" $field(name)
 	    }
@@ -1609,7 +1598,7 @@ proc gen_struct {} {
 #
 # emit_set_num_field - emit code to set a numeric field
 #
-proc emit_set_num_field {field pointer type} {
+proc emit_set_num_field {field type} {
     variable numberSetSource
     variable table
 
@@ -1619,6 +1608,7 @@ proc emit_set_num_field {field pointer type} {
         short {
 	    set newObjCmd Tcl_NewIntObj
 	    set getObjCmd Tcl_GetIntFromObj
+	    set typeText "int"
 	}
 
         int {
@@ -1636,13 +1626,18 @@ proc emit_set_num_field {field pointer type} {
 	    set type "Tcl_WideInt"
 	    set newObjCmd Tcl_NewWideIntObj
 	    set getObjCmd Tcl_GetWideIntFromObj
-	    set typeText "wide int"
+	    set typeText "Tcl_WideInt"
+	}
+
+	float {
+	    set newObjCmd Tcl_NewDoubleObj
+	    set getObjCmd Tcl_GetDoubleFromObj
+	    set typeText "double"
 	}
 
 	double {
 	    set newObjCmd Tcl_NewDoubleObj
 	    set getObjCmd Tcl_GetDoubleFromObj
-	    set typeText "double"
 	}
 
 	default {
@@ -1652,7 +1647,7 @@ proc emit_set_num_field {field pointer type} {
 
     set optname [field_to_enum $field]
 
-    emit [subst -nobackslashes -nocommands $numberSetSource]
+    emit [string range [subst $numberSetSource] 1 end-1]
 }
 
 #
@@ -1660,43 +1655,43 @@ proc emit_set_num_field {field pointer type} {
 # "set source" string to go with it and gets managed in a standard
 #  way
 #
-proc emit_set_standard_field {field pointer setSourceVarName} {
+proc emit_set_standard_field {field setSourceVarName} {
     variable $setSourceVarName
     variable table
 
     set optname [field_to_enum $field]
-
-    emit [subst -nobackslashes -nocommands [set $setSourceVarName]]
+    emit [string range [subst [set $setSourceVarName]] 1 end-1]
 }
 
 #
 # emit_set_varstring_field - emit code to set a varstring field
 #
-proc emit_set_varstring_field {table field pointer default defaultLength} {
+proc emit_set_varstring_field {table field default defaultLength} {
     variable varstringSetSource
 
     set default [cquote $default]
 
     set optname [field_to_enum $field]
 
-    emit [subst -nobackslashes -nocommands $varstringSetSource]
+    emit [string range [subst $varstringSetSource] 1 end-1]
 }
 
 #           
 # emit_set_fixedstring_field - emit code to set a fixedstring field
 #
-proc emit_set_fixedstring_field {field pointer length} {
+proc emit_set_fixedstring_field {field length} {
     variable fixedstringSetSource
     variable table
+    variable nullCheckDuringSetSource
       
     set optname [field_to_enum $field]
 
-    emit [subst -nobackslashes -nocommands $fixedstringSetSource]
+    emit [string range [subst $fixedstringSetSource] 1 end-1]
 } 
 
 set fieldIncrSource {
 int
-${table}_incr (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, int field) $leftCurly
+${table}_incr (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
@@ -1715,14 +1710,37 @@ set numberIncrSource {
 	    return TCL_ERROR;
 	}
 
-	if ($pointer->_${field}IsNull) {
-	    $pointer->_${field}IsNull = 0;
-	    $pointer->$field = incrAmount;
+	if (row->_${field}IsNull) {
+	    // incr of a null field, default to 0
+	    if ((indexCtl == CTABLE_INDEX_NORMAL) && ctable->skipLists[field] != NULL) {
+		if (ctable_RemoveNullFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+		    return TCL_ERROR;
+		}
+	    }
+	    row->_${field}IsNull = 0;
+	    row->$field = incrAmount;
+
+	    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
+		if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+		    return TCL_ERROR;
+		}
+	    }
 	    break;
 	}
 
-	$pointer->$field += incrAmount;
-	$pointer->_${field}IsNull = 0;
+	if ((indexCtl == CTABLE_INDEX_NORMAL) && ctable->skipLists[field] != NULL) {
+	    if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+	}
+
+	row->$field += incrAmount;
+	row->_${field}IsNull = 0;
+	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
+	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+		return TCL_ERROR;
+	    }
+	}
 	break;
       }
 }
@@ -1737,7 +1755,7 @@ set illegalIncrSource {
 
 set incrFieldObjSource {
 int
-${table}_incr_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointer, Tcl_Obj *fieldObj)
+${table}_incr_fieldobj (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
 {
     int field;
 
@@ -1745,34 +1763,39 @@ ${table}_incr_fieldobj (Tcl_Interp *interp, Tcl_Obj *obj, struct $table *$pointe
         return TCL_ERROR;
     }
 
-    return ${table}_incr (interp, obj, $pointer, field);
+    return ${table}_incr (interp, ctable, obj, row, field, indexCtl);
 }
 }
 
 #
 # emit_incr_num_field - emit code to incr a numeric field
 #
-proc emit_incr_num_field {field pointer} {
+proc emit_incr_num_field {field} {
     variable numberIncrSource
     variable table
 
     set optname [field_to_enum $field]
 
-    emit [subst -nobackslashes -nocommands $numberIncrSource]
+    emit [string range [subst -nobackslashes -nocommands $numberIncrSource] 1 end-1]
 }
 
+#
+# emit_incr_illegal_field - we run this to generate code that will cause
+#  an error on attempts to incr the field that's being processed -- for
+#  when incr is not a reasonable thing
+#
 proc emit_incr_illegal_field {field} {
     variable illegalIncrSource
 
     set optname [field_to_enum $field]
-    emit [subst -nobackslashes -nocommands $illegalIncrSource]
+    emit [string range [subst -nobackslashes -nocommands $illegalIncrSource] 1 end-1]
 }
 
 #
 # gen_incrs - emit code to incr all of the incr'able fields of the table being 
 # defined
 #
-proc gen_incrs {pointer} {
+proc gen_incrs {} {
     variable table
     variable booleans
     variable fields
@@ -1786,27 +1809,27 @@ proc gen_incrs {pointer} {
 
 	switch $field(type) {
 	    int {
-		emit_incr_num_field $myfield $pointer
+		emit_incr_num_field $myfield
 	    }
 
 	    long {
-		emit_incr_num_field $myfield $pointer
+		emit_incr_num_field $myfield
 	    }
 
 	    wide {
-		emit_incr_num_field $myfield $pointer
+		emit_incr_num_field $myfield
 	    }
 
 	    double {
-		emit_incr_num_field $myfield $pointer
+		emit_incr_num_field $myfield
 	    }
 
 	    short {
-		emit_incr_num_field $myfield $pointer
+		emit_incr_num_field $myfield
 	    }
 
 	    float {
-	        emit_incr_num_field $myfield $pointer
+	        emit_incr_num_field $myfield
 	    }
 
 	    default {
@@ -1821,27 +1844,27 @@ proc gen_incrs {pointer} {
 # tcl interp, an object, a pointer to a table row and a field number,
 # and incrs that field in that row by the the value extracted from the obj
 #
-proc gen_incr_function {table pointer} {
+proc gen_incr_function {table} {
     variable fieldIncrSource
     variable incrFieldObjSource
     variable leftCurly
     variable rightCurly
 
-    emit [subst -nobackslashes -nocommands $fieldIncrSource]
+    emit [string range [subst -nobackslashes -nocommands $fieldIncrSource] 1 end-1]
 
-    gen_incrs $pointer
+    gen_incrs
 
     emit "    $rightCurly"
     emit "    return TCL_OK;"
     emit "$rightCurly"
 
-    emit [subst -nobackslashes -nocommands $incrFieldObjSource]
+    emit [string range [subst -nobackslashes -nocommands $incrFieldObjSource] 1 end-1]
 }
 
 #
 # gen_sets - emit code to set all of the fields of the table being defined
 #
-proc gen_sets {pointer} {
+proc gen_sets {} {
     variable table
     variable booleans
     variable fields
@@ -1855,31 +1878,31 @@ proc gen_sets {pointer} {
 
 	switch $field(type) {
 	    int {
-		emit_set_num_field $myfield $pointer int
+		emit_set_num_field $myfield int
 	    }
 
 	    long {
-		emit_set_num_field $myfield $pointer long
+		emit_set_num_field $myfield long
 	    }
 
 	    wide {
-		emit_set_num_field $myfield $pointer wide
+		emit_set_num_field $myfield wide
 	    }
 
 	    double {
-		emit_set_num_field $myfield $pointer double
-	    }
-
-	    fixedstring {
-		emit_set_fixedstring_field $myfield $pointer $field(length)
+		emit_set_num_field $myfield double
 	    }
 
 	    short {
-		emit_set_standard_field $myfield $pointer shortSetSource
+		emit_set_num_field $myfield int
 	    }
 
 	    float {
-	        emit_set_standard_field $myfield $pointer floatSetSource
+		emit_set_num_field $myfield float
+	    }
+
+	    fixedstring {
+		emit_set_fixedstring_field $myfield $field(length)
 	    }
 
 	    varstring {
@@ -1890,27 +1913,27 @@ proc gen_sets {pointer} {
 		    set default ""
 		    set defaultLength 0
 		}
-		emit_set_varstring_field $table $myfield $pointer $default $defaultLength
+		emit_set_varstring_field $table $myfield $default $defaultLength
 	    }
 
 	    boolean {
-		emit_set_standard_field $myfield $pointer boolSetSource
+		emit_set_standard_field $myfield boolSetSource
 	    }
 
 	    char {
-		emit_set_standard_field $myfield $pointer charSetSource
+		emit_set_standard_field $myfield charSetSource
 	    }
 
 	    inet {
-	        emit_set_standard_field $myfield $pointer inetSetSource
+	        emit_set_standard_field $myfield inetSetSource
 	    }
 
 	    mac {
-	        emit_set_standard_field $myfield $pointer macSetSource
+	        emit_set_standard_field $myfield macSetSource
 	    }
 
 	    tclobj {
-	        emit_set_standard_field $myfield $pointer tclobjSetSource
+	        emit_set_standard_field $myfield tclobjSetSource
 	    }
 
 	    default {
@@ -1920,6 +1943,25 @@ proc gen_sets {pointer} {
     }
 }
 
+set setNullSource {
+      case $optname: 
+        if (row->_${myField}IsNull) {
+	    break;
+	}
+
+	if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
+	    if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+		return TCL_ERROR;
+	    }
+	}
+        row->_${myField}IsNull = 1; 
+	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
+	    if (ctable_InsertNullIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+		return TCL_ERROR;
+	    }
+	}
+	break;
+}
 #
 # gen_set_null_function - emit C routine to set a specific field to null
 #  in a given table and row
@@ -1928,20 +1970,23 @@ proc gen_set_null_function {table} {
     variable fieldList
     variable leftCurly
     variable rightCurly
+    variable setNullSource
 
-    emit "void"
-    emit "${table}_set_null (struct $table *rowPtr, int field) $leftCurly"
+    emit "int"
+    emit "${table}_set_null (Tcl_Interp *interp, struct ctableTable *ctable, struct $table *row, int field, int indexCtl) $leftCurly"
 
     emit "    switch ((enum ${table}_fields) field) $leftCurly"
 
     foreach myField $fieldList {
         set optname [field_to_enum $myField]
 
-        emit "      case $optname: rowPtr->_${myField}IsNull = 1; break;"
+	emit [subst -nobackslashes -nocommands $setNullSource]
     }
 
     emit "    $rightCurly"
+    emit "    return TCL_OK;"
     emit "$rightCurly"
+    emit ""
 }
 
 #
@@ -1993,21 +2038,21 @@ proc put_init_extension_source {extension extensionVersion} {
 # tcl interp, an object, a pointer to a table row and a field number,
 # and sets the value extracted from the obj into the field of the row
 #
-proc gen_set_function {table pointer} {
+proc gen_set_function {table} {
     variable fieldObjSetSource
     variable fieldSetSource
     variable leftCurly
     variable rightCurly
 
-    emit [subst -nobackslashes -nocommands $fieldSetSource]
+    emit [string range [subst -nobackslashes -nocommands $fieldSetSource] 1 end-1]
 
-    gen_sets $pointer
+    gen_sets
 
     emit "    $rightCurly"
     emit "    return TCL_OK;"
     emit "$rightCurly"
 
-    emit [subst -nobackslashes -nocommands $fieldObjSetSource]
+    emit [string range [subst -nobackslashes -nocommands $fieldObjSetSource] 1 end-1]
 
 }
 
@@ -2022,7 +2067,7 @@ proc gen_set_function {table pointer} {
 #  a string identifying the field, which is then looked up to identify
 #  the field number and used in a call to the *_get function.
 #
-proc gen_get_function {table pointer} {
+proc gen_get_function {table} {
     variable fieldObjGetSource
     variable lappendFieldAndNameObjSource
     variable lappendNonnullFieldAndNameObjSource
@@ -2032,25 +2077,25 @@ proc gen_get_function {table pointer} {
     variable leftCurly
     variable rightCurly
 
-    emit [subst -nobackslashes -nocommands $fieldGetSource]
-    gen_gets_cases $pointer
+    emit [string range [subst -nobackslashes -nocommands $fieldGetSource] 1 end-1]
+    gen_gets_cases
     emit "    $rightCurly"
     emit "    return TCL_OK;"
     emit "$rightCurly"
 
-    emit [subst -nobackslashes -nocommands $fieldObjGetSource]
+    emit [string range [subst -nobackslashes -nocommands $fieldObjGetSource] 1 end-1]
 
-    emit [subst -nobackslashes -nocommands $lappendFieldAndNameObjSource]
+    emit [string range [subst -nobackslashes -nocommands $lappendFieldAndNameObjSource] 1 end-1]
 
-    emit [subst -nobackslashes -nocommands $lappendNonnullFieldAndNameObjSource]
+    emit [string range [subst -nobackslashes -nocommands $lappendNonnullFieldAndNameObjSource] 1 end-1]
 
-    emit [subst -nobackslashes -nocommands $fieldGetStringSource]
-    gen_gets_string_cases $pointer
+    emit [string range [subst -nobackslashes -nocommands $fieldGetStringSource] 1 end-1]
+    gen_gets_string_cases
     emit "    $rightCurly"
     emit "    return TCL_OK;"
     emit "$rightCurly"
 
-    emit [subst -nobackslashes -nocommands $tabSepFunctionsSource]
+    emit [string range [subst -nobackslashes -nocommands $tabSepFunctionsSource] 1 end-1]
 }
 
 #
@@ -2126,10 +2171,7 @@ proc gen_code {} {
     variable fieldList
     variable leftCurly
     variable rightCurly
-    variable cmdBodyHeader
     variable cmdBodySource
-    variable cmdBodyGetSource
-    variable cmdBodyArrayGetSource
 
     #set pointer "${table}_ptr"
     set pointer p
@@ -2140,30 +2182,21 @@ proc gen_code {} {
 
     set rowStruct $table
 
-    gen_set_function $table $pointer
+    gen_set_function $table
 
     gen_set_null_function $table
 
-    gen_get_function $table $pointer
+    gen_get_function $table
 
-    gen_incr_function $table $pointer
+    gen_incr_function $table
+
+    gen_field_compare_functions
 
     gen_sort_compare_function
 
     gen_search_compare_function
 
-    emit [subst -nobackslashes -nocommands $cmdBodyHeader]
-
     emit [subst -nobackslashes -nocommands $cmdBodySource]
-
-    emit [subst -nobackslashes -nocommands $cmdBodyGetSource]
-
-    emit [subst -nobackslashes -nocommands $cmdBodyArrayGetSource]
-
-    # finish out the command switch and the command itself
-    emit "    $rightCurly"
-    emit "    return TCL_OK;"
-    emit "$rightCurly"
 }
 
 #
@@ -2171,37 +2204,37 @@ proc gen_code {} {
 #  the C code to generate a Tcl object containing that element from the
 #  pointer pointing to the named field.
 #
-proc gen_new_obj {type pointer fieldName} {
+proc gen_new_obj {type fieldName} {
     variable fields
     variable table
 
     switch $type {
 	short {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj ($pointer->$fieldName)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj (row->$fieldName)"
 	}
 
 	int {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj ($pointer->$fieldName)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj (row->$fieldName)"
 	}
 
 	long {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewLongObj ($pointer->$fieldName)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewLongObj (row->$fieldName)"
 	}
 
 	wide {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewWideIntObj ($pointer->$fieldName)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewWideIntObj (row->$fieldName)"
 	}
 
 	double {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj ($pointer->$fieldName)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
 	}
 
 	float {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj ($pointer->$fieldName)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
 	}
 
 	boolean {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewBooleanObj ($pointer->$fieldName)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewBooleanObj (row->$fieldName)"
 	}
 
 	varstring {
@@ -2220,29 +2253,29 @@ proc gen_new_obj {type pointer fieldName} {
 		}
 	    }
 
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : (($pointer->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj ($pointer->$fieldName, $pointer->_${fieldName}Length))"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : ((row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length))"
 	}
 
 	char {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (&$pointer->$fieldName, 1)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (&row->$fieldName, 1)"
 	}
 
 	fixedstring {
 	    catch {unset field}
 	    array set field $fields($fieldName)
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj ($pointer->$fieldName, $field(length))"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (row->$fieldName, $field(length))"
 	}
 
 	inet {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (inet_ntoa ($pointer->$fieldName), -1)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (inet_ntoa (row->$fieldName), -1)"
 	}
 
 	mac {
-	    return "$pointer->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (ether_ntoa (&$pointer->$fieldName), -1)"
+	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (ether_ntoa (&row->$fieldName), -1)"
 	}
 
 	tclobj {
-	    return "(($pointer->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : $pointer->$fieldName)"
+	    return "((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
 	}
 
 	default {
@@ -2262,59 +2295,59 @@ proc gen_new_obj {type pointer fieldName} {
 # do what gen_get_string_cases does, or call its parent anyway *_get_string,
 # to get string representations of those efficiently.
 #
-proc gen_get_set_obj {obj type pointer fieldName} {
+proc gen_get_set_obj {obj type fieldName} {
     variable fields
     variable table
 
     switch $type {
 	short {
-	    return "Tcl_SetIntObj ($obj, $pointer->$fieldName)"
+	    return "Tcl_SetIntObj ($obj, row->$fieldName)"
 	}
 
 	int {
-	    return "Tcl_SetIntObj ($obj, $pointer->$fieldName)"
+	    return "Tcl_SetIntObj ($obj, row->$fieldName)"
 	}
 
 	long {
-	    return "Tcl_SetLongObj ($obj, $pointer->$fieldName)"
+	    return "Tcl_SetLongObj ($obj, row->$fieldName)"
 	}
 
 	wide {
-	    return "Tcl_SetWideIntObj ($obj, $pointer->$fieldName)"
+	    return "Tcl_SetWideIntObj ($obj, row->$fieldName)"
 	}
 
 	double {
-	    return "Tcl_SetDoubleObj ($obj, $pointer->$fieldName)"
+	    return "Tcl_SetDoubleObj ($obj, row->$fieldName)"
 	}
 
 	float {
-	    return "Tcl_SetDoubleObj ($obj, $pointer->$fieldName)"
+	    return "Tcl_SetDoubleObj ($obj, row->$fieldName)"
 	}
 
 	boolean {
-	    return "Tcl_SetBooleanObj ($obj, $pointer->$fieldName)"
+	    return "Tcl_SetBooleanObj ($obj, row->$fieldName)"
 	}
 
 	varstring {
-	    return "Tcl_SetStringObj ($obj, $pointer->$fieldName, $pointer->_${fieldName}Length)"
+	    return "Tcl_SetStringObj ($obj, row->$fieldName, row->_${fieldName}Length)"
 	}
 
 	char {
-	    return "Tcl_SetStringObj ($obj, &$pointer->$fieldName, 1)"
+	    return "Tcl_SetStringObj ($obj, &row->$fieldName, 1)"
 	}
 
 	fixedstring {
 	    catch {unset field}
 	    array set field $fields($fieldName)
-	    return "Tcl_SetStringObj ($obj, $pointer->$fieldName, $field(length))"
+	    return "Tcl_SetStringObj ($obj, row->$fieldName, $field(length))"
 	}
 
 	inet {
-	    return "Tcl_SetStringObj ($obj, inet_ntoa ($pointer->$fieldName), -1)"
+	    return "Tcl_SetStringObj ($obj, inet_ntoa (row->$fieldName), -1)"
 	}
 
 	mac {
-	    return "Tcl_SetStringObj ($obj, ether_ntoa (&$pointer->$fieldName), -1)"
+	    return "Tcl_SetStringObj ($obj, ether_ntoa (&row->$fieldName), -1)"
 	}
 
 	tclobj {
@@ -2331,16 +2364,16 @@ proc gen_get_set_obj {obj type pointer fieldName} {
 # set_list_obj - generate C code to emit a Tcl obj containing the named
 #  field into a list that's being cons'ed up
 #
-proc set_list_obj {position type pointer field} {
-    emit "    listObjv\[$position] = [gen_new_obj $type $pointer $field];"
+proc set_list_obj {position type field} {
+    emit "    listObjv\[$position] = [gen_new_obj $type $field];"
 }
 
 #
 # append_list_element - generate C code to append a list element to the
 #  output object.  used by code that lets you get one or more named fields.
 #
-proc append_list_element {type pointer field} {
-    return "Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), [gen_new_obj $type $pointer $field])"
+proc append_list_element {type field} {
+    return "Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), [gen_new_obj $type $field])"
 }
 
 #
@@ -2354,14 +2387,10 @@ proc gen_list {} {
     variable leftCurly
     variable rightCurly
 
-    # we are becoming more standardized
-    #set pointer ${table}_ptr
-    set pointer p
-
     set lengthDef [string toupper $table]_NFIELDS
 
     emit "Tcl_Obj *${table}_genlist (Tcl_Interp *interp, void *vPointer) $leftCurly"
-    emit "    struct $table *$pointer = vPointer;"
+    emit "    struct $table *row = vPointer;"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef];"
     emit ""
@@ -2371,7 +2400,7 @@ proc gen_list {} {
         catch {unset field}
 	array set field $fields($fieldName)
 
-	set_list_obj $position $field(type) $pointer $fieldName
+	set_list_obj $position $field(type) $fieldName
 
 	incr position
     }
@@ -2393,13 +2422,10 @@ proc gen_keyvalue_list {} {
     variable leftCurly
     variable rightCurly
 
-    #set pointer ${table}_ptr
-    set pointer p
-
     set lengthDef [string toupper $table]_NFIELDS
 
     emit "Tcl_Obj *${table}_gen_keyvalue_list (Tcl_Interp *interp, void *vPointer) $leftCurly"
-    emit "    struct $table *$pointer = vPointer;"
+    emit "    struct $table *row = vPointer;"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
     emit ""
@@ -2412,7 +2438,7 @@ proc gen_keyvalue_list {} {
 	emit "    listObjv\[$position] = ${table}_${fieldName}NameObj;"
 	incr position
 
-	set_list_obj $position $field(type) $pointer $fieldName
+	set_list_obj $position $field(type) $fieldName
 	incr position
 
 	emit ""
@@ -2437,12 +2463,9 @@ proc gen_nonnull_keyvalue_list {} {
     variable leftCurly
     variable rightCurly
 
-    #set pointer ${table}_ptr
-    set pointer p
-
     set lengthDef [string toupper $table]_NFIELDS
 
-    emit "Tcl_Obj *${table}_gen_nonnull_keyvalue_list (Tcl_Interp *interp, struct $table *$pointer) $leftCurly"
+    emit "Tcl_Obj *${table}_gen_nonnull_keyvalue_list (Tcl_Interp *interp, struct $table *row) $leftCurly"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
     emit "    int position = 0;"
@@ -2453,7 +2476,7 @@ proc gen_nonnull_keyvalue_list {} {
         catch {unset field}
 	array set field $fields($fieldName)
 
-	emit "    obj = [gen_new_obj $field(type) $pointer $fieldName];"
+	emit "    obj = [gen_new_obj $field(type) $fieldName];"
 	emit "    if (obj != ${table}_NullValueObj) $leftCurly"
 	emit "        listObjv\[position++] = ${table}_${fieldName}NameObj;"
 	emit "        listObjv\[position++] = obj;"
@@ -2556,7 +2579,7 @@ proc gen_field_names {} {
 # gen_gets_cases - generate case statements for each field, each case fetches
 #  field from row and returns a new Tcl_Obj set with that field's value
 #
-proc gen_gets_cases {pointer} {
+proc gen_gets_cases {} {
     variable table
     variable booleans
     variable fields
@@ -2569,7 +2592,7 @@ proc gen_gets_cases {pointer} {
 	array set field $fields($myField)
 
 	emit "      case [field_to_enum $myField]:"
-	emit "        return [gen_new_obj $field(type) $pointer $myField];"
+	emit "        return [gen_new_obj $field(type) $myField];"
 	emit ""
     }
 }
@@ -2579,7 +2602,7 @@ proc gen_gets_cases {pointer} {
 #  generates a return of a char * to a string representing that field's
 #  value and sets a passed-in int * to the length returned.
 #
-proc gen_gets_string_cases {pointer} {
+proc gen_gets_string_cases {} {
     variable table
     variable booleans
     variable fields
@@ -2593,13 +2616,13 @@ proc gen_gets_string_cases {pointer} {
 
 	emit "      case [field_to_enum $myField]:"
 
-	emit "        if ($pointer->_${myField}IsNull) $leftCurly"
+	emit "        if (row->_${myField}IsNull) $leftCurly"
 	emit "            return Tcl_GetStringFromObj (${table}_NullValueObj, lengthPtr);"
 	emit "        $rightCurly"
 
 	switch $field(type) {
 	  "varstring" {
-	    emit "        if ($pointer->_${myField}IsNull) $leftCurly"
+	    emit "        if (row->_${myField}IsNull) $leftCurly"
 
 	    if {![info exists field(default)] || $field(default) == ""} {
 	        set source ${table}_DefaultEmptyStringObj
@@ -2608,29 +2631,29 @@ proc gen_gets_string_cases {pointer} {
 	    }
 	    emit "            return Tcl_GetStringFromObj ($source, lengthPtr);"
 	    emit "        $rightCurly"
-	    emit "        *lengthPtr = ${pointer}->_${myField}Length;"
-	    emit "        return $pointer->$myField;"
+	    emit "        *lengthPtr = row->_${myField}Length;"
+	    emit "        return row->$myField;"
 	  }
 
 	  "fixedstring" {
 	      emit "        *lengthPtr = $field(length);"
-	      emit "        return $pointer->$myField;"
+	      emit "        return row->$myField;"
 	  }
 
 	  "char" {
 	      emit "        *lengthPtr = 1;"
-	      emit "        return &$pointer->$myField;"
+	      emit "        return &row->$myField;"
 	  }
 
 	  "tclobj" {
-	    emit "        if ($pointer->$myField == NULL) $leftCurly"
+	    emit "        if (row->$myField == NULL) $leftCurly"
 	    emit "            return Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, lengthPtr);"
 	    emit "        $rightCurly"
-	    emit "        return Tcl_GetStringFromObj ($pointer->$myField, lengthPtr);"
+	    emit "        return Tcl_GetStringFromObj (row->$myField, lengthPtr);"
 	  }
 
 	  default {
-	      emit "        [gen_get_set_obj utilityObj $field(type) $pointer $myField];"
+	      emit "        [gen_get_set_obj utilityObj $field(type) $myField];"
 	      emit "        return Tcl_GetStringFromObj (utilityObj, lengthPtr);"
 	  }
 	}
@@ -2657,19 +2680,233 @@ proc gen_preamble {} {
 
 }
 
+#####
+#
+# Field Compare Function Generation
+#
+#####
+
+set fieldCompareHeaderSource {
+// field compare function for field '$field' of the '$table' table...
+int ${table}_field_${field}_compare(const void *vPointer1, const void *vPointer2) $leftCurly
+    struct ${table} *row1, *row2;
+
+    row1 = (struct $table *) vPointer1;
+    row2 = (struct $table *) vPointer2;
+
+// printf ("field comp he1 $table $field p1 %lx, p2 %lx\n", (long unsigned int)vPointer1, (long unsigned int)vPointer2);
+
+    // nulls sort high
+    if (row1->_${field}IsNull) {
+	if (row2->_${field}IsNull) {
+	    return 0;
+	}
+
+	return 1;
+    } else if (row2->_${field}IsNull) {
+	return -1;
+    }
+
+}
+
+set fieldCompareTrailerSource {
+$rightCurly
+}
+
+#
+# boolFieldCompSource - code we run subst over to generate a compare of a 
+# boolean (bit) for use in a field comparison routine.
+#
+set boolFieldCompSource {
+    if (row1->$field && !row2->$field) {
+	return -1;
+    }
+
+    if (!row1->$field && row2->$field) {
+	return 1;
+    }
+
+    return 0;
+}
+
+#
+# numberFieldSource - code we run subst over to generate a compare of a standard
+#  number such as an integer, long, double, and wide integer for use in field
+#  compares.
+#
+set numberFieldCompSource {
+    if (row1->$field < row2->$field) {
+        return -1;
+    }
+
+    if (row1->$field > row2->$field) {
+	return 1;
+    }
+
+    return 0;
+}
+
+#
+# varstringFieldCompSource - code we run subst over to generate a compare of 
+# a string for use in searching, sorting, etc.
+#
+set varstringFieldCompSource {
+    return strcmp (row1->$field, row2->$field);
+}
+
+#
+# fixedstringFieldCompSource - code we run subst over to generate a comapre of a 
+# fixed-length string for use in a searching, sorting, etc.
+#
+set fixedstringFieldCompSource {
+    return strncmp (row1->$field, row2->$field, $length);
+}
+
+#
+# binaryDataFieldCompSource - code we run subst over to generate a comapre of a 
+# inline binary arrays (inets and mac addrs) for use in searching and sorting.
+#
+set binaryDataFieldCompSource {
+    return memcmp (&row1->$field, &row2->$field, $length);
+}
+
+#
+# tclobjFieldCompSource - code we run subst over to generate a compare of 
+# a tclobj for use in searching and sorting.
+#
+set tclobjFieldCompSource {
+    return strcmp (Tcl_GetString (row1->$field), Tcl_GetString (row2->$field));
+}
+
+#
+# gen_field_comp - emit code to compare a field for a field comparison routine
+#
+proc gen_field_comp {field} {
+    variable table
+    variable booleans
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    variable numberFieldCompSource
+    variable fixedstringFieldCompSource
+    variable binaryDataFieldCompSource
+    variable varstringFieldCompSource
+    variable boolFieldCompSource
+    variable tclobjFieldCompSource
+
+    array set fieldData $fields($field)
+
+    switch $fieldData(type) {
+	int {
+	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
+	}
+
+	long {
+	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
+	}
+
+	wide {
+	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
+	}
+
+	double {
+	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
+	}
+
+	short {
+	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
+	}
+
+	float {
+	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
+	}
+
+	char {
+	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
+	}
+
+	fixedstring {
+	    set length $fieldData(length)
+	    emit [string range [subst -nobackslashes -nocommands $fixedstringFieldCompSource] 1 end-1]
+	}
+
+	varstring {
+	    emit [string range [subst -nobackslashes -nocommands $varstringFieldCompSource] 1 end-1]
+	}
+
+	boolean {
+	    emit [string range [subst -nobackslashes -nocommands $boolFieldCompSource] 1 end-1]
+	}
+
+	inet {
+	    set length "sizeof(struct in_addr)"
+	    emit [string range [subst -nobackslashes -nocommands $binaryDataFieldCompSource] 1 end-1]
+	}
+
+	mac {
+	    set length "sizeof(struct ether_addr)"
+	    emit [string range [subst -nobackslashes -nocommands $binaryDataFieldCompSource] 1 end-1]
+	}
+
+	tclobj {
+	    emit [string range [subst -nobackslashes -nocommands $tclobjFieldCompSource] 1 end-1]
+	}
+
+	default {
+	    error "attempt to emit sort compare source for field of unknown type $fieldData(type)"
+	}
+    }
+}
+#
+# gen_field_compare_functions - generate functions for each field that will
+# compare that field from two row pointers and return -1, 0, or 1.
+#
+proc gen_field_compare_functions {} {
+    variable table
+    variable leftCurly
+    variable rightCurly
+    variable fieldCompareHeaderSource
+    variable fieldCompareTrailerSource
+    variable fieldList
+
+    # generate all of the field compare functions
+    foreach field $fieldList {
+	emit [string range [subst -nobackslashes -nocommands $fieldCompareHeaderSource] 1 end-1]
+	gen_field_comp $field
+	emit [string range [subst -nobackslashes -nocommands $fieldCompareTrailerSource] 1 end-1]
+    }
+
+    # generate an array of pointers to field compare functions for this type
+    emit "// array of table's field compare routines indexed by field number"
+    emit "fieldCompareFunction_t ${table}_compare_functions\[] = $leftCurly"
+    set typeList ""
+    foreach field $fieldList {
+	 append typeList "\n    ${table}_field_${field}_compare,"
+    }
+    emit "[string range $typeList 0 end-1]\n$rightCurly;\n"
+}
+
+#####
+#
+# Sort Comparison Function Generation
+#
+#####
+
 set sortCompareHeaderSource {
 
 int ${table}_sort_compare(void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2) $leftCurly
     struct ctableSortStruct *sortControl = (struct ctableSortStruct *)clientData;
-    struct ${table} *pointer1, *pointer2;
+    struct ${table} *row1, *row2;
     int              i;
     int              direction;
     int              result = 0;
 
-    pointer1 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr1);
-    pointer2 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr2);
+    row1 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr1);
+    row2 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr2);
 
-// printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)pointer1, (long unsigned int)pointer2);
+// printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)row1, (long unsigned int)row2);
 
     for (i = 0; i < sortControl->nFields; i++) $leftCurly
         direction = sortControl->directions[i];
@@ -2704,11 +2941,11 @@ proc gen_sort_compare_function {} {
     variable sortCompareHeaderSource
     variable sortCompareTrailerSource
 
-    emit [subst -nobackslashes -nocommands $sortCompareHeaderSource]
+    emit [string range [subst -nobackslashes -nocommands $sortCompareHeaderSource] 1 end-1]
 
     gen_sort_comp
 
-    emit [subst -nobackslashes -nocommands $sortCompareTrailerSource]
+    emit [string range [subst -nobackslashes -nocommands $sortCompareTrailerSource] 1 end-1]
 }
 
 #
@@ -2736,58 +2973,58 @@ proc gen_sort_comp {} {
 
 	switch $fieldData(type) {
 	    int {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
+		emit [string range [subst -nobackslashes -nocommands $numberSortSource] 1 end-1]
 	    }
 
 	    long {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
+		emit [string range [subst -nobackslashes -nocommands $numberSortSource] 1 end-1]
 	    }
 
 	    wide {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
+		emit [string range [subst -nobackslashes -nocommands $numberSortSource] 1 end-1]
 	    }
 
 	    double {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
+		emit [string range [subst -nobackslashes -nocommands $numberSortSource] 1 end-1]
 	    }
 
 	    short {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
+		emit [string range [subst -nobackslashes -nocommands $numberSortSource] 1 end-1]
 	    }
 
 	    float {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
+		emit [string range [subst -nobackslashes -nocommands $numberSortSource] 1 end-1]
 	    }
 
 	    char {
-		emit [subst -nobackslashes -nocommands $numberSortSource]
+		emit [string range [subst -nobackslashes -nocommands $numberSortSource] 1 end-1]
 	    }
 
 	    fixedstring {
 	        set length $fieldData(length)
-		emit [subst -nobackslashes -nocommands $fixedstringSortSource]
+		emit [string range [subst -nobackslashes -nocommands $fixedstringSortSource] 1 end-1]
 	    }
 
 	    varstring {
-		emit [subst -nobackslashes -nocommands $varstringSortSource]
+		emit [string range [subst -nobackslashes -nocommands $varstringSortSource] 1 end-1]
 	    }
 
 	    boolean {
-		emit [subst -nobackslashes -nocommands $boolSortSource]
+		emit [string range [subst -nobackslashes -nocommands $boolSortSource] 1 end-1]
 	    }
 
 	    inet {
 	        set length "sizeof(struct in_addr)"
-		emit [subst -nobackslashes -nocommands $binaryDataSortSource]
+		emit [string range [subst -nobackslashes -nocommands $binaryDataSortSource] 1 end-1]
 	    }
 
 	    mac {
 		set length "sizeof(struct ether_addr)"
-		emit [subst -nobackslashes -nocommands $binaryDataSortSource]
+		emit [string range [subst -nobackslashes -nocommands $binaryDataSortSource] 1 end-1]
 	    }
 
 	    tclobj {
-		emit [subst -nobackslashes -nocommands $tclobjSortSource]
+		emit [string range [subst -nobackslashes -nocommands $tclobjSortSource] 1 end-1]
 	    }
 
 	    default {
@@ -2797,20 +3034,24 @@ proc gen_sort_comp {} {
     }
 }
 
+#####
+#
+# Search Comparison Function Generation
+#
+#####
+
 set searchCompareHeaderSource {
 
 // compare a row to a block of search components and see if it matches
-int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searchControl, Tcl_HashEntry *hashEntryPtr) $leftCurly
-    struct ${table} *pointer;
+int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searchControl, void *vPointer, int firstComponent) $leftCurly
+    struct $table *row = (struct $table *)vPointer;
     int              i;
     int              exclude = 0;
     int              compType;
     Tcl_Obj         *compareObj;
     struct ctableSearchComponentStruct *component;
 
-    pointer = (struct $table *) Tcl_GetHashValue (hashEntryPtr);
-
-    for (i = 0; i < searchControl->nComponents; i++) $leftCurly
+    for (i = firstComponent; i < searchControl->nComponents; i++) $leftCurly
       component = &searchControl->components[i];
       compType = component->comparisonType;
       compareObj = component->comparedToObject;
@@ -2841,11 +3082,11 @@ proc gen_search_compare_function {} {
     variable searchCompareHeaderSource
     variable searchCompareTrailerSource
 
-    emit [subst -nobackslashes -nocommands $searchCompareHeaderSource]
+    emit [string range [subst -nobackslashes -nocommands $searchCompareHeaderSource] 1 end-1]
 
     gen_search_comp
 
-    emit [subst -nobackslashes -nocommands $searchCompareTrailerSource]
+    emit [string range [subst -nobackslashes -nocommands $searchCompareTrailerSource] 1 end-1]
 }
 
 #
@@ -2881,74 +3122,75 @@ proc gen_search_comp {} {
 	switch $type {
 	    int {
 		set getObjCmd Tcl_GetIntFromObj
-		emit [subst -nobackslashes -nocommands $numberCompSource]
+		emit [string range [subst -nobackslashes -nocommands $numberCompSource] 1 end-1]
 	    }
 
 	    long {
 		set getObjCmd Tcl_GetLongFromObj
-		emit [subst -nobackslashes -nocommands $numberCompSource]
+		emit [string range [subst -nobackslashes -nocommands $numberCompSource] 1 end-1]
 	    }
 
 	    wide {
-		set typeText "wide int"
 		set getObjCmd Tcl_GetWideIntFromObj
-		emit [subst -nobackslashes -nocommands $numberCompSource]
+		set typeText "Tcl_WideInt"
+		set type "Tcl_WideInt"
+		emit [string range [subst -nobackslashes -nocommands $numberCompSource] 1 end-1]
 	    }
 
 	    double {
 		set getObjCmd Tcl_GetDoubleFromObj
-		emit [subst -nobackslashes -nocommands $numberCompSource]
+		emit [string range [subst -nobackslashes -nocommands $numberCompSource] 1 end-1]
 	    }
 
 	    short {
 		set typeText "int"
 		set getObjCmd Tcl_GetIntFromObj
-		emit [subst -nobackslashes -nocommands $numberCompSource]
+		emit [string range [subst -nobackslashes -nocommands $numberCompSource] 1 end-1]
 	    }
 
 	    float {
 		set typeText "double"
 		set getObjCmd Tcl_GetDoubleFromObj
-		emit [subst -nobackslashes -nocommands $numberCompSource]
+		emit [string range [subst -nobackslashes -nocommands $numberCompSource] 1 end-1]
 	    }
 
 	    char {
 		set typeText "int"
 		set getObjCmd Tcl_GetIntFromObj
-		emit [subst -nobackslashes -nocommands $numberCompSource]
+		emit [string range [subst -nobackslashes -nocommands $numberCompSource] 1 end-1]
 	    }
 
 	    fixedstring {
 		set getObjCmd Tcl_GetString
 	        set length $fieldData(length)
-		emit [subst -nobackslashes -nocommands $fixedstringCompSource]
+		emit [string range [subst -nobackslashes -nocommands $fixedstringCompSource] 1 end-1]
 	    }
 
 	    varstring {
 		set getObjCmd Tcl_GetString
-		emit [subst -nobackslashes -nocommands $varstringCompSource]
+		emit [string range [subst -nobackslashes -nocommands $varstringCompSource] 1 end-1]
 	    }
 
 	    boolean {
 		set getObjCmd Tcl_GetBooleanFromObj
-		emit [subst -nobackslashes -nocommands $boolCompSource]
+		emit [string range [subst -nobackslashes -nocommands $boolCompSource] 1 end-1]
 	    }
 
 	    inet {
 		set getObjCmd Tcl_GetStringFromObj
 	        set length "sizeof(struct in_addr)"
-		emit [subst -nobackslashes -nocommands $binaryDataCompSource]
+		emit [string range [subst -nobackslashes -nocommands $binaryDataCompSource] 1 end-1]
 	    }
 
 	    mac {
 		set getObjCmd Tcl_GetStringFromObj
 		set length "sizeof(struct ether_addr)"
-		emit [subst -nobackslashes -nocommands $binaryDataCompSource]
+		emit [string range [subst -nobackslashes -nocommands $binaryDataCompSource] 1 end-1]
 	    }
 
 	    tclobj {
 		set getObjCmd Tcl_GetStringFromObj
-		emit [subst -nobackslashes -nocommands $tclobjCompSource]
+		emit [string range [subst -nobackslashes -nocommands $tclobjCompSource] 1 end-1]
 	    }
 
 	    default {
@@ -2957,6 +3199,12 @@ proc gen_search_comp {} {
 	}
     }
 }
+
+#####
+#
+# Invoking the Compiler
+#
+#####
 
 proc myexec {args} {
     variable showCompilerCommands
@@ -2985,32 +3233,37 @@ proc compile {fileFragName version} {
     switch $tcl_platform(os) {
 	"FreeBSD" {
 	    if {$genCompilerDebug} {
-		set optflag "-g"
+		set optflag "-O"
+		set dbgflag "-g"
 		set stub "-ltclstub84g"
 		set lib "-ltcl84g"
 	    } else {
-		set optflag "-O2"
+		set optflag "-O3"
+		set dbgflag ""
 		set stub "-ltclstub84"
 		set lib "-ltcl84"
 	    }
 
-	    myexec gcc -pipe $optflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
+	    myexec gcc -pipe $optflag $dbgflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
-	    myexec ld -Bshareable $optflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub
+	    myexec ld -Bshareable $optflag $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub
 	}
 
 	"Darwin" {
 	    if {$genCompilerDebug} {
-		set optflag "-g"
-		set stub "-ltclstub8.4g"
+		set dbgflag "-g"
+		set optflag "-O2"
+		#set stub "-ltclstub8.4g"
+		set stub "-ltclstub8.4"
 		set lib "-ltcl8.4g"
 	    } else {
-		set optflag "-O3"
+		set dbgflag ""
+		set optflag "-O2"
 		set stub "-ltclstub8.4"
 		set lib "-ltcl8.4"
 	    }
 
-	    myexec gcc -pipe -pg $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/usr/local/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
+	    myexec gcc -pipe  $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/usr/local/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
 	    #exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
@@ -3019,7 +3272,7 @@ proc compile {fileFragName version} {
 	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
 	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
 
-	    myexec gcc -pg -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub
+	    myexec gcc -pipe $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub
 
 	    # -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver
 	    # took $lib off the end?
@@ -3171,6 +3424,11 @@ proc CExtension {name version code} {
     ::ctable::gen_preamble
     ::ctable::gen_ctable_type_stuff
 
+    ::ctable::emit "#include \"ctable_search.c\""
+
+    ::ctable::emit "static char *sourceCode = \"[::ctable::cquote "CExtension $name $version { $code }"]\";"
+    ::ctable::emit ""
+
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""
@@ -3192,6 +3450,11 @@ proc CExtension {name version code} {
 proc CTable {name data} {
     ::ctable::table $name
     lappend ::ctable::tables $name
+
+    #we can't do it this way, read_tabsep and stuff think it's standard
+    # no interface to _dirty yet
+    #::ctable::boolean _dirty
+
     namespace eval ::ctable $data
 
     ::ctable::sanity_check
@@ -3202,9 +3465,9 @@ proc CTable {name data} {
 
     ::ctable::gen_setup_routine $name
 
-    ::ctable::gen_defaults_subr ${name}_init $name ${name}_ptr
+    ::ctable::gen_defaults_subr ${name}_init $name
 
-    ::ctable::gen_delete_subr ${name}_delete $name ${name}_ptr
+    ::ctable::gen_delete_subr ${name}_delete $name
 
     ::ctable::gen_obj_is_null_subr
 

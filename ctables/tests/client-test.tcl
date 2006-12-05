@@ -1,8 +1,7 @@
 #
+# very simple client/server tests
 #
-#
-#
-#
+# $Id$
 #
 
 package require ctable_client

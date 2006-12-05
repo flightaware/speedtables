@@ -331,7 +331,193 @@ search
 
     Search for matching rows and take actions on them, with optional sorting.
 
-$ctable search ?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?
+    Search is a powerful element of the ctables tool that can be leveraged
+    to do many things traditionally done with database systems that incur
+    much more overhead.
+
+    Search can perform brute force multivariable searches on a ctable and
+    taking actions on matching records, without Tcl interpretation for
+    each row.  On a modern 2006 Intel and AMD machines, search can do,
+    for example, unanchored string match searches at a rate of 3 million
+    per CPU second (330 nanoseconds per row), with a lot of optimization 
+    still not attempted.
+
+$ctable search ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel? ?-key keyVar? ?-get ?fields?? ?-array_get ?fields?? ?-array_get_with_nulls ?fields??
+
+    -sort
+
+        Sort results based on the specified field or fields.  If multiple
+	fields are specified, their precedence is in descending order.
+	In other words, the first field is the primary search key.
+
+	If you want to sort a field in descending order, put a dash
+	in front of the field name.
+
+    -fields
+
+        Restrict search results to the specified fields.
+
+	If you have a lot of fields in your table and only need a few,
+	using -fields to restrict retrieval to the specified fields will
+	provide a nice performance boost.
+
+        Fields that are used for sorting and/or for comparison expressions
+	do not need to be included in -fields unless you want those fields
+	retrieved.
+
+    -glob pattern
+
+        Perform a glob-style comparison on the key, excluding the examination
+	of rows not matching.
+
+    -regexp pattern
+
+        Not currently implemented.
+
+    -countOnly 0|1
+
+        If 1, counts matching rows but does not take any action based on
+	the count.
+
+    -offset offset
+
+        If specified, begins actions on search results at the "offset"
+	row found.  For example, if offset is 100, the first 100 matching
+	records are bypassed before the search action begins to be
+	taken on matching rows.
+
+    -limit limit
+
+        If specified, limits the number of rows matched to "limit".
+
+	Even if used with -countOnly, -limit still works so if, for example,
+	you want to know if there are at least 10 matching records in the
+	table but you don't care what they contain or if there are more than
+	that many, you can search with -countOnly 1 -limit 10 and it will
+	return 10 if there are ten or more records.
+
+
+    -write_tabsep channel
+
+        Matching records are written tab-separated to the file or socket
+	(or postgresql database handle) "channel".
+
+
+    -key keyVar
+    -get listVar
+    -array_get listVar
+    -array_get_with_nulls listVar
+    -code codeBody
+
+        Run code on matching rows.
+
+	If -key is specified, the key value of each matching row is written
+	into the variable specified as the argument to -key.
+
+	If -get is specified, the fields of the matching row are written
+	into the variable specified as the argument to -get.  If -fields
+	is specified, you get those fields in the same order.  If -fields
+	is not specified, you get all the fields in the order they were
+	defined.  If you have any qeustion about the order of the fields,
+	just ask the ctable with "$table fields".
+
+	-array_get works like -get except that the field names and field
+	values are written into the specified variable in a manner that
+	"array get" can load into an array.  I call this "array set"
+	format.  Fields that are null are not retrieved with -array_get.
+
+	-array_get_with_nulls pulls all the fields.  Note it is a common
+	bug to use -array_get in a -code loop and not unset the array
+	before resuming the loop, resulting in null variables not being
+	unset, that is, in the previous row fetch, field x has a value and
+	in the current row it doesn't.  If you aven't unset your array,
+	and you "array get" the new result into the array, the previous
+	value of x will still be there.  So either unset or use
+	array_get_with_nulls.
+
+
+    -compare list
+
+        Perform a comparison to select rows.
+
+	Compare expressions are specified as a list of lists.  Each list
+	consists of an operator and one or more arguments.
+
+	Upon search, all of the expressions are evaluated left to right
+	and form a logical "and".  That is, if any of the expressions fail,
+	the row is skipped.
+
+	Here's an example:
+
+	    $ctable search -compare {{> coolness 50} {> hipness 50}} ...
+
+	In this case you're selecting every row where coolness is greater
+	than 50 and hipness is greater than 50.
+
+	Here are the available expressions:
+
+	{false field}
+
+	    Expression compares true if field is false.
+
+	{true field}
+
+	    Expression compares true if field is true.
+
+	{null field}
+
+	    Expression compares true if field is null.
+
+	{notnull field}
+
+	    Expression compares true if field is not null.
+
+	{< field value}
+
+	    Expression compares true if field less than value.
+	    ...works with both strings and numbers, and yes,
+	    compares the numbers and numbers and not strings.
+
+	{<= field value}
+
+	    Expression compares true if field is less than or equal to value.
+
+	{= field value}
+
+	    Expression compares true if field is equal to value.
+
+	{!= field value}
+
+	    Expression compares true if field is not equal to value.
+
+	{>= field value}
+
+	    Expression compares true if field is greater than or equal to value.
+
+	{> field value}
+
+	    Expression compares true if field is greater than value.
+
+	{match field expression}
+
+	    Expression compares true if field matches glob expression.
+	    Case is insensitive.
+
+	{match_case field expression}
+
+	    Expression compares true if field matches glob expression,
+	    case-sensitive.
+
+	{range field low hi}
+
+	    Expression compares true if field is within the range of
+	    low <= field < hi.
+
+            Broken or inop under "search" but working with "search+" as of
+	    12/6/06.
+
+Examples:
+
 
     Write everything in the table tab-separated to channel $channel
 
@@ -347,11 +533,23 @@ $ctable search ?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-glob pattern
 	    puts "key -> $key, data -> $data"
 	}
 
-      
+
+search+
+
+      Search for matching rows and take actions on them, exploiting skiplists,
+      with optional sorting.  (sorting is currently broken.)
+
+$ctable search+ ?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?
+
+Skip lists have much higher insert overhead -- it takes about 7 microseconds per row inserting a million two-varchar field rows, including allocating, adding the hashtable entry, and adding the skip list node, versus about 2.3 microseconds per row just to allocate the space and do the hashtable insert without the skip list insert.
+
+Skip lists also can't get to the "key" that the row was inserted with.  Skip lists more point to a future where there isn't an external key -- that is, what would have been the external key exists as a normal field in the row.
+
+The one huge win of skip lists is the "range" comparison method.  We are seeing speedups of 200,000% when a "range" can be used on an indexed field versus search's brute force scanning.
 
 
 
-foreach   DEPRECATED
+foreach   DEPRECATED (use "search" instead)
 
     Iterate over all of the rows in the table, or just the rows in the table
     matching a string match wildcard, executing tcl code on each of them.
@@ -380,33 +578,6 @@ foreach   DEPRECATED
     execute "continue" and "break" to resume the code with the next
     row and break out of the foreach loop, respectively.
 
-sort    DEPRECATED
-
-    Iterate over all of the rows in the table, or just the rows in the table
-    matching a string match wildcard, sorting the picked rows (usually all
-    of them) in order of the fields in the field list where the first one
-    is the most significant, then executing a tcl code body on each of them.
-
-    % x sort fieldList ?pattern? key {
-        puts $key
-	puts ""
-    }
-
-    If you want to do something with the keys, like access data in the row,
-    use get, array_get or array_get_with_nulls, etc, within the code body.
-
-    % x sort fieldList key {
-        catch {unset data}
-        array set data [x array_get $key]
-	puts "$key:"
-	parray data
-	puts ""
-    }
-
-    The normal Tcl semantics for loops are followed; that is, you can
-    execute "continue" and "break" to resume the code with the next
-    row and break out of the foreach loop, respectively.
-
 
 incr
 
@@ -428,27 +599,12 @@ type
     cable_info
 
 
-import
-
-    Execute a proc repeatedly and efficiently to import data.
-
-    x import proc ?field field...?
-
-    ...runs proc repeatedly.  The proc is expected to return a list.
-    If the list is empty, the import is complete.  (CTables must contain
-    at least one field.)  Otherwise the list must contain the same number 
-    of elements expected.  This is more efficient that using "x set" in a 
-    loop because the field indexes are only calculated from the field
-    names only once regardless of the number of rows generated
-    by proc.
-
-
 import_postgres_result
 
     x import_postgres_result pgTclResultHandle
 
     Given a Pgtcl result handle, import_postgresql_result will iterate over
-    all of the results and create corresponding rows in the table.
+    all of the result rows and create corresponding rows in the table.
 
     This is extremely fast as it does not do any intermediate Tcl evaluation
     on a per-row basis.
@@ -471,29 +627,6 @@ import_postgres_result
 
     On a 2 GHz AMD64 we are able to import about 200,000 10-element rows
     per CPU second, i.e. around 5 microseconds per row.
-
-
-export
-
-    x export proc ?field...?
-
-    call a proc repeatedly for each row in the table, passing the proc
-    a list containing all of the named fields from that row, or all fields
-    if none are named.
-
-    proc export_handler {list} {...}
-
-    x export export_handler
-
-    ...a list of fields can be specified.  More efficient than looping with
-    foreach and doing get, etc, as field indices are precalculated once
-    from the field names regardless of how many rows are exported.
-
-    The export handler can cause exporting to stop by returning a break
-    (return -code break) and also does something for a return
-    (return -code return) which, I think, causes the proc calling export
-    to return as well.
-
 
 fieldtype
 
@@ -574,7 +707,7 @@ statistics
     average search distance for entry: nan
 
 
-write_tabsep
+write_tabsep  DEPRECATED (use sort -write_tabsep)
 
     x write_tabsep channel ?-glob pattern? ?-nokeys? ?field...?
 
@@ -636,8 +769,46 @@ read_tabsep
     The nice thing about it is you can indicate end of input with an
     empty line and then do something else with the data that follows.
 
+
+index
+
+    Index is used to create skip list indexes on fields in a table.
+
+    x index create foo
+
+    ...creates a skip list index on field "foo".  It will index any existing
+    rows in the table and any future rows that are added.  Also if a "set",
+    "read_tabsep", etc, causes a row's indexed value to change, its index
+    will be updated.
+
+    If there is already an index present on that field, does nothing.
+
+    x index drop foo
+
+    ....drops the skip list on field "foo."  if there is no such index,
+    does nothing.
+
+    x index dump foo
+
+    ...dumps the skip list for field "foo".  This can be useful to help
+    understand how they work and possibly to look for problems.
+
+    x index count foo
+
+    ...returns a count of the skip list for field "foo".  This number should
+    always match the row count of the table (x count).  If it doesn't,
+    there's a bug in index handling.
+
+
+
 The C Code Generated And C Routines Made Available
 --------------------------------------------------
+
+(There is a better interface than this.  You can interact with any table
+regardless of its composition with standardized C calls made through
+the ctable table and ctable creator table structures.  It's not documented
+yet but you can study ctable_search.c, where it is used extensively, and
+ctable.h where those structures are defined.)
 
 For the above cable_info table defined, the following C struct is
 created:

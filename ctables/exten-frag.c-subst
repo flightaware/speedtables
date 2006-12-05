@@ -24,18 +24,42 @@
     t->fieldNames = ${table}_fields;
     t->nameObjList = ${table}_NameObjList;
 
-    t->search_compare = ${table}_search_compare;
-    t->sort_compare = ${table}_sort_compare;
-    t->get_field_obj = ${table}_get;
-    t->gen_list = ${table}_genlist;
-    t->gen_keyvalue_list = ${table}_gen_keyvalue_list;
-    t->dstring_append_get_tabsep = ${table}_dstring_append_get_tabsep;
     t->nFields = $NFIELDS;
     t->fieldTypes = ${table}_types;
     t->fieldsThatNeedQuoting = ${table}_needs_quoting;
+
+    // pointers to functions
+    t->make_empty_row = (void *)${table}_make_row_struct;
+    t->set = (void *)${table}_set;
+    t->set_null = (void *)${table}_set_null;
+
+    t->get = ${table}_get;
+    t->get_string = ${table}_get_string;
+
+    t->gen_list = ${table}_genlist;
+    t->gen_keyvalue_list = ${table}_gen_keyvalue_list;
+    t->dstring_append_get_tabsep = ${table}_dstring_append_get_tabsep;
     t->lappend_field = ${table}_lappend_field;
     t->lappend_field_and_name = ${table}_lappend_field_and_name;
     t->lappend_nonnull_field_and_name = ${table}_lappend_nonnull_field_and_name;
+
+    t->search_compare = ${table}_search_compare;
+    t->sort_compare = ${table}_sort_compare;
+
+    // allocate and populate the field info structures
+    t->fields = (struct ctableFieldInfo **)ckalloc (t->nFields * sizeof (struct ctableFieldInfo *));
+    for (i = 0; i < t->nFields; i++) {
+        struct ctableFieldInfo *f;
+
+        f = t->fields[i] = (struct ctableFieldInfo *)ckalloc (sizeof (struct ctableFieldInfo));
+
+	f->name = ${table}_fields[i];
+	f->nameObj = ${table}_NameObjList[i];
+	f->number = i;
+	f->type = t->fieldTypes[i];
+	f->needsQuoting = ${table}_needs_quoting[i];
+	f->compareFunction = ${table}_compare_functions[i];
+    }
 
     // make a field list -- sure it's a little hokey but it works with
     // other places that take a number of fields and list of fields

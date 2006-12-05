@@ -1,0 +1,173 @@
+$Id$
+
+Embed the skiplist nodes inside the row definitions, one for each field
+that has an index.
+
+Embed the corresponding skiplist tables inside each table instance.
+(When generating code, interpret the per-field key-value array to place
+the skiplist nodes into the row definitions.)
+
+Extend the field-defining commands to support saying if something is
+indexed and/or unique by making it take key-value pairs.
+
+When generating sets, if a field that is indexed is changed (and therefore
+is not new), we have to locate the row by searching the index, delete/remove 
+the node and create a new one.
+
+If it's a new insert, we have to create any skiplist nodes and insert
+them into the skiplist.
+
+
+Are we going to support non-unique keys?  We don't have to.  If you wanted
+to store customers and their macs, the key could be, like,
+8178394534578/2f:3a:aa:22:98
+
+And you'd do an anchored match on 817839534578/*...
+
+Because otherwise when you do a set how do we know if you are creating a
+new row or not.
+
+OK that doesn't mean you can't have indexes with duplicate entries, just that
+it's a bad idea to insert into them without further qualifiers / search.
+
+querying them is fine.
+
+----
+
+arguments in favor of having the skip lists not be super tied into the
+data structures:
+
+    I'm already moving away from custom data structures and routines and
+    have more standardized code that uses void * and stuff like that.
+    It points to ctables actually generating very little custom code.
+
+    perhaps not every instance of a table do you want to have indexes
+
+    perhaps there would be an efficient way to add an index even after
+    the table had a lot of data in it.
+
+    perhaps you would want to delete and index, reindex, etc.
+
+    BUT - if you have dynamic indexes you need a super efficient way for
+    set, search, get, etc, to know if they're there or not and use them.
+
+
+How about if it we had a trigger mechanism on set and read_tabsep and
+read_from_postgres where if the field has a trigger on it, the trigger
+fires and that trigger can, fr'instance, insert or update an index.
+
+And on delete, too.
+
+
+----
+
+OK
+
+we're going to create a general field structure that contains, eventually
+at least, the field name, type, whether it needs quoting, and other relevant
+stuff.  
+
+Also in there, a skip pointer or NULL
+
+and other stuff.
+
+----
+
+OK at this point (12/2/06), I've 
+
+    o written a compare routine generator that,
+      for each field, generates a compare routine for that field between two
+      specified rows.
+
+    o Gotten some skip list code to compile as part of the build.
+
+    o Created an array of pointers to skip lists in the per-table structure,
+      one for each field, which is NULL if no skip list has been created.
+
+    o Added an "index" method to table objects that takes a subcommand
+      of "create", "drop", and "dump", so you can say stuff like
+
+          $table index create altitude
+
+      (I know you about for sure want to inherit index attributes that are
+       defined when the table creator is defined (ctable) -- the idea
+       here is to get it working reliably without messing with how we
+       traverse tables currently.)
+
+    o You can create an index on a table and dump it and it works.
+
+What's missing that would make a difference is 
+
+    o having "set" and "read_tabsep" et al update the indexes of rows that 
+      are modified.  Currently that's not happening and of course it's 
+      unusable until it is.
+
+    o have searches use the indexes.  the way i'm thinking is that only in the
+      first search term is it useful to use an index because to merge index
+      results we'd have to do a bitmap of picked records or something like
+      that.  Maybe someday, but we're getting a lot with this already and
+      we're happy with this, at least for now.
+
+
+Oh yeah, since I have to update a row's field's skiplist entry when an
+indexed field has changed, it points to having a trigger mechanism.
+
+Also Peter's not that interested in analog points at this point but you
+could specify a deadband when defining most or all numeric field types and
+ctable could trigger when new values set into a field don't trigger the
+tigger unless the value deviates by more than the deadband since the last
+time a trigger was caused by this.  That would be pretty cool.
+
+Of course if there was a super simple way to get Tcl code to execute as
+almost a freebie when implementing the triggers, so much the better.
+
+-----
+
+OK now at 12/4/06 we have
+
+    o duplicate key detection upon insert into an index (even though we
+      want to have duplicates allowable on a per index basis.)
+
+    o "set" and "read_tabsep" and "read_postgres_reset" and "set_null"
+      now update the indexes of rows that are modified.
+
+I'm now working on having searches use the indexes.
+
+When the first compare is against an indexed field, somehow we do what
+we do walking the hashtable only we don't walk to the hash table.
+
+In fact, as soon as there is any index we will prefer to walk the skip lists's
+index rather than use the hash table.
+
+I'm adding "range" as a new search compare option.
+
+I don't even need a "range" option.
+
+If the first term of the search is something that can be done on an index,
+we skip however much we can zoom past before the search term starts returning true.  The second search term would terminate the search.
+
+Hmm, no it wouldn't, as it stands.
+
+OK, range is back on.
+
+When range is the compare term and it's the first compare term and the
+field also happens to be an index, we want to generate the search loop
+from the interpretation of this term against the index and apply the
+remaining compare expressions against what the loop generates interpreting
+the first one.
+
+Argh I've also come across the need to be able to set fields without triggering
+index updates.
+
+I also need to rationalize the field compare routines that I make for
+skip list lookups versus the more complicated search compare routines
+and also differing from the sort compare routines, ones also that could
+be fixed up.
+
+I toy with generating per-field set routines and that seems pretty cool, but then I need the field number to see if I need to update an index or whatever.
+
+ZZ
+
+
+
+----

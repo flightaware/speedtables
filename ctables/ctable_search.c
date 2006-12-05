@@ -166,7 +166,7 @@ ctable_searchMatchPatternCheck (char *s) {
 
 
 static int
-ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **fieldNames, struct ctableSearchStruct *search) {
+ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *componentListObj, CONST char **fieldNames, struct ctableSearchStruct *search) {
     Tcl_Obj    **componentList;
     int          componentIdx;
     int          componentListCount;
@@ -180,7 +180,7 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
     struct ctableSearchComponentStruct  *component;
     
     // these terms must line up with the CTABLE_COMP_* defines
-    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "match_case", (char *)NULL};
+    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "match_case", "range", (char *)NULL};
 
     if (Tcl_ListObjGetElements (interp, componentListObj, &componentListCount, &componentList) == TCL_ERROR) {
         return TCL_ERROR;
@@ -206,9 +206,9 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 	    return TCL_ERROR;
 	}
 
-	if (termListCount < 2 || termListCount > 3) {
+	if (termListCount < 2 || termListCount > 4) {
 	    // would be cool to support regexps here too
-	    Tcl_WrongNumArgs (interp, 0, termList, "term field ?value?");
+	    Tcl_WrongNumArgs (interp, 0, termList, "term field ?value..?");
 	    goto err;
 	}
 
@@ -225,6 +225,8 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 	component->comparisonType = term;
 	component->fieldID = field;
 	component->clientData = NULL;
+	component->row1 = NULL;
+	component->row2 = NULL;
 
 	if (term == CTABLE_COMP_FALSE || term == CTABLE_COMP_TRUE || term == CTABLE_COMP_NULL || term == CTABLE_COMP_NOTNULL) {
 	    component->comparedToObject = NULL;
@@ -232,17 +234,40 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 	    component->comparedToStringLength = 0;
 	    if (termListCount != 2) {
 		Tcl_AppendResult (interp, "false, true, null and notnull search expressions must have only two fields", (char *) NULL);
-		return TCL_ERROR;
+		goto err;
 	    }
 	}  else {
-	    if (termListCount != 3) {
+	    if (term == CTABLE_COMP_RANGE) {
+	        void *row;
+
+	        if (termListCount != 4) {
+		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 4 arguments (term, field, lowValue, highValue)", (char *) NULL);
+		    goto err;
+		}
+		component->comparedToObject = termList[2];
+
+		row = (*ctable->creatorTable->make_empty_row) ();
+		if ((*ctable->creatorTable->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+		    goto err;
+		}
+		component->row1 = row;
+
+		row = (*ctable->creatorTable->make_empty_row) ();
+		if ((*ctable->creatorTable->set) (interp, ctable, termList[3], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+		    goto err;
+		}
+		component->row2 = row;
+
+	    } else if (termListCount != 3) {
 		Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 3 arguments (term, field, value)", (char *) NULL);
-		return TCL_ERROR;
+		goto err;
 	    }
 
 	    /* stash this as a string, we could be smarter - we sould
 	     * be smarter with a union and figure it out for the
 	     * data types that'll be lookin' for it
+	     * NB this could cause unnecessary tcl object shimmering,
+	     * needs a close look
 	     */
 	    component->comparedToObject = termList[2];
 	    component->comparedToString = Tcl_GetStringFromObj (component->comparedToObject, &component->comparedToStringLength);
@@ -273,11 +298,11 @@ ctable_ParseSearch (Tcl_Interp *interp, Tcl_Obj *componentListObj, CONST char **
 static int
 ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, Tcl_HashTable *keyTablePtr, Tcl_HashEntry *hashEntry) {
     char           *key;
-    void           *p;
+    void           *row;
     int             i;
 
     key = Tcl_GetHashKey (keyTablePtr, hashEntry);
-    p = Tcl_GetHashValue (hashEntry);
+    row = Tcl_GetHashValue (hashEntry);
 
     if (search->writingTabsep) {
 	Tcl_DString     dString;
@@ -285,9 +310,9 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	Tcl_DStringInit (&dString);
 
         if (search->nRetrieveFields < 0) {
-	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, p, ctable->creatorTable->fieldList, ctable->creatorTable->nFields, &dString, search->noKeys);
+	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, row, ctable->creatorTable->fieldList, ctable->creatorTable->nFields, &dString, search->noKeys);
 	} else {
-	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, p, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
+	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
 	}
 
 	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
@@ -304,12 +329,12 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 
 	if (search->useGet) {
 	    if (search->nRetrieveFields < 0) {
-		listObj = (*ctable->creatorTable->gen_list) (interp, p);
+		listObj = (*ctable->creatorTable->gen_list) (interp, row);
 	    } else {
 	       int i;
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   ctable->creatorTable->lappend_field (interp, listObj, p, ctable->creatorTable->fieldList[i]);
+		   ctable->creatorTable->lappend_field (interp, listObj, row, ctable->creatorTable->fieldList[i]);
 	       }
 	    }
 	} else if (search->useArrayGet) {
@@ -317,21 +342,21 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	       int i;
 
 	       for (i = 0; i < ctable->creatorTable->nFields; i++) {
-		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, p, i);
+		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, i);
 	       }
 	    } else {
 	       int i;
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, p, search->retrieveFields[i]);
+		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
 	       }
 	    }
 	} else if (search->useArrayGetWithNulls) {
 	    if (search->nRetrieveFields < 0) {
-		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, p);
+		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, row);
 	    } else {
 		for (i = 0; i < search->nRetrieveFields; i++) {
-		    ctable->creatorTable->lappend_field_and_name (interp, listObj, p, search->retrieveFields[i]);
+		    ctable->creatorTable->lappend_field_and_name (interp, listObj, row, search->retrieveFields[i]);
 		}
 	    }
 	} else {
@@ -393,9 +418,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     int              actionResult = TCL_OK;
     int              limit;
 
-
     Tcl_HashEntry **hashSortTable = NULL;
-
     Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
 
     if (count == 0) {
@@ -441,7 +464,11 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     // search results we may get, so we are prepared to receive all
     // of them.  if you want to optimize this for space, you'll have to grow 
     // the search result dynamically -- just buy more memory
-
+    //
+    // you can't sort until after you've picked everything and you can't
+    // stop earching until you've looked at everything (you can't do stuff
+    // based on limit or offset) becuase the order of what you want isn't
+    // established until after the sort.
     if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
 	hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * count);
     }
@@ -449,6 +476,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     // walk the table -- soon we hope to replace this with a skiplist walk
     // or equivalent
     for (hashEntry = Tcl_FirstHashEntry (keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	void           *row;
 
 	key = Tcl_GetHashKey (keyTablePtr, hashEntry);
 
@@ -460,7 +488,8 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	//
 	// run the supplied compare routine
 	//
-	compareResult = (*ctable->creatorTable->search_compare) (interp, search, hashEntry);
+	row = Tcl_GetHashValue (hashEntry);
+	compareResult = (*ctable->creatorTable->search_compare) (interp, search, row, 0);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
 	}
@@ -480,7 +509,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    if (search->countOnly) {
 		// we're only counting -- if there is a limit and it's been 
 		// met, we're done
-		if ((search->limit != 0) && (matchCount >= search->limit)) {
+		if ((search->limit != 0) && (matchCount >= (search->offset + search->limit))) {
 		    actionResult = TCL_OK;
 		    goto clean_and_return;
 		}
@@ -501,7 +530,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
 	     if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
 		// if there was a limit and we've met it, we're done
-		if ((search->limit != 0) && (matchCount >= search->limit)) {
+		if ((search->limit != 0) && (matchCount >= (search->offset + search->limit))) {
 		    actionResult = TCL_OK;
 		    goto clean_and_return;
 		}
@@ -540,8 +569,12 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     }
 
     // determine start and limit
+
+    // try limit as the number matched minus the offset.
+    // if there's a limit specified and it's lower than the number available,
+    // set it to that instead.
     limit = matchCount - search->offset;
-    if ((search->limit > 0) && (search->limit < (matchCount - search->offset))) {
+    if ((search->limit > 0) && (search->limit < limit)) {
 	limit = search->offset + search->limit;
     }
 
@@ -578,8 +611,402 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     return actionResult;
 }
 
+//
+// ctable_SkipSearchAction - pretty much the same as ctable_SearchAction
+// except that it doesn't support the "-key varName" thing.
+//
+//
 static int
-ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableSearchStruct *search, CONST char **fieldNames) {
+ctable_SkipSearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, void *row) {
+    char           *key = NULL;
+    int             i;
+
+    if (search->writingTabsep) {
+	Tcl_DString     dString;
+
+	Tcl_DStringInit (&dString);
+
+        // get the fields and append them to the dstring tab-separated
+	// inhibit emitting the outside-of-the-record hash key because
+	// we don't have any idea what it is and we don't care anyway
+
+        if (search->nRetrieveFields < 0) {
+	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, row, ctable->creatorTable->fieldList, ctable->creatorTable->nFields, &dString, 1);
+	} else {
+	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, 1);
+	}
+
+	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
+	    return TCL_ERROR;
+	}
+
+	Tcl_DStringFree (&dString);
+	return TCL_OK;
+    }
+
+    if (search->codeBody != NULL) {
+	Tcl_Obj *listObj = Tcl_NewObj();
+	int      evalResult;
+
+	if (search->useGet) {
+	    if (search->nRetrieveFields < 0) {
+		listObj = (*ctable->creatorTable->gen_list) (interp, row);
+	    } else {
+	       int i;
+
+	       for (i = 0; i < search->nRetrieveFields; i++) {
+		   ctable->creatorTable->lappend_field (interp, listObj, row, ctable->creatorTable->fieldList[i]);
+	       }
+	    }
+	} else if (search->useArrayGet) {
+	    if (search->nRetrieveFields < 0) {
+	       int i;
+
+	       for (i = 0; i < ctable->creatorTable->nFields; i++) {
+		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, i);
+	       }
+	    } else {
+	       int i;
+
+	       for (i = 0; i < search->nRetrieveFields; i++) {
+		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
+	       }
+	    }
+	} else if (search->useArrayGetWithNulls) {
+	    if (search->nRetrieveFields < 0) {
+		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, row);
+	    } else {
+		for (i = 0; i < search->nRetrieveFields; i++) {
+		    ctable->creatorTable->lappend_field_and_name (interp, listObj, row, search->retrieveFields[i]);
+		}
+	    }
+	} else {
+	    panic ("code path shuld have matched useArrayGet or useArrayGetWithNulls");
+	}
+
+	// set the returned list into the value var
+	if (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, listObj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
+	    return TCL_ERROR;
+	}
+
+	evalResult = Tcl_EvalObjEx (interp, search->codeBody, 0);
+	switch (evalResult) {
+	  case TCL_ERROR:
+	    Tcl_AppendResult (interp, " while processing search code body", (char *) NULL);
+	    return TCL_ERROR;
+
+	  case TCL_OK:
+	  case TCL_CONTINUE:
+	  case TCL_BREAK:
+	  case TCL_RETURN:
+	    return evalResult;
+	}
+    }
+
+    return TCL_OK;
+}
+
+
+//
+// ctable_PerformSkipSearch - perform the search
+//
+// write field names if we need to
+//
+// for each row in the table, apply search compare test in turn
+//    the first one that comes up that the row should be excluded ends
+//    looking at that one
+//
+//    if nothing excluded it, we pick it -- this can mean taking the action
+//    immediately or, if sorting, picking the object for sorting and then
+//    taking the action
+//
+//
+static int
+ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, int count) {
+    int              compareResult;
+    int              matchCount = 0;
+    int              sortIndex;
+    int              actionResult = TCL_OK;
+    int              limit;
+
+    int              tailoredWalk = 0;
+    int              running;
+
+    void            *row = NULL;
+    void            *row2 = NULL;
+
+    void          **sortTable = NULL;
+    Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
+
+    jsw_skip_t      *skip;
+
+    int              field;
+
+    if (count == 0) {
+        return TCL_OK;
+    }
+
+    if (search->writingTabsepIncludeFieldNames) {
+	int i;
+	Tcl_DString     dString;
+	int            *fields;
+	int             nFields;
+
+	Tcl_DStringInit (&dString);
+
+        if (search->nRetrieveFields < 0) {
+	    fields = ctable->creatorTable->fieldList;
+	    nFields = ctable->creatorTable->nFields;
+	} else {
+	    nFields = search->nRetrieveFields;
+	    fields = search->retrieveFields;
+	}
+
+	for (i = 0; i < nFields; i++) {
+	    if (i != 0) {
+		Tcl_DStringAppend(&dString, "\t", 1);
+	    }
+	    Tcl_DStringAppend(&dString, ctable->creatorTable->fieldNames[fields[i]], -1);
+	}
+	Tcl_DStringAppend(&dString, "\n", 1);
+
+	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
+	    return TCL_ERROR;
+	}
+
+	Tcl_DStringFree (&dString);
+    }
+
+    // if we're sorting, allocate a space for the search results that
+    // we'll then sort from -- unfortunately we don't know how many
+    // search results we may get, so we are prepared to receive all
+    // of them.  if you want to optimize this for space, you'll have to grow 
+    // the search result dynamically -- just buy more memory
+    //
+    // you can't sort until after you've picked everything and you can't
+    // stop earching until you've looked at everything (you can't do stuff
+    // based on limit or offset) becuase the order of what you want isn't
+    // established until after the sort.
+    if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
+        sortTable = (void **)ckalloc (count * sizeof (void *));
+    }
+
+    // if the first compare thing is something we understand how to do
+    // with indexed fields and the field they're asking for us to do it
+    // on happens to be indexed, we need to do special walking magic
+
+    // else if there's any index column, we can walk that faster than
+    // we can walk the tcl hashtable
+
+    // if there's no index column, we need to fail or revert to the
+    // hash at least for now
+
+    // here i'd really like to start making the structure to compare
+    // to and in fact we have to if we want to take advantage of the
+    // skip lists because that's how they work
+
+
+
+
+    // walk the table -- soon we hope to replace this with a skiplist walk
+    // or equivalent
+    if (search->nComponents > 0) {
+	int term;
+
+	struct ctableSearchComponentStruct *component = &search->components[0];
+
+	field = component->fieldID;
+	term = component->comparisonType;
+        if ((ctable->skipLists[field] != NULL) && (term == CTABLE_COMP_RANGE)) {
+	    // ding ding ding - we have a winner, time for an accelerated
+	    // search
+	    tailoredWalk = 1;
+	    skip = ctable->skipLists[field];
+	    row = component->row1;
+	    row2 = component->row2;
+	}
+    }
+
+    // if we don't have a tailored walk, see if we have any skip list
+    // we can use
+    if (!tailoredWalk) {
+	skip = NULL;
+        for (field= 0; field < ctable->creatorTable->nFields; field++) {
+	    if ((skip = ctable->skipLists[field]) != NULL) {
+	        break;
+	    }
+	}
+    }
+
+    if (skip == NULL) {
+	Tcl_AppendResult (interp, "no field has an index, can't perform tailored search, sorry", (char *) NULL);
+	actionResult = TCL_ERROR;
+	goto clean_and_return;
+    }
+
+    if (tailoredWalk) {
+       // yay get the huge win by zooming past hopefully a zillion records
+       // right here
+       //
+       // if we didn't get an exact match we move forward on item else we'll
+       // be returning the first one slightly under the low end search
+       // range
+       //
+       if (jsw_sfind (skip, row) == NULL) {
+           jsw_snext(skip);
+       }
+    } else {
+	jsw_sreset (skip);
+    }
+
+    //
+    // walk the skip list, whether we searched and found something or if
+    // we're walking the whole thing
+    //
+    // if the walk is "tailored", meaning the first search term is of an
+    // indexed row and it's of a type where we can cut off the search
+    // past a point, see if we're past the cutoff point and if we are
+    // terminate the search.
+    //
+    //
+    running = 1;
+    for (; running && ((row = jsw_sitem (skip)) != NULL); jsw_snext(skip)) {
+        if (tailoredWalk) {
+            if (ctable->creatorTable->fields[field]->compareFunction (row, row2) >= 0) {
+	        // it was a tailored walk and we're past the end of the
+		// range of stuff so we can blow off the rest
+		running = 0;
+		continue;
+	    }
+	}
+
+	//
+	// run the supplied compare routine
+	//
+	// if it's a tailored walk (tailoredWalk == 1), we start the comparing
+	// from the second search term (if there is more than one, it'll
+	// actually do something, else it'll just not exclude the row, i.e.
+	// it will do what it's supposed to.)
+	//
+	compareResult = (*ctable->creatorTable->search_compare) (interp, search, row, tailoredWalk);
+	if (compareResult == TCL_CONTINUE) {
+	    continue;
+	}
+
+	if (compareResult == TCL_ERROR) {
+	    actionResult = TCL_ERROR;
+	    goto clean_and_return;
+	}
+
+	// It's a Match 
+        // Are we not sorting? 
+
+	if (sortTable == NULL) {
+	    // if we haven't met the start point, blow it off
+	    if (++matchCount < search->offset) continue;
+
+	    if (search->countOnly) {
+		// we're only counting -- if there is a limit and it's been 
+		// met, we're done
+		if ((search->limit != 0) && (matchCount >= search->limit)) {
+		    actionResult = TCL_OK;
+		    goto clean_and_return;
+		}
+
+		// the limit hasn't been exceeded or there isn't one,
+		// so we keep counting -- but we continue here because
+		// we don't need to do any processing on the line
+		continue;
+	    }
+
+	    /* we want to take the match actions here --
+	     * we're here when we aren't sorting
+	     */
+	     actionResult = ctable_SkipSearchAction (interp, ctable, search, row);
+	     if (actionResult == TCL_ERROR) {
+		  goto clean_and_return;
+	     }
+
+	     if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
+		// if there was a limit and we've met it, we're done
+		if ((search->limit != 0) && (matchCount >= search->limit)) {
+		    actionResult = TCL_OK;
+		    goto clean_and_return;
+		}
+		 continue;
+	     }
+
+	     if (actionResult == TCL_BREAK || actionResult == TCL_RETURN) {
+		  actionResult = TCL_OK;
+		  goto clean_and_return;
+	     }
+	// match, handle action or tabsep write
+	} else {
+	    /* We are sorting, grab it, we gotta sort before we can run
+	     * against start and limit and stuff */
+	    assert (matchCount < count);
+	    sortTable[matchCount++] = row;
+	}
+    }
+
+    // if we're not sorting, we're done -- we did 'em all on the fly
+    if (sortTable == NULL) {
+	actionResult = TCL_OK;
+	goto clean_and_return;
+    }
+
+    qsort_r (sortTable, matchCount, sizeof (void *), &search->sortControl, ctable->creatorTable->sort_compare);
+
+    // it's sorted
+    // now let's see what we've got within the offset and limit
+
+    // if the offset's more than the matchCount, they got nuthin'
+    if (search->offset > matchCount) {
+	actionResult = TCL_OK;
+	goto clean_and_return;
+    }
+
+    // determine start and limit
+    limit = matchCount - search->offset;
+    if ((search->limit > 0) && (search->limit < (matchCount - search->offset))) {
+	limit = search->offset + search->limit;
+    }
+
+    // walk the result
+    for (sortIndex = search->offset; sortIndex < limit; sortIndex++) {
+
+	/* here is where we want to take the match actions
+	 * when we are sorting
+	 */
+	 actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, sortTable[sortIndex]);
+	 if (actionResult == TCL_ERROR) {
+	     goto clean_and_return;
+	 }
+
+	 if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
+	     continue;
+	 }
+
+	 if (actionResult == TCL_BREAK || actionResult == TCL_RETURN) {
+	     actionResult = TCL_OK;
+	     goto clean_and_return;
+	 }
+    }
+
+  clean_and_return:
+    if (sortTable != NULL) {
+	ckfree ((void *)sortTable);
+    }
+
+    if (actionResult == TCL_OK && search->countOnly) {
+	Tcl_SetIntObj (Tcl_GetObjResult (interp), matchCount);
+    }
+
+    return actionResult;
+}
+
+static int
+ctable_SetupSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *CONST objv[], int objc, struct ctableSearchStruct *search, CONST char **fieldNames) {
     int             i;
     int             searchTerm = 0;
 
@@ -696,7 +1123,7 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
 	  }
 
 	  case SEARCH_OPT_COMPARE: {
-	    if (ctable_ParseSearch (interp, objv[i++], fieldNames, search) == TCL_ERROR) {
+	    if (ctable_ParseSearch (interp, ctable, objv[i++], fieldNames, search) == TCL_ERROR) {
 	        Tcl_AppendResult (interp, " while processing search compare", (char *) NULL);
 	        return TCL_ERROR;
 	    }
@@ -787,13 +1214,63 @@ ctable_SetupSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct 
     return TCL_OK;
 }
 
+//
+// ctable_TeardownSearch - tear down (free) a search structure and the
+//  stuff within it.
+//
+static void
+ctable_TeardownSearch (struct ctableSearchStruct *search) {
+    int i;
+
+    if (search->components == NULL) {
+        return;
+    }
+
+    // teardown components
+    for (i = 0; i < search->nComponents; i++) {
+	struct ctableSearchComponentStruct  *component = &search->components[i];
+	if (component->clientData != NULL) {
+	    // this needs to be pluggable
+	    if ((component->comparisonType == CTABLE_COMP_MATCH) || (component->comparisonType == CTABLE_COMP_MATCH_CASE)) {
+		struct ctableSearchMatchStruct *sm = component->clientData;
+		if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
+		    boyer_moore_teardown (sm);
+		}
+	    }
+
+	    if (component->row1 != NULL) {
+	        ckfree (component->row1);
+	    }
+
+	    if (component->row2 != NULL) {
+	        ckfree (component->row2);
+	    }
+
+	    ckfree (component->clientData);
+	}
+    }
+
+    ckfree ((void *)search->components);
+
+    if (search->sortControl.fields != NULL) {
+        ckfree ((void *)search->sortControl.fields);
+        ckfree ((void *)search->sortControl.directions);
+    }
+}
+
+//
+// ctable_SetupAndPerformSearch - setup and perform a search on a table
+//
+// uses the key-value hash table as the outer loop and requires a full
+// brute force search of the entire table.
+//
 int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable) {
     struct ctableSearchStruct    search;
     CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
     int                          count = ctable->count;
 
-    if (ctable_SetupSearch (interp, objv, objc, &search, fieldNames) == TCL_ERROR) {
+    if (ctable_SetupSearch (interp, ctable, objv, objc, &search, fieldNames) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
@@ -801,29 +1278,232 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
         return TCL_ERROR;
     }
 
-    if (search.components != NULL) {
-	int i;
+    ctable_TeardownSearch (&search);
+    return TCL_OK;
+}
 
-	// teardown components
-	for (i = 0; i < search.nComponents; i++) {
-	    struct ctableSearchComponentStruct  *component = &search.components[i];
-	    if (component->clientData != NULL) {
-		// this needs to be pluggable
-		if ((component->comparisonType == CTABLE_COMP_MATCH) || (component->comparisonType == CTABLE_COMP_MATCH_CASE)) {
-		    struct ctableSearchMatchStruct *sm = component->clientData;
-		    if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
-			boyer_moore_teardown (sm);
-		    }
-		}
-		ckfree (component->clientData);
-	    }
-	}
-	ckfree ((void *)search.components);
+//
+// ctable_SetupAndPerformSkipSearch - setup and perform a skiplist search
+//   on a table.
+//
+// Uses a skip list index as the outer loop.  Still brute force unless the
+// foremost compare routine is tailorable, however even so, much faster
+// than a hash table walk.
+//
+//
+int
+ctable_SetupAndPerformSkipSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable) {
+    struct ctableSearchStruct    search;
+    CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
+    int                          count = ctable->count;
+
+    if (ctable_SetupSearch (interp, ctable, objv, objc, &search, fieldNames) == TCL_ERROR) {
+        return TCL_ERROR;
     }
 
-    if (search.sortControl.fields != NULL) {
-        ckfree ((void *)search.sortControl.fields);
-        ckfree ((void *)search.sortControl.directions);
+    if (ctable_PerformSkipSearch (interp, ctable, &search, count) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    ctable_TeardownSearch (&search);
+    return TCL_OK;
+}
+
+
+//
+// ctable_AropIndex - delete all the rows in a row's index, free the
+// structure and set the field's pointer to the skip list to NULL
+//
+//
+int
+ctable_DropIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field) {
+    jsw_skip_t *skip = ctable->skipLists[field];
+
+    if (skip == NULL) {
+        return TCL_OK;
+    }
+
+    ctable->skipLists[field] = NULL;
+    jsw_sdelete_skiplist (skip);
+    return TCL_OK;
+}
+
+//
+// ctable_IndexCount -- set the Tcl interpreter obj result to the
+//                      number of items in the index
+//
+// mostly just going to be used as a cross-check for testing to make sure
+// inserts and deletes into indexes corresponding to changes in rows works
+// properly
+//
+int
+ctable_IndexCount (Tcl_Interp *interp, struct ctableTable *ctable, int field) {
+    jsw_skip_t *skip = ctable->skipLists[field];
+    int         count;
+
+    if (skip == NULL) {
+	Tcl_AppendResult (interp, "that field does not have an index", (char *) NULL);
+	return TCL_ERROR;
+    }
+
+    count = (int)jsw_ssize(skip);
+    Tcl_SetObjResult (interp, Tcl_NewIntObj (count));
+    return TCL_OK;
+}
+
+int
+ctable_DumpIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field) {
+    jsw_skip_t *skip = ctable->skipLists[field];
+    void       *row;
+    Tcl_Obj    *utilityObj = Tcl_NewObj ();
+    CONST char *s;
+
+    if (skip == NULL) {
+        return TCL_OK;
+    }
+
+    jsw_dump_head (skip);
+
+    for (jsw_sreset (skip); (row = jsw_sitem (skip)) != NULL; jsw_snext(skip)) {
+        s = ctable->creatorTable->get_string (row, field, NULL, utilityObj);
+	jsw_dump (s, skip);
+    }
+
+    Tcl_DecrRefCount (utilityObj);
+
+    return TCL_OK;
+}
+
+
+//
+// ctable_ListIndex - return a list of all of the index values 
+//
+// warning - can be hugely inefficient if you have a zillion elements
+// but useful for testing
+//
+int
+ctable_ListIndex (Tcl_Interp *interp, struct ctableTable *ctable, int fieldNum) {
+    jsw_skip_t *skip = ctable->skipLists[fieldNum];
+    void       *p;
+    Tcl_Obj    *resultObj = Tcl_GetObjResult (interp);
+
+    if (skip == NULL) {
+        return TCL_OK;
+    }
+
+    for (jsw_sreset (skip); (p = jsw_sitem (skip)) != NULL; jsw_snext(skip)) {
+
+        if (ctable->creatorTable->lappend_field (interp, resultObj, p, fieldNum) == TCL_ERROR) {
+	    Tcl_AppendResult (interp, " while walking index fields", (char *) NULL);
+	    return TCL_ERROR;
+	}
+    }
+
+    return TCL_OK;
+}
+
+int
+ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
+    jsw_skip_t *skip = ctable->skipLists[field];
+
+    if (skip == NULL) {
+        return TCL_OK;
+    }
+
+    if (!jsw_serase (skip, row)) {
+        panic ("corrupted index detected for field %s", ctable->creatorTable->fields[field]->name);
+    }
+    return TCL_OK;
+}
+
+int
+ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
+    jsw_skip_t *skip = ctable->skipLists[field];
+
+    if (skip == NULL) {
+        return TCL_OK;
+    }
+
+    if (!jsw_sinsert (skip, row)) {
+	Tcl_AppendResult (interp, "duplicate entry", (char *) NULL);
+	return TCL_ERROR;
+    }
+    return TCL_OK;
+}
+
+int
+ctable_RemoveNullFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
+    jsw_skip_t *skip = ctable->skipLists[field];
+
+    if (skip == NULL) {
+        return TCL_OK;
+    }
+
+    Tcl_AppendResult (interp, "remove null from index unimplemented", (char *) NULL);
+    return TCL_ERROR;
+}
+
+int
+ctable_InsertNullIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
+    jsw_skip_t *skip = ctable->skipLists[field];
+
+    if (skip == NULL) {
+        return TCL_OK;
+    }
+
+    Tcl_AppendResult (interp, "insert null into index unimplemented", (char *) NULL);
+    return TCL_OK;
+}
+
+int
+ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, int depth) {
+    Tcl_HashTable   *keyTablePtr = ctable->keyTablePtr;
+    Tcl_HashEntry   *hashEntry;
+    Tcl_HashSearch   hashSearch;
+
+    void            *row;
+
+    jsw_skip_t      *skip = ctable->skipLists[field];
+
+    // if there's already a skip list, just say "fine"
+    // it's debatable if that's really what we want to do.
+    // perhaps we should generate an error, but that seems
+    // painful to the programmer who uses this tool.
+
+    if (skip != NULL) {
+        return TCL_OK;
+    }
+
+    skip = jsw_snew (depth, ctable->creatorTable->fields[field]->compareFunction);
+
+    // we plug the list in last
+    // we'll have to do a lot more here for concurrent access NB
+
+    ctable->skipLists[field] = skip;
+
+    // yes yes yet another walk through the hash table, in create index?!
+    // gotta do it that way until skip lists are solid
+    for (hashEntry = Tcl_FirstHashEntry (keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	row = Tcl_GetHashValue (hashEntry);
+
+        // NB do we really want to allow dups?  not necessarily, we need
+	// to be able to say.  but sometimes, definitely.  it's tricky.
+	// punt for now.
+	// also we want to be able to call out to an error handler rather
+	// than fail and unwind the stack
+	if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+	    Tcl_Obj *utilityObj;
+
+	    // you can't leave them with a partial index or there will
+	    // be heck to pay later when queries don't find all the
+	    // rows, etc
+	    jsw_sdelete_skiplist (skip);
+	    ctable->skipLists[field] = NULL;
+	    utilityObj = Tcl_NewObj();
+	    Tcl_AppendResult (interp, " while creating index \"", ctable->creatorTable->fields[field]->name, "\", value \"", ctable->creatorTable->get_string (row, field, NULL, utilityObj), "\"", (char *) NULL);
+	    Tcl_DecrRefCount (utilityObj);
+	    return TCL_ERROR;
+	}
     }
 
     return TCL_OK;

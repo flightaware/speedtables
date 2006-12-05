@@ -27,17 +27,17 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 
     static CONST char *options[] = {
-        "create", "info", "null_value", "method", (char *)NULL
+        "create", "info", "null_value", "method", "cextension", (char *)NULL
     };
 
     enum options
     {
-        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD
+        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD, OPT_CEXTENSION
     };
 
     struct ctableCreatorTable *row_head_tbl_ptr = (struct ctableCreatorTable *)clientData;
 
-    struct ctableTable *row_tbl_ptr;
+    struct ctableTable *ctable;
 
     if (objc < 2 || objc > 4) {
       err:
@@ -55,6 +55,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	char      *commandName;
 
         case OPT_CREATE: {
+	    int i;
 	    int baseNameLength = 0;
 
 	    if (objc != 3) {
@@ -62,11 +63,19 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		return TCL_ERROR;
 	    }
 
-	    row_tbl_ptr = (struct ctableTable *)ckalloc (sizeof(struct ctableTable));
-	    row_tbl_ptr->creatorTable = row_head_tbl_ptr;
-	    row_tbl_ptr->keyTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
-	    row_tbl_ptr->count = 0;
-	    Tcl_InitCustomHashTable (row_tbl_ptr->keyTablePtr, TCL_STRING_KEYS, NULL);
+	    ctable = (struct ctableTable *)ckalloc (sizeof(struct ctableTable));
+	    ctable->creatorTable = row_head_tbl_ptr;
+	    ctable->keyTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
+	    ctable->count = 0;
+
+	    // create an array of pointers to possible skip lists,
+	    // one per field
+	    ctable->skipLists = (jsw_skip_t **)ckalloc (row_head_tbl_ptr->nFields * sizeof (jsw_skip_t *));
+	    for (i = 0; i < row_head_tbl_ptr->nFields; i++) {
+		ctable->skipLists[i] = NULL;
+	    }
+
+	    Tcl_InitCustomHashTable (ctable->keyTablePtr, TCL_STRING_KEYS, NULL);
 	    commandName = Tcl_GetString(objv[2]);
 
 	    if (strcmp (commandName, "#auto") == 0) {
@@ -78,7 +87,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		snprintf (commandName, baseNameLength, "%s%lu", objName, row_head_tbl_ptr->nextAutoCounter++);
 	    }
 
-	    row_tbl_ptr->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) row_tbl_ptr, NULL);
+	    ctable->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) ctable, NULL);
 
 	    Tcl_SetStringObj (Tcl_GetObjResult (interp), commandName, -1);
 	    if (baseNameLength) {
@@ -124,6 +133,11 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    hashEntry = Tcl_CreateHashEntry (row_head_tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
 	    Tcl_IncrRefCount(objv[3]);
 	    Tcl_SetHashValue (hashEntry, (ClientData)objv[3]);
+	    return TCL_OK;
+	}
+
+	case OPT_CEXTENSION: {
+	    Tcl_SetStringObj (Tcl_GetObjResult (interp), "$::ctable::extension", -1);
 	    return TCL_OK;
 	}
     }

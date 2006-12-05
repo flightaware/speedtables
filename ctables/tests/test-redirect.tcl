@@ -5,8 +5,6 @@
 # 11112 and redirecting requests for testTable to a ctable server on port
 # 11111.
 #
-#
-#
 # $Id$
 #
 

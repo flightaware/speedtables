@@ -258,6 +258,90 @@ INLINE
 Inline the search compare routines?  can't be done, they're called through
 a pointer.
 
+COMPARING FIELDS FROM ROW STRUCTURES INSTEAD OF GETTING FROM TCL
 
+Sort compares do that already but search compares are hokey.  They get integers
+from Tcl and shit like that.  Each time.  I've done some work to not do that
+but it's kind of customed out.  The answer is to create a row that's not part
+of the table for each comparison component and fill in the field or fields
+in each that will be used.
+
+You can't just share one special row among all the compares because you may
+use a variable in more than one comparison and for "range".
+
+-----
+
+GENERATING SEPARATE COMPARE ROUTINES FOR EACH FIELD
+---------------------------------------------------
+
+right now all the compare routines are rolled up inside of a for loop that
+walks the compare components of a search and has a big switch statement
+for what field to alter and stuff.
+
+if there was a separate compare routine for each field, there'd be less
+overhead in comparing a single field.  If searching on a single field,
+less interpreting the intentions of the caller of the search compare
+routine.
+
+The skiplist compare routine could match what the original skiplist code
+expected -- super simple, two pointers to rows.
+
+The compare routine would return -1, 0 or 1.
+
+But we also allow searching for null, notnull, true, false, and match...
+
+So do we generate a routine for each of those for each field?
+
+Cooly, LT, LE, EQ, NE, GE and GT can all be sussed by looking at that -1, 0, 1.
+
+
+SHOULD WE EVEN REQUIRE A KEY
+----------------------------
+
+The most basic level would be the "recno" thing.
+
+
+
+SIMPLIFYING
+-----------
+
+Generate separate set routines for each field in a table.
+
+Make null tracking optional.
+
+Support indexes and/or triggers but in some superefficient way, especially
+where there isn't an index/trigger on the field being set.
+
+If set sets a new value into a field and that field hasn't got a trigger,
+there needs to be minimal overhead.  If it does have a trigger and there's
+a change, you gotta update the table.
+
+
+SKIP LISTS ARE SO GOOD THEY NEED TO ALSO STAND ALONE
+----------------------------------------------------
+
+Need to implement skip list objects that take keys and values but the values
+are just tcl objs, not ctable rows.  This gives you an associative array-like 
+structure but one that can be walked in a foreach style method that will be
+in sorted order.  This is powerful for where you're faking multidimensional arrays because with normal Tcl if you're doing a foo:* to wildcard everything with foo as the first element Tcl's going to do a full hashtable walk (and guess what, hashtable walks are slower than you'd think) whereas with this stuff it'll get out to foo:* really quickly and then read those elements in sequence.  If you had foo:bar:* it's still a win.  The only lose is when it's something like foo:*:bar where you're still going to have to walk foo:* to figure it out.  Even then it's still better than using hash tables.
+
+...still haven't solved the hierarchy of storage issue to my satisfaction.  You know, in C you can go p->foo[4]->abc[i].snap, similarly in javascript, etc.
+We need that kind of data capability in Tcl or we need to find a different language.
+
+NAMESPACE OR DIRECTORY SUPPORT
+------------------------------
+
+You definitely want hierarchical namespaces for specifying the data.  In a complex app a flat structure either won't cut it or at least will be painful.  Tcl's namespaces can be leveraged like a tree-structured filesystem, whether the separators are :: or /.  Since we're already doing a ctable URL and we allow and parse the directory portion, although we don't yet use it, it seems pretty natural to map the directory onto namespaces.
+
+MAKING CLIENT-SERVER GO FAST
+----------------------------
+
+The client/server stuff is amazing in the sense that it really does implement
+a ctable object that works the same way but makes remote calls behind your
+back for all of the actions.
+
+However the server is single-threaded and ctables do not currently support shared memory.
+
+Although this has not been a problem for flightaware, the row counts are not super large and the table is replicated widely from, essentially, a dual source.
 
 

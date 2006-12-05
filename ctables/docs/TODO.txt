@@ -57,3 +57,14 @@ overhead.  Unacceptable.  At the very least do a bidirectionally linked
 list between rows in a table and traverse them that way.  (Hey, not bad.)
 Or go to fancy skip lists or whatever and traverse them that way.  Skip
 lists have easy and fast straight traversal.
+
+Adopt TclX's test structure and make lots more tests.
+
+In the _comp routine for varstring, if the pointer is NULL use the
+default value for the field.
+
+-----
+
+Generate a row when the search type is range and we're doing skip list
+search.  Eventually make this generated row business, as used in the
+skip list cmp routines, standard in other places.

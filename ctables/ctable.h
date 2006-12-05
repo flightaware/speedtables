@@ -5,6 +5,9 @@
  *
  */
 
+#ifndef CTABLE_H
+#define CTABLE_H
+
 #include <tcl.h>
 #include <assert.h>
 #include <string.h>
@@ -16,11 +19,29 @@
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 
-#include <sys/limits.h>
+// #include <sys/limits.h>
 
 #ifdef WITH_PGTCL
 #include <libpq-fe.h>
 #endif
+
+#include "jsw_slib.h"
+
+enum ctable_types {
+    CTABLE_TYPE_BOOLEAN,
+    CTABLE_TYPE_FIXEDSTRING,
+    CTABLE_TYPE_VARSTRING,
+    CTABLE_TYPE_CHAR,
+    CTABLE_TYPE_MAC,
+    CTABLE_TYPE_SHORT,
+    CTABLE_TYPE_INT,
+    CTABLE_TYPE_LONG,
+    CTABLE_TYPE_WIDE,
+    CTABLE_TYPE_FLOAT,
+    CTABLE_TYPE_DOUBLE,
+    CTABLE_TYPE_INET,
+    CTABLE_TYPE_TCLOBJ
+};
 
 // define ctable search comparison types
 #define CTABLE_COMP_FALSE 0
@@ -35,6 +56,26 @@
 #define CTABLE_COMP_GT 9
 #define CTABLE_COMP_MATCH 10
 #define CTABLE_COMP_MATCH_CASE 11
+#define CTABLE_COMP_RANGE 12
+
+// when setting, incr'ing, read_tabsepping, etc, we can control at the
+// C level whether we want normal index behavior (if the field is
+// indexed and it changes, it will be removed from the index under
+// the old value and inserted under the new.
+//
+// if new is set, it will be inserted but not removed, this is used
+// when creating new entries.
+//
+// if private is set, no index changes will be performed.  This is for
+// setting up structures for comparisons and the like, i.e. stuff that
+// should not be a row in the ctable.
+//
+// do not change, new and normal and 0 and 1 also expected from find_or_create
+#define CTABLE_INDEX_PRIVATE -1
+#define CTABLE_INDEX_NORMAL 0
+#define CTABLE_INDEX_NEW 1
+
+typedef int (*fieldCompareFunction_t) (const void *p1, const void *p2);
 
 // ctable sort struct - this controls everything about a sort
 struct ctableSortStruct {
@@ -67,6 +108,8 @@ struct ctableSearchComponentStruct {
     char           *comparedToString;
     int             comparedToStringLength;
     void           *clientData;
+    void           *row1;
+    void           *row2;
 };
 
 // ctable search struct - this controls everything about a search
@@ -98,29 +141,53 @@ struct ctableSearchStruct {
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
     int                                  writingTabsepIncludeFieldNames;
+
+    // setting up these for the field_comp routines to go after the
+    // rows we want in skiplists
+    void                                 *row1;
+    void                                 *row2;
+};
+
+struct ctableFieldInfo {
+    CONST char              *name;
+    Tcl_Obj                 *nameObj;
+    int                      number;
+    enum ctable_types        type;
+    int                      needsQuoting;
+    fieldCompareFunction_t   compareFunction;
 };
 
 struct ctableCreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int  nextAutoCounter;
-    CONST char       **fieldNames;
-    Tcl_Obj          **nameObjList;
 
     int                nFields;
+
+    CONST char       **fieldNames;
+    Tcl_Obj          **nameObjList;
     int               *fieldList;
     enum ctable_types *fieldTypes;
     int               *fieldsThatNeedQuoting;
 
-    int (*search_compare) (Tcl_Interp *interp, struct ctableSearchStruct *searchControl, Tcl_HashEntry *hashEntryPtr);
-    int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
-    Tcl_Obj *(*get_field_obj) (Tcl_Interp *interp, void *pointer, int field);
-    void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey);
+    struct ctableFieldInfo **fields;
+
+    void *(*make_empty_row) ();
+    int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, void *row, int field, int indexCtl);
+    int (*set_null) (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field, int indexCtl);
+
+    Tcl_Obj *(*get) (Tcl_Interp *interp, void *row, int field);
+    CONST char *(*get_string) (const void *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
+
     Tcl_Obj *(*gen_list) (Tcl_Interp *interp, void *pointer);
     Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, void *pointer);
     Tcl_Obj *(*gen_nonnull_keyvalue_list) (Tcl_Interp *interp, void *pointer);
     int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
+    void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey);
+
+    int (*search_compare) (Tcl_Interp *interp, struct ctableSearchStruct *searchControl, void *pointer, int tailoredWalk);
+    int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
 };
 
 struct ctableTable {
@@ -128,8 +195,14 @@ struct ctableTable {
     Tcl_HashTable             *keyTablePtr;
     Tcl_Command                commandInfo;
     long                       count;
+
+    jsw_skip_t               **skipLists;
 };
 
 
 // extern int ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable);
 
+extern int
+ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int fieldNum, int depth);
+
+#endif

@@ -16,6 +16,38 @@
 EXTERN int
 ${extension}_Init(Tcl_Interp *interp);
 
+static int
+cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{    int      optIndex;
+ 
+ 
+    static CONST char *options[] = {
+        "definition", (char *)NULL
+    };
+ 
+    enum options
+    {
+        OPT_DEFINITION
+    };
+
+    if (objc != 2) {
+        Tcl_WrongNumArgs (interp, 1, objv, "definition");
+	return TCL_ERROR;
+    }
+
+    if (Tcl_GetIndexFromObj  (interp, objv[1], options, "option", TCL_EXACT, &optIndex) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    switch ((enum options) optIndex) {
+	case OPT_DEFINITION: {
+	    Tcl_SetStringObj (Tcl_GetObjResult (interp), sourceCode, -1);
+	    return TCL_OK;
+	}
+    }
+    return TCL_OK;
+}
+
 
 /*
  *----------------------------------------------------------------------
@@ -36,7 +68,7 @@ ${extension}_Init(Tcl_Interp *interp);
 EXTERN int
 ${extension}_SafeInit(Tcl_Interp *interp)
 {
-    return ${extension}_Init(interp);
+    return ${extension}_Init (interp);
 }
 
 
@@ -82,4 +114,6 @@ $structHeadTablePointers
     if (Tcl_PkgProvide(interp, "${extension}", "${extensionVersion}") != TCL_OK) {
 	return TCL_ERROR;
     }
+
+    Tcl_CreateObjCommand (interp, "${extension}", (Tcl_ObjCmdProc *)cExtensionObjCmd, (ClientData)NULL, (Tcl_CmdDeleteProc *)NULL);
 

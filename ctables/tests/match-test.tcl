@@ -1,4 +1,8 @@
-
+#
+# match tests -- tests searching
+#
+# $Id$
+#
 
 source dumb-data.tcl
 

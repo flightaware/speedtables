@@ -1,7 +1,121 @@
 
 $Id$
 
+12/5/2006 karl
+    * Merge the skiplist development branch back into the mainline ctables
+      CVS branch.
+
+    * Bring search limit with and without sort into compliance that limit is 
+      the limit on the number of rows returned.
+
+    * Revived "write_tabsep" and "foreach" at the request of the userbase,
+      although they are still to be considered deprecated.
+
+    * Make $table index create $field take an optional argument which is
+      the depth of the skip list, like 24 would be good if you had 4M
+      rows.  (This should be more hidden but it's still in dev.)
+
+    * When building for source-level debugging, still use some level
+      of optimization.
+
+    * Updated docs to reflect usage of "index" method and fully document
+      "search" method.
+
+12/4/2006 karl
+    * Skip list indexes are working for creation, dropping, inserting,
+      updating, and searching.
+
+    * Added "search+" that works like search but on skip lists instead
+      of the hash table.  This isn't the permanent solution.
+
+    * Added pointers to functions to make empty rows, set elements
+      of rows, set elements of rows to null, get values from rows
+      to the ctable table structure.  It's getting to where
+      you can write all sorts of high speed C ctable access stuff
+      that isn't tailored to a specific data structure.
+
+      Internally you see this in how much code is in ctable_search.c
+      and how that code makes use of these pointers to access fields
+      in tables without knowing how those tables are structured.
+
+    * Got rid of generating custom pointer names in tons of places,
+      substituting "row" instead, significantly simplifying the
+      code.
+
+    * "...index count $field" is now working. 
+
+    * Attempts to insert duplicate entries in skip lists is now an error.
+      We'll eventually support having duplicate keys but not currently.
+
+    * Propagate the Tcl interpreter pointer, ctable pointer, and whether 
+      a row is new or not into *_set, *_set_fieldobj, *_incr, 
+      *_incr_fieldobj and *_set_null routines.  It's a lot of overhead
+      to allow fields in a table to be indexed on demand, but since
+      we're generating the code, we can also not generate if we're
+      somehow told there won't be indexes or on what fields there
+      won't be indexes.
+
+12/3/2006 karl
+    * Add "list" option to "... index" to get a list of indices for
+      the given field's index.  While this will be wildly inefficient
+      with hundreds of thousands of records, it's handy to facilitate
+      testing and verification that the indexes are in sync.
+
+    * Add "count" option to "... index" method to get the count.
+      Currently inoperative as the skip list library defined the
+      count but doesn't manage it.  We'll fix that shortly.
+
+    * Add "notnull 1" options to inhibit generation of null check code
+      for a field.  **Incomplete**  be addressed in numerous places
+      and may not even be worth it(?)
+
+    * Tighten up generated code by stripping leading and trailing newline
+      from substituted multi-line elements.
+
+12/2/2006 karl
+    * Propagate the ctableTable pointer down into the ${table}_set
+      routine in preparation of handling triggers/indexes.
+
+    * Create a "dump" suboption for indexes.
+
+    * Propagate a pointer to the table-specific ${table}_get_string function
+      into the creatorTable struct for the corresponding table to that
+      routines with no specific awareness of how a table has been
+      generated can still get the contents of fields and stuff.
+
+
+12/1/2006 karl
+    * Generate new per-field row-to-row comparison routines for use with
+      skip lists and, eventually, sort comparisons and search comparisons.
+
+    * For each table create an array of pointers to field compare functions 
+      indexed by field number.
+
+    * When creating a skip list, store the compare function by getting it
+      from the creator table structure.
+
+    * Add new ctable method, "index", with subcommands "create" and "drop"
+
+    * Remove deprecated "foreach", "sort", "write_tabsep", "import"
+      and "export" methods.
+
+    * Migrate another hundred lines out of gentable.tcl and into
+      command-body.c-subst, reducing complexity in gentable.tcl.
+
 11/30/2006 karl
+    * Standardize field creation to always be key-value pairs, so you
+      now might say "varchar foo default bar" instead of
+      "varchar foo bar" so that you can do other stuff like
+      "index 1 unique 1"
+
+    * Make new command the same name as the extension name, except the first
+      char is uppercase (strangely, something to do with TEA), that will
+      give you back the definition that made the C extension in the first
+      place.
+
+    * Add new method to tables, cextension, that returns the C extension
+      that defined them.
+
     * Created skiplist development branch.  Got skiplist code to
       install in the ctable package and compile cleanly within 
       ctables.  Merged development branch back into mainline.

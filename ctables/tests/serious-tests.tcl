@@ -1,9 +1,13 @@
-
+#
+# some tests that actually check their results
+#
+# $Id$
+#
 
 source dumb-data.tcl
 
 proc search_test {name searchFields expect} {
-    puts "running $name"
+    puts -nonewline "running $name..."
     set result ""
     set cmd [linsert $searchFields 0 t search -key key -get data -fields "" -code {lappend result $key}]
     #puts $cmd
@@ -14,7 +18,7 @@ proc search_test {name searchFields expect} {
 	puts "got '$result', expected '$expect'"
 	puts ""
     } else {
-	puts "IT WORKED"
+	puts "ok"
     }
 }
 
