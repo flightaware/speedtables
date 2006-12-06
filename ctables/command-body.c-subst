@@ -362,7 +362,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 		  if (value == NULL) {
 		      if (PQgetisnull (res, pgRow, field)) {
-			 if (${table}_set_null (interp, ctable, pgRow, fieldList[field], indexCtl) == TCL_ERROR) {
+			 if (${table}_set_null (interp, ctable, row, fieldList[field], indexCtl) == TCL_ERROR) {
 			    Tcl_AppendResult (interp, " while setting null value for field \"", fieldName, "\" in table \"${table}\"", (char *)NULL);
 		            return TCL_ERROR;
 			 }
