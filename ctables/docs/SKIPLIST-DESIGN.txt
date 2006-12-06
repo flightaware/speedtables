@@ -166,8 +166,201 @@ be fixed up.
 
 I toy with generating per-field set routines and that seems pretty cool, but then I need the field number to see if I need to update an index or whatever.
 
-ZZ
+----
 
+12/5/06  
 
+It's working.
 
 ----
+
+12/6/06
+
+We're currently only supporting indexes with unique keys -- no duplicates are
+allowed.
+
+We need to also allow indexes with duplicate keys.
+
+As it stands skip lists do not generate anything into the generated
+row structures.  This was a design decision to keep ctables fully working,
+minimizing the impact of skip list indexes while they were being developed.
+
+It turned out to buy us more than we thought, too, because we discovered how
+much faster hash tables are to generate than skip lists.  That we kept hash
+tables for accessing a row via its primary, unique key appears to be a
+significant win.  How we do this will likely be revisited more several times.
+
+Currently without allowing duplicates, nothing is done to the row structure
+at all and each row has a corresponding skip list entry.  When a value in
+an indexed field of a row changes, we search the skip list for the existing
+value, delete it, and insert the skip list with the new value.
+
+Note that searching is required to locate a skip list entry for deletion as
+normally implemented.
+
+Although skip lists can support duplicate entries, there's a stack-like
+behavior for inserts, and for deletes it will delete the newest entry added.
+Obviously this isn't good enough for us, where we want to be able to delete
+any row's index, etc.
+
+So the plan is that we'll have only one skip list node for a value regardless
+of how many rows have that value in that field.
+
+If all of the rows having the same value were somehow linked by a linked list,
+that would work, although you'd have to search both the skip list space and
+probe the linked list upon insertion, modification, and deletion.
+
+(Skip lists themselves could be implemented using bidirectionally linked lists,
+but we're not going to go into that.)
+
+So far we have not required changes to the structures being emitted and we
+do our skip list thing at runtime.
+
+Also we want to over time be able to use ctables to generate tables where
+you have the option of not supporting null values (and the code for managing
+that not getting generated), declaring that a table will never have indexes
+or that certain fields will not support indexes.  That way if you don't need
+that stuff you get very fast, very minimal code.
+
+OK.
+
+Now, as to skip lists and linked lists of duplicate entries, if the lists were
+bidirectionally linked and there was a straight-ahead way to get from a row
+to the linked list.
+
+Removing a row's field from an index would simply be a matter of removing 
+its entry from the doubly linked list.
+
+If you wanted to, upon removing the last element, you could remove the skip
+list node as well.  However, it would also be possible to leave the skip
+list node there with no items in its doubly linked list of items and then,
+the next time an item was added with that key, simply link it in...
+A index vacuum operation could be made available to make a pass trhough the
+index and delete index nodes that have no rows linked from them.
+
+This would require at least a pointer to be added to the row that pointed to
+some kind of structure through which one accessed the bidirectionally linked
+list nodes for each indexed element of the row.
+
+Possibly this would be a pointer to an array of pointers, one for each field
+that can possibly have an index defined, and then those pointers either point
+to a doubly linked node structure or are themselves that structure.
+
+We'll use the freely redistributable queue.h from Berkeley, which is released
+under the Berkeley copyright.
+
+Each node in a skip list that allows duplicates (and possibly all of them
+since we don't want a lot of special-casing) will have a doubly linked
+list head structure initially set to empty.
+
+Insertion will do a find on the skip list.  If the element is not found,
+a new skip list node is created with an empty list inside it.  At this
+point, we've either found a matching node or created one, now we add this
+row to the list.
+
+It's probably reasonable to put the newest row with a duplicate entry in the
+field we're indexing at the front of the duplicate linked list as it's more
+likely to get pulled up.
+
+In fact, after a lookup of a row in the index, it might be reasonable to
+move that row to the front of the duplicate list if there are duplicates
+on its field value as it's semi-likely to be re-requested in short order.
+
+Walks (searches) would not move rows around within their duplicate element
+list.
+
+At the very least, rows of tables that allow indexes will need a pointer to
+an "index row" structure that will, one way or another, provide access to
+the doubly linked list pointers for all of the fields that are indexed.
+I'm thinking it'll be a pointer to an array of pointers.
+
+This could get nasty pretty quickly in terms of needing a lot of memory that
+it didn't use.
+
+I'd also like to not constantly check in "set" to see if a field is indexed.
+Unless it's been explicitly declared indexable or something, maybe don't
+generate any of that code.
+
+Also with nulls, I'd like to be able to say a table is not to support
+out-of-band nulls and get super-clean code.
+
+If we were to have some rows marked not indexable we'd have to give up
+having an array of pointers corresponding to the fields for the skip
+list heads, or not, but certainly we'd like to save the space on a row-by-row
+basis.
+
+We could choose at this point to make naming fields indexable required and
+generate the linked list nodes directly into the table.
+
+But that's also kind of a pain and if we did that we have to have it indirect
+in some way that there's still very little custom-generated code and it's
+invisible to us through calls that we're making to do things.
+
+Actually we only need the linked list nodes if the index allows duplicates,
+provided we are willing to take the hit to implement unique and duplicate-
+allowing indexes differently, hopefully in a way that hides the differences
+from as much of the code as possible.
+
+Since our existing implementation (12/6/06) *only* supports unique indexes,
+if we maintain that support while adding support for non-unique indexes,
+we'll have both, saving a lot of linked list headers and the like.
+
+I'm not sure how important that is.  However I like the idea of getting 
+basically as fast a ctable as possible for the feature set requested.
+
+At the very least, though, with support for nonunique indexes, we will need
+a pointer in the row to get to the per-indexed-row index data.
+
+Is it crazy to go crazy trying to optimize this?  Many or most tables will have
+no indexes, a few, one.  Fewer still will have two or more.
+
+How 'bout this, even more to the point?  We super need this capability in
+short order for production purposes.
+
+What's the *quickest* way we can get support for these things?
+
+Have it separate, with lots of mallocs and pointers between things?
+
+Are you answering my question or asking me a question?
+
+Both?
+
+Well, we figure now that the skip lists are interesting and useful enough on
+their own that there should be skip lists for Tcl that have Tcl objects as
+the (keys and) elements rather than requiring a ctable to be on the end of
+it, perhaps if we keep these linked list things general they'll turn up
+useful elsewhere as well...  Named linked lists of Tcl objects anyone?
+
+How about having a pointer in the row for each field that's indexable
+nonunique?  It points to an index linked list node structure if that
+field is indexed?
+
+So currently the choices are:
+
+    o hard-code linked list nodes into rows
+
+    o have a single link from rows to a structure containing linked list
+      nodes for each indexable/indexed field in the row
+
+    o have a link for each indexable field from the row to a single 
+      linked list node structure for that field.
+
+Peter said something last night that I thought was kind of dumb at the time
+and dismissed it but he was suggesting a fixed number of linked list nodes
+defined in the row and then use them like that.
+
+Actually I think having linked list nodes in the rows is pretty powerful.
+It's a very natural way that you'd be linking structures if you were hand-
+coding something like this for a specific structure in C.
+
+To look at it from another direction, there could be a lot of other interesting
+uses for linked lists in rows, perhaps specific to peoples' applications where
+they're willing to go hybrid and use Tcl or some other language through the
+API *and* code some stuff to interact with ctables directly in C.
+
+Also if all rows were in one doubly linked list, that would provide us with
+faster traversal than even hash walking can provide.
+
+
+
+
