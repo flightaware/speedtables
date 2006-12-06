@@ -19,13 +19,16 @@
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 
+#ifndef CTABLE_NO_SYS_LIMITS
 #include <sys/limits.h>
+#endif
 
 #ifdef WITH_PGTCL
 #include <libpq-fe.h>
 #endif
 
 #include "jsw_slib.h"
+#include "queue.h"
 
 enum ctable_types {
     CTABLE_TYPE_BOOLEAN,

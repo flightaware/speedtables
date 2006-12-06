@@ -1158,7 +1158,7 @@ proc table {name} {
     set table $name
 
     set booleans ""
-    catch {unset fields}
+    unset -nocomplain fields
     set fieldList ""
     set nonBooleans ""
 }
@@ -1377,7 +1377,7 @@ proc gen_defaults_subr {subr struct} {
     emit "        // $baseCopy._dirty = 1;"
 
     foreach myfield $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myfield)
 
 	switch $field(type) {
@@ -1466,7 +1466,7 @@ proc gen_delete_subr {subr struct} {
     emit "void ${subr}(struct $struct *row) {"
 
     foreach myfield $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myfield)
 
 	switch $field(type) {
@@ -1532,6 +1532,18 @@ proc sanity_check {} {
     }
 }
 
+proc gen_struct_linked_lists {} {
+    variable nonBooleans
+    variable fields
+    variable fieldList
+    variable booleans
+    variable table
+
+    foreach myfield $nonBooleans {
+        unset -nocomplain field
+    }
+}
+
 #
 # gen_struct - gen the table being defined's C structure
 #
@@ -1546,8 +1558,11 @@ proc gen_struct {} {
     #putfield TAILQ_ENTRY($table) ${table}_link
     #putfield TAILQ_ENTRY($table) _link
 
+    # we can be in some linked lists
+    #putfield LIST_ENTRY($table) {_ll[3]}
+
     foreach myfield $nonBooleans {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myfield)
 
 	switch $field(type) {
@@ -1804,7 +1819,7 @@ proc gen_incrs {} {
     variable rightCurly
 
     foreach myfield $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myfield)
 
 	switch $field(type) {
@@ -1873,7 +1888,7 @@ proc gen_sets {} {
     variable rightCurly
 
     foreach myfield $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myfield)
 
 	switch $field(type) {
@@ -2137,7 +2152,7 @@ proc gen_setup_routine {table} {
     #
     emit "    // defaults for varstring objects, if any"
     foreach fieldName $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($fieldName)
 
 	if {$field(type) != "varstring"} continue
@@ -2238,7 +2253,7 @@ proc gen_new_obj {type fieldName} {
 	}
 
 	varstring {
-	    catch {unset field}
+	    unset -nocomplain field
 	    array set field $fields($fieldName)
 
 	    # if there's no default for the var string, the null pointer 
@@ -2261,7 +2276,7 @@ proc gen_new_obj {type fieldName} {
 	}
 
 	fixedstring {
-	    catch {unset field}
+	    unset -nocomplain field
 	    array set field $fields($fieldName)
 	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (row->$fieldName, $field(length))"
 	}
@@ -2337,7 +2352,7 @@ proc gen_get_set_obj {obj type fieldName} {
 	}
 
 	fixedstring {
-	    catch {unset field}
+	    unset -nocomplain field
 	    array set field $fields($fieldName)
 	    return "Tcl_SetStringObj ($obj, row->$fieldName, $field(length))"
 	}
@@ -2397,7 +2412,7 @@ proc gen_list {} {
 
     set position 0
     foreach fieldName $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($fieldName)
 
 	set_list_obj $position $field(type) $fieldName
@@ -2432,7 +2447,7 @@ proc gen_keyvalue_list {} {
 
     set position 0
     foreach fieldName $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($fieldName)
 
 	emit "    listObjv\[$position] = ${table}_${fieldName}NameObj;"
@@ -2473,7 +2488,7 @@ proc gen_nonnull_keyvalue_list {} {
     emit ""
 
     foreach fieldName $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($fieldName)
 
 	emit "    obj = [gen_new_obj $field(type) $fieldName];"
@@ -2525,7 +2540,7 @@ proc gen_field_names {} {
 
     set typeList "enum ctable_types ${table}_types\[\] = $leftCurly"
     foreach myField $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myField)
 
 	append typeList "\n    [ctable_type_to_enum $field(type)],"
@@ -2534,7 +2549,7 @@ proc gen_field_names {} {
 
     set needsQuoting "int ${table}_needs_quoting\[\] = $leftCurly"
     foreach myField $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myField)
 	if {[info exists field(needsQuoting)] && $field(needsQuoting)} {
 	    set quoting 1
@@ -2563,7 +2578,7 @@ proc gen_field_names {} {
 
     emit "// define default objects for varstring fields, if any"
     foreach myField $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myField)
 
 	if {$field(type) == "varstring" && [info exists field(default)]} {
@@ -2588,7 +2603,7 @@ proc gen_gets_cases {} {
     variable rightCurly
 
     foreach myField $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myField)
 
 	emit "      case [field_to_enum $myField]:"
@@ -2611,7 +2626,7 @@ proc gen_gets_string_cases {} {
     variable rightCurly
 
     foreach myField $fieldList {
-        catch {unset field}
+        unset -nocomplain field
 	array set field $fields($myField)
 
 	emit "      case [field_to_enum $myField]:"
@@ -2967,7 +2982,7 @@ proc gen_sort_comp {} {
     variable tclobjSortSource
 
     foreach field $fieldList {
-        catch {unset fieldData}
+        unset -nocomplain fieldData
 	array set fieldData $fields($field)
 	set fieldEnum [field_to_enum $field]
 
@@ -3113,7 +3128,7 @@ proc gen_search_comp {} {
     set value sandbag
 
     foreach field $fieldList {
-        catch {unset fieldData}
+        unset -nocomplain fieldData
 	array set fieldData $fields($field)
 	set fieldEnum [field_to_enum $field]
 	set type $fieldData(type)
@@ -3264,7 +3279,7 @@ proc compile {fileFragName version} {
 		set lib "-ltcl8.4"
 	    }
 
-	    myexec "gcc -pipe  $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/usr/local/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
+	    myexec "gcc -pipe -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/usr/local/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
 
 	    myexec "gcc -pipe $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub"
 
@@ -3381,6 +3396,7 @@ proc install_ch_files {targetDir} {
     set copyFiles {
 	ctable.h ctable_search.c boyer_moore.c
 	jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
+	queue.h
     }
 
     foreach file $copyFiles {
