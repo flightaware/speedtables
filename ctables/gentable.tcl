@@ -3378,10 +3378,19 @@ proc save_extension_code {name version code} {
 proc install_ch_files {targetDir} {
     variable srcDir
 
-    set copyFiles [list $srcDir/ctable.h $srcDir/ctable_search.c $srcDir/boyer_moore.c $srcDir/skiplists/jsw_rand.c $srcDir/skiplists/jsw_rand.h $srcDir/skiplists/jsw_slib.c $srcDir/skiplists/jsw_slib.h]
+    set copyFiles {
+	ctable.h ctable_search.c boyer_moore.c
+	jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
+    }
 
     foreach file $copyFiles {
-        file copy -force $file $targetDir
+	if {[file exists $srcDir/$file]} {
+            file copy -force $srcDir/$file $targetDir
+	} elseif {[file exists $srcDir/skiplists/$file]} {
+            file copy -force $srcDir/skiplists/$file $targetDir
+	} else {
+	    return -code error "Can't find $file in $srcDir"
+	}
     }
 }
 
