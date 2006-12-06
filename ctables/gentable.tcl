@@ -3378,7 +3378,7 @@ proc save_extension_code {name version code} {
 proc install_ch_files {targetDir} {
     variable srcDir
 
-    set copyFiles [list $srcDir/ctable.h $srcDir/ctable_search.c $srcDir/boyer_moore.c $srcDir/jsw_rand.c $srcDir/jsw_rand.h $srcDir/jsw_slib.c $srcDir/jsw_slib.h]
+    set copyFiles [list $srcDir/ctable.h $srcDir/ctable_search.c $srcDir/boyer_moore.c $srcDir/skiplists/jsw_rand.c $srcDir/skiplists/jsw_rand.h $srcDir/skiplists/jsw_slib.c $srcDir/skiplists/jsw_slib.h]
 
     foreach file $copyFiles {
         file copy -force $file $targetDir

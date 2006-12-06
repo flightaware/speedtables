@@ -19,7 +19,7 @@
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 
-// #include <sys/limits.h>
+#include <sys/limits.h>
 
 #ifdef WITH_PGTCL
 #include <libpq-fe.h>
