@@ -311,7 +311,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int               nFields;
 	  int               nTuples;
 	  int               field;
-	  int               row;
+	  int               pgRow;
 	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
 	  Tcl_Obj          *valueObj = Tcl_NewObj();
 
@@ -349,8 +349,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  nTuples = PQntuples (res);
 
-	  for (row = 0; row < nTuples; row++) {
-	      key = PQgetvalue (res, row, 0);
+	  for (pgRow = 0; pgRow < nTuples; pgRow++) {
+	      key = PQgetvalue (res, pgRow, 0);
 	      if (key == NULL) {
 	          key = "";
               }
@@ -358,11 +358,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      row = ${table}_find_or_create (ctable, key, &indexCtl);
 
 	      for (field = 1; field < nFields; field++) {
-	          value = PQgetvalue (res, row, field);
+	          value = PQgetvalue (res, pgRow, field);
 
 		  if (value == NULL) {
-		      if (PQgetisnull (res, row, field)) {
-			 if (${table}_set_null (interp, ctable, row, fieldList[field], indexCtl) == TCL_ERROR) {
+		      if (PQgetisnull (res, pgRow, field)) {
+			 if (${table}_set_null (interp, ctable, pgRow, fieldList[field], indexCtl) == TCL_ERROR) {
 			    Tcl_AppendResult (interp, " while setting null value for field \"", fieldName, "\" in table \"${table}\"", (char *)NULL);
 		            return TCL_ERROR;
 			 }
