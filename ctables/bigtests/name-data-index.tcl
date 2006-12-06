@@ -9,7 +9,7 @@ source nametest-extension.tcl
 n index create name
 
 puts "read tabsep database into ctable with simultaneous index generation"
-set fp [open names.txt]
+set fp [open test-data.txt]
 puts [time {n read_tabsep $fp}]
 close $fp
 

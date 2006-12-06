@@ -1,6 +1,10 @@
 
 $Id$
 
+12/6/2006 karl
+    * Added code to repeatably generate the test data in bigtests and got 
+      rid of the 24 meg file of test data that was previously there.
+
 12/5/2006 karl
     * Version 3.0 tagged for release.
 
