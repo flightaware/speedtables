@@ -1,0 +1,15 @@
+
+$Id$
+
+Rather than shipping a 24 meg file in the bigtests directory, we provide
+a mechanism for generating the test dataset algorithmically.
+
+gen1000knames.tcl will randomly generate a million names and goofy user IDs.
+
+By forcing the seed of random number generator at startup, however, it will
+always generate the same data the same way, unless somebody's Tcl 
+implementation doesn't produce the same set of random numbers for the same
+seed.  If this does occur, we can replace the call to rand() with our own
+written in Tcl or even use the rand stuff we ship with ctables. 
+
+
