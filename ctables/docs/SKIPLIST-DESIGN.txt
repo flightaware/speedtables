@@ -361,6 +361,50 @@ API *and* code some stuff to interact with ctables directly in C.
 Also if all rows were in one doubly linked list, that would provide us with
 faster traversal than even hash walking can provide.
 
+(few minutes later)
+
+OK I'm generating list entries into the row definitions.  Currently an
+array, as in:
+
+    LIST_ENTRY(nameTable)  _ll[3];
 
 
+This needs to be definable on a per-table basis, how many you get, or something.
+
+Whether we're going to have named ones, like per field that can have this,
+or whatever, from the internal API level, I can't know any table-specific
+details about this stuff in ctable_search.c, etc.
+
+Thus I need, having a ctable pointer and a row pointer, to be able to callout
+via the creator table function pointers to:
+
+    o find out stuff about linked lists
+
+    o remove the row from a linked list
+
+    o add the row to a linked list
+
+If there isn't a 1:1 relationship between these and fields, there has to
+be some way to translate between a field number and the linked list that
+takes care of it.
+
+Yes.
+
+So you'd say in the call, something like
+
+    ctable->creatorTable->remove_from_field_list (interp, ctable, row, field);
+
+    and/or
+
+    ctable->creatorTable->remove_from_list (interp, ctable, row, linkedListIndex);
+
+You'd also have
+
+    ctable->creatorTable->insert_into_list (interp, ctable, listHead, row, linkedListIndex);
+
+    ctable->creatorTable->insert_into_field_list (interp, ctable, listHead, row, field);
+
+Through a mechanism, the field is used to identify both which skip list
+(yeah it already does that) *and* which linked list to use for duplicate
+insert.
 
