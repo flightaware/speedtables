@@ -164,7 +164,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""}} {
 	    }
 
 	    default {
-		error "unknown command response"
+		error "unknown command response $line"
 	    }
 	}
     }
