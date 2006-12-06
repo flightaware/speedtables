@@ -1012,7 +1012,7 @@ ctable_SetupSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *CON
 
     if (objc < 2) {
       wrong_args:
-	Tcl_WrongNumArgs (interp, 2, objv, "?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-include_field_names 0|1? ?-noKeys 0|1? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?");
+	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-include_field_names 0|1?  ?-limit limit? ?-noKeys 0|1? ?-offset offset? ?-regexp pattern? ?-sort {?-?field1..}? ?-write_tabsep channel?");
 	return TCL_ERROR;
     }
 

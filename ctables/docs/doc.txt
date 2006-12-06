@@ -342,7 +342,7 @@ search
     per CPU second (330 nanoseconds per row), with a lot of optimization 
     still not attempted.
 
-$ctable search ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel? ?-key keyVar? ?-get ?fields?? ?-array_get ?fields?? ?-array_get_with_nulls ?fields??
+$ctable search ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? ?-regexp pattern? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel? ?-key keyVar? ?-get varName? ?-array_get varName? ?-array_get_with_nulls varName? ?-include_field_names 0|1?
 
     -sort
 
@@ -396,12 +396,15 @@ $ctable search ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? ?-regexp
 	that many, you can search with -countOnly 1 -limit 10 and it will
 	return 10 if there are ten or more records.
 
-
     -write_tabsep channel
 
         Matching records are written tab-separated to the file or socket
 	(or postgresql database handle) "channel".
 
+    -include_field_names 1
+
+	If you are doing -write_tabsep, -include_field_names 1 will cause
+	the first line emitted to be a tab-separated list of field names.
 
     -key keyVar
     -get listVar
@@ -434,7 +437,6 @@ $ctable search ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? ?-regexp
 	and you "array get" the new result into the array, the previous
 	value of x will still be there.  So either unset or use
 	array_get_with_nulls.
-
 
     -compare list
 
@@ -541,12 +543,11 @@ search+
 
 $ctable search+ ?-sort {field1 {field2 desc}}? ?-fields fieldList? ?-compare list? ?-countOnly 0|1? ?-offset offset? ?-limit limit? ?-code codeBody? ?-write_tabsep channel?
 
-Skip lists have much higher insert overhead -- it takes about 7 microseconds per row inserting a million two-varchar field rows, including allocating, adding the hashtable entry, and adding the skip list node, versus about 2.3 microseconds per row just to allocate the space and do the hashtable insert without the skip list insert.
+Skip lists have significantly higher insert overhead -- it takes about 7 microseconds per row inserting a million two-varchar field rows, including allocating, adding the hashtable entry, and adding the skip list node, versus about 2.3 microseconds per row just to allocate the space and do the hashtable insert without the skip list insert.
 
 Skip lists also can't get to the "key" that the row was inserted with.  Skip lists more point to a future where there isn't an external key -- that is, what would have been the external key exists as a normal field in the row.
 
 The one huge win of skip lists is the "range" comparison method.  We are seeing speedups of 200,000% when a "range" can be used on an indexed field versus search's brute force scanning.
-
 
 
 foreach   DEPRECATED (use "search" instead)
@@ -627,6 +628,7 @@ import_postgres_result
 
     On a 2 GHz AMD64 we are able to import about 200,000 10-element rows
     per CPU second, i.e. around 5 microseconds per row.
+
 
 fieldtype
 

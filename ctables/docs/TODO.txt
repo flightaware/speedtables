@@ -68,3 +68,21 @@ default value for the field.
 Generate a row when the search type is range and we're doing skip list
 search.  Eventually make this generated row business, as used in the
 skip list cmp routines, standard in other places.
+
+----
+
+read_tabsep can fail but add a thing where you can specify -error proc and
+if it's going to fail and the error proc has been specified, it'll call
+forward to the error proc rather than blowing out.
+
+If it gets an error back from the error proc, it blows out.
+
+If it gets a continue, it skips that row and continues.
+
+If it just returns, like TCL_OK, in the result object will be a row that
+read_tabsep should use in place place of the original, which is error
+checked and called forward again should the returned thing have an error.
+
+If it gets another error on the same column, then it'll error out.
+
+

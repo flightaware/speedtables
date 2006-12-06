@@ -26,6 +26,8 @@ $Id$
     * Updated docs to reflect usage of "index" method and fully document
       "search" method.
 
+    * Fix up argument error message for search to include all the options.
+
 12/4/2006 karl
     * Skip list indexes are working for creation, dropping, inserting,
       updating, and searching.
