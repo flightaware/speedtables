@@ -303,7 +303,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       case OPT_IMPORT_POSTGRES_RESULT: {
 #ifdef WITH_PGTCL
           const PGresult   *res;
-	  char             *fieldName;
+	  char             *fieldName = NULL;
 	  char             *key;
 	  char             *value;
 	  int              *fieldList;
