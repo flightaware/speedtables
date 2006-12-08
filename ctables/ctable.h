@@ -28,7 +28,6 @@
 #endif
 
 #include "jsw_slib.h"
-#include "queue.h"
 
 enum ctable_types {
     CTABLE_TYPE_BOOLEAN,
@@ -45,6 +44,31 @@ enum ctable_types {
     CTABLE_TYPE_INET,
     CTABLE_TYPE_TCLOBJ
 };
+
+// define ctable linked lists structures et al
+struct ctable_linkedListNodeStruct {
+    struct ctable_baseRow *next;
+    struct ctable_baseRow **prev;
+};
+
+struct ctable_baseRow {
+    Tcl_HashEntry *hashEntry;
+    struct ctable_linkedListNodeStruct _ll_nodes[];
+};
+
+// 
+// macros for traversing ctable lists
+// 
+// in the safe version you can safely unlink the node you're currently "on"
+//
+
+#define CTABLE_LIST_FOREACH(list, var, i) \
+    for ((var) = list; (var); (var) = (var)->_ll_nodes[i].next)
+
+#define CTABLE_LIST_FOREACH_SAFE(ctable, var, tvar, i) \
+    for ((var) = list; \
+        (var) && ((tvar) = (var)->ll_nodes[i].next, 1); \
+         var = tvar)
 
 // define ctable search comparison types
 #define CTABLE_COMP_FALSE 0
@@ -158,6 +182,7 @@ struct ctableFieldInfo {
     enum ctable_types        type;
     int                      needsQuoting;
     fieldCompareFunction_t   compareFunction;
+    int                      indexNumber;
 };
 
 struct ctableCreatorTable {
@@ -165,6 +190,7 @@ struct ctableCreatorTable {
     long unsigned int  nextAutoCounter;
 
     int                nFields;
+    int                nLinkedLists;
 
     CONST char       **fieldNames;
     Tcl_Obj          **nameObjList;
@@ -194,12 +220,14 @@ struct ctableCreatorTable {
 };
 
 struct ctableTable {
-    struct ctableCreatorTable *creatorTable;
-    Tcl_HashTable             *keyTablePtr;
-    Tcl_Command                commandInfo;
-    long                       count;
+    struct ctableCreatorTable           *creatorTable;
+    Tcl_HashTable                       *keyTablePtr;
+    Tcl_Command                          commandInfo;
+    long                                 count;
 
-    jsw_skip_t               **skipLists;
+    jsw_skip_t                         **skipLists;
+    struct ctable_baseRow               *ll_head;
+    int                                  nLinkedLists;
 };
 
 

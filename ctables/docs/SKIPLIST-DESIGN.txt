@@ -208,12 +208,13 @@ of how many rows have that value in that field.
 
 If all of the rows having the same value were somehow linked by a linked list,
 that would work, although you'd have to search both the skip list space and
-probe the linked list upon insertion, modification, and deletion.
+probe the linked list upon insertion, modification of the field value, and 
+row deletion.
 
 (Skip lists themselves could be implemented using bidirectionally linked lists,
 but we're not going to go into that.)
 
-So far we have not required changes to the structures being emitted and we
+So far we have not required changes to the row structures being emitted and we
 do our skip list thing at runtime.
 
 Also we want to over time be able to use ctables to generate tables where
@@ -226,10 +227,8 @@ OK.
 
 Now, as to skip lists and linked lists of duplicate entries, if the lists were
 bidirectionally linked and there was a straight-ahead way to get from a row
-to the linked list.
-
-Removing a row's field from an index would simply be a matter of removing 
-its entry from the doubly linked list.
+to the linked list, removing a row's field from an index would simply be a 
+matter of removing its entry from the doubly linked list.
 
 If you wanted to, upon removing the last element, you could remove the skip
 list node as well.  However, it would also be possible to leave the skip
@@ -262,9 +261,10 @@ It's probably reasonable to put the newest row with a duplicate entry in the
 field we're indexing at the front of the duplicate linked list as it's more
 likely to get pulled up.
 
-In fact, after a lookup of a row in the index, it might be reasonable to
-move that row to the front of the duplicate list if there are duplicates
-on its field value as it's semi-likely to be re-requested in short order.
+In fact, after a lookup of a row in the index, it would probably be a win
+to move that row to the front of the duplicate list, if there are duplicates
+on its field value, as it's semi-likely that the row will be re-requested in 
+short order.
 
 Walks (searches) would not move rows around within their duplicate element
 list.
@@ -282,12 +282,13 @@ Unless it's been explicitly declared indexable or something, maybe don't
 generate any of that code.
 
 Also with nulls, I'd like to be able to say a table is not to support
-out-of-band nulls and get super-clean code.
+out-of-band nulls and get super-clean code, as mentioned above and
+probably elsewhere.
 
 If we were to have some rows marked not indexable we'd have to give up
 having an array of pointers corresponding to the fields for the skip
 list heads, or not, but certainly we'd like to save the space on a row-by-row
-basis.
+basis by not creating lots of pointers that we'd know we didn't need.
 
 We could choose at this point to make naming fields indexable required and
 generate the linked list nodes directly into the table.
@@ -337,7 +338,7 @@ field is indexed?
 
 So currently the choices are:
 
-    o hard-code linked list nodes into rows
+    o hard-code linked list nodes (forward and backward pointers) into rows
 
     o have a single link from rows to a structure containing linked list
       nodes for each indexable/indexed field in the row
@@ -407,4 +408,60 @@ You'd also have
 Through a mechanism, the field is used to identify both which skip list
 (yeah it already does that) *and* which linked list to use for duplicate
 insert.
+
+----
+
+12/7/06
+
+I've been staring at it and using cc -E foo.c to see what the C preprocessor
+is putting out in interpreting those #defines making up the list primitives.
+
+It's clear now that the path is that we generate the linked list node
+structures into the ctable structure, as I was converging on yesterday.
+
+There will be an array of them in the row, one for each indexable (possibly
+only if nonunique) row, one for every row (at least for an experiment in
+seeing how much faster brute force is if we bypass the hashtable walk),
+and maybe allowing extra ones to be added for the developer's own purposes.
+
+Gotta watch that, however, as the management of rows with indexes is rigorous,
+and if you start pulling rows out of tables without going through the API
+to cause the indexes to be removed, the ctables will become corrupted and
+a protection violation is likely.
+
+gentable.tcl will be modified to generate code to perform list operations
+against the defined lists using list index numbers and generic list
+header pointers.
+
+the ctable structure in ctable.h will be modified to include a pointer to
+an array of list header pointers.
+
+ctable creation code will be modified to initialize a pointer to the
+generated function to allow rows to be queued and dequeued to and from
+these lists, walked, etc.
+
+Rather than having to generate custom code for managing the skip lists and
+maintaining pointers to it, we could, instead of using void *, use a
+data structure that overlays the real row kind of like with Tcl_Interp
+having a detailed internal representation and a limited external 
+representation.
+
+Then none of the table-specific generated code needs to know how to specifically
+do these mundane insert operations and stuff.
+
+The only requirement is that the array of list nodes be at the front in both
+cases.
+
+If I didn't mention this, I need a way to translate between a field number and
+an index number.
+
+I'm also going to make the first element of the row structure always
+be a pointer to the hash table entry corresponding.  As long as we still
+have hash tables and we're more looking just at rows with the skip list
+stuff, we'll need to be able to find hash table entries from rows.
+
+Also you can't have those flexible arrays in a structure without something
+solid in front of them.  I don't see why, really.  In this case I have some
+real defined number in the structure I'm aliasing over.
+
 

@@ -11,7 +11,6 @@ proc cputime {x} {
     return [time $x]
 }
 
-
 proc test1 {} {
     puts "matching *lehenbauer*"
 
@@ -86,4 +85,5 @@ proc test9 {} {
 puts [cputime test9]
 
 # we don't normally need to destroy but it helps for memory debugging
-n destroy
+#n destroy
+

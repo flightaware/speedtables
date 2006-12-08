@@ -13,6 +13,8 @@
 
 #include "jsw_slib.c"
 
+#include "ctable_lists.c"
+
 /*
  * ctable_ParseFieldList - given a Tcl list object and a pointer to an array
  * of integer field numbers and a pointer to an integer for field counts,
@@ -406,10 +408,14 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 //    taking the action
 //
 //
+#define LINKED_LIST
+
 static int
 ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, int count) {
     Tcl_HashEntry   *hashEntry;
+#ifndef LINKED_LIST
     Tcl_HashSearch   hashSearch;
+#endif
     char            *key;
 
     int              compareResult;
@@ -420,6 +426,10 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
     Tcl_HashEntry **hashSortTable = NULL;
     Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
+
+#ifdef LINKED_LIST
+    struct ctable_baseRow *row;
+#endif
 
     if (count == 0) {
         return TCL_OK;
@@ -475,10 +485,17 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
     // walk the table -- soon we hope to replace this with a skiplist walk
     // or equivalent
+#ifdef LINKED_LIST
+    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+        hashEntry = row->hashEntry;
+        key = Tcl_GetHashKey (keyTablePtr, hashEntry);
+#else
     for (hashEntry = Tcl_FirstHashEntry (keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	void           *row;
 
 	key = Tcl_GetHashKey (keyTablePtr, hashEntry);
+
+#endif
 
         // if we have a match pattern (for the key) and it doesn't match,
 	// skip this row
@@ -488,8 +505,10 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	//
 	// run the supplied compare routine
 	//
+#ifndef LINKED_LIST
 	row = Tcl_GetHashValue (hashEntry);
-	compareResult = (*ctable->creatorTable->search_compare) (interp, search, row, 0);
+#endif
+	compareResult = (*ctable->creatorTable->search_compare) (interp, search, (void *)row, 0);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
 	}
@@ -570,7 +589,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
     // figure out the last row they could want, if it's more than what's
     // there, set it down to what came back
-    if (limit > matchCount) {
+    if ((limit == 0) || (limit > matchCount)) {
         limit = matchCount;
     }
 
@@ -723,16 +742,20 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     int              matchCount = 0;
     int              sortIndex;
     int              actionResult = TCL_OK;
-    int              limit;
+    int              limit = search->offset + search->limit;
 
     int              tailoredWalk = 0;
-    int              running;
 
+// #undef LINKED_LIST
+#ifdef LINKED_LIST
+    struct ctable_baseRow *row = NULL;
+#else
     void            *row = NULL;
+    jsw_node_t      *curl;
+#endif
     void            *row2 = NULL;
 
     void          **sortTable = NULL;
-    Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
 
     jsw_skip_t      *skip;
 
@@ -865,14 +888,18 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     // terminate the search.
     //
     //
-    running = 1;
-    for (; running && ((row = jsw_sitem (skip)) != NULL); jsw_snext(skip)) {
+    for (; ((row = jsw_sitem (skip)) != NULL); jsw_snext(skip)) {
+    // for (; ((struct jsw_skip *)skip)->curl != NULL && (row = ((struct jsw_skip *)skip)->curl->item); ((struct jsw_skip *)skip)->curl = ((struct jsw_skip *)skip)->curl->next[0]) {
+    // CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+
+    // curl = ((struct jsw_skip *)skip)->curl;
+   //  for (; curl != NULL && (row = curl->item); curl = curl->next[0]) {
+
         if (tailoredWalk) {
             if (ctable->creatorTable->fields[field]->compareFunction (row, row2) >= 0) {
 	        // it was a tailored walk and we're past the end of the
 		// range of stuff so we can blow off the rest
-		running = 0;
-		continue;
+		break;
 	    }
 	}
 
@@ -899,12 +926,12 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
 	if (sortTable == NULL) {
 	    // if we haven't met the start point, blow it off
-	    if (++matchCount < search->offset) continue;
+	    if (++matchCount <= search->offset) continue;
 
 	    if (search->countOnly) {
 		// we're only counting -- if there is a limit and it's been 
 		// met, we're done
-		if ((search->limit != 0) && (matchCount >= search->limit)) {
+		if ((search->limit != 0) && (matchCount >= limit)) {
 		    actionResult = TCL_OK;
 		    goto clean_and_return;
 		}
@@ -925,7 +952,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
 	     if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
 		// if there was a limit and we've met it, we're done
-		if ((search->limit != 0) && (matchCount >= search->limit)) {
+		if ((search->limit != 0) && (matchCount >= limit)) {
 		    actionResult = TCL_OK;
 		    goto clean_and_return;
 		}
@@ -941,6 +968,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	    /* We are sorting, grab it, we gotta sort before we can run
 	     * against start and limit and stuff */
 	    assert (matchCount < count);
+	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", matchCount, (long unsigned int)hashEntry, key);
 	    sortTable[matchCount++] = row;
 	}
     }
@@ -951,7 +979,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	goto clean_and_return;
     }
 
-    qsort_r (sortTable, matchCount, sizeof (void *), &search->sortControl, ctable->creatorTable->sort_compare);
+    qsort_r (sortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
 
     // it's sorted
     // now let's see what we've got within the offset and limit
@@ -962,10 +990,10 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	goto clean_and_return;
     }
 
-    // determine start and limit
-    limit = matchCount - search->offset;
-    if ((search->limit > 0) && (search->limit < (matchCount - search->offset))) {
-	limit = search->offset + search->limit;
+    // figure out the last row they could want, if it's more than what's
+    // there, set it down to what came back
+    if ((limit == 0) || (limit > matchCount)) {
+        limit = matchCount;
     }
 
     // walk the result
@@ -974,7 +1002,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	/* here is where we want to take the match actions
 	 * when we are sorting
 	 */
-	 actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, sortTable[sortIndex]);
+	 actionResult = ctable_SkipSearchAction (interp, ctable, search, row);
 	 if (actionResult == TCL_ERROR) {
 	     goto clean_and_return;
 	 }
@@ -1453,11 +1481,14 @@ ctable_InsertNullIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void
 
 int
 ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, int depth) {
+#ifdef LINKED_LIST
+    struct ctable_baseRow *row;
+#else
     Tcl_HashTable   *keyTablePtr = ctable->keyTablePtr;
     Tcl_HashEntry   *hashEntry;
     Tcl_HashSearch   hashSearch;
-
     void            *row;
+#endif
 
     jsw_skip_t      *skip = ctable->skipLists[field];
 
@@ -1479,8 +1510,12 @@ ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, i
 
     // yes yes yet another walk through the hash table, in create index?!
     // gotta do it that way until skip lists are solid
+#ifdef LINKED_LIST
+    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+#else
     for (hashEntry = Tcl_FirstHashEntry (keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	row = Tcl_GetHashValue (hashEntry);
+#endif
 
         // NB do we really want to allow dups?  not necessarily, we need
 	// to be able to say.  but sometimes, definitely.  it's tricky.

@@ -11,13 +11,13 @@ package require ctable
 CExtension searchtest 1.0 {
 
 CTable testTable {
-    varstring name
-    varstring home
-    varstring show
+    varstring name indexed 1
+    varstring home indexed 1 unique 0
+    varstring show indexed 1 unique 0
     varstring dad
     boolean alive default 1
     varstring gender default male
-    int age
+    int age indexed 1 unique 0
     int coolness
 }
 

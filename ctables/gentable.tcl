@@ -22,8 +22,8 @@ namespace eval ctable {
     variable showCompilerCommands
 
     # set to 1 to build with debugging and link to tcl debugging libraries
-    set genCompilerDebug 0
-    set showCompilerCommands 0
+    set genCompilerDebug 1
+    set showCompilerCommands 1
 
     variable pgtcl_ver 1.5
 
@@ -803,6 +803,8 @@ struct $table *${table}_find_or_create (struct ctableTable *ctable, char *key, i
     if (*newPtr) {
         row = ${table}_make_row_struct ();
 	Tcl_SetHashValue (hashEntry, (ClientData)row);
+	row->hashEntry = hashEntry;
+	ctable_ListInsertHead (&ctable->ll_head, (struct ctable_baseRow *)row, 0);
 	ctable->count++;
 	// printf ("created new entry for '%s'\n", key);
     } else {
@@ -1532,16 +1534,57 @@ proc sanity_check {} {
     }
 }
 
-proc gen_struct_linked_lists {} {
+#
+# determine_how_many_linked_lists - count up the number of indexed
+# nodes and any other stuff we want linked lists in the row for
+#
+# currently one defined for every row for a master linked list and one
+# defined for each field that is defined indexed and not unique
+# for use with skip lists to have indexes on fields of rows that have
+# duplicate entries like, for instance, latitude and/or longitude.
+#
+proc determine_how_many_linked_lists_and_gen_field_index_table {} {
     variable nonBooleans
     variable fields
     variable fieldList
     variable booleans
     variable table
+    variable leftCurly
+    variable rightCurly
 
-    foreach myfield $nonBooleans {
+    set result "int ${table}_index_numbers\[\] = $leftCurly"
+    set nLinkedLists 1
+    foreach myfield $fieldList {
         unset -nocomplain field
+	array set field $fields($myfield)
+
+        # if the "indexed" field doesn't exist or is 0, skip it
+        if {![info exists field(indexed)] || !$field(indexed)} {
+	    append result "\n    -1,"
+            continue
+        }
+  
+        # we're going to use linked lists even if it's not unique
+if 0 {
+        # if the "unique" field doesn't exist or isn't set to 0
+        if {![info exists field(unique)] || $field(unique)} {
+	    append result "\n    -1,"
+            continue
+        }
+}
+  
+        # if we got here it's indexed and not unique,
+        # i.e. field args include "indexed 1 unique 0"
+        # generate them a list entry
+
+	append result "\n[format "%6d" $nLinkedLists],"
+  
+        incr nLinkedLists
     }
+
+    emit "[string range $result 0 end-1]\n$rightCurly;"
+
+    return $nLinkedLists
 }
 
 #
@@ -1553,13 +1596,18 @@ proc gen_struct {} {
     variable nonBooleans
     variable fields
     variable fieldList
+    variable leftCurly
+    variable rightCurly
 
-    emit "struct $table {"
-    #putfield TAILQ_ENTRY($table) ${table}_link
-    #putfield TAILQ_ENTRY($table) _link
+    set nLinkedLists [determine_how_many_linked_lists_and_gen_field_index_table]
+    set NLINKED_LISTS [string toupper $table]_NLINKED_LISTS
+    emit "#define $NLINKED_LISTS $nLinkedLists"
+    emit ""
 
-    # we can be in some linked lists
-    #putfield LIST_ENTRY($table) {_ll[3]}
+    emit "struct $table $leftCurly"
+
+    putfield "Tcl_HashEntry" "*hashEntry"
+    putfield "struct ctable_linkedListNodeStruct"  "_ll_nodes\[$NLINKED_LISTS\]"
 
     foreach myfield $nonBooleans {
         unset -nocomplain field
@@ -1606,7 +1654,7 @@ proc gen_struct {} {
         putfield "unsigned int" _${myfield}IsNull:1
     }
 
-    emit "};"
+    emit "$rightCurly;"
     emit ""
 }
 
@@ -2026,6 +2074,7 @@ proc put_init_command_source {table} {
 
     set Id {init extension Id}
     set NFIELDS [string toupper $table]_NFIELDS
+    set NLINKED_LISTS [string toupper $table]_NLINKED_LISTS
 
     emit [subst -nobackslashes -nocommands $extensionFragmentSource]
 }
@@ -3071,8 +3120,8 @@ int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searc
       compType = component->comparisonType;
       compareObj = component->comparedToObject;
 
-
-      switch (component->fieldID) $leftCurly }
+      switch (component->fieldID) $leftCurly
+}
 
 set searchCompareTrailerSource {
        $rightCurly // end of switch on field ID
@@ -3265,16 +3314,17 @@ proc compile {fileFragName version} {
 	    myexec "ld -Bshareable $optflag $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub"
 	}
 
+# -finstrument-functions / -lSaturn
+
 	"Darwin" {
 	    if {$genCompilerDebug} {
 		set dbgflag "-g"
 		set optflag "-O2"
-		#set stub "-ltclstub8.4g"
-		set stub "-ltclstub8.4"
+		set stub "-ltclstub8.4g"
 		set lib "-ltcl8.4g"
 	    } else {
 		set dbgflag ""
-		set optflag "-O2"
+		set optflag "-O3"
 		set stub "-ltclstub8.4"
 		set lib "-ltcl8.4"
 	    }
@@ -3394,9 +3444,8 @@ proc install_ch_files {targetDir} {
     variable srcDir
 
     set copyFiles {
-	ctable.h ctable_search.c boyer_moore.c
+	ctable.h ctable_search.c ctable_lists.c boyer_moore.c
 	jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
-	queue.h
     }
 
     foreach file $copyFiles {

@@ -25,6 +25,8 @@
     t->nameObjList = ${table}_NameObjList;
 
     t->nFields = $NFIELDS;
+    t->nLinkedLists = $NLINKED_LISTS;
+
     t->fieldTypes = ${table}_types;
     t->fieldsThatNeedQuoting = ${table}_needs_quoting;
 
@@ -59,6 +61,7 @@
 	f->type = t->fieldTypes[i];
 	f->needsQuoting = ${table}_needs_quoting[i];
 	f->compareFunction = ${table}_compare_functions[i];
+	f->indexNumber = ${table}_index_numbers[i];
     }
 
     // make a field list -- sure it's a little hokey but it works with

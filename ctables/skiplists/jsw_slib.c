@@ -23,7 +23,6 @@ using std::size_t;
 
 typedef struct jsw_node {
   void             *item;   /* Data item with combined key */
-  struct jsw_node  *dup;    /* pointer to next duplicate node */
   size_t            height; /* Column height of this node */
   struct jsw_node **next;   /* Dynamic array of next links */
 } jsw_node_t;
@@ -85,7 +84,6 @@ static jsw_node_t *new_node ( void *item, size_t height )
 
   node->item = item;
   node->height = height;
-  node->dup = NULL;
 
   for ( i = 0; i < height; i++ )
     node->next[i] = NULL;
@@ -125,52 +123,6 @@ static jsw_node_t *locate ( jsw_skip_t *skip, void *item )
   skip->curl = p;
   return p;
 }
-
-//
-// locate_exact - find an existing item, or the position before where it would 
-//   be -- for lists with duplicates this finds the row matching the very
-//   pointer you've requested
-//
-//  also if you call this you're saying that it must be in here --
-//  we are inefficient if not, we didn't have to be but we went that way
-//  because you're only supposed to call this if you know the exact
-//  same row (row pointer) is in there
-//
-// if it's a dup, pred will be the predecessor node
-#if 0
-static jsw_node_t *locate_exact ( jsw_skip_t *skip, void *item, jsw_node_t **pred )
-{
-    jsw_node_t *p = locate (skip, item);
-    *pred = NULL;
-
-    // if there's no dup and a match, it'll be exact and we're done,
-    // the usual case
-    if (p->item == item) {
-        return p;
-    }
-
-    // NB we shouldn't have to do this compare because locate just did
-    // but locate would need to pass back to us the cmp result
-    // if we didn't find a match, we're done
-    if (skip->cmp (item, p->item) < 0) {
-        return NULL;
-    }
-
-    // it was a match but it's not the same pointer, traverse the dup
-    // list
-    // need to communicate the damn predecessor to in case they want to
-    // delete
-    while (p->dup != NULL) {
-        *pred = p;
-        p = p->dup;
-        if (p->item == item) {
-	    return p;
-	}
-    }
-    *pred = NULL;
-    return NULL;
-}
-#endif
 
 //
 // jsw_sinit - initialize a skip list
@@ -276,39 +228,6 @@ int jsw_sinsert ( jsw_skip_t *skip, void *item )
 }
 
 //
-// jsw_sinsert_allow_dups - insert item into the skip list whether there's
-//                          already a matching item or not.
-//
-// this doesn't work -- we've got to use the dup list or something
-//
-int jsw_sinsert_allow_dups ( jsw_skip_t *skip, void *item )
-{
-    locate ( skip, item );
-
-    // we got something or we didn't, fix is primed, proceed
-
-    size_t h = rlevel ( skip->maxh );
-    jsw_node_t *it;
-
-    it = new_node ( item, h );
-
-    /* Raise height if necessary */
-    if ( h > skip->curh ) {
-        h = ++skip->curh;
-      skip->fix[h] = skip->head;
-    }
-
-    /* Build skip links */
-    while ( --h < (size_t)-1 ) {
-      it->next[h] = skip->fix[h]->next[h];
-      skip->fix[h]->next[h] = it;
-    }
-
-    skip->size++;
-    return 1;
-}
-
-//
 // jsw_serase - locate an item in the skip list.  if it exists, delete it.
 //
 // return 1 if it deleted and 0 if no item matched
@@ -329,55 +248,6 @@ int jsw_serase ( jsw_skip_t *skip, void *item )
     for ( i = 0; i < skip->curh; i++ ) {
       if ( skip->fix[i]->next[i] != p )
         break;
-
-      skip->fix[i]->next[i] = p->next[i];
-    }
-
-    // free the node
-    free_node ( p );
-    skip->size--;
-
-    /* Lower height if necessary */
-    while ( skip->curh > 0 ) {
-      if ( skip->head->next[skip->curh - 1] != NULL )
-        break;
-
-      --skip->curh;
-    }
-  }
-
-  /* Erasure invalidates traversal markers */
-  jsw_sreset ( skip );
-
-  return 1;
-}
-
-//
-// jsw_serase_exact - locate an item in the skip list.  if it exists, delete it.
-//
-// with duplicate rows will still do the right one because the item you
-// are giving it has the same pointer value as the one you want it to
-// find
-//
-// return 1 if it deleted and 0 if no item matched
-//
-// you have to release the node externally to this
-//
-int jsw_serase_exact ( jsw_skip_t *skip, void *item )
-{
-  jsw_node_t *p = locate ( skip, item )->next[0];
-
-  if ( p == NULL || skip->cmp ( item, p->item ) != 0 )
-    return 0;
-  else {
-    size_t i;
-
-    // fix skip list pointers that point directly to me by traversing
-    // the fix list of stuff from the locate
-    for ( i = 0; i < skip->curh; i++ ) {
-      if ( skip->fix[i]->next[i] != p) {
-        break;
-      }
 
       skip->fix[i]->next[i] = p->next[i];
     }

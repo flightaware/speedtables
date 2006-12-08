@@ -75,6 +75,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		ctable->skipLists[i] = NULL;
 	    }
 
+	    // create an array of pointers to possible linked lists,
+	    // one for each wanted as determined by gentable
+	    ctable_ListInit (&ctable->ll_head);
+
 	    Tcl_InitCustomHashTable (ctable->keyTablePtr, TCL_STRING_KEYS, NULL);
 	    commandName = Tcl_GetString(objv[2]);
 

@@ -1,6 +1,22 @@
 
 $Id$
 
+12/7/2006 karl
+    * Major performance boost by maintaining a linked list among all of
+      the rows of a table and walking that while searching rather than
+      enumerating the hash table.  Increased search performance from
+      for a brute-force unanchored text search of 1,000,000 rows by
+      more than threefold.
+
+    * Implement an array of linked list nodes defined in the row
+      structure definition, one for all rows (index 0) and the rest
+      for fields declared as indexable, in preparation for supporting
+      indexes that can contain duplicate entries.  Also they're defined
+      in such a way that they are guaranteed to be in the same place in
+      all rows so different code can use a "base row" definition and
+      access the linked list nodes without having been generated to
+      understand the data that follows it.
+
 12/6/2006 karl
     * Added code to repeatably generate the test data in bigtests and got 
       rid of the 24 meg file of test data that was previously there.
