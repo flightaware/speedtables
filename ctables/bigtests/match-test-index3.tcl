@@ -1,12 +1,19 @@
-
+#
+# This demonsrates the difference in performance that simply having better
+# locality between the skip list nodes and their corresponding table rows
+# by mallocing them near the same point in time, as oppposed to 
+# match-test-index2.tcl, which reads in the million-row table and THEN
+# generates an index.
+#
+# $Id$
+#
 
 source nametest-extension.tcl
 
-source name-data.tcl
-
-puts "creating index"
+puts "creating index on the fly this time"
 n index create name
-puts "done"
+
+source name-data.tcl
 
 #source cputime.tcl
 proc cputime {x} {
@@ -64,25 +71,33 @@ proc test6 {} {
 puts [cputime test6]
 
 proc test7 {} {
-    puts "\nmatching Bernadine* with fairly empty -code loop"
-    puts [n search+ -compare {{match name "Bernadine*"}} -key key -array_get_with_nulls data -code {}]
+    puts "\nmatching Bernadine* with count"
+    puts [n search+ -compare {{match name "Bernadine*"}} -countOnly 1]
 
 }
 
 puts [cputime test7]
 
 proc test8 {} {
-    puts "\nmatching *Bernadine* with fairly empty -code loop"
-    puts [n search+ -compare {{match name "*Bernadine*"}} -key key -array_get_with_nulls data -code {}]
+    puts "\nranging Bernadine with count"
+    puts [n search+ -compare {{range name Bernadine Bernadinf}} -key key -countOnly 1]
 
 }
 
 puts [cputime test8]
 
 proc test9 {} {
+    puts "\nmatching *Bernadine* with fairly empty -code loop"
+    puts [n search+ -compare {{match name "*Bernadine*"}} -key key -array_get_with_nulls data -code {}]
+
+}
+
+puts [cputime test9]
+
+proc test10 {} {
     puts "\nmatching *Bernadine*Rottinghous with fairly empty -code loop"
     puts [n search+ -compare {{match name "*Bernadine*Rottinghous*"}} -key key -array_get_with_nulls data -code {}]
 
 }
 
-puts [cputime test9]
+puts [cputime test10]

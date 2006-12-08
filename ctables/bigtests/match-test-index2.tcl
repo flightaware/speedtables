@@ -8,6 +8,8 @@
 # $Id$
 #
 
+source nametest-extension.tcl
+
 source name-data.tcl
 
 puts "creating index"
