@@ -757,9 +757,8 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
     void          **sortTable = NULL;
 
-    jsw_skip_t      *skip;
-
-    int              field;
+    jsw_skip_t      *skip = NULL;
+    int              field = 0;
 
     if (count == 0) {
         return TCL_OK;
