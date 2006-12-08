@@ -64,7 +64,7 @@ proc start_server {{port 11111}} {
 # accept_connection - accept a client connection
 #
 proc accept_connection {sock ip port} {
-    puts "connect from $sock $ip $port"
+    debug "connect from $sock $ip $port"
 
     set theirPort [lindex [fconfigure $sock -sockname] 2]
 
@@ -84,7 +84,7 @@ proc remote_receive {sock myPort} {
     variable ctableUrlCache
 
     if {[eof $sock]} {
-	puts stderr "EOF on $sock, closing"
+	debug stderr "EOF on $sock, closing"
 	close $sock
 	return
     }
@@ -108,7 +108,7 @@ proc remote_receive {sock myPort} {
 	}
 
 	if {[catch {remote_invoke $sock $table $line} result] == 1} {
-	    puts "got '$result' processing '$line' from $sock"
+	    debug "$table: $result - in ($sock) $ctableUrl $line"
 	    # look at errorInfo if you want to know more, don't send it
 	    # back to them -- it exposes stuff about us they don't care
 	    # about
@@ -212,6 +212,16 @@ proc remote_invoke {sock ctable line} {
 	    ### puts '$cmd'
 	    return [eval $cmd]
 	}
+    }
+}
+
+proc debug {args} {
+    if [llength $args] {
+	set message "[clock format [clock seconds]] [pid]: [join $args "\n"]"
+	if {[llength $args] > 1} {
+	    set message "\n$message"
+	}
+	puts $message
     }
 }
 
