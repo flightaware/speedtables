@@ -22,7 +22,7 @@ using std::size_t;
 #endif
 
 typedef struct jsw_node {
-  void             *item;   /* Data item with combined key */
+  struct ctable_baseRow  *row;   /* Data row with combined key */
   size_t            height; /* Column height of this node */
   struct jsw_node **next;   /* Dynamic array of next links */
 } jsw_node_t;
@@ -33,8 +33,8 @@ struct jsw_skip {
   jsw_node_t  *curl; /* Current link for traversal */
   size_t       maxh; /* Tallest possible column */
   size_t       curh; /* Tallest available column */
-  size_t       size; /* Number of items at level 0 */
-  cmp_f        cmp;  /* User defined item compare function */
+  size_t       size; /* Number of row at level 0 */
+  cmp_f        cmp;  /* User defined row compare function */
 };
 
 /*
@@ -73,16 +73,16 @@ static size_t rlevel ( size_t max )
 }
 
 //
-// new_node - construct an empty new node, does not make a copy of the item
+// new_node - construct an empty new node, does not make a copy of the row
 //
-static jsw_node_t *new_node ( void *item, size_t height )
+static jsw_node_t *new_node ( void *row, size_t height )
 {
   jsw_node_t *node = (jsw_node_t *)ckalloc ( sizeof *node );
   size_t i;
 
   node->next = (jsw_node_t **)ckalloc ( height * sizeof *node->next );
 
-  node->item = item;
+  node->row = row;
   node->height = height;
 
   for ( i = 0; i < height; i++ )
@@ -92,7 +92,7 @@ static jsw_node_t *new_node ( void *item, size_t height )
 }
 
 //
-// free_node - free a skip list node but not the item associated with it
+// free_node - free a skip list node but not the row associated with it
 //
 static void free_node ( jsw_node_t *node )
 {
@@ -101,16 +101,16 @@ static void free_node ( jsw_node_t *node )
 }
 
 //
-// locate - find an existing item, or the position before where it would be
+// locate - find an existing row, or the position before where it would be
 //
-static jsw_node_t *locate ( jsw_skip_t *skip, void *item )
+static jsw_node_t *locate ( jsw_skip_t *skip, void *row )
 {
   jsw_node_t *p = skip->head;
   size_t i;
 
   for ( i = skip->curh; i < (size_t)-1; i-- ) {
     while ( p->next[i] != NULL ) {
-      if ( skip->cmp ( item, p->next[i]->item ) <= 0 ) {
+      if ( skip->cmp ( row, p->next[i]->row ) <= 0 ) {
         break;
       }
 
@@ -158,7 +158,7 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp)
 //
 // jsw_sdelete_skiplist - delete the entire skip list
 //
-// you have to delete your own items
+// you have to delete your own row data
 //
 void jsw_sdelete_skiplist ( jsw_skip_t *skip )
 {
@@ -177,38 +177,38 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip )
 }
 
 //
-// jsw_sfind - given a skip list and an item, return the corresponding
+// jsw_sfind - given a skip list and a row, return the corresponding
 //             skip list node pointer or NULL if none is found.
 //
-void *jsw_sfind ( jsw_skip_t *skip, void *item )
+void *jsw_sfind ( jsw_skip_t *skip, void *row )
 {
-  jsw_node_t *p = locate ( skip, item )->next[0];
+  jsw_node_t *p = locate ( skip, row )->next[0];
 
-  if ( p != NULL && skip->cmp ( item, p->item ) == 0 )
+  if ( p != NULL && skip->cmp ( row, p->row ) == 0 )
     return p;
 
   return NULL;
 }
 
 //
-// jsw_sinsert - insert item into the skip list if it's not already there
+// jsw_sinsert - insert row into the skip list if it's not already there
 //
 // forces there to be no duplicate row by failing if a matching row is found
 //
-int jsw_sinsert ( jsw_skip_t *skip, void *item )
+int jsw_sinsert ( jsw_skip_t *skip, void *row )
 {
-  // void *p = locate ( skip, item )->item;
-  jsw_node_t *p = locate ( skip, item )->next[0];
+  // void *p = locate ( skip, row )->row;
+  jsw_node_t *p = locate ( skip, row )->next[0];
 
   // if we got something and it compares the same, it's already there
-  if ( p != NULL && skip->cmp ( item, p->item ) == 0 )
+  if ( p != NULL && skip->cmp ( row, p->row ) == 0 )
     return 0;
   else {
     // it's new
     size_t h = rlevel ( skip->maxh );
     jsw_node_t *it;
 
-    it = new_node ( item, h );
+    it = new_node ( row, h );
 
     /* Raise height if necessary */
     if ( h > skip->curh ) {
@@ -228,17 +228,55 @@ int jsw_sinsert ( jsw_skip_t *skip, void *item )
 }
 
 //
-// jsw_serase - locate an item in the skip list.  if it exists, delete it.
+// jsw_sinsert_linked - insert row into the skip list if it's not already 
+// there.  if it is already there, link this row into the skip list.
 //
-// return 1 if it deleted and 0 if no item matched
+// you have to be sure it's not already in there
+//
+int jsw_sinsert ( jsw_skip_t *skip, void *row )
+{
+  // void *p = locate ( skip, row )->row;
+  jsw_node_t *p = locate ( skip, row )->next[0];
+
+  // if we got something and it compares the same, it's already there
+  if ( p != NULL && skip->cmp ( row, p->row ) == 0 )
+    return 0;
+  else {
+    // it's new
+    size_t h = rlevel ( skip->maxh );
+    jsw_node_t *it;
+
+    it = new_node ( row, h );
+
+    /* Raise height if necessary */
+    if ( h > skip->curh ) {
+      h = ++skip->curh;
+      skip->fix[h] = skip->head;
+    }
+
+    /* Build skip links */
+    while ( --h < (size_t)-1 ) {
+      it->next[h] = skip->fix[h]->next[h];
+      skip->fix[h]->next[h] = it;
+    }
+  }
+
+  skip->size++;
+  return 1;
+}
+
+//
+// jsw_serase - locate an row in the skip list.  if it exists, delete it.
+//
+// return 1 if it deleted and 0 if no row matched
 //
 // you have to release the node externally to this
 //
-int jsw_serase ( jsw_skip_t *skip, void *item )
+int jsw_serase ( jsw_skip_t *skip, void *row )
 {
-  jsw_node_t *p = locate ( skip, item )->next[0];
+  jsw_node_t *p = locate ( skip, row )->next[0];
 
-  if ( p == NULL || skip->cmp ( item, p->item ) != 0 )
+  if ( p == NULL || skip->cmp ( row, p->row ) != 0 )
     return 0;
   else {
     size_t i;
@@ -316,16 +354,16 @@ void jsw_sreset ( jsw_skip_t *skip )
 }
 
 //
-// jsw_sitem - get item pointed to by the the current link or NULL if none
+// jsw_srow - get row pointed to by the the current link or NULL if none
 //
-void *jsw_sitem ( jsw_skip_t *skip )
+void *jsw_srow ( jsw_skip_t *skip )
 {
-  return skip->curl == NULL ? NULL : skip->curl->item;
+  return skip->curl == NULL ? NULL : skip->curl->row;
 }
 
 //
-// jsw_snext - move the current link to the next item, returning 1 if there
-//             is a next item and a 0 if there isn't
+// jsw_snext - move the current link to the next row, returning 1 if there
+//             is a next row and a 0 if there isn't
 //
 int jsw_snext ( jsw_skip_t *skip )
 {
