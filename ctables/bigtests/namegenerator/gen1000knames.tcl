@@ -98,8 +98,7 @@ proc doit {} {
     set sizeLast [llength $lastnames]
     set sizeFirst [llength $firstnames]
 
-    #expr srand(71077345)
-    expr srand(15302)
+    expr srand(568238)
 
     for {set i 0} {$i < $nNamesToGenerate} {incr i} {
         if {$i % 50000 == 0} {
@@ -120,14 +119,21 @@ proc doit {} {
 		break
 	    }
 	}
+
 	gen_fake_userid $firstName $lastName
-	puts "[get_last_fake_userid]\t$firstName $lastName"
+
+	set longitude [expr {-95.63 + rand() * 0.5}]
+	set latitude [expr {29.59 + rand() * 0.37}]
+
+	puts [format "%s\t%s %s\t%.4f\t%.4f" [get_last_fake_userid] $firstName $lastName $latitude $longitude]
     }
     puts stderr ""
 
-    if {$firstName != "Anthony" || $lastName != "Chemell"} {
+    set myFirst Melanie
+    set myLast Dsaachs
+    if {$firstName != $myFirst || $lastName != $myLast} {
         puts stderr "ERROR - name generator did not generate the standard data, TESTS WILL FAIL"
-	puts stderr "Something's nonstandard about your Tcl implementation's random number generator or something."
+	puts stderr "Something's nonstandard about your Tcl implementation's random number generator or something, expected '$myFirst' '$myLast' to be the last line, got '$firstName' '$lastName'"
 	exit 1
     }
 
