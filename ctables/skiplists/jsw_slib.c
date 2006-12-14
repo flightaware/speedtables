@@ -312,12 +312,23 @@ int jsw_serase ( jsw_skip_t *skip, struct ctable_baseRow *row )
 }
 
 void
-jsw_dump_node (const char *s, jsw_node_t *p) {
+jsw_dump_node (const char *s, jsw_node_t *p, int indexNumber) {
     int         height;
     int         i;
+    struct ctable_baseRow *walkRow;
 
     height = p->height;
-    printf("%8lx '%s' height %d\n", (long unsigned int)p, s, height);
+    printf("%8lx '%s' height %d\n    list ", (long unsigned int)p, s, height);
+
+    if (indexNumber < 0) {
+        printf ("(head)");
+    } else {
+	CTABLE_LIST_FOREACH (p->row, walkRow, indexNumber) {
+	    printf("%8lx ", (long unsigned int)walkRow);
+	}
+    }
+	printf("\n");
+        
     for ( i = 0; i < height; i++ ) {
         printf ("%8lx ", (long unsigned int)p->next[i]);
     }
@@ -325,17 +336,17 @@ jsw_dump_node (const char *s, jsw_node_t *p) {
 }
 
 void
-jsw_dump (const char *s, jsw_skip_t *skip) {
+jsw_dump (const char *s, jsw_skip_t *skip, int indexNumber) {
     jsw_node_t *p = skip->curl;
 
-    jsw_dump_node (s, p);
+    jsw_dump_node (s, p, indexNumber);
 }
 
 void
 jsw_dump_head (jsw_skip_t *skip) {
     jsw_node_t *p = skip->head;
 
-    jsw_dump_node ("HEAD", p);
+    jsw_dump_node ("HEAD", p, -1);
 }
 
 //

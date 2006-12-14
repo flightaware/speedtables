@@ -1403,7 +1403,7 @@ ctable_DumpIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field) {
 
     for (jsw_sreset (skip); (row = jsw_srow (skip)) != NULL; jsw_snext(skip)) {
         s = ctable->creatorTable->get_string (row, field, NULL, utilityObj);
-	jsw_dump (s, skip);
+	jsw_dump (s, skip, ctable->creatorTable->fields[field]->indexNumber);
     }
 
     Tcl_DecrRefCount (utilityObj);
@@ -1447,8 +1447,35 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
         return TCL_OK;
     }
 
+#ifdef CTABLE_NODUPS
     if (!jsw_serase (skip, row)) {
         panic ("corrupted index detected for field %s", ctable->creatorTable->fields[field]->name);
+    }
+#else
+    ctable_ListRemove (row, ctable->creatorTable->fields[field]->indexNumber);
+#endif
+    return TCL_OK;
+}
+
+//
+// ctable_RemoveFromAllIndexes -- remove a row from all of the indexes it's
+// in -- this does a bidirectional linked list remove for each 
+//
+//
+//
+int
+ctable_RemoveFromAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable, void *row) {
+    int         i;
+    jsw_skip_t *skip;
+
+    for (i = 0; i < ctable->creatorTable->nLinkedLists; i++) {
+        if ((skip = ctable->skipLists[field]) == NULL) continue;
+
+#ifdef CTABLE_NODUPS
+	panic ("haven't implemented remove from all indexes for nodups");
+#else
+	ctable_ListRemove (row, i);
+#endif
     }
     return TCL_OK;
 }
@@ -1461,7 +1488,7 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
         return TCL_OK;
     }
 
-#if 0
+#ifdef CTABLE_NODUPS
     if (!jsw_sinsert (skip, row)) {
 	Tcl_AppendResult (interp, "duplicate entry", (char *) NULL);
 	return TCL_ERROR;

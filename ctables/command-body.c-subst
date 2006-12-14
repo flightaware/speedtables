@@ -171,8 +171,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	row = (struct $table *) Tcl_GetHashValue (hashEntry);
+
+	ctable_RemoveFromAllIndexes (interp, ctable, row);
 	${table}_delete(row);
-	ctable_ListRemove ((struct ctable_baseRow *)row, 0);
 	Tcl_DeleteHashEntry (hashEntry);
 	ctable->count--;
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
