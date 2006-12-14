@@ -39,18 +39,17 @@ proc search+_test {name searchFields expect} {
 }
 
 
-search_test "case-insensitive match" {-compare {{match name *VENTURE*}}} {dean hank jonas jonas_jr rusty}
+search_test "case-insensitive match" {-compare {{match name *VENTURE*}}} {jonas_jr rusty jonas dean hank}
 
 search_test "case-sensitive match" {-compare {{match_case name *VENTURE*}}} {}
 
 search_test "case-sensitive match 2" {-compare {{match_case name *Tri*}}} {triana}
 
-search_test "numeric expression" {-compare {{< age 10}}} {carr frylock meatwad shake inignot thundercleese ur}
+search_test "numeric expression, age < 10" {-compare {{< age 10}}} {carr thundercleese ur inignot frylock shake meatwad}
 
+search_test "sort ascending by age, age < 10" {-sort age -compare {{< age 10}}} {ur inignot carr meatwad frylock shake thundercleese}
 
-search_test "sort ascending" {-sort age -compare {{< age 10}}} {ur carr inignot shake frylock meatwad thundercleese}
-
-search_test "sort descending" {-sort -age -compare {{< age 10}}} {thundercleese frylock meatwad shake inignot carr ur}
+search_test "sort descending by age, age < 10" {-sort -age -compare {{< age 10}}} {thundercleese frylock shake meatwad inignot carr ur}
 
 search_test "unanchored match" {-sort name -compare {{match name *Doctor*}}} {doctor_girlfriend jonas jonas_jr orpheus}
 
@@ -63,9 +62,9 @@ search_test "sorted search with offset 0 and limit 10" {-sort name -offset 0 -li
 
 search_test "sorted search with offset 5 and limit 5" {-sort name -offset 5 -limit 5} {carl clarence rick dad dean}
 
-search_test "unsorted search with offset 5 and limit 10" {-offset 5 -limit 10} {frylock baron phantom_limb hank meatwad 21 shake zorak triana brak}
+search_test "unsorted search with offset 5 and limit 10" {-offset 5 -limit 10} {clarence thundercleese mom zorak brak dad ur inignot carl frylock}
 
-search_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {frylock baron phantom_limb hank meatwad}
+search_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {clarence thundercleese mom zorak brak}
 
 
 
