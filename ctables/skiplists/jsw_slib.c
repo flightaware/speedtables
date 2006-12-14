@@ -121,7 +121,6 @@ static jsw_node_t *locate ( jsw_skip_t *skip, struct ctable_baseRow *row )
     skip->fix[i] = p;
   }
 
-  skip->curl = p;
   return p;
 }
 
@@ -184,6 +183,8 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip )
 void *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
+
+  skip->curl = p;
 
   if ( p != NULL && skip->cmp ( row, p->row ) == 0 )
     return p;

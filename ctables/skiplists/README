@@ -1,0 +1,20 @@
+
+
+$Id$
+
+These have evolved from the jsw skip list routines in the public domain from
+the Internet.
+
+They have certain problems.  They're completely and utterly broken in a 
+multithreaded or muti-process shared-memory environment because they have 
+all sorts of assumptions that there's one connection, like stuff that should 
+be a per-user kind of thing, such as a cursor and a recent traversal cache,
+are stuck there in the skip list structure.
+
+I cvs tagged them jsw_slib_before_lists while they were still pretty
+general purpose.  They're useful enough that having skip lists with
+only objects on their backsides would be valuable.
+
+Code changes after the tag, these skip lists are going to have integral 
+doubly linked lists via the ctable_baseRow structure i.e. very
+tied to ctables.
