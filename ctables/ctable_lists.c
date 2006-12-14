@@ -41,6 +41,29 @@ ctable_ListRemove (struct ctable_baseRow *row, int i)
     // i'm removed
 }
 
+//
+// ctable_ListRemoveMightBeTheLastOne - remove a row from a list
+//
+inline int
+ctable_ListRemoveMightBeTheLastOne (struct ctable_baseRow *row, int i)
+{
+    int mightBeTheLastOne;
+
+    // if there's an object following me, make his prev be my prev
+    if (row->_ll_nodes[i].next == NULL) {
+        mightBeTheLastOne = 1;
+    } else {
+        row->_ll_nodes[i].next->_ll_nodes[i].prev = row->_ll_nodes[i].prev;
+	mightBeTheLastOne = 0;
+    }
+
+    // make my prev's next (or header) point to my next
+    *row->_ll_nodes[i].prev = row->_ll_nodes[i].next;
+
+    // i'm removed
+    return mightBeTheLastOne;
+}
+
 
 inline void
 ctable_ListInsertHead (struct ctable_baseRow **listPtr, struct ctable_baseRow *row, int i)
@@ -61,6 +84,10 @@ ctable_ListInsertHead (struct ctable_baseRow **listPtr, struct ctable_baseRow *r
 
     *listPtr = row;
     row->_ll_nodes[i].prev = listPtr;
+
+    row->_ll_nodes[i].head = listPtr;
+
+printf ("insert head %lx i %d\n", (long unsigned int)row->_ll_nodes[i].head, i);
 }
 
 //
@@ -69,6 +96,9 @@ ctable_ListInsertHead (struct ctable_baseRow **listPtr, struct ctable_baseRow *r
 inline void
 ctable_ListInsertBefore (struct ctable_baseRow *row1, struct ctable_baseRow *row2, int i)
 {
+    // make row2's head point to row1's head
+    row2->_ll_nodes[i].head = row1->_ll_nodes[i].head;
+
     // make row2's prev point to row1's prev
     row2->_ll_nodes[i].prev = row1->_ll_nodes[i].prev;
 
@@ -87,6 +117,9 @@ ctable_ListInsertBefore (struct ctable_baseRow *row1, struct ctable_baseRow *row
 //
 inline void
 ctable_ListInsertAfter (struct ctable_baseRow *row1, struct ctable_baseRow *row2, int i) {
+    // make row2's head point to row1's head
+    row2->_ll_nodes[i].head = row1->_ll_nodes[i].head;
+
     // set row2's next pointer to row1's next pointer and see if it's NULL
 
     if ((row2->_ll_nodes[i].next = row1->_ll_nodes[i].next) != NULL) {

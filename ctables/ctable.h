@@ -47,6 +47,7 @@ enum ctable_types {
 struct ctable_linkedListNodeStruct {
     struct ctable_baseRow *next;
     struct ctable_baseRow **prev;
+    struct ctable_baseRow **head;
 };
 
 struct ctable_baseRow {

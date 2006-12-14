@@ -83,6 +83,7 @@ static jsw_node_t *new_node ( struct ctable_baseRow *row, size_t height )
   node->next = (jsw_node_t **)ckalloc ( height * sizeof *node->next );
 
   node->row = row;
+
   node->height = height;
 
   for ( i = 0; i < height; i++ )
@@ -210,6 +211,7 @@ int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
 
     it = new_node ( row, h );
 
+
     /* Raise height if necessary */
     if ( h > skip->curh ) {
       h = ++skip->curh;
@@ -249,6 +251,9 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int node
     jsw_node_t *it;
 
     it = new_node ( row, h );
+
+    ctable_ListInit (&it->row);
+    ctable_ListInsertHead (&it->row, row, nodeIdx);
 
     /* Raise height if necessary */
     if ( h > skip->curh ) {
@@ -364,6 +369,15 @@ size_t jsw_ssize ( jsw_skip_t *skip )
 void jsw_sreset ( jsw_skip_t *skip )
 {
   skip->curl = skip->head->next[0];
+}
+
+//
+// jsw_sreset_head - like jsw_sreset except points to head instead of
+// what head points to so jsw_snext can be called in a while loop to traverse
+//
+void jsw_sreset_head ( jsw_skip_t *skip )
+{
+  skip->curl = skip->head;
 }
 
 //

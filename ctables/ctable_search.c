@@ -1440,10 +1440,15 @@ ctable_ListIndex (Tcl_Interp *interp, struct ctableTable *ctable, int fieldNum) 
 }
 
 int
-ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
+ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
+    struct ctable_baseRow *row = vRow;
+    int index;
+
+printf("remove from index field %d\n", field);
 
     if (skip == NULL) {
+printf("it's null\n");
         return TCL_OK;
     }
 
@@ -1452,7 +1457,18 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
         panic ("corrupted index detected for field %s", ctable->creatorTable->fields[field]->name);
     }
 #else
-    ctable_ListRemove (row, ctable->creatorTable->fields[field]->indexNumber);
+    if (ctable_ListRemoveMightBeTheLastOne (row, ctable->creatorTable->fields[field]->indexNumber)) {
+printf("i might be the last one, field %d\n", field);
+	index = ctable->creatorTable->fields[field]->indexNumber;
+        // it might be the last one, see if it really was
+printf ("row->ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
+	if (*(row->_ll_nodes[index].head) == (struct ctable_baseRow *)NULL) {
+printf("erasing last entry field %d\n", field);
+	    if (!jsw_serase (skip, row)) {
+		panic ("corrupted index detected for field %s", ctable->creatorTable->fields[field]->name);
+	    }
+	}
+    }
 #endif
     return TCL_OK;
 }
@@ -1479,7 +1495,7 @@ ctable_RemoveFromAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable, voi
     // in a hurry
     for (field = 0; field < ctable->creatorTable->nFields; field++) {
 	if (ctable->skipLists[field] != NULL) {
-	    ctable_ListRemove (row, ctable->creatorTable->fields[field]->indexNumber);
+	    ctable_RemoveFromIndex (interp, ctable, row, field);
 	}
     }
     return TCL_OK;
@@ -1495,7 +1511,7 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
     jsw_skip_t *skip = ctable->skipLists[field];
 
     if (skip == NULL) {
-        return TCL_OK;
+    return TCL_OK;
     }
 
 #ifdef CTABLE_NODUPS
@@ -1504,6 +1520,7 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
 	return TCL_ERROR;
     }
 #else
+printf("ctable_InsertIntoIndex field %d index %d\n", field, ctable->creatorTable->fields[field]->indexNumber);
     jsw_sinsert_linked (skip, row, ctable->creatorTable->fields[field]->indexNumber);
 #endif
     return TCL_OK;

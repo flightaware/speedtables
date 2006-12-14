@@ -3319,7 +3319,8 @@ proc compile {fileFragName version} {
 	"Darwin" {
 	    if {$genCompilerDebug} {
 		set dbgflag "-g"
-		set optflag "-O2"
+		#set optflag "-O2"
+		set optflag ""
 		set stub "-ltclstub8.4g"
 		set lib "-ltcl8.4g"
 	    } else {

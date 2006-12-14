@@ -464,4 +464,53 @@ Also you can't have those flexible arrays in a structure without something
 solid in front of them.  I don't see why, really.  In this case I have some
 real defined number in the structure I'm aliasing over.
 
+----
+
+12/13/06
+
+I've run into a snag implementing allowing duplicate values in an index,
+involving deletion.
+
+Currently I'm using bidirectionally linked lists with code evolved from
+BSD queue.h
+
+But when I remove the last entry from a skip list node's linked list,
+the skip list node can no longer be compared during a search as the compare 
+compares values in the rows and there are now no rows on one of the skip 
+list's nodes.
+
+So I'm going to have to do something like mark rows deleted (you can't
+reuse them very easily if there are multiple indexes).  Actually that's
+not enough because let's say one field that's indexed changes in a row.
+We need to move that row from one skip list node to another in that
+index but the other indexes it may be set up for are unchanged.
+
+Or detect if it's a removal of the last row from a skip list node and, if
+so, search for that skip list entry and remove it.
+
+That seems pretty easy as long as we have a good way to tell if we're the
+last node.  Something like our next pointer will be NULL our prev pointer
+we'll somehow be able to tell we're the last one.  Ugh.  I do not want to
+have pointers in every row for each indexed field back to the skip list
+node.
+
+If when a field was defined indexed we dispensed with the "index create foo"
+business, like it was automatically created at table instantiation and
+managed thenceforth, then we could conceivably keep the comparison value
+in the skip list node rather than the row itself.  This would be a decent
+win if there were a lot of duplicates, particularly for strings.
+
+I've also been toying with the idea of creating bins of sorts, like rather than indexing every floating point value, you'd have bins that stuff would go into, 
+i.e. some kind of range that you'd consider stuff within the range to be
+a duplicate of sorts, so for instance you might have a name and just bin
+the first two characters then have sequential lookup beneath that.
+
+It would be pretty quick and simple to have a pointer to the node in each
+row's index.
+
+If the linked list routines weren't trying to be so clever with the prev
+pointer being a pointer to the address of the previous node's (or header's)
+next pointer, we'd be able to know from inspection of our own row whether
+we were the only node or not.
+
 
