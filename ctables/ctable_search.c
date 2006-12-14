@@ -1465,21 +1465,31 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
 //
 int
 ctable_RemoveFromAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable, void *row) {
-    int         i;
-    jsw_skip_t *skip;
-
-    for (i = 0; i < ctable->creatorTable->nLinkedLists; i++) {
-        if ((skip = ctable->skipLists[field]) == NULL) continue;
-
+    int         field;
+    
 #ifdef CTABLE_NODUPS
 	panic ("haven't implemented remove from all indexes for nodups");
-#else
-	ctable_ListRemove (row, i);
 #endif
+
+    // everybody's in index 0, take this guy out
+    ctable_ListRemove (row, 0);
+
+    // NB slightly gross, we shouldn't have to look at all of the fields
+    // to even see which ones could be indexed but the programmer is
+    // in a hurry
+    for (field = 0; field < ctable->creatorTable->nFields; field++) {
+	if (ctable->skipLists[field] != NULL) {
+	    ctable_ListRemove (row, ctable->creatorTable->fields[field]->indexNumber);
+	}
     }
     return TCL_OK;
 }
 
+//
+// ctable_InsertIntoIndex - for the given field of the given row of the given
+// ctable, insert this row into that table's field's index if there is an
+// index on that field.
+//
 int
 ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
@@ -1523,6 +1533,17 @@ ctable_InsertNullIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void
     return TCL_OK;
 }
 
+//
+// ctable_CreateIndex - create an index on a specified field of a specified
+// ctable.
+//
+// used to you could index any field but now we can't handle duplicates and
+// really anything since we're switching to bidirectionally linked lists
+// as targets of skip list nodes.
+//
+// consequently should make sure the field has an index set up for it
+// in the linked list nodes of the row
+//
 int
 ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, int depth) {
 #ifdef LINKED_LIST
@@ -1543,6 +1564,11 @@ ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, i
 
     if (skip != NULL) {
         return TCL_OK;
+    }
+
+    if (ctable->creatorTable->fields[field]->indexNumber < 0) {
+	Tcl_AppendResult (interp, "can't create an index on a field that hasn't been defined as allowing an index", (char *)NULL);
+	return TCL_ERROR;
     }
 
     skip = jsw_snew (depth, ctable->creatorTable->fields[field]->compareFunction);
