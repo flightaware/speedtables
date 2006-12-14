@@ -1445,10 +1445,10 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vR
     struct ctable_baseRow *row = vRow;
     int index;
 
-printf("remove from index field %d\n", field);
+// printf("remove from index field %d\n", field);
 
     if (skip == NULL) {
-printf("it's null\n");
+// printf("it's null\n");
         return TCL_OK;
     }
 
@@ -1458,12 +1458,12 @@ printf("it's null\n");
     }
 #else
     if (ctable_ListRemoveMightBeTheLastOne (row, ctable->creatorTable->fields[field]->indexNumber)) {
-printf("i might be the last one, field %d\n", field);
+// printf("i might be the last one, field %d\n", field);
 	index = ctable->creatorTable->fields[field]->indexNumber;
         // it might be the last one, see if it really was
-printf ("row->ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
+// printf ("row->ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
 	if (*row->_ll_nodes[index].head == NULL) {
-printf("erasing last entry field %d\n", field);
+// printf("erasing last entry field %d\n", field);
             // put the pointer back so the compare routine will have
 	    // something to match
             *row->_ll_nodes[index].head = row;
@@ -1524,7 +1524,7 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
 	return TCL_ERROR;
     }
 #else
-printf("ctable_InsertIntoIndex field %d index %d\n", field, ctable->creatorTable->fields[field]->indexNumber);
+// printf("ctable_InsertIntoIndex field %d index %d\n", field, ctable->creatorTable->fields[field]->indexNumber);
     jsw_sinsert_linked (skip, row, ctable->creatorTable->fields[field]->indexNumber);
 #endif
     return TCL_OK;

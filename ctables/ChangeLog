@@ -1,6 +1,9 @@
 
 $Id$
 
+12/14/2006 karl
+    * Indexes now support duplicate entries.
+
 12/7/2006 karl
     * Major performance boost by maintaining a linked list among all of
       the rows of a table and walking that while searching rather than

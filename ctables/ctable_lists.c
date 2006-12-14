@@ -87,7 +87,7 @@ ctable_ListInsertHead (struct ctable_baseRow **listPtr, struct ctable_baseRow *r
 
     row->_ll_nodes[i].head = listPtr;
 
-printf ("insert head %lx i %d\n", (long unsigned int)listPtr, i);
+// printf ("insert head %lx i %d\n", (long unsigned int)listPtr, i);
 }
 
 //

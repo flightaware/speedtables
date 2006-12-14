@@ -11,7 +11,7 @@ package require ctable
 CExtension searchtest 1.0 {
 
 CTable testTable {
-    varstring name indexed 1 unique 1
+    varstring id indexed 1 unique 1
     varstring name indexed 1
     varstring home indexed 1 unique 0
     varstring show indexed 1 unique 0
