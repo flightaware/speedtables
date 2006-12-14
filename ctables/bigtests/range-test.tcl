@@ -96,17 +96,17 @@ puts [time test9]
 
 
 proc test10 {} {
-    puts "matching lon/lat box -95.579 to -95.56, 29.769 to 29.77, with search+"
+    puts "matching lon/lat box -95.579 to -95.56, 29.769 to 29.77, with search+ limit 10"
 
-    puts [n search+ -compare {{>= longitude -95.579} {<= longitude -95.56} {>= latitude 29.769} {<= latitude 29.77}} -write_tabsep stdout]
+    puts [n search+ -compare {{>= longitude -95.579} {<= longitude -95.56} {>= latitude 29.769} {<= latitude 29.77}} -write_tabsep stdout -limit 10]
 }
 
 puts [time test10]
 
 proc test11 {} {
-    puts "ranging lon/lat box -95.579 to -95.56, 29.769 to 29.77, with search+"
+    puts "ranging lon/lat box -95.579 to -95.56, 29.769 to 29.77, with search+ limit 10"
 
-    puts [n search+ -compare {{range longitude -95.579 -95.56} {>= latitude 29.769} {<= latitude 29.77}} -write_tabsep stdout]
+    puts [n search+ -compare {{range longitude -95.579 -95.56} {>= latitude 29.769} {<= latitude 29.77}} -write_tabsep stdout -limit 10]
 }
 
 puts [time test11]
