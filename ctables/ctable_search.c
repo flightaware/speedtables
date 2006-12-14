@@ -1462,11 +1462,15 @@ printf("i might be the last one, field %d\n", field);
 	index = ctable->creatorTable->fields[field]->indexNumber;
         // it might be the last one, see if it really was
 printf ("row->ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
-	if (*(row->_ll_nodes[index].head) == (struct ctable_baseRow *)NULL) {
+	if (*row->_ll_nodes[index].head == NULL) {
 printf("erasing last entry field %d\n", field);
+            // put the pointer back so the compare routine will have
+	    // something to match
+            *row->_ll_nodes[index].head = row;
 	    if (!jsw_serase (skip, row)) {
 		panic ("corrupted index detected for field %s", ctable->creatorTable->fields[field]->name);
 	    }
+	    // *row->ll_nodex[index].head = NULL; // don't think this is needed
 	}
     }
 #endif
