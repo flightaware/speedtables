@@ -298,7 +298,6 @@ jsw_dump_head (jsw_skip_t *skip) {
     jsw_dump_node ("HEAD", p);
 }
 
-
 //
 // jsw_ssize - return the size of the skip table
 //

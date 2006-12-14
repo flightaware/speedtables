@@ -1334,7 +1334,7 @@ ctable_SetupAndPerformSkipSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int
 
 
 //
-// ctable_AropIndex - delete all the rows in a row's index, free the
+// ctable_DropIndex - delete all the rows in a row's index, free the
 // structure and set the field's pointer to the skip list to NULL
 //
 //
