@@ -1461,10 +1461,14 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
         return TCL_OK;
     }
 
+#if 0
     if (!jsw_sinsert (skip, row)) {
 	Tcl_AppendResult (interp, "duplicate entry", (char *) NULL);
 	return TCL_ERROR;
     }
+#else
+    jsw_sinsert_linked (skip, row, ctable->creatorTable->fields[field]->indexNumber);
+#endif
     return TCL_OK;
 }
 
