@@ -11,9 +11,9 @@
 
 #include "jsw_rand.c"
 
-#include "jsw_slib.c"
-
 #include "ctable_lists.c"
+
+#include "jsw_slib.c"
 
 /*
  * ctable_ParseFieldList - given a Tcl list object and a pointer to an array
@@ -749,6 +749,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 // #undef LINKED_LIST
 #ifdef LINKED_LIST
     struct ctable_baseRow *row = NULL;
+    struct ctable_baseRow *walkRow;
 #else
     void            *row = NULL;
     jsw_node_t      *curl;
@@ -887,20 +888,32 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     // terminate the search.
     //
     //
-    for (; ((row = jsw_sitem (skip)) != NULL); jsw_snext(skip)) {
-    // for (; ((struct jsw_skip *)skip)->curl != NULL && (row = ((struct jsw_skip *)skip)->curl->item); ((struct jsw_skip *)skip)->curl = ((struct jsw_skip *)skip)->curl->next[0]) {
-    // CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+    // here are a couple of interesting ways to also play this
+    //
+    // for (; ((struct jsw_skip *)skip)->curl != NULL && (row = ((struct jsw_skip *)skip)->curl->item); ((struct jsw_skip *)skip)->curl = ((struct jsw_skip *)skip)->curl->next[0])
+    //
+    // CTABLE_LIST_FOREACH (ctable->ll_head, row, 0)
+    //
+    //  for (; curl != NULL && (row = curl->item); curl = curl->next[0])
+
+
+    for (; ((row = jsw_srow (skip)) != NULL); jsw_snext(skip)) {
 
     // curl = ((struct jsw_skip *)skip)->curl;
-   //  for (; curl != NULL && (row = curl->item); curl = curl->next[0]) {
 
-        if (tailoredWalk) {
-            if (ctable->creatorTable->fields[field]->compareFunction (row, row2) >= 0) {
-	        // it was a tailored walk and we're past the end of the
-		// range of stuff so we can blow off the rest
-		break;
-	    }
-	}
+      if (tailoredWalk) {
+          if (ctable->creatorTable->fields[field]->compareFunction (row, row2) >= 0) {
+	     // it was a tailored walk and we're past the end of the
+	    // range of stuff so we can blow off the rest
+	    break;
+	  }
+      }
+
+      // walk walkRow through the linked list of rows off this skip list node
+      // if you ever change this to make deletion possible while searching,
+      // switch this to use the safe foreach routine instead
+
+      CTABLE_LIST_FOREACH (row, walkRow, ctable->creatorTable->fields[field]->indexNumber) {
 
 	//
 	// run the supplied compare routine
@@ -910,7 +923,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	// actually do something, else it'll just not exclude the row, i.e.
 	// it will do what it's supposed to.)
 	//
-	compareResult = (*ctable->creatorTable->search_compare) (interp, search, row, tailoredWalk);
+	compareResult = (*ctable->creatorTable->search_compare) (interp, search, walkRow, tailoredWalk);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
 	}
@@ -944,7 +957,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	    /* we want to take the match actions here --
 	     * we're here when we aren't sorting
 	     */
-	     actionResult = ctable_SkipSearchAction (interp, ctable, search, row);
+	     actionResult = ctable_SkipSearchAction (interp, ctable, search, walkRow);
 	     if (actionResult == TCL_ERROR) {
 		  goto clean_and_return;
 	     }
@@ -968,8 +981,9 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	     * against start and limit and stuff */
 	    assert (matchCount < count);
 	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", matchCount, (long unsigned int)hashEntry, key);
-	    sortTable[matchCount++] = row;
+	    sortTable[matchCount++] = walkRow;
 	}
+      }
     }
 
     // if we're not sorting, we're done -- we did 'em all on the fly
@@ -1387,7 +1401,7 @@ ctable_DumpIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field) {
 
     jsw_dump_head (skip);
 
-    for (jsw_sreset (skip); (row = jsw_sitem (skip)) != NULL; jsw_snext(skip)) {
+    for (jsw_sreset (skip); (row = jsw_srow (skip)) != NULL; jsw_snext(skip)) {
         s = ctable->creatorTable->get_string (row, field, NULL, utilityObj);
 	jsw_dump (s, skip);
     }
@@ -1414,7 +1428,7 @@ ctable_ListIndex (Tcl_Interp *interp, struct ctableTable *ctable, int fieldNum) 
         return TCL_OK;
     }
 
-    for (jsw_sreset (skip); (p = jsw_sitem (skip)) != NULL; jsw_snext(skip)) {
+    for (jsw_sreset (skip); (p = jsw_srow (skip)) != NULL; jsw_snext(skip)) {
 
         if (ctable->creatorTable->lappend_field (interp, resultObj, p, fieldNum) == TCL_ERROR) {
 	    Tcl_AppendResult (interp, " while walking index fields", (char *) NULL);

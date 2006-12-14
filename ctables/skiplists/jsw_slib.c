@@ -75,7 +75,7 @@ static size_t rlevel ( size_t max )
 //
 // new_node - construct an empty new node, does not make a copy of the row
 //
-static jsw_node_t *new_node ( void *row, size_t height )
+static jsw_node_t *new_node ( struct ctable_baseRow *row, size_t height )
 {
   jsw_node_t *node = (jsw_node_t *)ckalloc ( sizeof *node );
   size_t i;
@@ -103,7 +103,7 @@ static void free_node ( jsw_node_t *node )
 //
 // locate - find an existing row, or the position before where it would be
 //
-static jsw_node_t *locate ( jsw_skip_t *skip, void *row )
+static jsw_node_t *locate ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   jsw_node_t *p = skip->head;
   size_t i;
@@ -180,7 +180,7 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip )
 // jsw_sfind - given a skip list and a row, return the corresponding
 //             skip list node pointer or NULL if none is found.
 //
-void *jsw_sfind ( jsw_skip_t *skip, void *row )
+void *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
 
@@ -195,7 +195,7 @@ void *jsw_sfind ( jsw_skip_t *skip, void *row )
 //
 // forces there to be no duplicate row by failing if a matching row is found
 //
-int jsw_sinsert ( jsw_skip_t *skip, void *row )
+int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   // void *p = locate ( skip, row )->row;
   jsw_node_t *p = locate ( skip, row )->next[0];
@@ -233,16 +233,18 @@ int jsw_sinsert ( jsw_skip_t *skip, void *row )
 //
 // you have to be sure it's not already in there
 //
-int jsw_sinsert ( jsw_skip_t *skip, void *row )
+// currently can only succeed
+//
+int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int nodeIdx)
 {
   // void *p = locate ( skip, row )->row;
   jsw_node_t *p = locate ( skip, row )->next[0];
 
-  // if we got something and it compares the same, it's already there
-  if ( p != NULL && skip->cmp ( row, p->row ) == 0 )
-    return 0;
-  else {
-    // it's new
+  if ( p != NULL && skip->cmp ( row, p->row ) == 0 ) {
+    // matching skip list entry, insert this row into its linked list
+    ctable_ListInsertHead (&p->row, row, nodeIdx);
+  } else {
+    // no matching skip list entry, create one and link
     size_t h = rlevel ( skip->maxh );
     jsw_node_t *it;
 
@@ -272,7 +274,7 @@ int jsw_sinsert ( jsw_skip_t *skip, void *row )
 //
 // you have to release the node externally to this
 //
-int jsw_serase ( jsw_skip_t *skip, void *row )
+int jsw_serase ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
 
@@ -356,7 +358,7 @@ void jsw_sreset ( jsw_skip_t *skip )
 //
 // jsw_srow - get row pointed to by the the current link or NULL if none
 //
-void *jsw_srow ( jsw_skip_t *skip )
+struct ctable_baseRow *jsw_srow ( jsw_skip_t *skip )
 {
   return skip->curl == NULL ? NULL : skip->curl->row;
 }

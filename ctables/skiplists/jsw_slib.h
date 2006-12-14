@@ -33,7 +33,7 @@ extern "C" {
 typedef struct jsw_skip jsw_skip_t;
 
 /* Application specific key comparison function */
-typedef int   (*cmp_f) ( const void *a, const void *b );
+typedef int   (*cmp_f) ( const struct ctable_baseRow *row1, const struct ctable_baseRow *row2 );
 
 /*
   Create a new skip list with a max height of max
@@ -46,38 +46,38 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp);
 void        jsw_sdelete_skiplist ( jsw_skip_t *skip );
 
 /*
-  Find an item with the selected key
+  Find a row with the selected key
 
-  Returns: The item, or NULL if not found
+  Returns: The row, or NULL if not found
 */
-void       *jsw_sfind ( jsw_skip_t *skip, void *item );
+void       *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row );
 
 /*
-  Insert an item with the selected key
+  Insert a row with the selected key
 
   Returns: non-zero for success, zero for failure
 */
-int         jsw_sinsert ( jsw_skip_t *skip, void *item );
+int         jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row );
 
 /*
-  Remove an item with the selected key
+  Remove a row with the selected key
 
   Returns: non-zero for success, zero for failure
 */
-int         jsw_serase ( jsw_skip_t *skip, void *item );
+int         jsw_serase ( jsw_skip_t *skip, struct ctable_baseRow *row );
 
-/* Current number of items at height 0 */
+/* Current number of rows at height 0 */
 size_t      jsw_ssize ( jsw_skip_t *skip );
 
 /* Reset the traversal markers to the beginning */
 void        jsw_sreset ( jsw_skip_t *skip );
 
 /*
-  Get the current item
+  Get the current row
 
-  Returns the item, or NULL if end-of-list
+  Returns the row, or NULL if end-of-list
 */
-void       *jsw_sitem ( jsw_skip_t *skip );
+struct ctable_baseRow       *jsw_srow ( jsw_skip_t *skip );
 
 /*
   Traverse forward by one key

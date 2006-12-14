@@ -27,8 +27,6 @@
 #include <libpq-fe.h>
 #endif
 
-#include "jsw_slib.h"
-
 enum ctable_types {
     CTABLE_TYPE_BOOLEAN,
     CTABLE_TYPE_FIXEDSTRING,
@@ -55,6 +53,8 @@ struct ctable_baseRow {
     Tcl_HashEntry *hashEntry;
     struct ctable_linkedListNodeStruct _ll_nodes[];
 };
+
+#include "jsw_slib.h"
 
 // 
 // macros for traversing ctable lists
@@ -102,7 +102,7 @@ struct ctable_baseRow {
 #define CTABLE_INDEX_NORMAL 0
 #define CTABLE_INDEX_NEW 1
 
-typedef int (*fieldCompareFunction_t) (const void *p1, const void *p2);
+typedef int (*fieldCompareFunction_t) (const struct ctable_baseRow *row1, const struct ctable_baseRow *row2);
 
 // ctable sort struct - this controls everything about a sort
 struct ctableSortStruct {

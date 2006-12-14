@@ -2752,7 +2752,7 @@ proc gen_preamble {} {
 
 set fieldCompareHeaderSource {
 // field compare function for field '$field' of the '$table' table...
-int ${table}_field_${field}_compare(const void *vPointer1, const void *vPointer2) $leftCurly
+int ${table}_field_${field}_compare(const struct ctable_baseRow *vPointer1, const struct ctable_baseRow *vPointer2) $leftCurly
     struct ${table} *row1, *row2;
 
     row1 = (struct $table *) vPointer1;
