@@ -1,9 +1,8 @@
     // $Id$
-void ${table}_delete_all_rows(struct ctableTable *ctable) {
+int ${table}_delete_all_rows(Tcl_Interp *interp, struct ctableTable *ctable) {
     Tcl_HashSearch     hashSearch;
     Tcl_HashEntry     *hashEntry;
     struct ${table}   *row;
-    int                i;
 
     for (hashEntry = Tcl_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	row = (struct $table *) Tcl_GetHashValue (hashEntry);
@@ -16,11 +15,13 @@ void ${table}_delete_all_rows(struct ctableTable *ctable) {
     ctable_ListInit (&ctable->ll_head);
 
     // drop all indexes, if any
-    for (field = 0; field < ctable->creatorTable->nFields; field++) {
-        ctable_DropIndex (interp, ctable, field);
+    if (ctable_DropAllIndexes (interp, ctable) == TCL_ERROR) {
+        return TCL_ERROR;
     }
 
     ctable->count = 0;
+
+    return TCL_OK;
 }
 
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
@@ -160,13 +161,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_RESET: {
-	  ${table}_delete_all_rows (ctable);
+	  if (${table}_delete_all_rows (interp, ctable) != TCL_OK) {
+	      return TCL_ERROR;
+	  }
 	  Tcl_InitCustomHashTable (ctable->keyTablePtr, TCL_STRING_KEYS, (Tcl_HashKeyType *)NULL);
 	  return TCL_OK;
       }
 
       case OPT_DESTROY: {
-	  ${table}_delete_all_rows (ctable);
+	  if (${table}_delete_all_rows (interp, ctable) != TCL_OK) {
+	      return TCL_ERROR;
+	  }
           Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
 	  return TCL_OK;
       }

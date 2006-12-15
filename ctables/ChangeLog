@@ -1,6 +1,11 @@
 
 $Id$
 
+12/15/2006 karl
+    * Fixed bug in "reset" method, introduced with indexes, where indexes
+      weren't getting deleted and the doubly linked list of all rows was
+      not getting reset.
+
 12/14/2006 karl
     * Indexes now support duplicate entries.
 

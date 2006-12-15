@@ -1,0 +1,6 @@
+
+$Id$
+
+It should detect using the same field name more than once in a table definition.
+
+

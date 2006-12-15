@@ -1362,6 +1362,21 @@ ctable_DropIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field) {
 }
 
 //
+// ctable_DropAllIndexes - delete all of a table's indexes
+//
+int
+ctable_DropAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable) {
+    int field;
+
+    for (field = 0; field < ctable->creatorTable->nFields; field++) {
+        if (ctable_DropIndex (interp, ctable, field) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+    }
+    return TCL_OK;
+}
+
+//
 // ctable_IndexCount -- set the Tcl interpreter obj result to the
 //                      number of items in the index
 //
