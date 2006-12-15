@@ -4,6 +4,12 @@
 # $Id$
 #
 
+package require ctable
+
+set ::ctable::genCompilerDebug 1
+set ::ctable::showCompilerCommands 1
+
+
 source dumb-data.tcl
 
 proc search_test {name searchFields expect} {
@@ -79,3 +85,6 @@ t index create show
 search+_test "indexed search 2" {} {meatwad shake frylock carl inignot ur stroker hoop angel carr rick dad brak zorak mom thundercleese clarence brock hank dean jonas orpheus triana rusty jonas_jr doctor_girlfriend the_monarch 21 28 phantom_limb baron}
 
 search+_test "indexed range" {-compare {{range show A M}}} {meatwad shake frylock carl inignot ur}
+
+search+_test "sorted search+ with offset 0 and limit 10" {-sort name -offset 0 -limit 10} {angel baron brak brock carr carl clarence rick dad dean}
+

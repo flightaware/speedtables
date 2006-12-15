@@ -2960,21 +2960,20 @@ proc gen_field_compare_functions {} {
 
 set sortCompareHeaderSource {
 
-int ${table}_sort_compare(void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2) $leftCurly
+int ${table}_sort_compare(void *clientData, const void *vRow1, const void *vRow2) $leftCurly
     struct ctableSortStruct *sortControl = (struct ctableSortStruct *)clientData;
-    struct ${table} *row1, *row2;
+    const struct $table *row1 = (*(void **)vRow1);
+    const struct $table *row2 = (*(void **)vRow2);
     int              i;
     int              direction;
     int              result = 0;
-
-    row1 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr1);
-    row2 = (struct $table *) Tcl_GetHashValue (*(Tcl_HashEntry **)hashEntryPtr2);
 
 // printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)row1, (long unsigned int)row2);
 
     for (i = 0; i < sortControl->nFields; i++) $leftCurly
         direction = sortControl->directions[i];
-        switch (sortControl->fields[i]) $leftCurly }
+        switch (sortControl->fields[i]) $leftCurly 
+}
 
 set sortCompareTrailerSource {
         $rightCurly // end of switch

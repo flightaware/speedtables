@@ -217,7 +217,7 @@ struct ctableCreatorTable {
     void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey);
 
     int (*search_compare) (Tcl_Interp *interp, struct ctableSearchStruct *searchControl, void *pointer, int tailoredWalk);
-    int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void *hashEntryPtr2);
+    int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
 };
 
 struct ctableTable {

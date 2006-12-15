@@ -6,6 +6,9 @@
 
 package require ctable
 
+set ::ctable::genCompilerDebug 1
+set ::ctable::showCOmpilerCommands 1
+
 source dumb-data.tcl
 
 #name home show dad alive gender age coolness

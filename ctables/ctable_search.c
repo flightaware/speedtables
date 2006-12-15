@@ -298,13 +298,11 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 }
 
 static int
-ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, Tcl_HashTable *keyTablePtr, Tcl_HashEntry *hashEntry) {
+ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, Tcl_HashTable *keyTablePtr, struct ctable_baseRow *row) {
     char           *key;
-    void           *row;
     int             i;
 
-    key = Tcl_GetHashKey (keyTablePtr, hashEntry);
-    row = Tcl_GetHashValue (hashEntry);
+    key = Tcl_GetHashKey (keyTablePtr, row->hashEntry);
 
     if (search->writingTabsep) {
 	Tcl_DString     dString;
@@ -424,7 +422,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     int              actionResult = TCL_OK;
     int              limit = search->offset + search->limit;
 
-    Tcl_HashEntry **hashSortTable = NULL;
+    struct ctable_baseRow **sortTable = NULL;
     Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
 
 #ifdef LINKED_LIST
@@ -480,7 +478,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     // based on limit or offset) becuase the order of what you want isn't
     // established until after the sort.
     if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
-	hashSortTable = (Tcl_HashEntry **)ckalloc (sizeof (Tcl_HashEntry *) * count);
+	sortTable = (struct ctable_baseRow **)ckalloc (sizeof (void *) * count);
     }
 
     // walk the table -- soon we hope to replace this with a skiplist walk
@@ -521,7 +519,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	// It's a Match 
         // Are we not sorting? 
 
-	if (hashSortTable == NULL) {
+	if (sortTable == NULL) {
 	    // if we haven't met the start point, blow it off
 	    if (++matchCount <= search->offset) continue;
 
@@ -542,7 +540,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    /* we want to take the match actions here --
 	     * we're here when we aren't sorting
 	     */
-	     actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, hashEntry);
+	     actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, row);
 	     if (actionResult == TCL_ERROR) {
 		  goto clean_and_return;
 	     }
@@ -566,17 +564,17 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	     * against start and limit and stuff */
 	    assert (matchCount < count);
 	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", matchCount, (long unsigned int)hashEntry, key);
-	    hashSortTable[matchCount++] = hashEntry;
+	    sortTable[matchCount++] = row;
 	}
     }
 
     // if we're not sorting, we're done -- we did 'em all on the fly
-    if (hashSortTable == NULL) {
+    if (sortTable == NULL) {
 	actionResult = TCL_OK;
 	goto clean_and_return;
     }
 
-    qsort_r (hashSortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
+    qsort_r (sortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
 
     // it's sorted
     // now let's see what we've got within the offset and limit
@@ -599,7 +597,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	/* here is where we want to take the match actions
 	 * when we are sorting
 	 */
-	 actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, hashSortTable[sortIndex]);
+	 actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, sortTable[sortIndex]);
 	 if (actionResult == TCL_ERROR) {
 	     goto clean_and_return;
 	 }
@@ -615,8 +613,8 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     }
 
   clean_and_return:
-    if (hashSortTable != NULL) {
-	ckfree ((void *)hashSortTable);
+    if (sortTable != NULL) {
+	ckfree ((void *)sortTable);
     }
 
     if (actionResult == TCL_OK && search->countOnly) {
@@ -989,7 +987,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	goto clean_and_return;
     }
 
-    qsort_r (sortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
+    qsort_r (sortTable, matchCount, sizeof (void *), &search->sortControl, ctable->creatorTable->sort_compare);
 
     // it's sorted
     // now let's see what we've got within the offset and limit
@@ -1012,7 +1010,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	/* here is where we want to take the match actions
 	 * when we are sorting
 	 */
-	 actionResult = ctable_SkipSearchAction (interp, ctable, search, row);
+	 actionResult = ctable_SkipSearchAction (interp, ctable, search, sortTable[sortIndex]);
 	 if (actionResult == TCL_ERROR) {
 	     goto clean_and_return;
 	 }
