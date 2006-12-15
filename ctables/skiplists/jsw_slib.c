@@ -201,10 +201,15 @@ void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, struct ctable_baseRow *row 
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
 
+//printf("find_equal_or_greater row %8lx, p %8lx ", (long unsigned int)row, (long unsigned int)p);
+
   while (p !=NULL && skip->cmp (p->row, row) < 0) {
+//printf("p->%8lx ", (long unsigned int)p);
       p = p->next[0];
   }
 
+//printf(" *%d* ", skip->cmp (p->row, row));
+//printf("skip->curl %8lx\n", (long unsigned int)p);
   skip->curl = p;
 
   return p;
@@ -336,7 +341,7 @@ int jsw_serase ( jsw_skip_t *skip, struct ctable_baseRow *row )
 }
 
 void
-jsw_dump_node (const char *s, jsw_node_t *p, int indexNumber) {
+jsw_dump_node (const char *s, jsw_skip_t *skip, jsw_node_t *p, int indexNumber) {
     int         height;
     int         i;
     struct ctable_baseRow *walkRow;
@@ -349,9 +354,12 @@ jsw_dump_node (const char *s, jsw_node_t *p, int indexNumber) {
     } else {
 	CTABLE_LIST_FOREACH (p->row, walkRow, indexNumber) {
 	    printf("%8lx ", (long unsigned int)walkRow);
+	    if ( skip->cmp ( p->row, walkRow ) != 0 ) {
+	        panic ("index hosed - value in dup list doesn't match others");
+	    }
 	}
     }
-	printf("\n");
+    printf("\n");
         
     for ( i = 0; i < height; i++ ) {
         printf ("%8lx ", (long unsigned int)p->next[i]);
@@ -363,14 +371,14 @@ void
 jsw_dump (const char *s, jsw_skip_t *skip, int indexNumber) {
     jsw_node_t *p = skip->curl;
 
-    jsw_dump_node (s, p, indexNumber);
+    jsw_dump_node (s, skip, p, indexNumber);
 }
 
 void
 jsw_dump_head (jsw_skip_t *skip) {
     jsw_node_t *p = skip->head;
 
-    jsw_dump_node ("HEAD", p, -1);
+    jsw_dump_node ("HEAD", skip, p, -1);
 }
 
 //
