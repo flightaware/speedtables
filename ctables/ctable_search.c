@@ -298,9 +298,10 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 }
 
 static int
-ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, Tcl_HashTable *keyTablePtr, struct ctable_baseRow *row) {
+ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, struct ctable_baseRow *row) {
     char           *key;
     int             i;
+    Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
 
     key = Tcl_GetHashKey (keyTablePtr, row->hashEntry);
 
@@ -540,7 +541,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    /* we want to take the match actions here --
 	     * we're here when we aren't sorting
 	     */
-	     actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, row);
+	     actionResult = ctable_SearchAction (interp, ctable, search, row);
 	     if (actionResult == TCL_ERROR) {
 		  goto clean_and_return;
 	     }
@@ -597,7 +598,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	/* here is where we want to take the match actions
 	 * when we are sorting
 	 */
-	 actionResult = ctable_SearchAction (interp, ctable, search, keyTablePtr, sortTable[sortIndex]);
+	 actionResult = ctable_SearchAction (interp, ctable, search, sortTable[sortIndex]);
 	 if (actionResult == TCL_ERROR) {
 	     goto clean_and_return;
 	 }
