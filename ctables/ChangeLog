@@ -6,6 +6,9 @@ $Id$
       weren't getting deleted and the doubly linked list of all rows was
       not getting reset.
 
+    * Created 25 pages of ctables documentation in Pages, starting with
+      doc.txt.
+
 12/14/2006 karl
     * Indexes now support duplicate entries.
 
