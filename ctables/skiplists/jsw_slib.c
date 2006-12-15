@@ -193,6 +193,24 @@ void *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row )
 }
 
 //
+// jsw_sfind_equal_or_greater - given a skip list and a row, return the 
+//     corresponding skip list node pointer that matches the specified
+//     row or exceeds it.
+//
+void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, struct ctable_baseRow *row )
+{
+  jsw_node_t *p = locate ( skip, row )->next[0];
+
+  while (p !=NULL && skip->cmp (p->row, row) < 0) {
+      p = p->next[0];
+  }
+
+  skip->curl = p;
+
+  return p;
+}
+
+//
 // jsw_sinsert - insert row into the skip list if it's not already there
 //
 // forces there to be no duplicate row by failing if a matching row is found

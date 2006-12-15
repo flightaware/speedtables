@@ -1,14 +1,24 @@
     // $Id$
 void ${table}_delete_all_rows(struct ctableTable *ctable) {
-    Tcl_HashSearch hashSearch;
-    Tcl_HashEntry *hashEntry;
-    struct ${table} *row;
+    Tcl_HashSearch     hashSearch;
+    Tcl_HashEntry     *hashEntry;
+    struct ${table}   *row;
+    int                i;
 
     for (hashEntry = Tcl_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
 	row = (struct $table *) Tcl_GetHashValue (hashEntry);
 	${table}_delete(row);
     }
+
     Tcl_DeleteHashTable (ctable->keyTablePtr);
+
+    // reset the linked list of all rows
+    ctable_ListInit (&ctable->ll_head);
+
+    // drop all indexes, if any
+    for (field = 0; field < ctable->creatorTable->nFields; field++) {
+        ctable_DropIndex (interp, ctable, field);
+    }
 
     ctable->count = 0;
 }
@@ -152,7 +162,6 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       case OPT_RESET: {
 	  ${table}_delete_all_rows (ctable);
 	  Tcl_InitCustomHashTable (ctable->keyTablePtr, TCL_STRING_KEYS, (Tcl_HashKeyType *)NULL);
-	  // TAILQ_INIT (&ctable->rows);
 	  return TCL_OK;
       }
 

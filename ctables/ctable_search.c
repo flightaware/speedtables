@@ -748,10 +748,11 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
 // #undef LINKED_LIST
 #ifdef LINKED_LIST
-    struct ctable_baseRow *row = NULL;
+    struct ctable_baseRow *row;
+    struct ctable_baseRow *row1 = NULL;
     struct ctable_baseRow *walkRow;
 #else
-    void            *row = NULL;
+    void            *row1 = NULL;
     jsw_node_t      *curl;
 #endif
     void            *row2 = NULL;
@@ -841,7 +842,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	    // search
 	    tailoredWalk = 1;
 	    skip = ctable->skipLists[field];
-	    row = component->row1;
+	    row1 = component->row1;
 	    row2 = component->row2;
 	}
     }
@@ -867,14 +868,9 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
        // yay get the huge win by zooming past hopefully a zillion records
        // right here
        //
-       // if we didn't get an exact match we move forward on item else we'll
-       // be returning the first one slightly under the low end search
-       // range
-       //
-       if (jsw_sfind (skip, row) == NULL) {
-           jsw_snext(skip);
-       }
+       jsw_sfind_equal_or_greater (skip, row1);
     } else {
+        // not tailored, we're looking at all rows
 	jsw_sreset (skip);
     }
 
