@@ -626,102 +626,6 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 }
 
 //
-// ctable_SkipSearchAction - pretty much the same as ctable_SearchAction
-// except that it doesn't support the "-key varName" thing.
-//
-//
-static int
-ctable_SkipSearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, void *row) {
-    char           *key = NULL;
-    int             i;
-
-    if (search->writingTabsep) {
-	Tcl_DString     dString;
-
-	Tcl_DStringInit (&dString);
-
-        // get the fields and append them to the dstring tab-separated
-	// inhibit emitting the outside-of-the-record hash key because
-	// we don't have any idea what it is and we don't care anyway
-
-        if (search->nRetrieveFields < 0) {
-	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, row, ctable->creatorTable->fieldList, ctable->creatorTable->nFields, &dString, 1);
-	} else {
-	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, 1);
-	}
-
-	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
-	    return TCL_ERROR;
-	}
-
-	Tcl_DStringFree (&dString);
-	return TCL_OK;
-    }
-
-    if (search->codeBody != NULL) {
-	Tcl_Obj *listObj = Tcl_NewObj();
-	int      evalResult;
-
-	if (search->useGet) {
-	    if (search->nRetrieveFields < 0) {
-		listObj = (*ctable->creatorTable->gen_list) (interp, row);
-	    } else {
-	       int i;
-
-	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   ctable->creatorTable->lappend_field (interp, listObj, row, ctable->creatorTable->fieldList[i]);
-	       }
-	    }
-	} else if (search->useArrayGet) {
-	    if (search->nRetrieveFields < 0) {
-	       int i;
-
-	       for (i = 0; i < ctable->creatorTable->nFields; i++) {
-		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, i);
-	       }
-	    } else {
-	       int i;
-
-	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
-	       }
-	    }
-	} else if (search->useArrayGetWithNulls) {
-	    if (search->nRetrieveFields < 0) {
-		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, row);
-	    } else {
-		for (i = 0; i < search->nRetrieveFields; i++) {
-		    ctable->creatorTable->lappend_field_and_name (interp, listObj, row, search->retrieveFields[i]);
-		}
-	    }
-	} else {
-	    panic ("code path shuld have matched useArrayGet or useArrayGetWithNulls");
-	}
-
-	// set the returned list into the value var
-	if (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, listObj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
-	    return TCL_ERROR;
-	}
-
-	evalResult = Tcl_EvalObjEx (interp, search->codeBody, 0);
-	switch (evalResult) {
-	  case TCL_ERROR:
-	    Tcl_AppendResult (interp, " while processing search code body", (char *) NULL);
-	    return TCL_ERROR;
-
-	  case TCL_OK:
-	  case TCL_CONTINUE:
-	  case TCL_BREAK:
-	  case TCL_RETURN:
-	    return evalResult;
-	}
-    }
-
-    return TCL_OK;
-}
-
-
-//
 // ctable_PerformSkipSearch - perform the search
 //
 // write field names if we need to
@@ -953,7 +857,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	    /* we want to take the match actions here --
 	     * we're here when we aren't sorting
 	     */
-	     actionResult = ctable_SkipSearchAction (interp, ctable, search, walkRow);
+	     actionResult = ctable_SearchAction (interp, ctable, search, walkRow);
 	     if (actionResult == TCL_ERROR) {
 		  goto clean_and_return;
 	     }
@@ -1011,7 +915,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	/* here is where we want to take the match actions
 	 * when we are sorting
 	 */
-	 actionResult = ctable_SkipSearchAction (interp, ctable, search, sortTable[sortIndex]);
+	 actionResult = ctable_SearchAction (interp, ctable, search, sortTable[sortIndex]);
 	 if (actionResult == TCL_ERROR) {
 	     goto clean_and_return;
 	 }

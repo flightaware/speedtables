@@ -2,8 +2,9 @@
 $Id$
 
 12/15/2006 karl
-    * Fixed sort to work in both search and search+.  It previously did not
-      work with search+.
+    * Fixed sort to work in both search and search+.  (It previously did not
+      work with search+.)  Fold ctable_SearchAction and ctable_SkipSearchAction
+      into one, also gaining the ability to specify -key in search+.
 
     * Fixed bug in "reset" method, introduced with indexes, where indexes
       weren't getting deleted and the doubly linked list of all rows was
