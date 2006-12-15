@@ -900,7 +900,8 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
       if (tailoredWalk) {
           if (ctable->creatorTable->fields[field]->compareFunction (row, row2) >= 0) {
 	     // it was a tailored walk and we're past the end of the
-	    // range of stuff so we can blow off the rest
+	     // range of stuff so we can blow off the rest, hopefully
+	     // a huge number
 	    break;
 	  }
       }
