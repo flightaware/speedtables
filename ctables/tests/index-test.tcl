@@ -17,3 +17,7 @@ t index create name
 
 t index dump name
 
+
+puts "indexable: [t index indexable]"
+
+puts "indexed: [t index indexed]"

@@ -1,6 +1,13 @@
 
 $Id$
 
+12/16/2006 karl
+    * Added "indexable" and "indexed" suboptions to the ctable "index"
+      method to list the names of the fields that can be indexed
+      (indexes were defined on the fields when the table was created)
+      and to list the names of the fields that have indexes currently
+      defined against them.
+
 12/15/2006 karl
     * Fixed sort to work in both search and search+.  (It previously did not
       work with search+.)  Fold ctable_SearchAction and ctable_SkipSearchAction

@@ -471,11 +471,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_INDEX: {
-	static CONST char *subOptions[] = {"count", "create", "drop", "list", "dump", (char *)NULL};
+	static CONST char *subOptions[] = {"count", "create", "drop", "indexable", "indexed", "list", "dump", (char *)NULL};
 	int                suboptIndex;
 	int                fieldNum;
 
-	enum suboptions {SUBOPT_COUNT, SUBOPT_CREATE, SUBOPT_DROP, SUBOPT_LIST, SUBOPT_DUMP};
+	enum suboptions {SUBOPT_COUNT, SUBOPT_CREATE, SUBOPT_DROP, SUBOPT_INDEXABLE, SUBOPT_INDEXED, SUBOPT_LIST, SUBOPT_DUMP};
 
 	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "option ?args?");
@@ -537,6 +537,41 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	        return TCL_ERROR;
 	    }
 	    break;
+	  }
+
+	  case SUBOPT_INDEXABLE: {
+	      int field;
+
+	      // for each field, if the index number in the creator table's
+	      // per-field structure is >= 0 then lappend the field name
+	      // to the Tcl result object
+
+	      for (field = 0; field < ctable->creatorTable->nFields; field++) {
+	          struct ctableFieldInfo *f = ctable->creatorTable->fields[field];
+
+		  if (f->indexNumber >= 0) {
+		      if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), f->nameObj) == TCL_ERROR) {
+		          return TCL_ERROR;
+		      }
+		  }
+	      }
+	      break;
+	  }
+
+	  case SUBOPT_INDEXED: {
+	      int field;
+
+	      // for each field if the skipList pointer for that table is
+	      // non-null, lappend the field name
+
+	      for (field = 0; field < ctable->creatorTable->nFields; field++) {
+	          if (ctable->skipLists[field] != NULL) {
+		      if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ctable->creatorTable->fields[field]->nameObj) == TCL_ERROR) {
+		          return TCL_ERROR;
+		      }
+		  }
+	      }
+	      break;
 	  }
 
 	  case SUBOPT_DUMP: {
