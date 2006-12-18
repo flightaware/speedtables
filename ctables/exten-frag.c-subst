@@ -19,6 +19,9 @@
     hashTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
     Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
 
+    // setup all the field name objects
+    ${table}_setup ();
+
     t->registeredProcTablePtr = hashTablePtr;
     t->nextAutoCounter = 0;
     t->fieldNames = ${table}_fields;
@@ -71,8 +74,6 @@
     for (i = 0; i < t->nFields; i++) {
 	t->fieldList[i] = i;
     }
-
-    ${table}_setup ();
 
     /* Create the ${table}MetaObjCmd command -- it's fairly equivalent to an
      * Itcl class in that it can create its own commands with their

@@ -52,7 +52,12 @@ static size_t rlevel ( size_t max )
   for ( h = 0; !found; h++ ) {
     if ( reset == 0 ) {
       bits = jsw_rand();
-      reset = sizeof ( size_t ) * CHAR_BIT - 1;
+// printf("bits %lx\n", bits);
+
+      // reset = sizeof ( size_t ) * CHAR_BIT - 1;
+      reset = 31;
+
+// printf("bits %lx, reset %d\n", (long)bits, (int)reset);
     }
 
     /*
@@ -64,9 +69,12 @@ static size_t rlevel ( size_t max )
     found = bits & 1;
     bits = bits >> 1;
     --reset;
+// printf("found %d bits %lx reset %d h %d\n", (int)found, (long)bits, (int)reset, (int)h);
   }
+// printf("rlh %d\n", (int) h);
 
   if ( h >= max )
+// printf("big h %d\n", (int) h);
     h = max - 1;
 
   return h;
@@ -238,6 +246,7 @@ int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
 
     /* Raise height if necessary */
     if ( h > skip->curh ) {
+// printf("raising the height from %d to %d, size %d\n", (int)skip->curh, (int)h, (int)skip->size);
       h = ++skip->curh;
       skip->fix[h] = skip->head;
     }
@@ -274,6 +283,8 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int node
     size_t h = rlevel ( skip->maxh );
     jsw_node_t *it;
 
+// printf("h %d\n", (int)h);
+
     it = new_node ( row, h );
 
     ctable_ListInit (&it->row);
@@ -281,6 +292,7 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int node
 
     /* Raise height if necessary */
     if ( h > skip->curh ) {
+// printf("raising the height from %d to %d, size %d\n", (int)skip->curh, (int)h, (int)skip->size);
       h = ++skip->curh;
       skip->fix[h] = skip->head;
     }

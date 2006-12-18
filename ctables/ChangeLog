@@ -1,6 +1,16 @@
 
 $Id$
 
+12/18/2006 karl
+    * Fix bug where skip list code assumed it would get 64 bits of random
+      number instead of the 32 it got, making skip lists really slow
+      on 64-bit machines like AMD64 (where sizeof(size_t) == 8)
+
+    * Moved where the *_setup routine got called when initializing a
+      creator table so the per-field field name object pointers got
+      set properly.  This fixes "indexed" and "indexable" options to
+      "index" method.
+
 12/16/2006 karl
     * Added "indexable" and "indexed" suboptions to the ctable "index"
       method to list the names of the fields that can be indexed
