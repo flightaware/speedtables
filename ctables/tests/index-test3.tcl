@@ -1,5 +1,7 @@
 
 
+source searchtest-def.tcl
+
 source dumb-data.tcl
 
 t index create name

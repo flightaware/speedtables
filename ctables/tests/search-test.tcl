@@ -6,8 +6,10 @@
 
 package require ctable
 
-set ::ctable::genCompilerDebug 1
-set ::ctable::showCOmpilerCommands 1
+#set ::ctable::genCompilerDebug 1
+#set ::ctable::showCOmpilerCommands 1
+
+source searchtest-def.tcl
 
 source dumb-data.tcl
 

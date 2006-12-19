@@ -7,6 +7,8 @@
 # $Id$
 #
 
+source searchtest-def.tcl
+
 source dumb-data.tcl
 
 for {set i 0} {$i < 1000000} {incr i} {

@@ -4,30 +4,6 @@
 # $Id$
 #
 
-package require ctable
-
-#CTableBuildPath /tmp
-
-CExtension searchtest 1.0 {
-
-CTable testTable {
-    varstring id indexed 1 unique 1
-    varstring name indexed 1
-    varstring home indexed 1 unique 0
-    varstring show indexed 1 unique 0
-    varstring dad
-    boolean alive default 1
-    varstring gender default male
-    int age indexed 1 unique 0
-    int coolness
-}
-
-}
-
-package require Searchtest
-
-testTable create t
-
 set show "Venture Bros"
 set home "Venture Compound"
 

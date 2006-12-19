@@ -4,6 +4,8 @@
 # $Id$
 #
 
+source searchtest-def.tcl
+
 source dumb-data.tcl
 
 package require ctable_server
