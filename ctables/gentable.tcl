@@ -203,6 +203,59 @@ proc gen_unset_null_during_set_source {table field} {
 #
 #####
 
+set removeFromIndexSource {
+	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
+		if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
+		    return TCL_ERROR;
+		}
+	    }
+}
+
+#
+# gen_ctable_remove_from_index - return code to remove the specified field
+# from an index, or nothing if the field is not indexable -- requires
+# interp, ctable, row and field to be defined and in scope in the C target.
+#
+proc gen_ctable_remove_from_index {fieldName} { 
+    variable fields
+    variable removeFromIndexSource
+
+    array set field $fields($fieldName)
+
+    if {[info exists field(indexed)] && $field(indexed)} {
+        return $removeFromIndexSource
+    } else {
+        return ""
+    }
+    
+}
+
+set insertIntoIndexSource {
+	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
+	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+	        return TCL_ERROR;
+	    }
+	}
+}
+
+#
+# gen_ctable_insert_into_index - return code to insert the specified field
+# into an index, or nothing if the field is not indexable -- requires
+# interp, ctable, row and field to be defined and in scope in the C target.
+#
+proc gen_ctable_insert_into_index {fieldName} { 
+    variable fields
+    variable insertIntoIndexSource
+
+    array set field $fields($fieldName)
+
+    if {[info exists field(indexed)] && $field(indexed)} {
+        return $insertIntoIndexSource
+    } else {
+        return ""
+    }
+}
+
 #
 # boolSetSource - code we run subst over to generate a set of a boolean (bit)
 #
@@ -241,21 +294,12 @@ set numberSetSource {
 	        return TCL_OK;
 	    }
 
-	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists\[field] != NULL)) {
-		if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
-	    }
+[gen_ctable_remove_from_index $field]
 	}
 
 	row->$field = value;
 
-	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
-	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
-	        return TCL_ERROR;
-	    }
-	}
-
+[gen_ctable_insert_into_index $field]
 	break;
       }
 }
@@ -281,55 +325,40 @@ set varstringSetSource {
 [gen_null_check_during_set_source $table $field]
 
 [gen_unset_null_during_set_source $table $field]
-	if (row->_${field}IsNull) {
-	    row->_${field}IsNull = 0;
-	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists\[field] != NULL)) {
-		if (ctable_RemoveNullFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
-	    }
-	} else {
-	    string = Tcl_GetStringFromObj (obj, &length);
-	    if ((length == $defaultLength) && (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0))) {
-		if (row->$field != (char *) NULL) {
-		    // string was something but now matches the empty string
-		    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists\[field] != NULL)) {
-			if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-			    return TCL_ERROR;
-			}
+	string = Tcl_GetStringFromObj (obj, &length);
+	if ((length == $defaultLength) && (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0))) {
+	    if (row->$field != (char *) NULL) {
+		// string was something but now matches the empty string
+[gen_ctable_remove_from_index $field]
+		ckfree ((void *)row->$field);
+
+		// It's a change to the be default string. If we're
+		// indexed, force the default string in there so the 
+		// compare routine will be happy and then insert it.
+		// can't use our proc here yet because of the
+		// default empty string obj fanciness
+		if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] == NULL)) {
+		    row->$field = Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &row->_${field}Length);
+		    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+			return TCL_ERROR;
 		    }
-		    ckfree ((void *)row->$field);
-
-		    // It's a change to the be default string. If we're
-		    // indexed, force the default string in there so the 
-		    // compare routine will be happy and then insert it.
-		    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] == NULL)) {
-			row->$field = Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &row->_${field}Length);
-			if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
-			    return TCL_ERROR;
-			}
-		    }
-		    row->$field = NULL;
-		    row->_${field}AllocatedLength = 0;
-		    row->_${field}Length = 0;
 		}
-		break;
+		row->$field = NULL;
+		row->_${field}AllocatedLength = 0;
+		row->_${field}Length = 0;
 	    }
-
-	    // previous field isn't null and new field isn't null and
-	    // isn't the default string
-
-	    // are they feeding us what we already have, we're outta here
-	    if ((length == row->_${field}Length) && (*row->$field == *string) && (strncmp (row->$field, string, length) == 0)) break;
-
-	    // previous field isn't null, new field isn't null, isn't
-	    // the default string, and isn't the same as the previous field
-	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists\[field] != NULL)) {
-	        if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
-	    }
+	    break;
 	}
+
+	// previous field isn't null and new field isn't null and
+	// isn't the default string
+
+	// are they feeding us what we already have, we're outta here
+	if ((length == row->_${field}Length) && (*row->$field == *string) && (strncmp (row->$field, string, length) == 0)) break;
+
+	// previous field isn't null, new field isn't null, isn't
+	// the default string, and isn't the same as the previous field
+[gen_ctable_remove_from_index $field]
 
 	// new string value
 	// if the allocated length is less than what we need, get more,
@@ -347,11 +376,7 @@ set varstringSetSource {
 	// if we got here and this field has an index, we've removed
 	// the old index either by removing a null index or by
 	// removing the prior index, now insert the new index
-	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
-	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
-	        return TCL_ERROR;
-	    }
-	}
+[gen_ctable_insert_into_index $field]
 	break;
       }
 }

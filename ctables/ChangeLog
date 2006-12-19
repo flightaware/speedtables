@@ -1,6 +1,11 @@
 
 $Id$
 
+12/19/2006 karl
+    * Proceduralize generating index inserting and deleting code and
+      don't generate it for a field when an index isn't defined on that
+      field.
+
 12/18/2006 karl
     * Fix bug where skip list code assumed it would get 64 bits of random
       number instead of the 32 it got, making skip lists really slow
