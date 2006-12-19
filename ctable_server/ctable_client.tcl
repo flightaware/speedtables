@@ -193,7 +193,7 @@ proc remote_ctable_invoke {localTableName level command} {
 #puts "cmd '$command', pairs '$body'"
 
     # if it's search, take out args that will freak out the remote side
-    if {$cmd == "search"} {
+    if {$cmd == "search" || $cmd == "search+"} {
 	array set pairs $body
 	if {[info exists pairs(-write_tabsep)]} {
 	    set actions(-write_tabsep) $pairs(-write_tabsep)
