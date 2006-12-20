@@ -43,6 +43,7 @@ struct jsw_skip {
 
   Implements a tuned bit stream algorithm.
 */
+inline
 static size_t rlevel ( size_t max )
 {
   static size_t bits = 0;
@@ -83,6 +84,7 @@ static size_t rlevel ( size_t max )
 //
 // new_node - construct an empty new node, does not make a copy of the row
 //
+inline
 static jsw_node_t *new_node ( struct ctable_baseRow *row, size_t height )
 {
   jsw_node_t *node = (jsw_node_t *)ckalloc ( sizeof *node );
@@ -103,6 +105,7 @@ static jsw_node_t *new_node ( struct ctable_baseRow *row, size_t height )
 //
 // free_node - free a skip list node but not the row associated with it
 //
+inline
 static void free_node ( jsw_node_t *node )
 {
   ckfree ( (void *)node->next );
@@ -112,6 +115,7 @@ static void free_node ( jsw_node_t *node )
 //
 // locate - find an existing row, or the position before where it would be
 //
+inline
 static jsw_node_t *locate ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   jsw_node_t *p = skip->head;
@@ -188,6 +192,7 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip )
 // jsw_sfind - given a skip list and a row, return the corresponding
 //             skip list node pointer or NULL if none is found.
 //
+inline
 void *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
@@ -205,6 +210,7 @@ void *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row )
 //     corresponding skip list node pointer that matches the specified
 //     row or exceeds it.
 //
+inline
 void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
@@ -228,6 +234,7 @@ void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, struct ctable_baseRow *row 
 //
 // forces there to be no duplicate row by failing if a matching row is found
 //
+inline
 int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
 {
   // void *p = locate ( skip, row )->row;
@@ -270,6 +277,7 @@ int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
 //
 // currently can only succeed
 //
+inline
 int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int nodeIdx)
 {
   // void *p = locate ( skip, row )->row;
@@ -422,6 +430,7 @@ void jsw_sreset_head ( jsw_skip_t *skip )
 //
 // jsw_srow - get row pointed to by the the current link or NULL if none
 //
+inline
 struct ctable_baseRow *jsw_srow ( jsw_skip_t *skip )
 {
   return skip->curl == NULL ? NULL : skip->curl->row;
@@ -431,7 +440,8 @@ struct ctable_baseRow *jsw_srow ( jsw_skip_t *skip )
 // jsw_snext - move the current link to the next row, returning 1 if there
 //             is a next row and a 0 if there isn't
 //
-int jsw_snext ( jsw_skip_t *skip )
+inline int
+jsw_snext ( jsw_skip_t *skip )
 {
   return ( skip->curl = skip->curl->next[0] ) != NULL;
 }

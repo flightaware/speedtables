@@ -301,9 +301,9 @@ static int
 ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, struct ctable_baseRow *row) {
     char           *key;
     int             i;
-    Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
+    struct ctableCreatorTable *creatorTable = ctable->creatorTable;
 
-    key = Tcl_GetHashKey (keyTablePtr, row->hashEntry);
+    key = Tcl_GetHashKey (ctable->keyTablePtr, row->hashEntry);
 
     if (search->writingTabsep) {
 	Tcl_DString     dString;
@@ -311,9 +311,9 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	Tcl_DStringInit (&dString);
 
         if (search->nRetrieveFields < 0) {
-	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, row, ctable->creatorTable->fieldList, ctable->creatorTable->nFields, &dString, search->noKeys);
+	    (*creatorTable->dstring_append_get_tabsep) (key, row, creatorTable->fieldList, creatorTable->nFields, &dString, search->noKeys);
 	} else {
-	    (*ctable->creatorTable->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
+	    (*creatorTable->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
 	}
 
 	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
@@ -330,34 +330,34 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 
 	if (search->useGet) {
 	    if (search->nRetrieveFields < 0) {
-		listObj = (*ctable->creatorTable->gen_list) (interp, row);
+		listObj = (*creatorTable->gen_list) (interp, row);
 	    } else {
 	       int i;
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   ctable->creatorTable->lappend_field (interp, listObj, row, ctable->creatorTable->fieldList[i]);
+		   creatorTable->lappend_field (interp, listObj, row, creatorTable->fieldList[i]);
 	       }
 	    }
 	} else if (search->useArrayGet) {
 	    if (search->nRetrieveFields < 0) {
 	       int i;
 
-	       for (i = 0; i < ctable->creatorTable->nFields; i++) {
-		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, i);
+	       for (i = 0; i < creatorTable->nFields; i++) {
+		   creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, i);
 	       }
 	    } else {
 	       int i;
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   ctable->creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
+		   creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
 	       }
 	    }
 	} else if (search->useArrayGetWithNulls) {
 	    if (search->nRetrieveFields < 0) {
-		listObj = (*ctable->creatorTable->gen_keyvalue_list) (interp, row);
+		listObj = (*creatorTable->gen_keyvalue_list) (interp, row);
 	    } else {
 		for (i = 0; i < search->nRetrieveFields; i++) {
-		    ctable->creatorTable->lappend_field_and_name (interp, listObj, row, search->retrieveFields[i]);
+		    creatorTable->lappend_field_and_name (interp, listObj, row, search->retrieveFields[i]);
 		}
 	    }
 	} else {
@@ -454,7 +454,6 @@ ctable_WriteFieldNames (Tcl_Interp *interp, struct ctableTable *ctable, struct c
 //
 static int
 ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, int count) {
-    Tcl_HashEntry   *hashEntry;
     char            *key;
 
     int              compareResult;
@@ -464,8 +463,9 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     int              limit = search->offset + search->limit;
 
     struct ctable_baseRow **sortTable = NULL;
-    Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
     struct ctable_baseRow *row;
+
+    struct ctableCreatorTable *creatorTable = ctable->creatorTable;
 
     if (count == 0) {
         return TCL_OK;
@@ -489,21 +489,21 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	sortTable = (struct ctable_baseRow **)ckalloc (sizeof (void *) * count);
     }
 
-    // walk the table -- soon we hope to replace this with a skiplist walk
-    // or equivalent
+    // walk the table 
     CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
-        hashEntry = row->hashEntry;
-        key = Tcl_GetHashKey (keyTablePtr, hashEntry);
 
         // if we have a match pattern (for the key) and it doesn't match,
 	// skip this row
 
-	if ((search->pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, search->pattern, 1))) continue;
+	if (search->pattern != (char *) NULL) {
+	    key = Tcl_GetHashKey (ctable->keyTablePtr, row->hashEntry);
+	    if (!Tcl_StringCaseMatch (key, search->pattern, 1)) continue;
+	}
 
 	//
 	// run the supplied compare routine
 	//
-	compareResult = (*ctable->creatorTable->search_compare) (interp, search, (void *)row, 0);
+	compareResult = (*creatorTable->search_compare) (interp, search, (void *)row, 0);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
 	}
@@ -560,7 +560,6 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	    /* We are sorting, grab it, we gotta sort before we can run
 	     * against start and limit and stuff */
 	    assert (matchCount < count);
-	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", matchCount, (long unsigned int)hashEntry, key);
 	    sortTable[matchCount++] = row;
 	}
     }
@@ -571,7 +570,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	goto clean_and_return;
     }
 
-    qsort_r (sortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
+    qsort_r (sortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, creatorTable->sort_compare);
 
     // it's sorted
     // now let's see what we've got within the offset and limit
@@ -645,6 +644,8 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
     int              tailoredWalk = 0;
 
+    struct ctableCreatorTable *creatorTable = ctable->creatorTable;
+
     struct ctable_baseRow *row;
     struct ctable_baseRow *row1 = NULL;
     struct ctable_baseRow *walkRow;
@@ -654,6 +655,9 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
     jsw_skip_t      *skip = NULL;
     int              field = 0;
+
+    fieldCompareFunction_t compareFunction;
+    int                    indexNumber;
 
     if (count == 0) {
         return TCL_OK;
@@ -717,7 +721,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     // we can use
     if (!tailoredWalk) {
 	skip = NULL;
-        for (field= 0; field < ctable->creatorTable->nFields; field++) {
+        for (field= 0; field < creatorTable->nFields; field++) {
 	    if ((skip = ctable->skipLists[field]) != NULL) {
 	        break;
 	    }
@@ -758,13 +762,16 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     //
     //  for (; curl != NULL && (row = curl->item); curl = curl->next[0])
 
+    compareFunction = creatorTable->fields[field]->compareFunction;
+    indexNumber = creatorTable->fields[field]->indexNumber;
+
 
     for (; ((row = jsw_srow (skip)) != NULL); jsw_snext(skip)) {
 
     // curl = ((struct jsw_skip *)skip)->curl;
 
       if (tailoredWalk) {
-          if (ctable->creatorTable->fields[field]->compareFunction (row, row2) >= 0) {
+          if (compareFunction (row, row2) >= 0) {
 	     // it was a tailored walk and we're past the end of the
 	     // range of stuff so we can blow off the rest, hopefully
 	     // a huge number
@@ -776,7 +783,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
       // if you ever change this to make deletion possible while searching,
       // switch this to use the safe foreach routine instead
 
-      CTABLE_LIST_FOREACH (row, walkRow, ctable->creatorTable->fields[field]->indexNumber) {
+      CTABLE_LIST_FOREACH (row, walkRow, indexNumber) {
 
 	//
 	// run the supplied compare routine
@@ -786,7 +793,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	// actually do something, else it'll just not exclude the row, i.e.
 	// it will do what it's supposed to.)
 	//
-	compareResult = (*ctable->creatorTable->search_compare) (interp, search, walkRow, tailoredWalk);
+	compareResult = (*creatorTable->search_compare) (interp, search, walkRow, tailoredWalk);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
 	}
@@ -843,7 +850,6 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	    /* We are sorting, grab it, we gotta sort before we can run
 	     * against start and limit and stuff */
 	    assert (matchCount < count);
-	    // printf ("filling sort table %d -> hash entry %lx (%s)\n", matchCount, (long unsigned int)hashEntry, key);
 	    sortTable[matchCount++] = walkRow;
 	}
       }
@@ -855,7 +861,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	goto clean_and_return;
     }
 
-    qsort_r (sortTable, matchCount, sizeof (void *), &search->sortControl, ctable->creatorTable->sort_compare);
+    qsort_r (sortTable, matchCount, sizeof (void *), &search->sortControl, creatorTable->sort_compare);
 
     // it's sorted
     // now let's see what we've got within the offset and limit
@@ -1317,7 +1323,7 @@ ctable_ListIndex (Tcl_Interp *interp, struct ctableTable *ctable, int fieldNum) 
     return TCL_OK;
 }
 
-int
+inline int
 ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     struct ctable_baseRow *row = vRow;
@@ -1378,7 +1384,7 @@ ctable_RemoveFromAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable, voi
 // ctable, insert this row into that table's field's index if there is an
 // index on that field.
 //
-int
+inline int
 ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
 
@@ -1392,7 +1398,7 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
     return TCL_OK;
 }
 
-int
+inline int
 ctable_RemoveNullFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
 
@@ -1404,7 +1410,7 @@ ctable_RemoveNullFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void
     return TCL_ERROR;
 }
 
-int
+inline int
 ctable_InsertNullIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
 
