@@ -265,7 +265,7 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 		goto err;
 	    }
 
-	    /* stash this as a string, we could be smarter - we sould
+	    /* stash this as a string, we could be smarter - we should
 	     * be smarter with a union and figure it out for the
 	     * data types that'll be lookin' for it
 	     * NB this could cause unnecessary tcl object shimmering,
