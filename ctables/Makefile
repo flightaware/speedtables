@@ -9,7 +9,6 @@
 #
 
 INSTDIR=/usr/local/lib/ctable
-#INSTDIR=/sc/lib/ctable
 
 install:
 	-mkdir $(INSTDIR)

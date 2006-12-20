@@ -394,6 +394,46 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 }
 
 //
+// ctable_WriteFieldNames - write field names from a search structure to
+//   the specified channel, tab-separated
+//
+//
+ctable_WriteFieldNames (Tcl_Interp *interp, struct ctableSearchStruct *search)
+{
+    int i;
+    Tcl_DString     dString;
+    int            *fields;
+    int             nFields;
+
+    Tcl_DStringInit (&dString);
+
+    if (search->nRetrieveFields < 0) {
+	fields = ctable->creatorTable->fieldList;
+	nFields = ctable->creatorTable->nFields;
+    } else {
+	nFields = search->nRetrieveFields;
+	fields = search->retrieveFields;
+    }
+
+    for (i = 0; i < nFields; i++) {
+	if (i != 0) {
+	    Tcl_DStringAppend(&dString, "\t", 1);
+	}
+
+	Tcl_DStringAppend(&dString, ctable->creatorTable->fields[i]->name, -1);
+    }
+    Tcl_DStringAppend(&dString, "\n", 1);
+
+    if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
+	Tcl_DStringFree (&dString);
+	return TCL_ERROR;
+    }
+
+    Tcl_DStringFree (&dString);
+    return TCL_OK;
+}
+
+//
 // ctable_PerformSearch - perform the search
 //
 // write field names if we need to
@@ -425,47 +465,14 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
     struct ctable_baseRow **sortTable = NULL;
     Tcl_HashTable *keyTablePtr = ctable->keyTablePtr;
-
-#ifdef LINKED_LIST
     struct ctable_baseRow *row;
-#endif
 
     if (count == 0) {
         return TCL_OK;
     }
 
     if (search->writingTabsepIncludeFieldNames) {
-	int i;
-	Tcl_DString     dString;
-	int            *fields;
-	int             nFields;
-
-	Tcl_DStringInit (&dString);
-
-        if (search->nRetrieveFields < 0) {
-	    fields = ctable->creatorTable->fieldList;
-	    nFields = ctable->creatorTable->nFields;
-	} else {
-	    nFields = search->nRetrieveFields;
-	    fields = search->retrieveFields;
-	}
-
-	if (!search->noKeys) {
-	    Tcl_DStringAppend(&dString, "_key", 4);
-	}
-	for (i = 0; i < nFields; i++) {
-	    if (!search->noKeys || i != 0) {
-		Tcl_DStringAppend(&dString, "\t", 1);
-	    }
-	    Tcl_DStringAppend(&dString, ctable->creatorTable->fieldNames[fields[i]], -1);
-	}
-	Tcl_DStringAppend(&dString, "\n", 1);
-
-	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
-	    return TCL_ERROR;
-	}
-
-	Tcl_DStringFree (&dString);
+	ctable_WriteFieldNames (interp, search);
     }
 
     // if we're sorting, allocate a space for the search results that
@@ -484,17 +491,9 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
     // walk the table -- soon we hope to replace this with a skiplist walk
     // or equivalent
-#ifdef LINKED_LIST
     CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
         hashEntry = row->hashEntry;
         key = Tcl_GetHashKey (keyTablePtr, hashEntry);
-#else
-    for (hashEntry = Tcl_FirstHashEntry (keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	void           *row;
-
-	key = Tcl_GetHashKey (keyTablePtr, hashEntry);
-
-#endif
 
         // if we have a match pattern (for the key) and it doesn't match,
 	// skip this row
@@ -649,15 +648,9 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
     int              tailoredWalk = 0;
 
-// #undef LINKED_LIST
-#ifdef LINKED_LIST
     struct ctable_baseRow *row;
     struct ctable_baseRow *row1 = NULL;
     struct ctable_baseRow *walkRow;
-#else
-    void            *row1 = NULL;
-    jsw_node_t      *curl;
-#endif
     void            *row2 = NULL;
 
     void          **sortTable = NULL;
@@ -670,34 +663,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     }
 
     if (search->writingTabsepIncludeFieldNames) {
-	int i;
-	Tcl_DString     dString;
-	int            *fields;
-	int             nFields;
-
-	Tcl_DStringInit (&dString);
-
-        if (search->nRetrieveFields < 0) {
-	    fields = ctable->creatorTable->fieldList;
-	    nFields = ctable->creatorTable->nFields;
-	} else {
-	    nFields = search->nRetrieveFields;
-	    fields = search->retrieveFields;
-	}
-
-	for (i = 0; i < nFields; i++) {
-	    if (i != 0) {
-		Tcl_DStringAppend(&dString, "\t", 1);
-	    }
-	    Tcl_DStringAppend(&dString, ctable->creatorTable->fieldNames[fields[i]], -1);
-	}
-	Tcl_DStringAppend(&dString, "\n", 1);
-
-	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
-	    return TCL_ERROR;
-	}
-
-	Tcl_DStringFree (&dString);
+	ctable_WriteFieldNames (interp, search);
     }
 
     // if we're sorting, allocate a space for the search results that
@@ -1367,11 +1333,6 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vR
         return TCL_OK;
     }
 
-#ifdef CTABLE_NODUPS
-    if (!jsw_serase (skip, row)) {
-        panic ("corrupted index detected for field %s", ctable->creatorTable->fields[field]->name);
-    }
-#else
     if (ctable_ListRemoveMightBeTheLastOne (row, ctable->creatorTable->fields[field]->indexNumber)) {
 // printf("i might be the last one, field %d\n", field);
 	index = ctable->creatorTable->fields[field]->indexNumber;
@@ -1388,7 +1349,6 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vR
 	    // *row->ll_nodex[index].head = NULL; // don't think this is needed
 	}
     }
-#endif
     return TCL_OK;
 }
 
@@ -1402,10 +1362,6 @@ int
 ctable_RemoveFromAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable, void *row) {
     int         field;
     
-#ifdef CTABLE_NODUPS
-	panic ("haven't implemented remove from all indexes for nodups");
-#endif
-
     // everybody's in index 0, take this guy out
     ctable_ListRemove (row, 0);
 
@@ -1433,15 +1389,9 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *ro
     return TCL_OK;
     }
 
-#ifdef CTABLE_NODUPS
-    if (!jsw_sinsert (skip, row)) {
-	Tcl_AppendResult (interp, "duplicate entry", (char *) NULL);
-	return TCL_ERROR;
-    }
-#else
+    // DUP check code goes here
 // printf("ctable_InsertIntoIndex field %d index %d\n", field, ctable->creatorTable->fields[field]->indexNumber);
     jsw_sinsert_linked (skip, row, ctable->creatorTable->fields[field]->indexNumber);
-#endif
     return TCL_OK;
 }
 
@@ -1482,14 +1432,7 @@ ctable_InsertNullIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void
 //
 int
 ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, int depth) {
-#ifdef LINKED_LIST
     struct ctable_baseRow *row;
-#else
-    Tcl_HashTable   *keyTablePtr = ctable->keyTablePtr;
-    Tcl_HashEntry   *hashEntry;
-    Tcl_HashSearch   hashSearch;
-    void            *row;
-#endif
 
     jsw_skip_t      *skip = ctable->skipLists[field];
 
@@ -1516,13 +1459,7 @@ ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, i
 
     // yes yes yet another walk through the hash table, in create index?!
     // gotta do it that way until skip lists are solid
-#ifdef LINKED_LIST
     CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
-#else
-    for (hashEntry = Tcl_FirstHashEntry (keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	row = Tcl_GetHashValue (hashEntry);
-#endif
-
         // NB do we really want to allow dups?  not necessarily, we need
 	// to be able to say.  but sometimes, definitely.  it's tricky.
 	// punt for now.

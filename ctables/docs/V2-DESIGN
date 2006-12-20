@@ -1,0 +1,30 @@
+
+
+
+Ctable 2 takes lessons learned from Ctable 1.
+
+A bunch of things that are custom-generated in Ctable 1 will not be custom-generated in Ctable 2.
+
+Ctable 2 will generate, for each table type...
+
+   a search compare routine.
+
+   a sort compare routine.
+
+   A routine to get a field's value into an object based on a row pointer and field number.
+
+A routine to create a tab-separated DString from a row pointer and a list of fields.
+
+A routine to fetch all the values in a row into a Tcl list.
+
+A routine to fetch all the field names and values in a row into a Tcl list.
+
+A routine to fetch all the non-null field names and values in a row into a Tcl list.
+
+A routine to lappend a field name and value to a destination list given a row pointer and a field.
+
+A routine to lappend a field name and value to a destination list given a row pointer and a field if the field is not null.
+
+Most/all of the rest of the capabilities will be built up without resorting to generating code.
+
+

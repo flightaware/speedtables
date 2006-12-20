@@ -1,6 +1,14 @@
 
 $Id$
 
+12/20/2006 karl
+    * Factor common code for writing tab-separated field names into a
+      new function, ctable_WriteFieldNames.
+
+    * Remove conditional compliation of new-style linked list traversal
+      in search versus old-style hashtable traversal -- we're fully
+      committed to the higher-performing linked list traversal now.
+
 12/19/2006 karl
     * Proceduralize generating index inserting and deleting code and
       don't generate it for a field when an index isn't defined on that

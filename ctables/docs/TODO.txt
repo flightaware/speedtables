@@ -85,4 +85,9 @@ checked and called forward again should the returned thing have an error.
 
 If it gets another error on the same column, then it'll error out.
 
+Add a bytearray object.
 
+Perhaps limit strings to 64K bytes to use shorts for the length and allocated
+length.
+
+Make skip lists support enforcement of unique constraint as they used to.
