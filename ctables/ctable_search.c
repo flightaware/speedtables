@@ -452,14 +452,9 @@ ctable_WriteFieldNames (Tcl_Interp *interp, struct ctableTable *ctable, struct c
 //    taking the action
 //
 //
-#define LINKED_LIST
-
 static int
 ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, int count) {
     Tcl_HashEntry   *hashEntry;
-#ifndef LINKED_LIST
-    Tcl_HashSearch   hashSearch;
-#endif
     char            *key;
 
     int              compareResult;
@@ -508,9 +503,6 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	//
 	// run the supplied compare routine
 	//
-#ifndef LINKED_LIST
-	row = Tcl_GetHashValue (hashEntry);
-#endif
 	compareResult = (*ctable->creatorTable->search_compare) (interp, search, (void *)row, 0);
 	if (compareResult == TCL_CONTINUE) {
 	    continue;
