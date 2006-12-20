@@ -10,16 +10,12 @@
 
 source nametest-extension.tcl
 
+source cputime.tcl
+
 puts "creating index on the fly this time"
 n index create name
 
-source name-data.tcl
-
-#source cputime.tcl
-proc cputime {x} {
-    return [time $x]
-}
-
+puts [cputime {source name-data.tcl}]
 
 proc test1 {} {
     puts "matching *lehenbauer*"

@@ -4,7 +4,13 @@
 #
 #
 
-package require BSD
+if {[catch {package require BSD}] == 1} {
+
+proc cputime {x} {
+    return [time $x]
+}
+
+} else {
 
 proc cputime {code {iterations 1}} {
     set startRusage [::bsd::rusage]
@@ -27,3 +33,4 @@ proc cputime {code {iterations 1}} {
     return [string range $text 3 end]
 }
 
+}

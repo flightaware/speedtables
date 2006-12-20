@@ -12,6 +12,10 @@ $Id$
     * Fix bug with -key in search+ where, when emitting a list of
       field names, we don't include the "_key" pseudofield.
 
+    * Make bigtests use the BSD extension to calculate actual elapsed
+      system and user time, if available, and fall back to using
+      Tcl's "time" command if that extension is unavailable.
+
 12/19/2006 karl
     * Proceduralize generating index inserting and deleting code and
       don't generate it for a field when an index isn't defined on that
