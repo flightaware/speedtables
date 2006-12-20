@@ -617,37 +617,43 @@ set boolCompSource {
 #
 set numberCompSource {
         case $fieldEnum: {
-	  $typeText compValue = 0;
-
 	  if (row->_${field}IsNull) $standardCompNullCheckSource
-	  if ($getObjCmd (interp, compareObj, &compValue) == TCL_ERROR) {
-	      return TCL_ERROR;
-	  }
 
           switch (compType) {
 	    case CTABLE_COMP_LT:
-	        exclude = !(row->$field < compValue);
+	        exclude = !(row->$field < row1->$field);
 		break;
 
 	    case CTABLE_COMP_LE:
-	        exclude = !(row->$field <= compValue);
+	        exclude = !(row->$field <= row1->$field);
 		break;
 
 	    case CTABLE_COMP_EQ:
-	        exclude = !(row->$field == compValue);
+	        exclude = !(row->$field == row1->$field);
 		break;
 
 	    case CTABLE_COMP_NE:
-	        exclude = !(row->$field != compValue);
+	        exclude = !(row->$field != row1->$field);
 		break;
 
 	    case CTABLE_COMP_GE:
-	        exclude = !(row->$field >= compValue);
+	        exclude = !(row->$field >= row1->$field);
 		break;
 
 	    case CTABLE_COMP_GT:
-	        exclude = !(row->$field > compValue);
+	        exclude = !(row->$field > row1->$field);
 		break;
+
+	    case CTABLE_COMP_TRUE:
+	        exclude = (!row->$field);
+		break;
+
+	    case CTABLE_COMP_FALSE:
+	        exclude = row->$field;
+		break;
+
+	    default:
+	        panic ("compare type %d not implemented for field ${field}");
 	  }
 	  break;
         }
@@ -728,7 +734,7 @@ set varstringCompSource {
 		  char *field;
 		  char *match;
 
-		  for (field = row->$field, match = component->comparedToString; *match != '*' && *match != '\0'; match++, field++) {
+		  for (field = row->$field, match = row1->$field; *match != '*' && *match != '\0'; match++, field++) {
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
 			      exclude = wantMatch;
@@ -747,7 +753,7 @@ set varstringCompSource {
 		  if (!wantMatch) exclude = !exclude;
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
-	          exclude = !(Tcl_StringCaseMatch (row->$field, component->comparedToString, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
+	          exclude = !(Tcl_StringCaseMatch (row->$field, row1->$field, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
 		  if (!wantMatch) exclude = !exclude;
 		  break;
               } else {
@@ -755,7 +761,7 @@ set varstringCompSource {
 	      }
 	  }
 
-          strcmpResult = strcmp (row->$field, component->comparedToString);
+          strcmpResult = strcmp (row->$field, row1->$field);
 	  $standardCompSwitchSource
         }
 }
@@ -769,7 +775,7 @@ set fixedstringCompSource {
           int     strcmpResult;
 
 	  if (row->_${field}IsNull) $standardCompNullCheckSource
-          strcmpResult = strncmp (row->$field, component->comparedToString, $length);
+          strcmpResult = strncmp (row->$field, row1->$field, $length);
 	  $standardCompSwitchSource
         }
 }
@@ -780,13 +786,10 @@ set fixedstringCompSource {
 #
 set binaryDataCompSource {
         case $fieldEnum: {
-	  unsigned char   *value;
           int              strcmpResult;
-	  int              byteArrayLength;
 
 	  if (row->_${field}IsNull) $standardCompNullCheckSource
-	  value = Tcl_GetByteArrayFromObj (compareObj, &byteArrayLength);
-          strcmpResult = memcmp ((void *)&row->$field, (void *)value, $length);
+          strcmpResult = memcmp ((void *)&row->$field, (void *)&row1->$field, $length);
 	  $standardCompSwitchSource
         }
 }
@@ -805,7 +808,7 @@ set tclobjCompSource {
           int      strcmpResult;
 
 	  if (row->_${field}IsNull) $standardCompNullCheckSource
-          strcmpResult = strcmp (Tcl_GetString (row->$field), component->comparedToString);
+          strcmpResult = strcmp (Tcl_GetString (row->$field), Tcl_GetString (row1->$field));
 	  $standardCompSwitchSource
         }
 }
@@ -3143,13 +3146,14 @@ int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searc
     int              i;
     int              exclude = 0;
     int              compType;
-    Tcl_Obj         *compareObj;
     struct ctableSearchComponentStruct *component;
+    struct $table *row1;
 
     for (i = firstComponent; i < searchControl->nComponents; i++) $leftCurly
       component = &searchControl->components[i];
+
+      row1 = (struct $table *)component->row1;
       compType = component->comparisonType;
-      compareObj = component->comparedToObject;
 
       switch (component->fieldID) $leftCurly
 }

@@ -231,9 +231,6 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 	component->row2 = NULL;
 
 	if (term == CTABLE_COMP_FALSE || term == CTABLE_COMP_TRUE || term == CTABLE_COMP_NULL || term == CTABLE_COMP_NOTNULL) {
-	    component->comparedToObject = NULL;
-	    component->comparedToString = NULL;
-	    component->comparedToStringLength = 0;
 	    if (termListCount != 2) {
 		Tcl_AppendResult (interp, "false, true, null and notnull search expressions must have only two fields", (char *) NULL);
 		goto err;
@@ -246,8 +243,6 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 4 arguments (term, field, lowValue, highValue)", (char *) NULL);
 		    goto err;
 		}
-		component->comparedToObject = termList[2];
-
 		row = (*ctable->creatorTable->make_empty_row) ();
 		if ((*ctable->creatorTable->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 		    goto err;
@@ -260,36 +255,38 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 		}
 		component->row2 = row;
 
+		continue;
+
 	    } else if (termListCount != 3) {
 		Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 3 arguments (term, field, value)", (char *) NULL);
 		goto err;
 	    }
 
-	    /* stash this as a string, we could be smarter - we should
-	     * be smarter with a union and figure it out for the
-	     * data types that'll be lookin' for it
-	     * NB this could cause unnecessary tcl object shimmering,
-	     * needs a close look
-	     */
-	    component->comparedToObject = termList[2];
-	    component->comparedToString = Tcl_GetStringFromObj (component->comparedToObject, &component->comparedToStringLength);
-
 	    if ((term == CTABLE_COMP_MATCH) || (term == CTABLE_COMP_NOTMATCH) || (term == CTABLE_COMP_MATCH_CASE) || (term == CTABLE_COMP_NOTMATCH_CASE)) {
 		struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct *)ckalloc (sizeof (struct ctableSearchMatchStruct));
 
-		sm->type = ctable_searchMatchPatternCheck (Tcl_GetString (component->comparedToObject));
+		sm->type = ctable_searchMatchPatternCheck (Tcl_GetString (termList[2]));
 		sm->nocase = ((term == CTABLE_COMP_MATCH) || (term == CTABLE_COMP_NOTMATCH));
 
 		if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
 		    char *needle;
 		    int len;
 
-		    needle = Tcl_GetStringFromObj (component->comparedToObject, &len);
+		    needle = Tcl_GetStringFromObj (termList[2], &len);
 		    boyer_moore_setup (sm, (unsigned char *)needle + 1, len - 2, sm->nocase);
 		}
 
 		component->clientData = sm;
 	    }
+	    void *row;
+
+	    /* stash what we want to compare to into a row as in "range"
+	     */
+	    row = (*ctable->creatorTable->make_empty_row) ();
+	    if ((*ctable->creatorTable->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+		goto err;
+	    }
+	    component->row1 = row;
 	}
     }
 
@@ -720,10 +717,25 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     // if we don't have a tailored walk, see if we have any skip list
     // we can use
     if (!tailoredWalk) {
-	skip = NULL;
-        for (field= 0; field < creatorTable->nFields; field++) {
-	    if ((skip = ctable->skipLists[field]) != NULL) {
+        int i;
+
+	// find the first index used in any search expression from left to right
+	for (i = 0; i < search->nComponents; i++) {
+	    struct ctableSearchComponentStruct *component = &search->components[i];
+
+	    if ((skip = ctable->skipLists[component->fieldID]) != NULL) {
+	        // printf("not tailored walk, found index on field %d\n", component->fieldID);
 	        break;
+	    }
+	}
+
+        // no relevant skip list?  see if we can find any 
+	if (skip == NULL) {
+	    for (field= 0; field < creatorTable->nFields; field++) {
+		if ((skip = ctable->skipLists[field]) != NULL) {
+		    // printf("not tailored walk, found arbitrary index on field %d\n", field);
+		    break;
+		}
 	    }
 	}
     }

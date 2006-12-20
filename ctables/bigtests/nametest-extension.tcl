@@ -6,7 +6,8 @@
 
 package require ctable
 
-set ::ctable::showCompilerCommands 1
+#set ::ctable::showCompilerCommands 1
+#set ::ctable::genCompilerDebug 1
 
 CExtension nametest 1.0 {
 

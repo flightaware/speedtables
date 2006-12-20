@@ -136,12 +136,9 @@ struct ctableSearchMatchStruct {
 // ctable search component struct - one for each search expression in a
 // ctable search
 struct ctableSearchComponentStruct {
-    Tcl_Obj        *comparedToObject;
-    char           *comparedToString;
     void           *clientData;
     void           *row1;
     void           *row2;
-    int             comparedToStringLength;
     int             fieldID;
     int             comparisonType;
 };

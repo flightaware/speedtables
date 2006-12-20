@@ -13,6 +13,12 @@ $Id$
       purpose comparison routines, i.e. with expression booleans other than 
       the implicit "and".
 
+    * Make the search routine construct a row and store the field it wants
+      to compare against into the row with the standard functions, then
+      pass that special row to the comparison routine and clean up aftewards.
+      It's faster and it makes mac and inet types be searchable, rangeable,
+      etc.
+
     * Factor common code for writing tab-separated field names into a
       new function, ctable_WriteFieldNames.
 
