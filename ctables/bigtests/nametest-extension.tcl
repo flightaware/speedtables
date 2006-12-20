@@ -6,6 +6,8 @@
 
 package require ctable
 
+set ::ctable::showCompilerCommands 1
+
 CExtension nametest 1.0 {
 
 CTable nameTable {

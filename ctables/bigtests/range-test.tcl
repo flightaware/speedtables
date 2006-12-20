@@ -14,10 +14,7 @@ n index create longitude
 
 source name-data.tcl
 
-#source cputime.tcl
-proc cputime {x} {
-    return [time $x]
-}
+source cputime.tcl
 
 
 proc test1 {} {
@@ -26,7 +23,7 @@ proc test1 {} {
     puts [n search -compare {{>= longitude -95.57} {< longitude -95.56} {>= latitude 29.76} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test1]
+puts [cputime test1]
 
 proc test2 {} {
     puts "matching lon/lat box -95.57 to -95.56, 29.76 to 29.77 with search+"
@@ -34,7 +31,7 @@ proc test2 {} {
     puts [n search+ -compare {{>= longitude -95.57} {< longitude -95.56} {>= latitude 29.76} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test2]
+puts [cputime test2]
 
 proc test3 {} {
     puts "ranging lon, lon/lat box -95.57 to -95.56, 29.76 to 29.77 with search+"
@@ -42,7 +39,7 @@ proc test3 {} {
     puts [n search+ -compare {{range longitude -95.57 -95.56} {>= latitude 29.76} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test3]
+puts [cputime test3]
 
 
 proc test4 {} {
@@ -51,7 +48,7 @@ proc test4 {} {
     puts [n search -compare {{>= longitude -95.575} {< longitude -95.56} {>= latitude 29.765} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test4]
+puts [cputime test4]
 
 proc test5 {} {
     puts "matching lon/lat box -95.575 to -95.56, 29.765 to 29.77, with search+"
@@ -59,7 +56,7 @@ proc test5 {} {
     puts [n search+ -compare {{>= longitude -95.575} {< longitude -95.56} {>= latitude 29.765} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test5]
+puts [cputime test5]
 
 proc test6 {} {
     puts "ranging lon/lat box -95.575 to -95.56, 29.765 to 29.77, with search+"
@@ -67,7 +64,7 @@ proc test6 {} {
     puts [n search+ -compare {{range longitude -95.575 -95.56} {>= latitude 29.765} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test6]
+puts [cputime test6]
 
 
 proc test7 {} {
@@ -76,7 +73,7 @@ proc test7 {} {
     puts [n search -compare {{>= longitude -95.579} {< longitude -95.56} {>= latitude 29.769} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test7]
+puts [cputime test7]
 
 proc test8 {} {
     puts "matching lon/lat box -95.579 to -95.56, 29.769 to 29.77, with search+"
@@ -84,7 +81,7 @@ proc test8 {} {
     puts [n search+ -compare {{>= longitude -95.579} {< longitude -95.56} {>= latitude 29.769} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test8]
+puts [cputime test8]
 
 proc test9 {} {
     puts "ranging lon/lat box -95.579 to -95.56, 29.769 to 29.77, with search+"
@@ -92,7 +89,7 @@ proc test9 {} {
     puts [n search+ -compare {{range longitude -95.579 -95.56} {>= latitude 29.769} {< latitude 29.77}} -countOnly 1]
 }
 
-puts [time test9]
+puts [cputime test9]
 
 
 proc test10 {} {
@@ -101,7 +98,7 @@ proc test10 {} {
     puts [n search+ -compare {{>= longitude -95.579} {< longitude -95.56} {>= latitude 29.769} {< latitude 29.77}} -write_tabsep stdout -limit 10]
 }
 
-puts [time test10]
+puts [cputime test10]
 
 proc test11 {} {
     puts "ranging lon/lat box -95.579 to -95.56, 29.769 to 29.77, with search+ limit 10"
@@ -109,7 +106,7 @@ proc test11 {} {
     puts [n search+ -compare {{range longitude -95.579 -95.56} {>= latitude 29.769} {< latitude 29.77}} -write_tabsep stdout -limit 10]
 }
 
-puts [time test11]
+puts [cputime test11]
 
 
 proc test12 {} {
@@ -118,7 +115,7 @@ proc test12 {} {
     puts [n search -compare {{>= longitude -95.57} {< longitude -95.5695}} -countOnly 1]
 }
 
-puts [time test12]
+puts [cputime test12]
 
 proc test13 {} {
     puts "search+ with range counting lon -95.57 to -95.5695"
@@ -126,6 +123,6 @@ proc test13 {} {
     puts [n search+ -compare {{range longitude -95.57 -95.5695}} -countOnly 1]
 }
 
-puts [time test13]
+puts [cputime test13]
 
 
