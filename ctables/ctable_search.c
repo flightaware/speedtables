@@ -398,7 +398,8 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 //   the specified channel, tab-separated
 //
 //
-ctable_WriteFieldNames (Tcl_Interp *interp, struct ctableSearchStruct *search)
+static int
+ctable_WriteFieldNames (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search)
 {
     int i;
     Tcl_DString     dString;
@@ -472,7 +473,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     }
 
     if (search->writingTabsepIncludeFieldNames) {
-	ctable_WriteFieldNames (interp, search);
+	ctable_WriteFieldNames (interp, ctable, search);
     }
 
     // if we're sorting, allocate a space for the search results that
@@ -663,7 +664,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     }
 
     if (search->writingTabsepIncludeFieldNames) {
-	ctable_WriteFieldNames (interp, search);
+	ctable_WriteFieldNames (interp, ctable, search);
     }
 
     // if we're sorting, allocate a space for the search results that
