@@ -416,8 +416,12 @@ ctable_WriteFieldNames (Tcl_Interp *interp, struct ctableTable *ctable, struct c
 	fields = search->retrieveFields;
     }
 
+    if (!search->noKeys) {
+        Tcl_DStringAppend (&dString, "_key", 4);
+    }
+
     for (i = 0; i < nFields; i++) {
-	if (i != 0) {
+	if (!search->noKeys || i != 0) {
 	    Tcl_DStringAppend(&dString, "\t", 1);
 	}
 
