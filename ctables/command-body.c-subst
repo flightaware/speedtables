@@ -471,11 +471,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_INDEX: {
-	static CONST char *subOptions[] = {"count", "create", "drop", "indexable", "indexed", "list", "dump", (char *)NULL};
+	static CONST char *subOptions[] = {"span", "count", "create", "drop", "indexable", "indexed", "list", "dump", (char *)NULL};
 	int                suboptIndex;
 	int                fieldNum;
 
-	enum suboptions {SUBOPT_COUNT, SUBOPT_CREATE, SUBOPT_DROP, SUBOPT_INDEXABLE, SUBOPT_INDEXED, SUBOPT_LIST, SUBOPT_DUMP};
+	enum suboptions {SUBOPT_SPAN, SUBOPT_COUNT, SUBOPT_CREATE, SUBOPT_DROP, SUBOPT_INDEXABLE, SUBOPT_INDEXED, SUBOPT_LIST, SUBOPT_DUMP};
 
 	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "option ?args?");
@@ -487,6 +487,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	switch (suboptIndex) {
+	  case SUBOPT_SPAN: {
+	      if (objc != 4) {
+		Tcl_WrongNumArgs (interp, 3, objv, "fieldName");
+		return TCL_ERROR;
+	      }
+
+	      if (Tcl_GetIndexFromObj (interp, objv[3], ${table}_fields, "field", TCL_EXACT, &fieldNum) != TCL_OK) {
+		return TCL_ERROR;
+	      }
+
+	      return ctable_LappendIndexLowAndHi (interp, ctable, fieldNum);
+	  }
+
 	  case SUBOPT_COUNT: {
 	    if (objc != 4) {
 		Tcl_WrongNumArgs (interp, 3, objv, "fieldName");

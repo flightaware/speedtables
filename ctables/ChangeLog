@@ -2,6 +2,10 @@
 $Id$
 
 12/20/2006 karl
+    * Added new "index" method suboption, $ctable index span $fieldName,
+      which will return a list containing the lexically lowest index value
+      and lexically highest index value for the indexed field specified.
+
     * Added search comparisons "notmatch" and "notmatch_case", which are the 
       inverse of "match" and "match_case".  This will allow ctables to be a
       drop-in replacement for using the DIOdisplay package to create web stuff,

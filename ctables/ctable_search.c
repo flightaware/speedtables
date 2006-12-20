@@ -765,7 +765,6 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     compareFunction = creatorTable->fields[field]->compareFunction;
     indexNumber = creatorTable->fields[field]->indexNumber;
 
-
     for (; ((row = jsw_srow (skip)) != NULL); jsw_snext(skip)) {
 
     // curl = ((struct jsw_skip *)skip)->curl;
@@ -1481,6 +1480,38 @@ ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, i
 	    Tcl_DecrRefCount (utilityObj);
 	    return TCL_ERROR;
 	}
+    }
+
+    return TCL_OK;
+}
+
+int
+ctable_LappendIndexLowAndHi (Tcl_Interp *interp, struct ctableTable *ctable, int field) {
+    jsw_skip_t            *skip = ctable->skipLists[field];
+    struct ctable_baseRow *row;
+    Tcl_Obj               *resultObj = Tcl_GetObjResult (interp);
+
+    if (skip == NULL) {
+	Tcl_AppendResult (interp, "that field isn't indexed", (char *)NULL);
+	return TCL_ERROR;
+    }
+
+    jsw_sreset (skip);
+    row = jsw_srow (skip);
+
+    if (row == NULL) {
+        return TCL_OK;
+    }
+
+    if (ctable->creatorTable->lappend_field (interp, resultObj, row, ctable->creatorTable->fieldList[field]) == TCL_ERROR) {
+        return TCL_ERROR;
+    }
+
+    jsw_findlast (skip);
+    row = jsw_srow (skip);
+
+    if (ctable->creatorTable->lappend_field (interp, resultObj, row, ctable->creatorTable->fieldList[field]) == TCL_ERROR) {
+        return TCL_ERROR;
     }
 
     return TCL_OK;

@@ -230,6 +230,25 @@ void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, struct ctable_baseRow *row 
 }
 
 //
+// jsw_findlast - find a row with the lexically highest key in the table
+//
+inline 
+void *jsw_findlast ( jsw_skip_t *skip)
+{
+  jsw_node_t *p = skip->head;
+  size_t i;
+
+  for ( i = skip->curh; i < (size_t)-1; i-- ) {
+    while ( p->next[i] != NULL ) {
+      p = p->next[i];
+    }
+  }
+
+  skip->curl = p;
+  return p;
+}
+
+//
 // jsw_sinsert - insert row into the skip list if it's not already there
 //
 // forces there to be no duplicate row by failing if a matching row is found
@@ -445,3 +464,4 @@ jsw_snext ( jsw_skip_t *skip )
 {
   return ( skip->curl = skip->curl->next[0] ) != NULL;
 }
+
