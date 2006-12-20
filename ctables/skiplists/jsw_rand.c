@@ -29,6 +29,7 @@ void jsw_seed ( unsigned long s )
 }
 
 /* Mersenne Twister */
+inline
 unsigned long jsw_rand ( void )
 {
   unsigned long y, a;
