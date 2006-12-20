@@ -27,6 +27,7 @@
 #include <libpq-fe.h>
 #endif
 
+// these types must line up with ctableTypes in gentable.tcl
 enum ctable_types {
     CTABLE_TYPE_BOOLEAN,
     CTABLE_TYPE_FIXEDSTRING,
@@ -72,6 +73,8 @@ struct ctable_baseRow {
          var = tvar)
 
 // define ctable search comparison types
+// these terms must line up with the definition of searchTerms
+//  in function ctable_ParseSearch in file ctable_search.c
 #define CTABLE_COMP_FALSE 0
 #define CTABLE_COMP_TRUE 1
 #define CTABLE_COMP_NULL 2

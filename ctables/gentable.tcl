@@ -45,6 +45,8 @@ namespace eval ctable {
 
     set cvsID {#CTable generator ID: $Id$}
 
+// ctableTypes must line up with the enumerated typedef "ctable_types"
+// in ctable.h
     set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
 
     set reservedWords "bool char short int long wide float double"
