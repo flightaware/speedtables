@@ -19,6 +19,9 @@ $Id$
     * Improve search performance by doing less pointer dereferencing
       and inlining some more stuff.
 
+    * Reordering structs to have pointers first produces a minor
+      speed improvement and less padding of C structures.
+
 12/19/2006 karl
     * Proceduralize generating index inserting and deleting code and
       don't generate it for a field when an index isn't defined on that

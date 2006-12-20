@@ -107,9 +107,9 @@ typedef int (*fieldCompareFunction_t) (const struct ctable_baseRow *row1, const 
 
 // ctable sort struct - this controls everything about a sort
 struct ctableSortStruct {
-    int nFields;
     int *fields;
     int *directions;
+    int nFields;
 };
 
 #define CTABLE_STRING_MATCH_ANCHORED 0
@@ -117,51 +117,57 @@ struct ctableSortStruct {
 #define CTABLE_STRING_MATCH_PATTERN 2
 
 struct ctableSearchMatchStruct {
-    int             type;
-    int             nocase;
-
     // boyer-moore stuff
     int            *skip;
+    unsigned char  *needle;
     int             occ[UCHAR_MAX+1];
     int             nlen;
-    unsigned char  *needle;
+
+    // universal stuff
+    int             type;
+    int             nocase;
 };
 
 // ctable search component struct - one for each search expression in a
 // ctable search
 struct ctableSearchComponentStruct {
-    int             fieldID;
-    int             comparisonType;
     Tcl_Obj        *comparedToObject;
     char           *comparedToString;
-    int             comparedToStringLength;
     void           *clientData;
     void           *row1;
     void           *row2;
+    int             comparedToStringLength;
+    int             fieldID;
+    int             comparisonType;
 };
 
 // ctable search struct - this controls everything about a search
 struct ctableSearchStruct {
     struct ctableTable                  *ctable;
-    int                                  nComponents;
     struct ctableSearchComponentStruct  *components;
+    char                                *pattern;
+    int                                 *retrieveFields;
 
+    Tcl_Obj                             *codeBody;
+    Tcl_Obj                             *varNameObj;
+    Tcl_Obj                             *keyVarNameObj;
+
+    // setting up these for the field_comp routines to go after the
+    // rows we want in skiplists
+    void                                 *row1;
+    void                                 *row2;
+
+    int                                  nComponents;
     int                                  countOnly;
     int                                  countMax;
     int                                  offset;
     int                                  limit;
 
-    char                                *pattern;
-
     struct ctableSortStruct              sortControl;
 
-    int                                 *retrieveFields;
     int                                  nRetrieveFields;
 
     int                                  noKeys;
-    Tcl_Obj                             *codeBody;
-    Tcl_Obj                             *varNameObj;
-    Tcl_Obj                             *keyVarNameObj;
     int                                  useArrayGet;
     int                                  useArrayGetWithNulls;
     int                                  useGet;
@@ -170,10 +176,6 @@ struct ctableSearchStruct {
     int                                  writingTabsep;
     int                                  writingTabsepIncludeFieldNames;
 
-    // setting up these for the field_comp routines to go after the
-    // rows we want in skiplists
-    void                                 *row1;
-    void                                 *row2;
 };
 
 struct ctableFieldInfo {
@@ -190,9 +192,6 @@ struct ctableCreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int  nextAutoCounter;
 
-    int                nFields;
-    int                nLinkedLists;
-
     CONST char       **fieldNames;
     Tcl_Obj          **nameObjList;
     int               *fieldList;
@@ -200,6 +199,9 @@ struct ctableCreatorTable {
     int               *fieldsThatNeedQuoting;
 
     struct ctableFieldInfo **fields;
+
+    int                nFields;
+    int                nLinkedLists;
 
     void *(*make_empty_row) ();
     int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, void *row, int field, int indexCtl);
@@ -223,12 +225,13 @@ struct ctableCreatorTable {
 struct ctableTable {
     struct ctableCreatorTable           *creatorTable;
     Tcl_HashTable                       *keyTablePtr;
-    Tcl_Command                          commandInfo;
-    long                                 count;
 
     jsw_skip_t                         **skipLists;
     struct ctable_baseRow               *ll_head;
+
     int                                  nLinkedLists;
+    Tcl_Command                          commandInfo;
+    long                                 count;
 };
 
 
