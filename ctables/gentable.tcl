@@ -45,8 +45,8 @@ namespace eval ctable {
 
     set cvsID {#CTable generator ID: $Id$}
 
-// ctableTypes must line up with the enumerated typedef "ctable_types"
-// in ctable.h
+    ## ctableTypes must line up with the enumerated typedef "ctable_types"
+    ## in ctable.h
     set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
 
     set reservedWords "bool char short int long wide float double"
@@ -714,12 +714,14 @@ set varstringCompSource {
 
 	  if (row->_${field}IsNull) $standardCompNullCheckSource
 
-	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE)) {
+	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH) || (compType == CTABLE_COMP_MATCH_CASE) || (compType == CTABLE_COMP_NOTMATCH_CASE)) {
 	      if (row->_${field}IsNull) {
 		  exclude = 1;
 		  break;
 	      }
 
+	      // wantMatch will be 1 if matching, 0 if not-matching
+	      int wantMatch = ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE));
 	      struct ctableSearchMatchStruct *sm = component->clientData;
 
 	      if (sm->type == CTABLE_STRING_MATCH_ANCHORED) {
@@ -729,12 +731,12 @@ set varstringCompSource {
 		  for (field = row->$field, match = component->comparedToString; *match != '*' && *match != '\0'; match++, field++) {
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
-			      exclude = 1;
+			      exclude = wantMatch;
 			      break;
 			  }
 		      } else {
 			  if (*field != *match) {
-			      exclude = 1;
+			      exclude = wantMatch;
 			      break;
 			  }
 		      }
@@ -742,9 +744,11 @@ set varstringCompSource {
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
 	          exclude = (boyer_moore_search (sm, (unsigned char *)row->$field, row->_${field}Length, sm->nocase) == NULL);
+		  if (!wantMatch) exclude = !exclude;
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
-	          exclude = !(Tcl_StringCaseMatch (row->$field, component->comparedToString, (compType == CTABLE_COMP_MATCH)));
+	          exclude = !(Tcl_StringCaseMatch (row->$field, component->comparedToString, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
+		  if (!wantMatch) exclude = !exclude;
 		  break;
               } else {
 		  panic ("software bug, sm->type unknown match type");

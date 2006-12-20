@@ -12,7 +12,7 @@ puts "loading data"
 puts [cputime {source name-data.tcl}]
 
 proc test1 {} {
-    puts "matching *lehenbauer*"
+    puts "matching *lehenbauer* (unanchored search)"
 
     n search -compare {{match name "*lehenbauer*"}} -write_tabsep stdout
 }
@@ -20,7 +20,7 @@ proc test1 {} {
 puts [cputime test1]
 
 proc test2 {} {
-    puts "matching *Sylvester*Bakerville*"
+    puts "matching *Sylvester*Bakerville* (beyond unanchored search)"
 
     n search -compare {{match name "*Sylvester*Bakerville*"}} -write_tabsep stdout
 }
@@ -28,12 +28,68 @@ proc test2 {} {
 puts [cputime test2]
 
 proc test3 {} {
-    puts "matching *lehenbauer* count only"
+    puts "matching *lehenbauer* count only (unanchored)"
 
     puts [n search -compare {{match name "*lehenbauer*"}} -countOnly 1]
 }
 
 puts [cputime test3]
+
+proc test3a {} {
+    puts "notmatching *lehenbauer* count only"
+
+    puts [n search -compare {{notmatch name "*lehenbauer*"}} -countOnly 1]
+}
+
+puts [cputime test3a]
+
+proc test3b {} {
+    puts "matching *bauer* count only"
+
+    puts [n search -compare {{match name "*bauer*"}} -countOnly 1]
+}
+
+puts [cputime test3b]
+
+proc test3b1 {} {
+    puts "notmatch *bauer* count only"
+
+    puts [n search -compare {{notmatch name "*bauer*"}} -countOnly 1]
+}
+
+puts [cputime test3b1]
+
+proc test3b2 {} {
+    puts "match_case *Bauer* count only"
+
+    puts [n search -compare {{match_case name "*Bauer*"}} -countOnly 1]
+}
+
+puts [cputime test3b2]
+
+proc test3b3 {} {
+    puts "notmatch_case *Bauer* count only"
+
+    puts [n search -compare {{notmatch_case name "*Bauer*"}} -countOnly 1]
+}
+
+puts [cputime test3b3]
+
+proc test3c {} {
+    puts "notcase_matching *Lehenbauer* count only"
+
+    puts [n search -compare {{notmatch_case name "*Lehenbauer*"}} -countOnly 1]
+}
+
+puts [cputime test3c]
+
+proc test3d {} {
+    puts "notcase_matching *lehenbauer* count only"
+
+    puts [n search -compare {{notmatch_case name "*lehenbauer*"}} -countOnly 1]
+}
+
+puts [cputime test3d]
 
 proc test4 {} {
     puts "\nmatching *Disney* count only"
@@ -83,6 +139,8 @@ proc test9 {} {
 }
 
 puts [cputime test9]
+
+
 
 # we don't normally need to destroy but it helps for memory debugging
 #n destroy

@@ -182,7 +182,7 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
     struct ctableSearchComponentStruct  *component;
     
     // these terms must line up with the CTABLE_COMP_* defines
-    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "match_case", "range", (char *)NULL};
+    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "notmatch", "match_case", "notmatch_case", "range", (char *)NULL};
 
     if (Tcl_ListObjGetElements (interp, componentListObj, &componentListCount, &componentList) == TCL_ERROR) {
         return TCL_ERROR;
@@ -274,11 +274,11 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 	    component->comparedToObject = termList[2];
 	    component->comparedToString = Tcl_GetStringFromObj (component->comparedToObject, &component->comparedToStringLength);
 
-	    if ((term == CTABLE_COMP_MATCH) || (term == CTABLE_COMP_MATCH_CASE)) {
+	    if ((term == CTABLE_COMP_MATCH) || (term == CTABLE_COMP_NOTMATCH) || (term == CTABLE_COMP_MATCH_CASE) || (term == CTABLE_COMP_NOTMATCH_CASE)) {
 		struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct *)ckalloc (sizeof (struct ctableSearchMatchStruct));
 
 		sm->type = ctable_searchMatchPatternCheck (Tcl_GetString (component->comparedToObject));
-		sm->nocase = (term == CTABLE_COMP_MATCH);
+		sm->nocase = ((term == CTABLE_COMP_MATCH) || (term == CTABLE_COMP_NOTMATCH));
 
 		if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
 		    char *needle;
@@ -1137,7 +1137,7 @@ ctable_TeardownSearch (struct ctableSearchStruct *search) {
 	struct ctableSearchComponentStruct  *component = &search->components[i];
 	if (component->clientData != NULL) {
 	    // this needs to be pluggable
-	    if ((component->comparisonType == CTABLE_COMP_MATCH) || (component->comparisonType == CTABLE_COMP_MATCH_CASE)) {
+	    if ((component->comparisonType == CTABLE_COMP_MATCH) || (component->comparisonType == CTABLE_COMP_NOTMATCH) || (component->comparisonType == CTABLE_COMP_MATCH_CASE) || (component->comparisonType == CTABLE_COMP_NOTMATCH_CASE)) {
 		struct ctableSearchMatchStruct *sm = component->clientData;
 		if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
 		    boyer_moore_teardown (sm);

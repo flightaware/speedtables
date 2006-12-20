@@ -86,8 +86,10 @@ struct ctable_baseRow {
 #define CTABLE_COMP_GE 8
 #define CTABLE_COMP_GT 9
 #define CTABLE_COMP_MATCH 10
-#define CTABLE_COMP_MATCH_CASE 11
-#define CTABLE_COMP_RANGE 12
+#define CTABLE_COMP_NOTMATCH 11
+#define CTABLE_COMP_MATCH_CASE 12
+#define CTABLE_COMP_NOTMATCH_CASE 13
+#define CTABLE_COMP_RANGE 14
 
 // when setting, incr'ing, read_tabsepping, etc, we can control at the
 // C level whether we want normal index behavior (if the field is
