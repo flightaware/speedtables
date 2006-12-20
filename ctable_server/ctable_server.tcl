@@ -195,7 +195,7 @@ proc remote_invoke {sock ctable line} {
 
     switch -glob -- $command {
 	search* {
-	    set cmd [linsert $remoteArgs 0 $myCtable search -write_tabsep $sock]
+	    set cmd [linsert $remoteArgs 0 $myCtable $command -write_tabsep $sock]
 #puts "search command '$cmd'"
 #puts "start multiline response"
 	    puts $sock "m"
