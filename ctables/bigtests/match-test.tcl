@@ -89,7 +89,21 @@ proc test3d {} {
     puts [n search -compare {{notmatch_case name "*lehenbauer*"}} -countOnly 1]
 }
 
-puts [cputime test3d]
+proc test3e {} {
+    puts "case_matching Karl* count only"
+
+    puts [n search -compare {{match_case name "Karl*"}} -countOnly 1]
+}
+
+puts [cputime test3e]
+
+proc test3f {} {
+    puts "notcase_matching Karl* count only"
+
+    puts [n search -compare {{notmatch_case name "Karl*"}} -countOnly 1]
+}
+
+puts [cputime test3f]
 
 proc test4 {} {
     puts "\nmatching *Disney* count only"

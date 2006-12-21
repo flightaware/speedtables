@@ -21,3 +21,4 @@ puts "case-matching *Tri*"
 t search -fields name -compare {{match_case name *Tri*}} -write_tabsep stdout
 puts ""
 
+

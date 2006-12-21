@@ -726,35 +726,39 @@ set varstringCompSource {
 		  break;
 	      }
 
-	      // wantMatch will be 1 if matching, 0 if not-matching
-	      int wantMatch = ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE));
+	      // matchMeansKeep will be 1 if matching means keep,
+	      // 0 if it means discard
+	      int matchMeansKeep = ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE));
 	      struct ctableSearchMatchStruct *sm = component->clientData;
 
 	      if (sm->type == CTABLE_STRING_MATCH_ANCHORED) {
 		  char *field;
 		  char *match;
 
+		  exclude = !matchMeansKeep;
 		  for (field = row->$field, match = row1->$field; *match != '*' && *match != '\0'; match++, field++) {
+		      // printf("comparing '%c' and '%c'\n", *field, *match);
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
-			      exclude = wantMatch;
+			      exclude = matchMeansKeep;
 			      break;
 			  }
 		      } else {
 			  if (*field != *match) {
-			      exclude = wantMatch;
+			      exclude = matchMeansKeep;
 			      break;
 			  }
 		      }
 		  }
+		  // if we got here it was anchored and we now know the score
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
 	          exclude = (boyer_moore_search (sm, (unsigned char *)row->$field, row->_${field}Length, sm->nocase) == NULL);
-		  if (!wantMatch) exclude = !exclude;
+		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
 	          exclude = !(Tcl_StringCaseMatch (row->$field, row1->$field, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
-		  if (!wantMatch) exclude = !exclude;
+		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
               } else {
 		  panic ("software bug, sm->type unknown match type");
