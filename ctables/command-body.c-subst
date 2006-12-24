@@ -20,6 +20,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, struct ctableTable *ctable) {
     }
 
     ctable->count = 0;
+    ctable->autoRowNumber = 0;
 
     return TCL_OK;
 }

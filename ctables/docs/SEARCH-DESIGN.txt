@@ -11,13 +11,13 @@ pointers equal to the number of elements in the ctable.
 We'll run our query, which will be a logical AND of comparisons against
 multiple fields.
 
-We'll also have, like trackstream, a countOnly option, an optional offset
+We'll also have, like trackstream, a countOnly option, and an optional offset
 and limit.
 
 We'll be able to sort the final table if we want to.
 
-generate search comparison routine for each field into the source ctable puts 
-out. 
+Generate a search comparison routine for each field into the source that
+ctable puts out. 
 
 The routines will take a pointer to a hashtable entries and an array of
 comparison structures identifying the field to be compared, the type
@@ -27,7 +27,8 @@ We'll then execute a callout on every match.
 
 when search is called:
 
-malloc an array of pointers to hashtable entries the size of the table.
+malloc an array of pointers to hashtable entries the size of the table, if
+sorting is required.
 
 walk the hashtable and fill the array of pointers.
 
@@ -35,6 +36,9 @@ invoke qsort
 
 iteratively callout to a specified function with each key as the argument,
 in turn.
+
+If sorting is not required, do not allocate the result, just process each
+matching row according to how search was invoked.
 
 API:
 

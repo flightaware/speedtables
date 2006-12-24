@@ -1103,7 +1103,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST ch
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, char *string, int *fieldIds, int nFields, int noKey, int recordNumber) {
+${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, char *string, int *fieldIds, int nFields, int noKey) {
     struct $table *row;
     char          *key;
     char          *field;
@@ -1115,7 +1115,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, char *
     if (!noKey) {
 	key = strsep (&string, "\t");
     } else {
-        sprintf (keyNumberString, "%d",recordNumber);
+        sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
 	key = keyNumberString;
     }
     row = ${table}_find_or_create (ctable, key, &indexCtl);
@@ -1167,7 +1167,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST ch
 	    *strPtr = c;
 	}
 
-	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, noKeys, recordNumber) == TCL_ERROR) {
+	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, noKeys) == TCL_ERROR) {
 	    char lineNumberString[32];
 
 	    Tcl_DecrRefCount (lineObj);

@@ -67,6 +67,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->creatorTable = row_head_tbl_ptr;
 	    ctable->keyTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
 	    ctable->count = 0;
+	    ctable->autoRowNumber = 0;
 
 	    // create an array of pointers to possible skip lists,
 	    // one per field

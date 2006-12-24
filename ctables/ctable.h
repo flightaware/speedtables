@@ -232,6 +232,7 @@ struct ctableTable {
     struct ctable_baseRow               *ll_head;
 
     int                                  nLinkedLists;
+    int                                  autoRowNumber;
     Tcl_Command                          commandInfo;
     long                                 count;
 };

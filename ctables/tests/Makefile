@@ -10,3 +10,5 @@ all:
 	tclsh8.4 incr-test.tcl
 	tclsh8.4 all-field-types.tcl
 	tclsh8.4 reset-test.tcl
+	tclsh8.4 tsv-nokey-tests.tcl
+	tclsh8.4 tsv-tests.tcl

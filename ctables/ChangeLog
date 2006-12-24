@@ -1,6 +1,11 @@
 
 $Id$
 
+12/23/2006 karl
+    * Made automatic row IDs (created when reading tabsep-data) not reset
+      upon subsequent read_tabsep, but do reset after "reset" method is
+      invoked.
+
 12/20/2006 karl
     * Added new "index" method suboption, $ctable index span $fieldName,
       which will return a list containing the lexically lowest index value
