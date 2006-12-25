@@ -2,6 +2,12 @@
 $Id$
 
 12/24/2006 karl
+    * During generation, set field definition key-value pairs into arrays 
+      named after the fields inside the ::ctable::fields namespace and access 
+      those via upvar rather than constantly array setting a local array
+      from the field definition key-value pairs.  It's cleaner and makes
+      generation faster.
+
     * Make "fields" generate the field list using Tcl objects of the field
       names that we already had laying around, rather than generating new
       ones from the field name strings.  Small optimization but there it was.

@@ -43,6 +43,8 @@ namespace eval ctable {
 
     set tables ""
 
+    namespace eval fields {}
+
     set cvsID {#CTable generator ID: $Id$}
 
     ## ctableTypes must line up with the enumerated typedef "ctable_types"
@@ -163,7 +165,7 @@ proc gen_null_check_during_set_source {table field} {
     variable nullCheckDuringSetSource
     variable fields
 
-    array set fieldInfo $fields($field)
+    upvar ::ctable::fields::$field fieldInfo
 
     if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
         return ""
@@ -191,7 +193,8 @@ proc gen_unset_null_during_set_source {table field} {
     variable unsetNullDuringSetSource
     variable fields
 
-    array set fieldInfo $fields($field)
+    upvar ::ctable::fields::$field fieldInfo
+
     if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
         return ""
     } else {
@@ -222,7 +225,7 @@ proc gen_ctable_remove_from_index {fieldName} {
     variable fields
     variable removeFromIndexSource
 
-    array set field $fields($fieldName)
+    upvar ::ctable::fields::$fieldName field
 
     if {[info exists field(indexed)] && $field(indexed)} {
         return $removeFromIndexSource
@@ -249,7 +252,7 @@ proc gen_ctable_insert_into_index {fieldName} {
     variable fields
     variable insertIntoIndexSource
 
-    array set field $fields($fieldName)
+    upvar ::ctable::fields::$fieldName field
 
     if {[info exists field(indexed)] && $field(indexed)} {
         return $insertIntoIndexSource
@@ -1237,6 +1240,8 @@ proc deffield {name argList} {
     }
 
     set fields($name) [linsert $argList 0 name $name]
+    array set ::ctable::fields::$name $fields($name)
+
     lappend fieldList $name
     lappend nonBooleans $name
 }
@@ -1255,6 +1260,7 @@ proc boolean {name args} {
     }
 
     set fields($name) [linsert $args 0 name $name type boolean]
+    array set ::ctable::fields::$name $fields($name)
 
     lappend fieldList $name
     lappend booleans $name
@@ -1417,8 +1423,7 @@ proc gen_defaults_subr {subr struct} {
     emit "        // $baseCopy._dirty = 1;"
 
     foreach myfield $fieldList {
-        unset -nocomplain field
-	array set field $fields($myfield)
+	upvar ::ctable::fields::$myfield field
 
 	switch $field(type) {
 	    varstring {
@@ -1506,8 +1511,7 @@ proc gen_delete_subr {subr struct} {
     emit "void ${subr}(struct $struct *row) {"
 
     foreach myfield $fieldList {
-        unset -nocomplain field
-	array set field $fields($myfield)
+	upvar ::ctable::fields::$myfield field
 
 	switch $field(type) {
 	    varstring {
@@ -1593,8 +1597,7 @@ proc determine_how_many_linked_lists_and_gen_field_index_table {} {
     set result "int ${table}_index_numbers\[\] = $leftCurly"
     set nLinkedLists 1
     foreach myfield $fieldList {
-        unset -nocomplain field
-	array set field $fields($myfield)
+	upvar ::ctable::fields::$myfield field
 
         # if the "indexed" field doesn't exist or is 0, skip it
         if {![info exists field(indexed)] || !$field(indexed)} {
@@ -1648,8 +1651,7 @@ proc gen_struct {} {
     putfield "struct ctable_linkedListNodeStruct"  "_ll_nodes\[$NLINKED_LISTS\]"
 
     foreach myfield $nonBooleans {
-        unset -nocomplain field
-	array set field $fields($myfield)
+	upvar ::ctable::fields::$myfield field
 
 	switch $field(type) {
 	    varstring {
@@ -1905,8 +1907,7 @@ proc gen_incrs {} {
     variable rightCurly
 
     foreach myfield $fieldList {
-        unset -nocomplain field
-	array set field $fields($myfield)
+	upvar ::ctable::fields::$myfield field
 
 	switch $field(type) {
 	    int {
@@ -1974,8 +1975,7 @@ proc gen_sets {} {
     variable rightCurly
 
     foreach myfield $fieldList {
-        unset -nocomplain field
-	array set field $fields($myfield)
+	upvar ::ctable::fields::$myfield field
 
 	switch $field(type) {
 	    int {
@@ -2219,9 +2219,9 @@ proc gen_setup_routine {table} {
     # also populate the *_NameObjList table
     #
     set position 0
-    foreach field $fieldList {
-	set nameObj ${table}_${field}NameObj
-        emit "    ${table}_NameObjList\[$position\] = $nameObj = Tcl_NewStringObj (\"$field\", -1);"
+    foreach fieldName $fieldList {
+	set nameObj ${table}_${fieldName}NameObj
+        emit "    ${table}_NameObjList\[$position\] = $nameObj = Tcl_NewStringObj (\"$fieldName\", -1);"
 	emit "    Tcl_IncrRefCount ($nameObj);"
 	emit ""
 	incr position
@@ -2239,8 +2239,7 @@ proc gen_setup_routine {table} {
     #
     emit "    // defaults for varstring objects, if any"
     foreach fieldName $fieldList {
-        unset -nocomplain field
-	array set field $fields($fieldName)
+	upvar ::ctable::fields::$fieldName field
 
 	if {$field(type) != "varstring"} continue
 	if {![info exists field(default)]} continue
@@ -2340,8 +2339,7 @@ proc gen_new_obj {type fieldName} {
 	}
 
 	varstring {
-	    unset -nocomplain field
-	    array set field $fields($fieldName)
+	    upvar ::ctable::fields::$fieldName field
 
 	    # if there's no default for the var string, the null pointer 
 	    # response is the null
@@ -2363,8 +2361,8 @@ proc gen_new_obj {type fieldName} {
 	}
 
 	fixedstring {
-	    unset -nocomplain field
-	    array set field $fields($fieldName)
+	    upvar ::ctable::fields::$fieldName field
+
 	    return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (row->$fieldName, $field(length))"
 	}
 
@@ -2439,8 +2437,8 @@ proc gen_get_set_obj {obj type fieldName} {
 	}
 
 	fixedstring {
-	    unset -nocomplain field
-	    array set field $fields($fieldName)
+	    upvar ::ctable::fields::$fieldName field
+
 	    return "Tcl_SetStringObj ($obj, row->$fieldName, $field(length))"
 	}
 
@@ -2499,8 +2497,7 @@ proc gen_list {} {
 
     set position 0
     foreach fieldName $fieldList {
-        unset -nocomplain field
-	array set field $fields($fieldName)
+	upvar ::ctable::fields::$fieldName field
 
 	set_list_obj $position $field(type) $fieldName
 
@@ -2534,8 +2531,7 @@ proc gen_keyvalue_list {} {
 
     set position 0
     foreach fieldName $fieldList {
-        unset -nocomplain field
-	array set field $fields($fieldName)
+	upvar ::ctable::fields::$fieldName field
 
 	emit "    listObjv\[$position] = ${table}_${fieldName}NameObj;"
 	incr position
@@ -2575,8 +2571,7 @@ proc gen_nonnull_keyvalue_list {} {
     emit ""
 
     foreach fieldName $fieldList {
-        unset -nocomplain field
-	array set field $fields($fieldName)
+	upvar ::ctable::fields::$fieldName field
 
 	emit "    obj = [gen_new_obj $field(type) $fieldName];"
 	emit "    if (obj != ${table}_NullValueObj) $leftCurly"
@@ -2627,8 +2622,7 @@ proc gen_field_names {} {
 
     set typeList "enum ctable_types ${table}_types\[\] = $leftCurly"
     foreach myField $fieldList {
-        unset -nocomplain field
-	array set field $fields($myField)
+	upvar ::ctable::fields::$myField field
 
 	append typeList "\n    [ctable_type_to_enum $field(type)],"
     }
@@ -2636,8 +2630,8 @@ proc gen_field_names {} {
 
     set needsQuoting "int ${table}_needs_quoting\[\] = $leftCurly"
     foreach myField $fieldList {
-        unset -nocomplain field
-	array set field $fields($myField)
+	upvar ::ctable::fields::$myField field
+
 	if {[info exists field(needsQuoting)] && $field(needsQuoting)} {
 	    set quoting 1
 	} else {
@@ -2665,8 +2659,7 @@ proc gen_field_names {} {
 
     emit "// define default objects for varstring fields, if any"
     foreach myField $fieldList {
-        unset -nocomplain field
-	array set field $fields($myField)
+	upvar ::ctable::fields::$myField field
 
 	if {$field(type) == "varstring" && [info exists field(default)]} {
 	    if {$field(default) != ""} {
@@ -2690,8 +2683,7 @@ proc gen_gets_cases {} {
     variable rightCurly
 
     foreach myField $fieldList {
-        unset -nocomplain field
-	array set field $fields($myField)
+	upvar ::ctable::fields::$myField field
 
 	emit "      case [field_to_enum $myField]:"
 	emit "        return [gen_new_obj $field(type) $myField];"
@@ -2713,8 +2705,7 @@ proc gen_gets_string_cases {} {
     variable rightCurly
 
     foreach myField $fieldList {
-        unset -nocomplain field
-	array set field $fields($myField)
+	upvar ::ctable::fields::$myField field
 
 	emit "      case [field_to_enum $myField]:"
 
@@ -2899,7 +2890,7 @@ proc gen_field_comp {field} {
     variable boolFieldCompSource
     variable tclobjFieldCompSource
 
-    array set fieldData $fields($field)
+    upvar ::ctable::fields::$field fieldData
 
     switch $fieldData(type) {
 	int {
@@ -3069,8 +3060,8 @@ proc gen_sort_comp {} {
     variable tclobjSortSource
 
     foreach field $fieldList {
-        unset -nocomplain fieldData
-	array set fieldData $fields($field)
+	upvar ::ctable::fields::$field fieldData
+
 	set fieldEnum [field_to_enum $field]
 
 	switch $fieldData(type) {
@@ -3216,8 +3207,8 @@ proc gen_search_comp {} {
     set value sandbag
 
     foreach field $fieldList {
-        unset -nocomplain fieldData
-	array set fieldData $fields($field)
+	upvar ::ctable::fields::$field fieldData
+
 	set fieldEnum [field_to_enum $field]
 	set type $fieldData(type)
         set typeText $fieldData(type)
@@ -3548,6 +3539,10 @@ proc CExtension {name version code} {
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""
+
+    foreach var [info vars ::ctable::fields::*] {
+        unset -nocomplain $var
+    }
 
     if {[catch {namespace eval ::ctable $code} result] == 1} {
         set ::ctable::ctableErrorInfo $errorInfo
