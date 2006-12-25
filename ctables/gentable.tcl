@@ -1927,7 +1927,7 @@ proc gen_set_notnull_if_notnull {table fieldName} {
     if {[info exists field(notnull)] && $field(notnull)} {
         return ""
     } else {
-	return "row->_${field}IsNull = 0;"
+	return "row->_${fieldName}IsNull = 0;"
     }
 }
 
