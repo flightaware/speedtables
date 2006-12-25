@@ -2,6 +2,11 @@
 $Id$
 
 12/24/2006 karl
+    * When defining fields "notnull 1", avoid generating null checking
+      and comparing code, hardwire null search results, etc.
+      Major performance boost when fields are defined notnull, 5% - 50%
+      when searching, for instance.
+
     * During generation, set field definition key-value pairs into arrays 
       named after the fields inside the ::ctable::fields namespace and access 
       those via upvar rather than constantly array setting a local array

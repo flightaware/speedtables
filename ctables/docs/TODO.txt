@@ -1,6 +1,5 @@
 $Id$
 
-
 Make it work with UTF8 chars.
 
 Make sure the C source file and the
@@ -38,10 +37,12 @@ of tclConfig.sh.
 
 DONE Add an "incr" method.
 
-In search, make it store the native value being compared in a union in
+DONE In search, make it store the native value being compared in a union in
 the search component structure or something.  Compare that directly
 rather than repetitively digging it out with Tcl_GetIntFromObj or
 whatever, even though it's fast when it's native.
+(Even better, we generate a row and put what we want in the field via a
+standard *_set routine and possibly fiddle the null bit for the field.)
 
 fixed strings allocate one more character than requested
 
@@ -57,6 +58,9 @@ overhead.  Unacceptable.  At the very least do a bidirectionally linked
 list between rows in a table and traverse them that way.  (Hey, not bad.)
 Or go to fancy skip lists or whatever and traverse them that way.  Skip
 lists have easy and fast straight traversal.
+Turns out skip lists are slower to traverse than the hash tables, however
+we did implement the straight bidirectionally linked lists and it was a big
+win.  DONE
 
 Adopt TclX's test structure and make lots more tests.
 
@@ -91,3 +95,5 @@ Perhaps limit strings to 64K bytes to use shorts for the length and allocated
 length.
 
 Make skip lists support enforcement of unique constraint as they used to.
+
+
