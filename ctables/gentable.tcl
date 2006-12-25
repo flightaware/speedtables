@@ -675,6 +675,10 @@ proc gen_standard_comp_null_check_source {table fieldName} {
     }
 }
 
+#
+# standardCompSwitchSource -stuff that gets emitted in a number of compare
+#  routines we generate
+#
 set standardCompSwitchSource {
           switch (compType) {
 	    case CTABLE_COMP_LT:
@@ -700,8 +704,20 @@ set standardCompSwitchSource {
 	    case CTABLE_COMP_GT:
 	        exclude = !(strcmpResult > 0);
 		break;
+
+	    default:
+	        panic ("compare type %d not implemented for field \"${field}\"", compType);
 	  }
 	  break;
+}
+
+#
+# gen_standard_comp_switch_source - emit the standard compare source
+#
+proc gen_standard_comp_switch_source {field} {
+    variable standardCompSwitchSource
+
+    return [string range [subst -nobackslashes -nocommands $standardCompSwitchSource] 1 end-1]
 }
 
 #
@@ -766,7 +782,7 @@ set numberCompSource {
 		break;
 
 	    default:
-	        panic ("compare type %d not implemented for field ${field}");
+	        panic ("compare type %d not implemented for field \"${field}\"", compType);
 	  }
 	  break;
         }
@@ -823,7 +839,7 @@ set varstringCompSource {
 	  }
 
           strcmpResult = strcmp (row->$field, row1->$field);
-	  $standardCompSwitchSource
+[gen_standard_comp_switch_source $field]
         }
 }
 
@@ -837,7 +853,7 @@ set fixedstringCompSource {
 
 [gen_standard_comp_null_check_source $table $field]
           strcmpResult = strncmp (row->$field, row1->$field, $length);
-	  $standardCompSwitchSource
+[gen_standard_comp_switch_source $field]
         }
 }
 
@@ -851,7 +867,7 @@ set binaryDataCompSource {
 
 [gen_standard_comp_null_check_source $table $field]
           strcmpResult = memcmp ((void *)&row->$field, (void *)&row1->$field, $length);
-	  $standardCompSwitchSource
+[gen_standard_comp_switch_source $field]
         }
 }
 
@@ -870,7 +886,7 @@ set tclobjCompSource {
 
 [gen_standard_comp_null_check_source $table $field]
           strcmpResult = strcmp (Tcl_GetString (row->$field), Tcl_GetString (row1->$field));
-	  $standardCompSwitchSource
+[gen_standard_comp_switch_source $field]
         }
 }
 

@@ -1,6 +1,16 @@
 
 $Id$
 
+12/25/2006 karl
+    * Detect attempts to invoke comparison types that aren't implemented
+      for a given data type and panic rather than just make it do nothing.
+      Catches "range" compares that aren't the first element of a search+
+      as we have to rethink searching to implement "range".
+
+      Probably should be either made to work or detected and errored upon at 
+      search creation time -- we can't error out from a compare routine 
+      because there's no error return path -- they return -1, 0 or 1.
+
 12/24/2006 karl
     * When defining fields "notnull 1", avoid generating null checking
       and comparing code, hardwire null search results, etc.
