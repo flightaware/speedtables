@@ -136,11 +136,12 @@ struct ctableSearchMatchStruct {
 // ctable search component struct - one for each search expression in a
 // ctable search
 struct ctableSearchComponentStruct {
-    void           *clientData;
-    void           *row1;
-    void           *row2;
-    int             fieldID;
-    int             comparisonType;
+    void                    *clientData;
+    void                    *row1;
+    void                    *row2;
+    fieldCompareFunction_t   compareFunction;
+    int                      fieldID;
+    int                      comparisonType;
 };
 
 // ctable search struct - this controls everything about a search

@@ -2,6 +2,12 @@
 $Id$
 
 12/25/2006 karl
+    * When generating the search compare routine for a given table, use
+      the field compare routines without distinguishing the field type
+      if the comparison type is <, <=, =, !=, >, >= or "range".  This is
+      faster and makes range work when it isn't the first comparison routine 
+      with "search+" and under any circumstances with "search".
+
     * Detect attempts to invoke comparison types that aren't implemented
       for a given data type and panic rather than just make it do nothing.
       Catches "range" compares that aren't the first element of a search+

@@ -3352,17 +3352,71 @@ set searchCompareHeaderSource {
 // compare a row to a block of search components and see if it matches
 int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searchControl, void *vPointer, int firstComponent) $leftCurly
     struct $table *row = (struct $table *)vPointer;
-    int              i;
-    int              exclude = 0;
-    int              compType;
-    struct ctableSearchComponentStruct *component;
     struct $table *row1;
+
+    int                                 i;
+    int                                 exclude = 0;
+    int                                 compType;
+    struct ctableSearchComponentStruct *component;
 
     for (i = firstComponent; i < searchControl->nComponents; i++) $leftCurly
       component = &searchControl->components[i];
 
       row1 = (struct $table *)component->row1;
       compType = component->comparisonType;
+
+      switch (compType) {
+	case CTABLE_COMP_LT:
+	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) < 0) {
+	      continue;
+	  }
+	  return TCL_CONTINUE;
+
+	case CTABLE_COMP_LE:
+	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) <= 0) {
+	      continue;
+	  }
+	  return TCL_CONTINUE;
+
+	case CTABLE_COMP_EQ:
+	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) == 0) {
+	      continue;
+	  }
+	  return TCL_CONTINUE;
+
+	case CTABLE_COMP_NE:
+	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) != 0) {
+	      continue;
+	  }
+	  return TCL_CONTINUE;
+
+	case CTABLE_COMP_GE:
+	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) >= 0) {
+	      continue;
+	  }
+	  return TCL_CONTINUE;
+
+	case CTABLE_COMP_GT:
+	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) > 0) {
+	      continue;
+	  }
+	  return TCL_CONTINUE;
+
+        case CTABLE_COMP_RANGE: {
+	  struct $table *row2;
+
+	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) < 0) {
+	      return TCL_CONTINUE;
+	  }
+
+	  row2 = (struct $table *)component->row2;
+
+	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row2) >= 0) {
+	      return TCL_CONTINUE;
+	  }
+	  continue;
+	}
+      }
 
       switch (component->fieldID) $leftCurly
 }

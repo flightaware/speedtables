@@ -126,3 +126,12 @@ proc test13 {} {
 puts [cputime test13]
 
 
+proc test14 {} {
+    puts "search+ with range counting lon -95.57 to -95.5695 and second range"
+
+    puts [n search+ -compare {{range longitude -95.57 -95.5695} {range latitude 0 180}} -countOnly 1]
+}
+
+puts [cputime test14]
+
+

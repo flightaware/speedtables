@@ -229,6 +229,7 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 	component->clientData = NULL;
 	component->row1 = NULL;
 	component->row2 = NULL;
+	component->compareFunction = ctable->creatorTable->fields[field]->compareFunction;
 
 	if (term == CTABLE_COMP_FALSE || term == CTABLE_COMP_TRUE || term == CTABLE_COMP_NULL || term == CTABLE_COMP_NOTNULL) {
 	    if (termListCount != 2) {
