@@ -1,6 +1,11 @@
 
 $Id$
 
+12/24/2006 karl
+    * Make "fields" generate the field list using Tcl objects of the field
+      names that we already had laying around, rather than generating new
+      ones from the field name strings.  Small optimization but there it was.
+
 12/23/2006 karl
     * Made automatic row IDs (created when reading tabsep-data) not reset
       upon subsequent read_tabsep, but do reset after "reset" method is

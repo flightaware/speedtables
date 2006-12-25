@@ -89,3 +89,8 @@ search+_test "indexed range" {-compare {{range show A M}}} {meatwad shake fryloc
 
 search+_test "sorted search+ with offset 0 and limit 10" {-sort name -offset 0 -limit 10} {angel baron brak brock carr carl clarence rick dad dean}
 
+puts -nonewline "testing 'fields'..."
+if {[t fields] != {id name home show dad alive gender age coolness}} {
+    error "t fields expected to return {t fields id name home show dad alive gender age coolness}"
+}
+puts "ok"
