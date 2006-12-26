@@ -17,6 +17,10 @@ $Id$
       search creation time -- we can't error out from a compare routine 
       because there's no error return path -- they return -1, 0 or 1.
 
+    * Update docs.  Add the PDF files to CVS. A problem with how Pages 
+      works makes putting the Pages doc in CVS painful related to it
+      blowing away the CVS directories within itself.
+
 12/24/2006 karl
     * When defining fields "notnull 1", avoid generating null checking
       and comparing code, hardwire null search results, etc.
