@@ -9,9 +9,13 @@ package require ctable_net
 
 namespace eval ::ctable_server {
   variable registeredCtables
-  variable evalEnabled
+  variable evalEnabled 1
 
-  set evalEnabled 1
+#
+# Variables for "shutdown" command
+#
+  variable shuttingDown 0
+  variable clientList {}
 
 #
 # register - register a table for remote access
@@ -61,9 +65,25 @@ proc start_server {{port 11111}} {
 }
 
 #
+# shutdown_servers - close server sockets and flag the system to shut down
+#
+proc shutdown_servers {} {
+    variable portSockets
+    variable shuttingDown
+
+    foreach {port sock} [array get portSockets] {
+	close $sock
+	unset portSockets($port)
+    }
+    set shuttingDown 1
+}
+
+#
 # accept_connection - accept a client connection
 #
 proc accept_connection {sock ip port} {
+    variable clientList
+    lappend clientList $sock $ip $port
     serverlog "connect from $sock $ip $port"
 
     set theirPort [lindex [fconfigure $sock -sockname] 2]
@@ -84,8 +104,18 @@ proc remote_receive {sock myPort} {
     variable ctableUrlCache
 
     if {[eof $sock]} {
+	variable clientList
+	variable shuttingDown
+	set i [lsearch $clientList $sock]
+	if {$i >= 0} {
+	    set j [expr $i + 2]
+	    set clientList [lreplace $clientList $i $j {}]
+	}
 	serverlog "EOF on $sock, closing"
 	close $sock
+	if {$shuttingDown && [llength $clientList] == 0} {
+	    exit 0
+	}
 	return
     }
 
@@ -157,6 +187,10 @@ proc remote_invoke {sock ctable line} {
     ### puts "command '$command' ctable '$ctable' args '$remoteArgs'"
 
     switch $command {
+	"shutdown" {
+	    shutdown_servers
+	}
+
 	"quit" {
 	    close $sock
 	    error "quit" "" ctable_quit
