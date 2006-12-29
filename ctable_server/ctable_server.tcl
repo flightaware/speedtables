@@ -109,12 +109,17 @@ proc remote_receive {sock myPort} {
 	set i [lsearch $clientList $sock]
 	if {$i >= 0} {
 	    set j [expr $i + 2]
-	    set clientList [lreplace $clientList $i $j {}]
+	    set clientList [lreplace $clientList $i $j]
 	}
 	serverlog "EOF on $sock, closing"
 	close $sock
-	if {$shuttingDown && [llength $clientList] == 0} {
-	    exit 0
+	if {$shuttingDown} {
+	    if {[llength $clientList] == 0} {
+	        serverlog "All client sockets closed, shutting down"
+	        exit 0
+	    } else {
+		serverlog "Still waiting on [lrange $clientList 0 2] ([llength $clientList])..."
+	    }
 	}
 	return
     }
@@ -123,7 +128,14 @@ proc remote_receive {sock myPort} {
 	lassign $line ctableUrl line 
 
 	if {![info exists ctableUrlCache($ctableUrl)]} {
-	    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
+	    if [catch {
+	      lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
+	    } err] {
+	      serverlog "$ctableUrl: $err"; # $::errorInfo
+	      puts $sock [list e $err "" $::errorCode]
+	      flush $sock
+	      return
+	    }
 
 	    if {[info exists registeredCtableRedirects($table:$myPort)]} {
 #puts "sending redirect to $sock, $ctableUrl -> $registeredCtableRedirects($table:$myPort)"
