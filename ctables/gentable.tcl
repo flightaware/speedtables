@@ -2839,6 +2839,50 @@ proc gen_field_names {} {
     }
     emit ""
 
+    emit "// define field property list keys and values to allow introspection"
+
+    # do keys
+    foreach myfield $fieldList {
+	upvar ::ctable::fields::$myfield field
+
+	set propstring "char *${table}_${myfield}_propkeys\[] = $leftCurly"
+    
+	foreach fieldName [lsort [array names field]] {
+	    append propstring "\"$fieldName\", "
+	}
+	emit "${propstring}(char *)NULL$rightCurly;"
+    }
+    emit ""
+
+    set propstring "static char **${table}_propKeys\[] = $leftCurly"
+    foreach myfield $fieldList {
+        append propstring "${table}_${myfield}_propkeys,"
+    }
+    emit "[string range $propstring 0 end-1]$rightCurly;"
+    emit ""
+    # end of keys
+
+    # do values, replica of keys, needs to be collapsed
+    foreach myfield $fieldList {
+	upvar ::ctable::fields::$myfield field
+
+	set propstring "char *${table}_${myfield}_propvalues\[] = $leftCurly"
+    
+	foreach fieldName [lsort [array names field]] {
+	    append propstring "\"$field($fieldName)\", "
+	}
+	emit "${propstring}(char *)NULL$rightCurly;"
+    }
+    emit ""
+
+    set propstring "static char **${table}_propValues\[] = $leftCurly"
+    foreach myfield $fieldList {
+        append propstring "${table}_${myfield}_propvalues,"
+    }
+    emit "[string range $propstring 0 end-1]$rightCurly;"
+    emit ""
+    # end of values
+
     emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
     emit ""
 

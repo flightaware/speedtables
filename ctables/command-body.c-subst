@@ -33,9 +33,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     Tcl_HashEntry *hashEntry;
     int indexCtl;
 
-    static CONST char *options[] = {"get", "set", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "search", "search+", "type", "import_postgres_result", "fields", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH};
+    enum options {OPT_GET, OPT_SET, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH};
 
     if (objc == 1) {
         Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
@@ -91,6 +91,87 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 
 	  return TCL_OK;
+      }
+
+      case OPT_FIELD: {
+	static CONST char *subOptions[] = {"getprop", "properties", "proplist", (char *)NULL};
+	int                      suboptIndex;
+	int                      fieldNum;
+	int                      propIndex;
+        struct ctableFieldInfo  *f;
+      Tcl_Obj                   *resultObj = Tcl_GetObjResult (interp);
+
+	enum suboptions {SUBOPT_GETPROP, SUBOPT_PROPERTIES, SUBOPT_PROPLIST};
+
+	if ((objc < 4) || (objc > 5)) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "fieldName opt ?arg?");
+	    return TCL_ERROR;
+	}
+
+        if (Tcl_GetIndexFromObj (interp, objv[2], ${table}_fields, "field", TCL_EXACT, &fieldNum) != TCL_OK) {
+	  return TCL_ERROR;
+        }
+
+	if (Tcl_GetIndexFromObj (interp, objv[3], subOptions, "suboption", TCL_EXACT, &suboptIndex) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+
+        f = ctable->creatorTable->fields[fieldNum];
+
+	switch (suboptIndex) {
+
+	  case SUBOPT_GETPROP: {
+	    if (objc != 5) {
+	      Tcl_WrongNumArgs (interp, 3, objv, "fieldName propName");
+	      return TCL_ERROR;
+	    }
+
+	    if (Tcl_GetIndexFromObj (interp, objv[4], (CONST char **)f->propKeys, "property", TCL_EXACT, &propIndex) != TCL_OK) {
+	        return TCL_ERROR;
+	    }
+
+	    Tcl_SetStringObj (resultObj, f->propValues[propIndex], -1);
+	    return TCL_OK;
+	  }
+
+	  case SUBOPT_PROPERTIES: {
+	      int i;
+
+	      if (objc != 4) {
+		Tcl_WrongNumArgs (interp, 3, objv, "fieldName");
+		return TCL_ERROR;
+	      }
+
+	      for (i = 0; f->propKeys[i] != NULL; i++) {
+		  if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (f->propKeys[i], -1)) == TCL_ERROR) {
+		      return TCL_OK;
+		  }
+	      }
+
+	      return TCL_OK;
+	  }
+
+	  case SUBOPT_PROPLIST: {
+	      int i;
+
+	      if (objc != 4) {
+		Tcl_WrongNumArgs (interp, 3, objv, "fieldName");
+		return TCL_ERROR;
+	      }
+
+	      for (i = 0; f->propKeys[i] != NULL; i++) {
+		  if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (f->propKeys[i], -1)) == TCL_ERROR) {
+		      return TCL_OK;
+	          }
+
+		  if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (f->propValues[i], -1)) == TCL_ERROR) {
+		      return TCL_OK;
+	          }
+	      }
+	      return TCL_OK;
+	  }
+        }
+	panic ("\"impossible\" path followed");
       }
 
       case OPT_FIELDTYPE: {

@@ -94,3 +94,83 @@ if {[t fields] != {id name home show dad alive gender age coolness}} {
     error "t fields expected to return {t fields id name home show dad alive gender age coolness}"
 }
 puts "ok"
+
+puts -nonewline "testing 'field'..."
+if {[catch {t field} result] == 1} {
+    if {$result == "wrong # args: should be \"t field fieldName opt ?arg?\""} {
+    } else {
+        puts $result
+    }
+} else {
+    error "should have gotten an error"
+}
+
+if {[catch {t field asdf} result] == 1} {
+    if {$result == "wrong # args: should be \"t field fieldName opt ?arg?\""} {
+    } else {
+        puts $result
+    }
+} else {
+    error "should have gotten an error"
+}
+
+if {[catch {t field alive} result] == 1} {
+    if {$result == "wrong # args: should be \"t field fieldName opt ?arg?\""} {
+    } else {
+        puts $result
+    }
+} else {
+    error "should have gotten an error"
+}
+
+if {[catch {t field alive asdf} result] == 1} {
+    if {$result == "bad suboption \"asdf\": must be getprop, properties, or proplist"} {
+    } else {
+        puts $result
+    }
+} else {
+    error "should have gotten an error"
+}
+
+if {[catch {t field alive proplist} result] == 1} {
+    error "didn't expect an error"
+} else {
+    if {$result != "default 1 name alive type boolean"} {
+       error "didn't get intended result"
+    }
+}
+
+if {[catch {t field alive properties} result] == 1} {
+    error "didn't expect an error"
+} else {
+    if {$result != "default name type"} {
+       error "didn't get intended result"
+    }
+}
+
+if {[catch {t field alive getprop} result] == 1} {
+    if {$result == "wrong # args: should be \"t field alive fieldName propName\""} {
+    } else {
+        puts $result
+    }
+} else {
+    error "should have gotten an error"
+}
+
+if {[catch {t field alive getprop type} result] == 1} {
+    error "didn't expect an error"
+} else {
+    if {$result != "boolean"} {
+       error "didn't get intended result"
+    }
+}
+
+if {[catch {t field alive getprop default} result] == 1} {
+    error "didn't expect an error"
+} else {
+    if {$result != "1"} {
+       error "didn't get intended result"
+    }
+}
+puts "ok"
+

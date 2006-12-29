@@ -96,4 +96,4 @@ length.
 
 Make skip lists support enforcement of unique constraint as they used to.
 
-
+Write the compiler debug flag into the stuff we see to see if anything got changed.

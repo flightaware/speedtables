@@ -65,6 +65,8 @@
 	f->needsQuoting = ${table}_needs_quoting[i];
 	f->compareFunction = ${table}_compare_functions[i];
 	f->indexNumber = ${table}_index_numbers[i];
+	f->propKeys = ${table}_propKeys[i];
+	f->propValues = (char **)${table}_propValues[i];
     }
 
     // make a field list -- sure it's a little hokey but it works with

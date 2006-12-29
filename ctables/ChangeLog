@@ -1,6 +1,14 @@
 
 $Id$
 
+12/28/2006 karl
+    * Maintain all the key-value pairs for each defined field and make them
+      accessible in ctable creator table structures via the per-field
+      ctableFieldInfo struct, one for property keys  and one for property 
+      values.  Also add "field" method to get properties, a key-value
+      property list, or the value of any field's property via stuff like
+      $ctable field $fieldName property $propName, etc.
+
 12/25/2006 karl
     * When generating the search compare routine for a given table, use
       the field compare routines without distinguishing the field type

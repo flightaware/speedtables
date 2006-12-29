@@ -184,6 +184,8 @@ struct ctableSearchStruct {
 struct ctableFieldInfo {
     CONST char              *name;
     Tcl_Obj                 *nameObj;
+    char                   **propKeys;
+    char                   **propValues;
     int                      number;
     enum ctable_types        type;
     int                      needsQuoting;

@@ -513,4 +513,12 @@ pointer being a pointer to the address of the previous node's (or header's)
 next pointer, we'd be able to know from inspection of our own row whether
 we were the only node or not.
 
+---
+
+How I ended up doing it, there's only one entry made into the skip list and
+a bidirecitonal linked list is used for the duplicates.  Each row has a
+pointer to its skip list header.  We could rewrite the linked list routines
+to get rid of that.
+
+When deleting the last row of a skip list node, we delete the skip list node.
 
