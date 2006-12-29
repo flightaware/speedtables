@@ -188,7 +188,11 @@ proc remote_invoke {sock ctable line} {
 
     switch $command {
 	"shutdown" {
-	    shutdown_servers
+	    return [shutdown_servers]
+	}
+
+	"redirect" {
+	    return [register_redirect $ctable [lindex $remoteArgs 0]]
 	}
 
 	"quit" {
