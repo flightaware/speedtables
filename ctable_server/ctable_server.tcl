@@ -44,9 +44,14 @@ proc register_redirect {ctableUrl redirectedToCtableUrl} {
     variable registeredCtableRedirects
 
     lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
+
+    register_redirect_ctable $table $port $redirectedToCtableUrl
+}
+
+proc register_redirect_ctable {table port redirectedToCtableUrl} {
     start_server $port
 
-    serverlog "register redirect table $table to $redirectedToCtableUrl"
+    serverlog "register_redirect_ctable $table:$port $redirectedToCtableUrl"
     set registeredCtableRedirects($table:$port) $redirectedToCtableUrl
 }
 
@@ -72,6 +77,7 @@ proc shutdown_servers {} {
     variable shuttingDown
 
     foreach {port sock} [array get portSockets] {
+	serverlog "Closing $sock on $port"
 	close $sock
 	unset portSockets($port)
     }
@@ -149,7 +155,7 @@ proc remote_receive {sock myPort} {
 	    set table $ctableUrlCache($ctableUrl)
 	}
 
-	if {[catch {remote_invoke $sock $table $line} result] == 1} {
+	if {[catch {remote_invoke $sock $table $line $myPort} result] == 1} {
 	    serverlog "$table: $result" \
 		"In ($sock) $ctableUrl $line"; # $::errorInfo
 	    # look at errorInfo if you want to know more, don't send it
@@ -187,7 +193,7 @@ proc instantiate {ctableCreator ctable} {
     return [$ctableCreator create $ctable]
 }
 
-proc remote_invoke {sock ctable line} {
+proc remote_invoke {sock ctable line port} {
     variable registeredCtables
     variable registeredCtableCreators
     variable evalEnabled
@@ -204,7 +210,15 @@ proc remote_invoke {sock ctable line} {
 	}
 
 	"redirect" {
-	    return [register_redirect $ctable [lindex $remoteArgs 0]]
+	    register_redirect_ctable $ctable $port [lindex $remoteArgs 0]
+            if {[info exists registeredCtables($ctable)]} {
+		$registeredCtables($ctable) destroy
+		unset registeredCtables($ctable)
+	    }
+	    if {[string match "-shut*" [lindex $remoteArgs 1]]} {
+		return [shutdown_servers]
+	    }
+	    return 1
 	}
 
 	"quit" {
@@ -233,7 +247,7 @@ proc remote_invoke {sock ctable line} {
 	}
 
 	"help" {
-	    return "quit; create tableCreator tableName; tablemakers; tables; or a ctable name"
+	    return "shutdown; redirect new_url ?-shutdown?; quit; create tableCreator tableName; tablemakers; tables; or a ctable command"
 	}
     }
 

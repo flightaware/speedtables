@@ -34,6 +34,41 @@ proc remote_ctable {cttpUrl localTableName} {
 }
 
 #
+# remote_ctable_destroy - destroy a remote ctable connection
+#
+proc remote_ctable_destroy {cttpUrl} {
+    variable ctableUrls
+    variable ctableLocalTableUrls
+
+    if [info exists ctableLocalTableUrls($cttpUrl)] {
+	rename $ctableLocalTableUrls($cttpUrl) ""
+	if [info exists ctableUrls($ctableLocalTableUrls($cttpUrl))] {
+	    unset ctableUrls($ctableLocalTableUrls($cttpUrl))
+	}
+	unset ctableLocalTableUrls($cttpUrl)
+    }
+    remote_ctable_cache_disconnect $cttpUrl
+}
+
+#
+# remote_ctable_cache_disconnect - disconnect from a remote ctable server
+#
+proc remote_ctable_cache_disconnect {cttpUrl {sock ""}} {
+    variable ctableSockets
+
+    if {[info exists ctableSockets($cttpUrl)]} {
+	close $ctableSockets($cttpUrl)
+	if {"$sock" == "$ctableSockets($cttpUrl)"} {
+	    set sock ""
+	}
+	unset ctableSockets($cttpUrl)
+    }
+    if {"$sock" != ""} {
+	close $sock
+    }
+}
+
+#
 # remote_ctable_connect - connect to a remote ctable server
 #
 proc remote_ctable_cache_connect {cttpUrl} {
@@ -70,7 +105,7 @@ proc remote_ctable_cache_connect {cttpUrl} {
 #
 # remote_ctable_send - send a command to a remote ctable server
 #
-proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""}} {
+proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redirect 1}} {
     variable ctableSockets
     variable ctableLocalTableUrls
 
@@ -84,7 +119,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""}} {
 	if {$i > 5} {
 	    error "unable to contact remote ctable at $cttpUrl"
 	}
-	catch {close $sock}
+        remote_ctable_cache_disconnect $cttpUrl $sock
 
 	set sock [remote_ctable_cache_connect $cttpUrl]
     }
@@ -102,10 +137,12 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""}} {
 	    }
 
 	    "r" {
+		if !$redirect {
+		    error "Redirected to [lindex $line 1]"
+		}
 #puts "redirect '$line'"
 #parray ctableLocalTableUrls
-		catch {close $sock}
-		unset ctableSockets($cttpUrl)
+		remote_ctable_cache_disconnect $cttpUrl $sock
 		set newCttpUrl [lindex $line 1]
 		if {[info exists ctableLocalTableUrls($cttpUrl)]} {
 		    set localTable $ctableLocalTableUrls($cttpUrl)
@@ -192,6 +229,15 @@ proc remote_ctable_invoke {localTableName level command} {
 
 #puts "cmd '$command', pairs '$body'"
 
+    # Have to handle "destroy" specially - don't pass to far end, just
+    # close the socket and destroy myself
+    if {"$cmd" == "destroy"} {
+	return [remote_ctable_destroy $cttpUrl]
+    }
+
+    # If the comand is "redirect" or "shutdown", don't follow redirects
+    set redirect [expr {"$cmd" == "redirect" || "$cmd" == "shutdown"}]
+
     # if it's search, take out args that will freak out the remote side
     if {$cmd == "search" || $cmd == "search+"} {
 	array set pairs $body
@@ -224,7 +270,7 @@ proc remote_ctable_invoke {localTableName level command} {
 #puts "new actions is [array get actions]"
     }
 
-    return [remote_ctable_send $cttpUrl [linsert $body 0 $cmd] [array get actions] $level]
+    return [remote_ctable_send $cttpUrl [linsert $body 0 $cmd] [array get actions] $level $redirect]
 }
 
 package provide ctable_client 1.0
