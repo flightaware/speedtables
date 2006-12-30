@@ -41,12 +41,14 @@ proc remote_ctable_destroy {cttpUrl} {
     variable ctableLocalTableUrls
 
     if [info exists ctableLocalTableUrls($cttpUrl)] {
+	# puts [list rename $ctableLocalTableUrls($cttpUrl) ""]
 	rename $ctableLocalTableUrls($cttpUrl) ""
 	if [info exists ctableUrls($ctableLocalTableUrls($cttpUrl))] {
 	    unset ctableUrls($ctableLocalTableUrls($cttpUrl))
 	}
 	unset ctableLocalTableUrls($cttpUrl)
     }
+    # puts [list remote_ctable_cache_disconnect $cttpUrl]
     remote_ctable_cache_disconnect $cttpUrl
 }
 
@@ -103,6 +105,14 @@ proc remote_ctable_cache_connect {cttpUrl} {
 }
 
 #
+# remote_sock_send - send a command over a socket
+#
+proc remote_sock_send {sock cttpUrl command} {
+    puts $sock [list $cttpUrl $command]
+    flush $sock
+}
+
+#
 # remote_ctable_send - send a command to a remote ctable server
 #
 proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redirect 1}} {
@@ -113,11 +123,12 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 
     set sock [remote_ctable_cache_connect $cttpUrl]
 
+    # Try 5 times to send the data
     set i 0
-    while {[catch {puts $sock [list $cttpUrl $command]; flush $sock} result] == 1} {
+    while {[catch {remote_sock_send $sock $cttpUrl $command} err] == 1} {
 	incr i
 	if {$i > 5} {
-	    error "unable to contact remote ctable at $cttpUrl"
+	    error "$cttpUrl: $err"
 	}
         remote_ctable_cache_disconnect $cttpUrl $sock
 
@@ -140,8 +151,8 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 		if !$redirect {
 		    error "Redirected to [lindex $line 1]"
 		}
-#puts "redirect '$line'"
-#parray ctableLocalTableUrls
+# puts "[clock format [clock seconds]] redirect '$line'"
+# parray ctableLocalTableUrls
 		remote_ctable_cache_disconnect $cttpUrl $sock
 		set newCttpUrl [lindex $line 1]
 		if {[info exists ctableLocalTableUrls($cttpUrl)]} {
@@ -149,6 +160,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 		    unset ctableLocalTableUrls($cttpUrl)
 		    remote_ctable $newCttpUrl $localTable
 		}
+# puts "[clock format [clock seconds]] retry $newCttpUrl '$command'"
 		return [remote_ctable_send $newCttpUrl $command $actionData $callerLevel]
 	    }
 
@@ -232,6 +244,7 @@ proc remote_ctable_invoke {localTableName level command} {
     # Have to handle "destroy" specially - don't pass to far end, just
     # close the socket and destroy myself
     if {"$cmd" == "destroy"} {
+#puts "command is destroy"
 	return [remote_ctable_destroy $cttpUrl]
     }
 

@@ -51,7 +51,7 @@ proc register_redirect {ctableUrl redirectedToCtableUrl} {
 proc register_redirect_ctable {table port redirectedToCtableUrl} {
     start_server $port
 
-    serverlog "register_redirect_ctable $table:$port $redirectedToCtableUrl"
+    #serverlog "register_redirect_ctable $table:$port $redirectedToCtableUrl"
     set registeredCtableRedirects($table:$port) $redirectedToCtableUrl
 }
 
@@ -81,6 +81,7 @@ proc shutdown_servers {} {
 	close $sock
 	unset portSockets($port)
     }
+    serverlog "Requesting shutdown"
     set shuttingDown 1
 }
 
@@ -124,7 +125,7 @@ proc remote_receive {sock myPort} {
 	        serverlog "All client sockets closed, shutting down"
 	        exit 0
 	    } else {
-		serverlog "Still waiting on [lrange $clientList 0 2] ([llength $clientList])..."
+		serverlog "Waiting on [expr [llength $clientList] / 3] clients."
 	    }
 	}
 	return
@@ -137,7 +138,7 @@ proc remote_receive {sock myPort} {
 	    if [catch {
 	      lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
 	    } err] {
-	      serverlog "$ctableUrl: $err"; # $::errorInfo
+	      serverlog "$ctableUrl: $err";# $::errorInfo
 	      puts $sock [list e $err "" $::errorCode]
 	      flush $sock
 	      return
@@ -157,7 +158,7 @@ proc remote_receive {sock myPort} {
 
 	if {[catch {remote_invoke $sock $table $line $myPort} result] == 1} {
 	    serverlog "$table: $result" \
-		"In ($sock) $ctableUrl $line"; # $::errorInfo
+		"In ($sock) $ctableUrl $line";# $::errorInfo
 	    # look at errorInfo if you want to know more, don't send it
 	    # back to them -- it exposes stuff about us they don't care
 	    # about
@@ -212,12 +213,18 @@ proc remote_invoke {sock ctable line port} {
 	"redirect" {
 	    register_redirect_ctable $ctable $port [lindex $remoteArgs 0]
             if {[info exists registeredCtables($ctable)]} {
-		$registeredCtables($ctable) destroy
+		set old_ctable $registeredCtables($ctable)
 		unset registeredCtables($ctable)
 	    }
+	    # If shutting down, don't bother to destroy the old ctable, it
+	    # will go away soon anyway when we exit.
 	    if {[string match "-shut*" [lindex $remoteArgs 1]]} {
 		return [shutdown_servers]
+	    } elseif {[info exists old_ctable]} {
+		serverlog "Destroying $old_ctable"
+	        $old_ctable destroy
 	    }
+	    serverlog "remotely redirected to [lindex $remoteArgs 0]"
 	    return 1
 	}
 
