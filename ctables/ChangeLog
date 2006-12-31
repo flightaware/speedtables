@@ -1,6 +1,10 @@
 
 $Id$
 
+12/30/2006 karl
+    * Add introspection.txt doc that had been sitting around that has the
+      rationale and design for adding introspection as committed on 12/28.
+
 12/28/2006 karl
     * Maintain all the key-value pairs for each defined field and make them
       accessible in ctable creator table structures via the per-field

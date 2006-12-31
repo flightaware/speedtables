@@ -1,0 +1,41 @@
+
+Project to expand introspection in speed tbales.
+
+$Id$
+
+Status: Implemented
+
+Speed tables has pretty decent introspection, a la Tcl, Tk, etc,
+however we currently can't find out everything about a table definition.
+
+We want a way to be able to see all the key-value pairs associated with each
+field.
+
+We need to be able to list the keys associated with a field and get the value
+of any key associated with the field.  Might be reasonable to also get
+a list of key-value pairs in array set format.
+
+    $ctable field fieldName 
+
+    $ctable field fieldName properties
+
+    $ctable field fieldName getprop propName
+
+    $ctable field fieldName proplist
+
+
+With an eye towards other languages besides Tcl having interfaces to speed
+tables, and I'm willing to revisit this, each field is given a custom-named
+array of char * for the property keys and an array of char * for the property
+values.
+
+These are aggregated into a per-field array of pointers to each, which at
+initialization time are set once again as arrays of pointers to char *
+into the per-field structures defined in ctable.h.
+
+The field method has been added to command-body.c-subst and supported in
+relevant places in gentable.tcl et al.
+
+Should it get used so frequently from Tcl that all of the string conversions
+become a problem, which we seriously doubt, we'll expand initialization to
+generate all of those things as Tcl objects.
