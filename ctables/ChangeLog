@@ -1,6 +1,11 @@
 
 $Id$
 
+1/1/2007 karl
+    * Update speed table pages file (and export new PDF) to include docs on
+      the key-value pairs that can follow a field definition, including
+      "indexed", "notnull", "default", "length", and "unique".
+
 12/30/2006 karl
     * Add introspection.txt doc that had been sitting around that has the
       rationale and design for adding introspection as committed on 12/28.
