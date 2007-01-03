@@ -1,6 +1,12 @@
 
 $Id$
 
+1/2/2007 karl
+    * Make skip list insert routine "jsw_sinsert_linked" support a "unique" 
+      flag that, if set, has the routine return 0 when an insert would result
+      in a row with a duplicate key for that indexed field.  If unique is
+      0, duplicates are allowed.
+
 1/1/2007 karl
     * Update speed table pages file (and export new PDF) to include docs on
       the key-value pairs that can follow a field definition, including

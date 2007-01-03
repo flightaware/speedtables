@@ -60,6 +60,13 @@ void       *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row );
 int         jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row );
 
 /*
+  Insert a row with the selected key
+
+  Returns: non-zero for success, zero for failure
+*/
+int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row, int nodeIdx, int unique );
+
+/*
   Remove a row with the selected key
 
   Returns: non-zero for success, zero for failure

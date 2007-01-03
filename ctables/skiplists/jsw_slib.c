@@ -260,9 +260,9 @@ int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
   jsw_node_t *p = locate ( skip, row )->next[0];
 
   // if we got something and it compares the same, it's already there
-  if ( p != NULL && skip->cmp ( row, p->row ) == 0 )
+  if ( p != NULL && skip->cmp ( row, p->row ) == 0 ) {
     return 0;
-  else {
+  } else {
     // it's new
     size_t h = rlevel ( skip->maxh );
     jsw_node_t *it;
@@ -297,16 +297,25 @@ int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
 // currently can only succeed
 //
 inline
-int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int nodeIdx)
+int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int nodeIdx, int unique)
 {
   // void *p = locate ( skip, row )->row;
   jsw_node_t *p = locate ( skip, row )->next[0];
 
   if ( p != NULL && skip->cmp ( row, p->row ) == 0 ) {
-    // matching skip list entry, insert this row into its linked list
+    // we found a matching skip list entry
+
+    // if dups aren't allowed, don't do anything and return 0
+    if (unique) {
+        return 0;
+    }
+
+    // dups are allowed, insert this guy
     ctable_ListInsertHead (&p->row, row, nodeIdx);
   } else {
-    // no matching skip list entry, create one and link
+    // no matching skip list entry
+
+    // dups are allowed, insert the dup
     size_t h = rlevel ( skip->maxh );
     jsw_node_t *it;
 
