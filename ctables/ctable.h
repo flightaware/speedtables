@@ -178,7 +178,6 @@ struct ctableSearchStruct {
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
     int                                  writingTabsepIncludeFieldNames;
-
 };
 
 struct ctableFieldInfo {

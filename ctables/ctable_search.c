@@ -436,6 +436,57 @@ ctable_WriteFieldNames (Tcl_Interp *interp, struct ctableTable *ctable, struct c
     return TCL_OK;
 }
 
+static int
+ctable_PostSearchCommonActions (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, struct ctable_baseRow **sortTable, int matchCount, int limit)
+{
+    int sortIndex;
+
+    // if we're not sorting, we're done -- we did 'em all on the fly
+    if (sortTable == NULL) {
+        return TCL_OK;
+    }
+
+    qsort_r (sortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
+
+    // it's sorted
+    // now let's see what we've got within the offset and limit
+
+    // if the offset's more than the matchCount, they got nuthin'
+    if (search->offset > matchCount) {
+        return TCL_OK;
+    }
+
+    // figure out the last row they could want, if it's more than what's
+    // there, set it down to what came back
+    if ((limit == 0) || (limit > matchCount)) {
+        limit = matchCount;
+    }
+
+    // walk the result
+    for (sortIndex = search->offset; sortIndex < limit; sortIndex++) {
+        int actionResult;
+
+	/* here is where we want to take the match actions
+	 * when we are sorting
+	 */
+	 actionResult = ctable_SearchAction (interp, ctable, search, sortTable[sortIndex]);
+	 if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
+	     continue;
+	 }
+
+	 if (actionResult == TCL_BREAK || actionResult == TCL_RETURN) {
+	     return TCL_OK;
+	 }
+
+	 if (actionResult == TCL_ERROR) {
+	     return TCL_ERROR;
+	 }
+    }
+
+    return TCL_OK;
+}
+
+
 //
 // ctable_PerformSearch - perform the search
 //
@@ -456,7 +507,6 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
     int              compareResult;
     int              matchCount = 0;
-    int              sortIndex;
     int              actionResult = TCL_OK;
     int              limit = search->offset + search->limit;
 
@@ -562,50 +612,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 	}
     }
 
-    // if we're not sorting, we're done -- we did 'em all on the fly
-    if (sortTable == NULL) {
-	actionResult = TCL_OK;
-	goto clean_and_return;
-    }
-
-    qsort_r (sortTable, matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, creatorTable->sort_compare);
-
-    // it's sorted
-    // now let's see what we've got within the offset and limit
-
-    // if the offset's more than the matchCount, they got nuthin'
-    if (search->offset > matchCount) {
-	actionResult = TCL_OK;
-	goto clean_and_return;
-    }
-
-    // figure out the last row they could want, if it's more than what's
-    // there, set it down to what came back
-    if ((limit == 0) || (limit > matchCount)) {
-        limit = matchCount;
-    }
-
-    // walk the result
-    for (sortIndex = search->offset; sortIndex < limit; sortIndex++) {
-
-	/* here is where we want to take the match actions
-	 * when we are sorting
-	 */
-	 actionResult = ctable_SearchAction (interp, ctable, search, sortTable[sortIndex]);
-	 if (actionResult == TCL_ERROR) {
-	     goto clean_and_return;
-	 }
-
-	 if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
-	     continue;
-	 }
-
-	 if (actionResult == TCL_BREAK || actionResult == TCL_RETURN) {
-	     actionResult = TCL_OK;
-	     goto clean_and_return;
-	 }
-    }
-
+    actionResult = ctable_PostSearchCommonActions (interp, ctable, search, sortTable, matchCount, limit);
   clean_and_return:
     if (sortTable != NULL) {
 	ckfree ((void *)sortTable);
@@ -636,7 +643,6 @@ static int
 ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, int count) {
     int              compareResult;
     int              matchCount = 0;
-    int              sortIndex;
     int              actionResult = TCL_OK;
     int              limit = search->offset + search->limit;
 
@@ -644,12 +650,12 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
     struct ctableCreatorTable *creatorTable = ctable->creatorTable;
 
-    struct ctable_baseRow *row;
-    struct ctable_baseRow *row1 = NULL;
-    struct ctable_baseRow *walkRow;
-    void            *row2 = NULL;
+    struct ctable_baseRow   *row;
+    struct ctable_baseRow   *row1 = NULL;
+    struct ctable_baseRow   *walkRow;
+    void                    *row2 = NULL;
 
-    void          **sortTable = NULL;
+    struct ctable_baseRow  **sortTable = NULL;
 
     jsw_skip_t      *skip = NULL;
     int              field = 0;
@@ -676,7 +682,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     // based on limit or offset) becuase the order of what you want isn't
     // established until after the sort.
     if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
-        sortTable = (void **)ckalloc (count * sizeof (void *));
+        sortTable = (struct ctable_baseRow **)ckalloc (count * sizeof (void *));
     }
 
     // if the first compare thing is something we understand how to do
@@ -867,50 +873,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
       }
     }
 
-    // if we're not sorting, we're done -- we did 'em all on the fly
-    if (sortTable == NULL) {
-	actionResult = TCL_OK;
-	goto clean_and_return;
-    }
-
-    qsort_r (sortTable, matchCount, sizeof (void *), &search->sortControl, creatorTable->sort_compare);
-
-    // it's sorted
-    // now let's see what we've got within the offset and limit
-
-    // if the offset's more than the matchCount, they got nuthin'
-    if (search->offset > matchCount) {
-	actionResult = TCL_OK;
-	goto clean_and_return;
-    }
-
-    // figure out the last row they could want, if it's more than what's
-    // there, set it down to what came back
-    if ((limit == 0) || (limit > matchCount)) {
-        limit = matchCount;
-    }
-
-    // walk the result
-    for (sortIndex = search->offset; sortIndex < limit; sortIndex++) {
-
-	/* here is where we want to take the match actions
-	 * when we are sorting
-	 */
-	 actionResult = ctable_SearchAction (interp, ctable, search, sortTable[sortIndex]);
-	 if (actionResult == TCL_ERROR) {
-	     goto clean_and_return;
-	 }
-
-	 if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
-	     continue;
-	 }
-
-	 if (actionResult == TCL_BREAK || actionResult == TCL_RETURN) {
-	     actionResult = TCL_OK;
-	     goto clean_and_return;
-	 }
-    }
-
+    actionResult = ctable_PostSearchCommonActions (interp, ctable, search, sortTable, matchCount, limit);
   clean_and_return:
     if (sortTable != NULL) {
 	ckfree ((void *)sortTable);

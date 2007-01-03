@@ -11,6 +11,9 @@ $Id$
     * Even if they're searching with -count 0, if they've specified that
       they want field names emitted, emit them.
 
+    * Extract about 40 lines of common code between search and search+
+      and turn it into a function called by both.  It's a start.
+
 1/2/2007 karl
     * Make skip list insert routine "jsw_sinsert_linked" support a "unique" 
       flag that, if set, has the routine return 0 when an insert would result
