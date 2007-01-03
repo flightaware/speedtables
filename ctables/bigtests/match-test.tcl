@@ -154,6 +154,14 @@ proc test9 {} {
 
 puts [cputime test9]
 
+proc test10 {} {
+    puts "\n= Tatiana lehenbauer with fairly empty -code loop"
+    puts [n search -compare {{= name "Tatiana Lehenbauer"}} -key key -array_get_with_nulls data -code {}]
+
+}
+
+puts [cputime test10]
+
 
 
 # we don't normally need to destroy but it helps for memory debugging

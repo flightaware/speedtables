@@ -8,6 +8,10 @@ $Id$
       a field defined as unique has a row's value changed to something
       that's a duplicate.
 
+    * Support "=" as a "magic" search+ first search term (in addition to
+      "range", which is already support) to use the field's skip list index,
+      if it exists, and super accelerate the search.
+
     * Even if they're searching with -count 0, if they've specified that
       they want field names emitted, emit them.
 
@@ -20,7 +24,7 @@ $Id$
       the ctable search structure rather than passing them around
       discretely.
 
-    * Extract about 40 lines of common code between search and search+
+    * Extract about 100 lines of common code between search and search+
       and turn it into a function called by both.  It's a start.
 
 1/2/2007 karl
@@ -41,6 +45,10 @@ $Id$
       Running match-test-index3.tcl, which generates the million-row index
       on the fly, there is no performance increase in indexing but queries
       again run 12% to 16% faster.
+
+      A caution with regard to these kinds of measurements, speed tables
+      performance is greatly affected by the size of your processor's L1
+      cache.
 
 1/1/2007 karl
     * Update speed table pages file (and export new PDF) to include docs on

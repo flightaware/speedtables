@@ -606,15 +606,7 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
     }
 
     // if we're sorting, allocate a space for the search results that
-    // we'll then sort from -- unfortunately we don't know how many
-    // search results we may get, so we are prepared to receive all
-    // of them.  if you want to optimize this for space, you'll have to grow 
-    // the search result dynamically -- just buy more memory
-    //
-    // you can't sort until after you've picked everything and you can't
-    // stop earching until you've looked at everything (you can't do stuff
-    // based on limit or offset) becuase the order of what you want isn't
-    // established until after the sort.
+    // we'll then sort from
     if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
 	search->sortTable = (struct ctable_baseRow **)ckalloc (sizeof (void *) * ctable->count);
     }
@@ -677,6 +669,8 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
     fieldCompareFunction_t compareFunction;
     int                    indexNumber;
+    int                    tailoredTerm = 0;
+
 
     search->matchCount = 0;
     search->tailoredWalk = 0;
@@ -692,15 +686,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     }
 
     // if we're sorting, allocate a space for the search results that
-    // we'll then sort from -- unfortunately we don't know how many
-    // search results we may get, so we are prepared to receive all
-    // of them.  if you want to optimize this for space, you'll have to grow 
-    // the search result dynamically -- just buy more memory
-    //
-    // you can't sort until after you've picked everything and you can't
-    // stop searching until you've looked at everything (you can't do stuff
-    // based on limit or offset) becuase the order of what you want isn't
-    // established until after the sort.
+    // we'll then sort from
     if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
         search->sortTable = (struct ctable_baseRow **)ckalloc (ctable->count * sizeof (void *));
     }
@@ -709,28 +695,36 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     // with indexed fields and the field they're asking for us to do it
     // on happens to be indexed, we need to do special walking magic
 
-    // else if there's any index column, we can walk that faster than
-    // we can walk the tcl hashtable
+    // else find any index column
 
-    // if there's no index column, we need to fail or revert to the
-    // hash at least for now
+    // if there's no index column, we need to fail or revert to brute force
+    // at least for now
 
     if (search->nComponents > 0) {
-	int term;
-
 	struct ctableSearchComponentStruct *component = &search->components[0];
 
 	field = component->fieldID;
-	term = component->comparisonType;
-        if ((ctable->skipLists[field] != NULL) && (term == CTABLE_COMP_RANGE)) {
-	    // ding ding ding - we have a winner, time for an accelerated
-	    // search
-	    search->tailoredWalk = 1;
-	    skip = ctable->skipLists[field];
-	    row1 = component->row1;
-	    row2 = component->row2;
-	}
+	tailoredTerm = component->comparisonType;
+        if (ctable->skipLists[field] != NULL) {
+	    if ((tailoredTerm == CTABLE_COMP_RANGE) || (tailoredTerm == CTABLE_COMP_EQ)) {
+		// ding ding ding - we have a winner, time for an accelerated
+		// search
+		search->tailoredWalk = 1;
+		skip = ctable->skipLists[field];
+		row1 = component->row1;
+		row2 = component->row2;
+	    }
+        }
     }
+
+    // right here if we don't have a tailored walk we can see if there is
+    // a sort and if there is and it's only one field (no subfield for
+    // sorting) and that field exists as an index we can do a skip list
+    // walk and not save up and do the sort
+    //
+    // if we don't have that and we don't have a range or something else
+    // that's going to help the search be fast, switch to brute force
+    //
 
     // if we don't have a tailored walk, see if we have any skip list
     // we can use
@@ -800,11 +794,21 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     // curl = ((struct jsw_skip *)skip)->curl;
 
       if (search->tailoredWalk) {
-          if (compareFunction (row, row2) >= 0) {
-	     // it was a tailored walk and we're past the end of the
-	     // range of stuff so we can blow off the rest, hopefully
-	     // a huge number
-	    break;
+          if (tailoredTerm == CTABLE_COMP_RANGE) {
+	      if (compareFunction (row, row2) >= 0) {
+		 // it was a tailored walk and we're past the end of the
+		 // range of stuff so we can blow off the rest, hopefully
+		 // a huge number
+		break;
+	    }
+	  } else if (tailoredTerm == CTABLE_COMP_EQ) {
+	      if (compareFunction (row, row1) != 0) {
+	          break;
+	      }
+	  } else {
+	      // it may not be an error to not have a terminating condition 
+	      // on a tailored walk
+	      // panic("software failure - no terminating condition for tailored walk");
 	  }
       }
 
