@@ -7,6 +7,19 @@ $Id$
       in a row with a duplicate key for that indexed field.  If unique is
       0, duplicates are allowed.
 
+    * Use embedded array of pointers to nodes inside a skip list node so
+      that skip list node generation requires only one memory allocation
+      instead of two and a requiring only a corresponding single free
+      when they're deleted.
+
+      This change resulted in a 14.6% increase in index creation performance
+      on a PowerPC G4 running the match-test-index2.tcl test and search+
+      query performance improvements of between 9% and 16%.
+
+      Running match-test-index3.tcl, which generates the million-row index
+      on the fly, there is no performance increase in indexing but queries
+      again run 12% to 16% faster.
+
 1/1/2007 karl
     * Update speed table pages file (and export new PDF) to include docs on
       the key-value pairs that can follow a field definition, including

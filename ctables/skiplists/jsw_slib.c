@@ -22,9 +22,9 @@ using std::size_t;
 #endif
 
 typedef struct jsw_node {
-  struct ctable_baseRow  *row;   /* Data row with combined key */
-  size_t            height; /* Column height of this node */
-  struct jsw_node **next;   /* Dynamic array of next links */
+  struct ctable_baseRow  *row;      /* Data row with combined key */
+  size_t                  height;   /* Column height of this node */
+  struct jsw_node        *next[];   /* Dynamic array of next links */
 } jsw_node_t;
 
 struct jsw_skip {
@@ -87,10 +87,8 @@ static size_t rlevel ( size_t max )
 inline
 static jsw_node_t *new_node ( struct ctable_baseRow *row, size_t height )
 {
-  jsw_node_t *node = (jsw_node_t *)ckalloc ( sizeof *node );
+  jsw_node_t *node = (jsw_node_t *)ckalloc ( sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
   size_t i;
-
-  node->next = (jsw_node_t **)ckalloc ( height * sizeof *node->next );
 
   node->row = row;
 
@@ -108,7 +106,6 @@ static jsw_node_t *new_node ( struct ctable_baseRow *row, size_t height )
 inline
 static void free_node ( jsw_node_t *node )
 {
-  ckfree ( (void *)node->next );
   ckfree ( (void *)node );
 }
 
