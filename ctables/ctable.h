@@ -185,6 +185,9 @@ struct ctableSearchStruct {
     // 0 if brute force search, 1 if we're skipping via skip list and range
     int                                  tailoredWalk;
 
+    // offsetLimit is calculated from offset and limit
+    int                                  offsetLimit;
+
     // we use sort table to accumulate matching rows for sorting when
     // searching with sorting
     struct ctable_baseRow              **sortTable;
