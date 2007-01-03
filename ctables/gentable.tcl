@@ -321,7 +321,6 @@ set varstringSetSource {
       case $optname: {
 	char *string = NULL;
 	int   length;
-
 [gen_null_check_during_set_source $table $field]
 [gen_unset_null_during_set_source $table $field]
 	string = Tcl_GetStringFromObj (obj, &length);
@@ -386,7 +385,6 @@ set varstringSetSource {
 set charSetSource {
       case $optname: {
 	char *string;
-
 [gen_null_check_during_set_source $table $field]
 	string = Tcl_GetString (obj);
 	row->$field = string\[0\];
@@ -402,7 +400,6 @@ set charSetSource {
 set fixedstringSetSource {
       case $optname: {
 	char *string;
-
 [gen_null_check_during_set_source $table $field]
 	string = Tcl_GetString (obj);
 	strncpy (row->$field, string, $length);
@@ -417,7 +414,6 @@ set fixedstringSetSource {
 #
 set inetSetSource {
       case $optname: {
-
 [gen_null_check_during_set_source $table $field]
 	if (!inet_aton (Tcl_GetString (obj), &row->$field)) {
 	    Tcl_AppendResult (interp, "expected IP address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$field\\"", (char *)NULL);
@@ -435,7 +431,6 @@ set inetSetSource {
 set macSetSource {
       case $optname: {
         struct ether_addr *mac;
-
 [gen_null_check_during_set_source $table $field]
 	mac = ether_aton (Tcl_GetString (obj));
 	if (mac == (struct ether_addr *) NULL) {
@@ -506,7 +501,6 @@ proc gen_null_check_during_sort_comp {table field} {
 	return [string range [subst -nobackslashes -nocommands $nullSortSource] 1 end-1]
     }
 }
-
 
 set nullExcludeSource {
 	      if (row->_${field}IsNull) {
@@ -2820,6 +2814,7 @@ proc gen_field_names {} {
     }
     emit "[string range $typeList 0 end-1]\n$rightCurly;\n"
 
+    emit "// define per-field array for ${table} saying what fields need quoting"
     set needsQuoting "int ${table}_needs_quoting\[\] = $leftCurly"
     foreach myField $fieldList {
 	upvar ::ctable::fields::$myField field
@@ -2832,6 +2827,20 @@ proc gen_field_names {} {
 	append needsQuoting "\n    $quoting,"
     }
     emit "[string range $needsQuoting 0 end-1]\n$rightCurly;\n"
+
+    emit "// define per-field array for ${table} saying what fields are unique"
+    set unique "int ${table}_unique\[\] = $leftCurly"
+    foreach myField $fieldList {
+	upvar ::ctable::fields::$myField field
+
+	if {[info exists field(unique)] && $field(unique)} {
+	    set uniqueVal 1
+	} else {
+	    set uniqueVal 0
+	}
+	append unique "\n    $uniqueVal,"
+    }
+    emit "[string range $unique 0 end-1]\n$rightCurly;\n"
 
     emit "// define objects that will be filled with the corresponding field names"
     foreach myfield $fieldList {

@@ -94,6 +94,45 @@ Add a bytearray object.
 Perhaps limit strings to 64K bytes to use shorts for the length and allocated
 length.
 
-Make skip lists support enforcement of unique constraint as they used to.
+Make skip lists support enforcement of unique constraint as they originally did.
 
 Write the compiler debug flag into the stuff we see to see if anything got changed.
+
+----
+
+There's a fairly nasty bug involving both updating a row via set, inserting
+a row via set, and inserting rows via read_tabsep when index inserts can
+fail because of a unique constraint check.
+
+The problem occurs when there are one or more unique indexes on a table.
+
+Let's say an index insert fails due to the value not being unique.  Currently
+we return an error but we do nothing to take the row out of the linked list
+that every row is a part of and we do nothing to remove the row from any
+indexes where insertion has already been successful.
+
+This will lead to a protection violation of some sort as we do not know
+that the thing isn't in one of its indexes and we will attempt to remove
+it at deletion time or whatever.
+
+If it's a new insert and there's an index insertion failure, the row should
+not be inserted at all, i.e. be deinserted from any indexes it was successfully
+inserted into, i.e. the insert fails.
+
+If it's a modify, that's tougher.  SQL standard would say the row should
+be left unmodified.  We could do it that way by knowing how much we'd
+done and undoing it, which about for sure includes keeping a copy of the
+row prior to making any changes.
+
+Alternatively we can only not perform (or undo) the field changes that cause a
+constraint violation.
+
+I also want to do the callout thing for errors real soon.
+
+Also I want to add some new options to search/search+ such as
+
+    -delete 1 -- delete matching rows
+
+    -into tableName -- copy matching fields from matching rows into table
+
+

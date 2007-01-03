@@ -1,6 +1,13 @@
 
 $Id$
 
+1/3/2007 karl
+    * Support unique indexes using "unique 1" in field definition.
+
+      Warning - as yet unresolved bug can result in coredumps when
+      a field defined as unique has a row's value changed to something
+      that's a duplicate.
+
 1/2/2007 karl
     * Make skip list insert routine "jsw_sinsert_linked" support a "unique" 
       flag that, if set, has the routine return 0 when an insert would result

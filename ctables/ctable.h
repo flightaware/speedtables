@@ -186,11 +186,12 @@ struct ctableFieldInfo {
     Tcl_Obj                 *nameObj;
     char                   **propKeys;
     char                   **propValues;
-    int                      number;
-    enum ctable_types        type;
-    int                      needsQuoting;
     fieldCompareFunction_t   compareFunction;
+    int                      number;
+    int                      needsQuoting;
     int                      indexNumber;
+    int                      unique;
+    enum ctable_types        type;
 };
 
 struct ctableCreatorTable {

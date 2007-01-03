@@ -73,8 +73,6 @@ search_test "unsorted search with offset 5 and limit 10" {-offset 5 -limit 10} {
 
 search_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {clarence thundercleese mom zorak brak}
 
-
-
 t index create name
 search+_test "indexed search 1" {} {angel baron brak brock carr carl clarence rick dad dean doctor_girlfriend jonas jonas_jr orpheus frylock hank hoop inignot stroker shake meatwad mom 21 28 phantom_limb rusty the_monarch thundercleese triana ur zorak}
 
@@ -171,6 +169,16 @@ if {[catch {t field alive getprop default} result] == 1} {
     if {$result != "1"} {
        error "didn't get intended result"
     }
+}
+puts "ok"
+
+puts -nonewline "testing 'index unique'..."
+if {[t index unique name] != 1} {
+    error "'t index unique name' should have been 1"
+}
+
+if {[t index unique show] != 0} {
+    error "'t index unique show' should have been 0"
 }
 puts "ok"
 

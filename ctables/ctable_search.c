@@ -1399,14 +1399,29 @@ ctable_RemoveFromAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable, voi
 inline int
 ctable_InsertIntoIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
+    struct ctableFieldInfo *f;
+    Tcl_Obj *utilityObj;
 
     if (skip == NULL) {
     return TCL_OK;
     }
 
-    // DUP check code goes here
-// printf("ctable_InsertIntoIndex field %d index %d\n", field, ctable->creatorTable->fields[field]->indexNumber);
-    jsw_sinsert_linked (skip, row, ctable->creatorTable->fields[field]->indexNumber);
+    f = ctable->creatorTable->fields[field];
+
+# if 0
+// dump info about row being inserted
+utilityObj = Tcl_NewObj();
+printf("ctable_InsertIntoIndex field %d, field name %s, index %d, value %s\n", field, f->name, f->indexNumber, ctable->creatorTable->get_string (row, field, NULL, utilityObj));
+Tcl_DecrRefCount (utilityObj);
+#endif
+
+    if (!jsw_sinsert_linked (skip, row, f->indexNumber, f->unique)) {
+
+	utilityObj = Tcl_NewObj();
+	Tcl_AppendResult (interp, "unique check failed for field \"", f->name, "\", value \"", ctable->creatorTable->get_string (row, field, NULL, utilityObj), "\"", (char *) NULL);
+	Tcl_DecrRefCount (utilityObj);
+        return TCL_ERROR;
+    }
     return TCL_OK;
 }
 
@@ -1475,11 +1490,10 @@ ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, i
     // yes yes yet another walk through the hash table, in create index?!
     // gotta do it that way until skip lists are solid
     CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
-        // NB do we really want to allow dups?  not necessarily, we need
-	// to be able to say.  but sometimes, definitely.  it's tricky.
-	// punt for now.
-	// also we want to be able to call out to an error handler rather
-	// than fail and unwind the stack
+	// we want to be able to call out to an error handler rather
+	// than fail and unwind the stack.
+	// (not here so much as in read_tabsep because here we just unwind
+	// and undo the new index if we get an error)
 	if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 	    Tcl_Obj *utilityObj;
 
@@ -1489,7 +1503,7 @@ ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field, i
 	    jsw_sdelete_skiplist (skip);
 	    ctable->skipLists[field] = NULL;
 	    utilityObj = Tcl_NewObj();
-	    Tcl_AppendResult (interp, " while creating index \"", ctable->creatorTable->fields[field]->name, "\", value \"", ctable->creatorTable->get_string (row, field, NULL, utilityObj), "\"", (char *) NULL);
+	    Tcl_AppendResult (interp, " while creating index", (char *) NULL);
 	    Tcl_DecrRefCount (utilityObj);
 	    return TCL_ERROR;
 	}
