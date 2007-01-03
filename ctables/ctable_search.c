@@ -465,12 +465,12 @@ ctable_PerformSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct cta
 
     struct ctableCreatorTable *creatorTable = ctable->creatorTable;
 
-    if (count == 0) {
-        return TCL_OK;
-    }
-
     if (search->writingTabsepIncludeFieldNames) {
 	ctable_WriteFieldNames (interp, ctable, search);
+    }
+
+    if (count == 0) {
+        return TCL_OK;
     }
 
     // if we're sorting, allocate a space for the search results that
@@ -657,12 +657,12 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     fieldCompareFunction_t compareFunction;
     int                    indexNumber;
 
-    if (count == 0) {
-        return TCL_OK;
-    }
-
     if (search->writingTabsepIncludeFieldNames) {
 	ctable_WriteFieldNames (interp, ctable, search);
+    }
+
+    if (count == 0) {
+        return TCL_OK;
     }
 
     // if we're sorting, allocate a space for the search results that
