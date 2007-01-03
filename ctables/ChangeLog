@@ -11,6 +11,10 @@ $Id$
     * Even if they're searching with -count 0, if they've specified that
       they want field names emitted, emit them.
 
+    * In search code, pull matchCount, tailoredWalk and sortTable into
+      the ctable search structure rather than passing them around
+      discretely.
+
     * Extract about 40 lines of common code between search and search+
       and turn it into a function called by both.  It's a start.
 

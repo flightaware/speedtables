@@ -178,6 +178,16 @@ struct ctableSearchStruct {
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsep;
     int                                  writingTabsepIncludeFieldNames;
+
+    // count of matches during a search
+    int                                  matchCount;
+
+    // 0 if brute force search, 1 if we're skipping via skip list and range
+    int                                  tailoredWalk;
+
+    // we use sort table to accumulate matching rows for sorting when
+    // searching with sorting
+    struct ctable_baseRow              **sortTable;
 };
 
 struct ctableFieldInfo {
@@ -239,9 +249,6 @@ struct ctableTable {
     Tcl_Command                          commandInfo;
     long                                 count;
 };
-
-
-// extern int ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable);
 
 extern int
 ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int fieldNum, int depth);
