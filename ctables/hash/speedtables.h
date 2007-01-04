@@ -48,7 +48,7 @@ struct ctable_HashEntry {
 				 * ctable_SetHashValue. */
     union {			/* Key has one of these forms: */
 	char *oneWordValue;	/* One-word value for key. */
-	ctable_Obj *objPtr;	/* ctable_Obj * key value. */
+	Tcl_Obj *objPtr;	/* Tcl_Obj * key value. */
 	int words[1];		/* Multiple integer words for key. The actual
 				 * size will be as large as necessary for this
 				 * table's keys. */
@@ -217,6 +217,10 @@ typedef struct ctable_HashSearch {
 #   define ctable_FindHashEntry(tablePtr, key) \
         ctable_CreateHashEntry((tablePtr), (key), NULL)
 
+EXTERN void ctable_InitCustomHashTable (ctable_HashTable *tablePtr, 
+                 int keyType, ctable_HashKeyType *typePtr);
+
+EXTERN ctable_HashEntry *  ctable_NextHashEntry (ctable_HashSearch * searchPtr);
 
 #endif /* _SPEEDTABLES_H */
 

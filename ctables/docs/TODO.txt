@@ -143,4 +143,17 @@ Also I want to add some new options to search/search+ such as
 
 ---
 
+Tcl's hash tables have a custom hash table capability where you supply 
+pointers to a hash function, a key compare function, an allocator function 
+and a free function so it's probably possible to have the hash keys be 
+integers, doubles, inet, mac, etc, and even use the actual fields in the rows 
+as the hash keys.
 
+--
+
+make delete_all_rows use the linked list [0] rather than walking the hash table.
+make "names" method do the same.
+
+make a speed table driver package that has all the non-generated source
+like searching, sorting, hash tables, skip lists, etc, into a shared
+library such that they aren't completely compiled every time.

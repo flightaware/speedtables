@@ -15,6 +15,8 @@
 
 #include "jsw_slib.c"
 
+#include "speedtableHash.c"
+
 /*
  * ctable_ParseFieldList - given a Tcl list object and a pointer to an array
  * of integer field numbers and a pointer to an integer for field counts,
@@ -301,7 +303,7 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
     int             i;
     struct ctableCreatorTable *creatorTable = ctable->creatorTable;
 
-    key = Tcl_GetHashKey (ctable->keyTablePtr, row->hashEntry);
+    key = ctable_GetHashKey (ctable->keyTablePtr, row->hashEntry);
 
     if (search->writingTabsep) {
 	Tcl_DString     dString;
@@ -446,7 +448,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, struct ctableTable *ctable, 
         return TCL_OK;
     }
 
-    qsort_r (search->sortTable, search->matchCount, sizeof (Tcl_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
+    qsort_r (search->sortTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
 
     // it's sorted
     // now let's see what we've got within the offset and limit
@@ -500,7 +502,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, struct ctableTable *ctable, struct 
     // skip this row
 
     if (search->pattern != (char *) NULL) {
-	key = Tcl_GetHashKey (ctable->keyTablePtr, row->hashEntry);
+	key = ctable_GetHashKey (ctable->keyTablePtr, row->hashEntry);
 	if (!Tcl_StringCaseMatch (key, search->pattern, 1)) {
 	    return TCL_CONTINUE;
 	}

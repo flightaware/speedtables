@@ -27,6 +27,8 @@
 #include <libpq-fe.h>
 #endif
 
+#include "speedtables.h"
+
 // these types must line up with ctableTypes in gentable.tcl
 enum ctable_types {
     CTABLE_TYPE_BOOLEAN,
@@ -52,7 +54,7 @@ struct ctable_linkedListNodeStruct {
 };
 
 struct ctable_baseRow {
-    Tcl_HashEntry *hashEntry;
+    ctable_HashEntry *hashEntry;
     struct ctable_linkedListNodeStruct _ll_nodes[];
 };
 
@@ -207,14 +209,14 @@ struct ctableFieldInfo {
 };
 
 struct ctableCreatorTable {
-    Tcl_HashTable     *registeredProcTablePtr;
-    long unsigned int  nextAutoCounter;
+    ctable_HashTable     *registeredProcTablePtr;
+    long unsigned int     nextAutoCounter;
 
-    CONST char       **fieldNames;
-    Tcl_Obj          **nameObjList;
-    int               *fieldList;
-    enum ctable_types *fieldTypes;
-    int               *fieldsThatNeedQuoting;
+    CONST char          **fieldNames;
+    Tcl_Obj             **nameObjList;
+    int                  *fieldList;
+    enum ctable_types    *fieldTypes;
+    int                  *fieldsThatNeedQuoting;
 
     struct ctableFieldInfo **fields;
 
@@ -242,7 +244,7 @@ struct ctableCreatorTable {
 
 struct ctableTable {
     struct ctableCreatorTable           *creatorTable;
-    Tcl_HashTable                       *keyTablePtr;
+    ctable_HashTable                    *keyTablePtr;
 
     jsw_skip_t                         **skipLists;
     struct ctable_baseRow               *ll_head;

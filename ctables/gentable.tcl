@@ -903,17 +903,17 @@ struct $table *${table}_make_row_struct () {
 struct $table *${table}_find_or_create (struct ctableTable *ctable, char *key, int *newPtr) {
     struct $table *row;
 
-    Tcl_HashEntry *hashEntry = Tcl_CreateHashEntry (ctable->keyTablePtr, key, newPtr);
+    ctable_HashEntry *hashEntry = ctable_CreateHashEntry (ctable->keyTablePtr, key, newPtr);
 
     if (*newPtr) {
         row = ${table}_make_row_struct ();
-	Tcl_SetHashValue (hashEntry, (ClientData)row);
+	ctable_SetHashValue (hashEntry, (ClientData)row);
 	row->hashEntry = hashEntry;
 	ctable_ListInsertHead (&ctable->ll_head, (struct ctable_baseRow *)row, 0);
 	ctable->count++;
 	// printf ("created new entry for '%s'\n", key);
     } else {
-        row = (struct $table *) Tcl_GetHashValue (hashEntry);
+        row = (struct $table *) ctable_GetHashValue (hashEntry);
 	// printf ("found existing entry for '%s'\n", key);
     }
 
@@ -942,14 +942,14 @@ ${table}_set (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, stru
 
 set fieldObjGetSource {
 struct $table *${table}_find (struct ctableTable *ctable, char *key) {
-    Tcl_HashEntry *hashEntry;
+    ctable_HashEntry *hashEntry;
 
-    hashEntry = Tcl_FindHashEntry (ctable->keyTablePtr, key);
-    if (hashEntry == (Tcl_HashEntry *) NULL) {
+    hashEntry = ctable_FindHashEntry (ctable->keyTablePtr, key);
+    if (hashEntry == (ctable_HashEntry *) NULL) {
         return (struct $table *) NULL;
     }
     
-    return (struct $table *) Tcl_GetHashValue (hashEntry);
+    return (struct $table *) ctable_GetHashValue (hashEntry);
 }
 
 Tcl_Obj *
@@ -1131,13 +1131,13 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
 
 int
 ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
-    Tcl_Channel    channel;
-    int            mode;
-    Tcl_DString    dString;
-    Tcl_HashSearch hashSearch;
-    Tcl_HashEntry *hashEntry;
-    char          *key;
-    struct ${table} *row;
+    Tcl_Channel       channel;
+    int               mode;
+    Tcl_DString       dString;
+    ctable_HashSearch hashSearch;
+    ctable_HashEntry *hashEntry;
+    char             *key;
+    struct ${table}  *row;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -1150,13 +1150,13 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST ch
 
     Tcl_DStringInit (&dString);
 
-    for (hashEntry = Tcl_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (Tcl_HashEntry *) NULL; hashEntry = Tcl_NextHashEntry (&hashSearch)) {
+    for (hashEntry = ctable_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (ctable_HashEntry *) NULL; hashEntry = ctable_NextHashEntry (&hashSearch)) {
 
-	key = Tcl_GetHashKey (ctable->keyTablePtr, hashEntry);
+	key = ctable_GetHashKey (ctable->keyTablePtr, hashEntry);
 	if ((pattern != NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 
         Tcl_DStringSetLength (&dString, 0);
-	row = (struct $table *) Tcl_GetHashValue (hashEntry);
+	row = (struct $table *) ctable_GetHashValue (hashEntry);
 
 	${table}_dstring_append_get_tabsep (key, row, fieldNums, nFields, &dString, noKeys);
 
@@ -1735,7 +1735,7 @@ proc gen_struct {} {
 
     emit "struct $table $leftCurly"
 
-    putfield "Tcl_HashEntry" "*hashEntry"
+    putfield "ctable_HashEntry" "*hashEntry"
     putfield "struct ctable_linkedListNodeStruct"  "_ll_nodes\[$NLINKED_LISTS\]"
 
     foreach myfield $nonBooleans {
@@ -3798,6 +3798,7 @@ proc install_ch_files {targetDir} {
     set copyFiles {
 	ctable.h ctable_search.c ctable_lists.c boyer_moore.c
 	jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
+	speedtables.h speedtableHash.c
     }
 
     foreach file $copyFiles {
@@ -3805,6 +3806,8 @@ proc install_ch_files {targetDir} {
             file copy -force $srcDir/$file $targetDir
 	} elseif {[file exists $srcDir/skiplists/$file]} {
             file copy -force $srcDir/skiplists/$file $targetDir
+	} elseif {[file exists $srcDir/hash/$file]} {
+            file copy -force $srcDir/hash/$file $targetDir
 	} else {
 	    return -code error "Can't find $file in $srcDir"
 	}

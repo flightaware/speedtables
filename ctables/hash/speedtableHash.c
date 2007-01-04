@@ -12,7 +12,8 @@
  * RCS: @(#) $Id$
  */
 
-#include "tclInt.h"
+//#include "tclInt.h"
+#include <tcl.h>
 
 /*
  * When there are this many entries per bucket, on average, rebuild the hash
@@ -148,7 +149,7 @@ ctable_InitCustomHashTable(
 				 * CTABLE_CUSTOM_TYPE_KEYS, 
 				 * CTABLE_CUSTOM_PTR_KEYS,
 				 * or an integer >= 2. */
-    ctable_HashKeyType *typePtr)	/* Pointer to structure which defines the
+    ctable_HashKeyType *typePtr) /* Pointer to structure which defines the
 				 * behaviour of this table. */
 {
 #if (CTABLE_SMALL_HASH_TABLE != 4)
@@ -208,7 +209,7 @@ ctable_InitCustomHashTable(
  *
  *----------------------------------------------------------------------
  */
-
+#if 0
 ctable_HashEntry *
 ctable_FindHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
@@ -217,6 +218,7 @@ ctable_FindHashEntry(
 
     return ctable_CreateHashEntry(tablePtr, key, NULL);
 }
+#endif
 
 
 /*
@@ -267,7 +269,7 @@ ctable_CreateHashEntry(
 	    index = hash & tablePtr->mask;
 	}
     } else {
-	hash = PTR2UINT(key);
+	hash = (unsigned int)(key);
 	index = RANDOM_INDEX (tablePtr, hash);
     }
 
@@ -279,7 +281,7 @@ ctable_CreateHashEntry(
 	ctable_CompareHashKeysProc *compareKeysProc = typePtr->compareKeysProc;
 	for (hPtr = tablePtr->buckets[index]; hPtr != NULL;
 		hPtr = hPtr->nextPtr) {
-	    if (hash != PTR2UINT(hPtr->hash)) {
+	    if (hash != (unsigned int)(hPtr->hash)) {
 		continue;
 	    }
 	    if (compareKeysProc ((VOID *) key, hPtr)) {
@@ -291,7 +293,7 @@ ctable_CreateHashEntry(
     } else {
 	for (hPtr = tablePtr->buckets[index]; hPtr != NULL;
 		hPtr = hPtr->nextPtr) {
-	    if (hash != PTR2UINT(hPtr->hash)) {
+	    if (hash != (unsigned int)(hPtr->hash)) {
 		continue;
 	    }
 	    if (key == hPtr->key.oneWordValue) {
@@ -371,7 +373,7 @@ ctable_DeleteHashEntry(
 	    || typePtr->flags & CTABLE_HASH_KEY_RANDOMIZE_HASH) {
 	index = RANDOM_INDEX (tablePtr, entryPtr->hash);
     } else {
-	index = PTR2UINT(entryPtr->hash) & tablePtr->mask;
+	index = (int)(entryPtr->hash) & tablePtr->mask;
     }
 
     bucketPtr = &(tablePtr->buckets[index]);
@@ -447,11 +449,7 @@ ctable_DeleteHashTable(
      */
 
     if (tablePtr->buckets != tablePtr->staticBuckets) {
-	if (typePtr->flags & CTABLE_HASH_KEY_SYSTEM_HASH) {
-	    TclpSysFree((char *) tablePtr->buckets);
-	} else {
-	    ckfree((char *) tablePtr->buckets);
-	}
+	ckfree((char *) tablePtr->buckets);
     }
 
     /*
@@ -601,11 +599,7 @@ ctable_HashStats(
      * Print out the histogram and a few other pieces of information.
      */
 
-    if (typePtr->flags & CTABLE_HASH_KEY_SYSTEM_HASH) {
-	result = (char *) TclpSysAlloc((unsigned) (NUM_COUNTERS*60) + 300, 0);
-    } else {
-	result = (char *) ckalloc((unsigned) (NUM_COUNTERS*60) + 300);
-    }
+    result = (char *) ckalloc((unsigned) (NUM_COUNTERS*60) + 300);
     sprintf(result, "%d entries in table, %d buckets\n",
 	    tablePtr->numEntries, tablePtr->numBuckets);
     p = result + strlen(result);
@@ -901,13 +895,8 @@ RebuildTable(
      */
 
     tablePtr->numBuckets *= 4;
-    if (typePtr->flags & CTABLE_HASH_KEY_SYSTEM_HASH) {
-	tablePtr->buckets = (ctable_HashEntry **) TclpSysAlloc((unsigned)
-		(tablePtr->numBuckets * sizeof(ctable_HashEntry *)), 0);
-    } else {
-	tablePtr->buckets = (ctable_HashEntry **) ckalloc((unsigned)
-		(tablePtr->numBuckets * sizeof(ctable_HashEntry *)));
-    }
+    tablePtr->buckets = (ctable_HashEntry **) ckalloc((unsigned)
+	    (tablePtr->numBuckets * sizeof(ctable_HashEntry *)));
     for (count = tablePtr->numBuckets, newChainPtr = tablePtr->buckets;
 	    count > 0; count--, newChainPtr++) {
 	*newChainPtr = NULL;
@@ -927,7 +916,7 @@ RebuildTable(
 		    || typePtr->flags & CTABLE_HASH_KEY_RANDOMIZE_HASH) {
 		index = RANDOM_INDEX (tablePtr, hPtr->hash);
 	    } else {
-		index = PTR2UINT(hPtr->hash) & tablePtr->mask;
+		index = (unsigned int)(hPtr->hash) & tablePtr->mask;
 	    }
 	    hPtr->nextPtr = tablePtr->buckets[index];
 	    tablePtr->buckets[index] = hPtr;
@@ -939,11 +928,7 @@ RebuildTable(
      */
 
     if (oldBuckets != tablePtr->staticBuckets) {
-	if (typePtr->flags & CTABLE_HASH_KEY_SYSTEM_HASH) {
-	    TclpSysFree((char *) oldBuckets);
-	} else {
-	    ckfree((char *) oldBuckets);
-	}
+	ckfree((char *) oldBuckets);
     }
 }
 

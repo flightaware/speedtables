@@ -16,8 +16,8 @@
      * of the table class and pass it in through Tcl's client data
      * mechanism
      */
-    hashTablePtr = (Tcl_HashTable *)ckalloc (sizeof (Tcl_HashTable));
-    Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
+    hashTablePtr = (ctable_HashTable *)ckalloc (sizeof (ctable_HashTable));
+    ctable_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
 
     // setup all the field name objects
     ${table}_setup ();

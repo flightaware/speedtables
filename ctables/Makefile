@@ -12,5 +12,5 @@ INSTDIR=/usr/local/lib/ctable
 
 install:
 	-mkdir $(INSTDIR)
-	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c $(INSTDIR)
+	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c $(INSTDIR)
 
