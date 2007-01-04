@@ -59,7 +59,7 @@ namespace eval ::scache {
     set args [split [join $args "\n"] "\n"]
     set m ""
     if {[llength $args] > 1} { append m "\n" }
-    append m "[clock format [clock seconds]] [pid] [join $args "\n\t"]
+    append m "[clock format [clock seconds]] [pid] [join $args "\n\t"]"
     puts stderr $m
   }
 
@@ -117,8 +117,11 @@ namespace eval ::scache {
     variable ctable2name
     variable cache_time
 
-    set timeout $cache_time
     set pattern "*"
+    set timeout $cache_time
+    set time_col ""
+    set indices {}
+
     if {[llength $args] & 1} {
       set pattern [lindex $args 0]
       set args [lrange $args 1 end]
@@ -136,7 +139,7 @@ namespace eval ::scache {
     set ctable [open_raw_ctable $name]
     set ctable_name "c_$name"
 
-    if [info exists indices] {
+    if [llength $indices] {
       debug "Creating indices"
       foreach list $indices {
 	foreach i $list {
@@ -157,7 +160,7 @@ namespace eval ::scache {
       set read_from_file 0
       set table_complete 0
 
-      if {[info exists time_col] && [string length $time_col]} {
+      if {[string length $time_col]} {
 	set read_from_file 1
         set last_read $file_time
       } elseif {!$timeout || $file_time + $timeout > [clock seconds]} {
@@ -480,10 +483,10 @@ namespace eval ::scache {
     if {"$name" == ""} {
       set name [string tolower $table_name]
     }
-    if {[llength $key_column] > 1} {
-      set key_column TEXT([join $key_column ") || ':' || TEXT("])
+    if {[llength $key] > 1} {
+      set key TEXT([join $key ") || ':' || TEXT("])
     }
-    lappend args [list _key "" $key_column]
+    lappend args [list _key "" $key]
     foreach {col type} $columns {
       set options {}
       if [llength $selected_cols] {
@@ -520,15 +523,17 @@ namespace eval ::scache {
       lappend ::auto_path $ctable_dir
     }
 
+    namespace eval :: [list package require C_$name]
+
     if [catch {
-      set status [c_$name create #auto]
+      set ctable [c_$name create #auto]
     } err] {
       unlockfile $ctable_dir
       error $err $::errorInfo
     }
       
     unlockfile $ctable_dir
-    return $status
+    return $ctable
   }
 
   proc trash_old_files {ctable_name} {
@@ -540,7 +545,7 @@ namespace eval ::scache {
   proc workname {name {ext ""}} {
     variable work_dir
     if {"$ext" != ""} {
-      append $name . $ext
+      append name . $ext
     }
     return [file join $work_dir $name]
   }

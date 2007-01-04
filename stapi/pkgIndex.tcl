@@ -8,5 +8,6 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded autospeed 0.1 [list source [file join $dir cache.tcl]]
-package ifneeded autospeed_locks 1.0 [list source [file join $dir lock.tcl]]
+package ifneeded scache 1.0 [list source [file join $dir cache.tcl]]
+package ifneeded scache_locks 1.0 [list source [file join $dir lock.tcl]]
+package ifneeded scache_pgtcl 1.0 [list source [file join $dir pgsql.tcl]]
