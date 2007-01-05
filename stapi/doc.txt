@@ -1,0 +1,83 @@
+::scache::init ?options?
+
+Options:
+  -dir work_directory
+     Root of directory tree for the ctables
+  -mode mode
+     Octal mode for new directory
+  -conn connection
+     Pgsql connection (if not present, assumes DIO)
+  -cache minutes
+     How long to treat a cached tsv file as "good"
+
+init_ctable name table_list where_clause ?columns|column...?
+
+   name - base name of ctable
+   table_list - list of SQL tables to extract data from
+   where_clause - SQL "WHERE" clause to limit selection
+
+If there's only one column argument, it's taken to be a list of columns.
+
+The first column is taken to be the key for the ctable.
+
+Each column is a list of {field type expr ?name value?...}
+
+  field - ctable field / SQL column name
+  type - sql type
+  expr - sql expression to derive value, same as field name if missing or empty
+  name value
+       - ctable arguments for the field
+
+::scache::open_cached name ?pattern? ?-opt val?...
+
+Open an initialised ctable, maintaining a local cache of the underlying
+SQL table in a .tsv file in the workdir.
+
+Options
+  pattern
+  -pat pattern
+     Only read lines matching the pattern from the cache, if the cache is
+     good.
+  -time cache_timeout
+     Override the default cache timeout.
+  -col name
+     Name of column in the SQL file that contains the last_changed time of
+     each entry, if any.
+  -index field_name
+     Name of a field to create an index on. Multiple -index are allowed.
+
+::scache::refresh_ctable ctable time_col ?last_read? ?err?
+ 
+Update new rows from SQL for ctable 'ctable' using time_col,
+if last_read is non-zero use that rather than last modify time
+of the cache, return success or failure if err variable name is
+provided.
+
+::scache::save_ctable ctable ?tsv_file?
+
+Save a ctable. If the tsv_file is provided, that's all it does. If not,
+it locates and locks the correct tsv file.
+
+::scache::remove_tsv_file table_name
+
+::scache::init_cache_ctable table key ?name? ?selected_cols? ?extra_cols?
+
+  Fetch the SQL definition of the specified table to generate a ctable
+    definition
+
+  table  - SQL table name
+  key    - a column or list of columns in the SQL table that defines the
+           unique key
+  name   - if specified, use this for the ctable name rather than the SQL
+           table name
+  selected_cols - if specified and non-empty, limit the selection to this
+	   list of columns. Special cases:
+		+col   - make column indexable
+		*      - select all columns from ctable
+  extra_cols - extra columns in init_ctable's format
+
+::scache::open_raw_ctable name
+
+Open an initialized ctable but don't fetch anything from SQL, used
+internally, and useful for temporary tables, copies, etcetera...
+
