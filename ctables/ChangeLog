@@ -4,6 +4,12 @@ $Id$
 1/4/2007 karl
     * Adapt the Tcl hashtable routines for speedtables's own use.
 
+    * Modify the hashtable routines to allocate 16 buckets initially,
+      instead of 4, and to grow the tables 16X at a time instead of
+      4X at a time, resulting in far fewer hashtable rebuilds when
+      inserting into a large table, providing about a 7% increase
+      in overall speed table insertion performance.
+
 1/3/2007 karl
     * Support unique indexes using "unique 1" in field definition.
 

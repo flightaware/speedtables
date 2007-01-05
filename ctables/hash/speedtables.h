@@ -124,7 +124,7 @@ struct ctable_HashKeyType {
  * fields in this structure.
  */
 
-#define CTABLE_SMALL_HASH_TABLE 4
+#define CTABLE_SMALL_HASH_TABLE 16
 struct ctable_HashTable {
     ctable_HashEntry **buckets;	/* Pointer to bucket array. Each element
 				 * points to first entry in bucket's hash
@@ -144,8 +144,8 @@ struct ctable_HashTable {
     int mask;			/* Mask value used in hashing function. */
     int keyType;		/* Type of keys used in this table. It's
 				 * either CTABLE_CUSTOM_KEYS, CTABLE_STRING_KEYS,
-				 * CTABLE_ONE_WORD_KEYS, or an integer giving the
-				 * number of ints that is the size of the
+				 * CTABLE_ONE_WORD_KEYS, or an integer giving
+				 * the number of ints that is the size of the
 				 * key. */
     ctable_HashKeyType *typePtr;	/* Type of the keys used in the
 				 * ctable_HashTable. */

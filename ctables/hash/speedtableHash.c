@@ -152,19 +152,24 @@ ctable_InitCustomHashTable(
     ctable_HashKeyType *typePtr) /* Pointer to structure which defines the
 				 * behaviour of this table. */
 {
-#if (CTABLE_SMALL_HASH_TABLE != 4)
-    Tcl_Panic("ctable_InitCustomHashTable: CTABLE_SMALL_HASH_TABLE is %d, not 4",
+    int i;
+
+#if (CTABLE_SMALL_HASH_TABLE != 16)
+    Tcl_Panic("ctable_InitCustomHashTable: CTABLE_SMALL_HASH_TABLE is %d, not 16",
 	    CTABLE_SMALL_HASH_TABLE);
 #endif
 
     tablePtr->buckets = tablePtr->staticBuckets;
-    tablePtr->staticBuckets[0] = tablePtr->staticBuckets[1] = 0;
-    tablePtr->staticBuckets[2] = tablePtr->staticBuckets[3] = 0;
+
+    for (i = 0; i < CTABLE_SMALL_HASH_TABLE; i++) {
+        tablePtr->staticBuckets[i] = 0;
+    }
+
     tablePtr->numBuckets = CTABLE_SMALL_HASH_TABLE;
     tablePtr->numEntries = 0;
     tablePtr->rebuildSize = CTABLE_SMALL_HASH_TABLE*REBUILD_MULTIPLIER;
-    tablePtr->downShift = 28;
-    tablePtr->mask = 3;
+    tablePtr->downShift = 26;
+    tablePtr->mask = 15;
     tablePtr->keyType = keyType;
     if (typePtr == NULL) {
 	/*
@@ -894,16 +899,18 @@ RebuildTable(
      * constants for new array size.
      */
 
-    tablePtr->numBuckets *= 4;
+    tablePtr->numBuckets *= 16;
     tablePtr->buckets = (ctable_HashEntry **) ckalloc((unsigned)
 	    (tablePtr->numBuckets * sizeof(ctable_HashEntry *)));
     for (count = tablePtr->numBuckets, newChainPtr = tablePtr->buckets;
 	    count > 0; count--, newChainPtr++) {
 	*newChainPtr = NULL;
     }
-    tablePtr->rebuildSize *= 4;
-    tablePtr->downShift -= 2;
-    tablePtr->mask = (tablePtr->mask << 2) + 3;
+    tablePtr->rebuildSize *= 16;
+    tablePtr->downShift -= 4;
+    tablePtr->mask = (tablePtr->mask << 4) + 15;
+
+    printf("rebuilding table from %d buckets to %d buckets\n", oldSize, tablePtr->numBuckets);
 
     /*
      * Rehash all of the existing entries into the new bucket array.
@@ -930,6 +937,8 @@ RebuildTable(
     if (oldBuckets != tablePtr->staticBuckets) {
 	ckfree((char *) oldBuckets);
     }
+
+    printf("done\n");
 }
 
 /*
