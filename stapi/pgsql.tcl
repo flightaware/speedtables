@@ -55,7 +55,7 @@ namespace eval ::scache {
 	set err $pg_err
 	return 0
       }
-      return -code error -errorinfo "In $request" $error
+      return -code error -errorinfo "In $request" $pg_err
     }
     return 1
   }
@@ -92,10 +92,10 @@ namespace eval ::scache {
     if [info exists pg_err] {
       if [string length $_err] {
         upvar 1 $_err err
-	set error $pg_err
+	set err $pg_err
         return 0
       }
-      return -code error -errorinfo "$err\nIn \"pg_exec \[conn] $sql\"" $err
+      return -code error -errorinfo "$pg_err\nIn \"$sql\"" $pg_err
     }
 
     debug "Reading $ctable from database"
