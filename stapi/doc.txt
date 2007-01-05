@@ -1,80 +1,109 @@
 ::scache::init ?options?
 
-Options:
-  -dir work_directory
-     Root of directory tree for the ctables
-  -mode mode
-     Octal mode for new directory
-  -conn connection
-     Pgsql connection (if not present, assumes DIO)
-  -cache minutes
-     How long to treat a cached tsv file as "good"
+   Options:
+     -dir work_directory
+        Root of directory tree for the ctables
+     -mode mode
+        Octal mode for new directory
+     -conn connection
+        Pgsql connection (if not present, assumes DIO)
+     -cache minutes
+        How long to treat a cached tsv file as "good"
 
-init_ctable name table_list where_clause ?columns|column...?
+::scache::init_ctable name table_list where_clause ?columns|column...?
 
-   name - base name of ctable
-   table_list - list of SQL tables to extract data from
-   where_clause - SQL "WHERE" clause to limit selection
+   Initialize a cache ctable based on one or more SQL tables. If necessary,
+   this builds a ctable based on the columns, and generates new SQL to read
+   the table. If the ctable is already built, the version numbers match, and
+   the parameters match, then it's not necessary to rebuild the table and
+   init_ctable simply verifies that it's up to date.
 
-If there's only one column argument, it's taken to be a list of columns.
+     name - base name of ctable
+     table_list - list of SQL tables to extract data from, if it's empty
+               then use the name.
+     where_clause - SQL "WHERE" clause to limit selection, or an empty string
+     columns - list of column definitions. There must be at least two
+               columns defined, the first is the ctable key, the rest are
+               the fields of the ctable. If there is only one "column"
+               argument, it's assumed to be a list of column arguments.
 
-The first column is taken to be the key for the ctable.
+   Column entries are each a list of {field type expr ?name value?...}
 
-Each column is a list of {field type expr ?name value?...}
+     field - field name
+     type - sql type
+     expr - sql expression to derive value
+     name value
+        - ctable arguments for the field
 
-  field - ctable field / SQL column name
-  type - sql type
-  expr - sql expression to derive value, same as field name if missing or empty
-  name value
-       - ctable arguments for the field
+   * Only the field name is absulutely required.
+
+   If the type is missing or blank, it's assumed to be varchar.
+   If the expression is missing or blank, it's assumed to be the same as
+      the field name.
+
+::scache::from_table table_name keys ?-option value?
+
+   Generate a column list for init_ctable by querying the SQL database
+   for the table definition.
+
+      keys - a list of columns that define the key for the table
+
+   Keys can be empty, to allow you to combine from_table lists with an
+      appropriate "WHERE" clause to use init_ctable to create a view
+      that spans tables.
+
+   Options:
+     -with column
+        Include column name in table. If any "-with" clauses are provided,
+        only the named columns will be included
+     -without column
+        Exclude column name from table. You must not provide both "-with"
+        and "-without" options.
+     -index column
+        Make this column indexable
+     -column {name type ?sql? ?args}
+        Add an explicit derived column
+     -table name
+        If specified, generate implicit column-name as "table.column"
+     -prefix text
+        If specified, prefix column names with "$prefix"
 
 ::scache::open_cached name ?pattern? ?-opt val?...
 
-Open an initialised ctable, maintaining a local cache of the underlying
-SQL table in a .tsv file in the workdir.
+   Open an initialised ctable, maintaining a local cache of the underlying
+   SQL table in a .tsv file in the workdir.
 
-Options
-  pattern
-  -pat pattern
-     Only read lines matching the pattern from the cache, if the cache is
-     good.
-  -time cache_timeout
-     Override the default cache timeout.
-  -col name
-     Name of column in the SQL file that contains the last_changed time of
-     each entry, if any.
-  -index field_name
-     Name of a field to create an index on. Multiple -index are allowed.
+   Options
+     pattern
+     -pat pattern
+        Only read lines matching the pattern from the cache, if the cache is
+        good.
+     -time cache_timeout
+        Override the default cache timeout.
+     -col name
+        Name of column in the SQL file that contains the last_changed time of
+        each entry, if any.
+     -index field_name
+        Name of a field to create an index on. Multiple -index are allowed.
 
-::scache::refresh_ctable ctable time_col ?last_read? ?err?
+::scache::refresh_ctable ctable ?last_read? ?err?
  
-Update new rows from SQL for ctable 'ctable' using time_col,
-if last_read is non-zero use that rather than last modify time
-of the cache, return success or failure if err variable name is
-provided.
+   Update new rows from SQL for ctable 'ctable'.
+
+   If last_read is non-zero use that rather than last modify time
+   of the cache file.
+
+   If err is provided, return success or failure and put reason for failure
+   in $err, otherwise abort.
 
 ::scache::save_ctable ctable ?tsv_file?
 
-Save a ctable. If the tsv_file is provided, that's all it does. If not,
-it locates and locks the correct tsv file.
+  Save a ctable. If the tsv_file is provided, that's all it does. If not,
+  it locates and locks the correct tsv file.
 
 ::scache::remove_tsv_file table_name
 
-::scache::init_cache_ctable table key ?name? ?selected_cols? ?extra_cols?
 
-  Fetch the SQL definition of the specified table to generate a ctable
-    definition
-
-  table  - SQL table name
-  key    - a column or list of columns in the SQL table that defines the
-           unique key
-  name   - if specified, use this for the ctable name rather than the SQL
-           table name
-  selected_cols - if specified and non-empty, limit the selection to this
-	   list of columns. Special cases:
-		+col   - make column indexable
-		*      - select all columns from ctable
-  extra_cols - extra columns in init_ctable's format
 
 ::scache::open_raw_ctable name
 

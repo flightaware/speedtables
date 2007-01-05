@@ -644,6 +644,7 @@ namespace eval ::scache {
     set with {}
     set without {}
     set indices {}
+    set extra_columns {}
 
     # read and validate options
     foreach {name value} $args {
@@ -695,6 +696,19 @@ namespace eval ::scache {
       set with [array names types]
     }
 
+    # If we have any "-column" entries, don't pull in the same column
+    # from the raw columns. If we're prefixing the raw_columns, only
+    # watch for the extra column if we can whack the prefix off the name.
+    foreach column $extra_columns {
+      set field [lindex $column 0]
+      if [info exists prefix] {
+        if ![regexp "^$prefix(.*)" $field _ field] {
+	  continue
+	}
+      }
+      lappend without $field
+    }
+
     # Step through the raw columns, checking that they're supossed to be
     # included (with) and not excluded (without), create the final field
     # name with the prefix if needed, create the final SQL for the column
@@ -737,7 +751,7 @@ namespace eval ::scache {
 
       lappend columns $column
     }
-    return $columns
+    return [concat $columns $extra_columns]
   }
 
   #
