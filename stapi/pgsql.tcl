@@ -18,6 +18,8 @@ namespace eval ::scache {
       return
     }
     set dio_initted 1
+    if {[llength [info commands ::DIO]]} { return }
+
     uplevel #0 { package require DIO }
     ::DIO::handle Postgresql DIO -user www -db www
     exec_sql "set DateStyle TO 'US';"
