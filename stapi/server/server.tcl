@@ -287,8 +287,13 @@ namespace eval ::scache {
     #
     set cext_name "c_$name"
 
-    debug "Building: CExtension $cext_name 1.1 { CTable $ctable_name {...} }"
-
+    debug [
+      list CExtension $cext_name 1.1 "
+	CTable $ctable_name {
+	    [join $ctable "\n\t    "]
+	}
+      "
+    ]
     # Once we start creating files, we need to completely trash whatever's
     # partially created if there's an error...
     #
@@ -516,6 +521,7 @@ namespace eval ::scache {
       if ![info exists time_column($ctable_name)] {
 	set reason "$ctable_name: No time column"
       } else {
+	set time_col $time_column($ctable_name)
         set sql_file [workname $ctable_name sql]
         if ![file exists $sql_file] {
 	  set reason "$ctable_name: Uninitialized ctable"
@@ -734,7 +740,7 @@ namespace eval ::scache {
 
       unset -nocomplain options
       if {[lsearch -exact $indices $raw_col] != -1} {
-	lappend options -index 1
+	lappend options indexed 1
       }
 
       set column [list $field $type]
