@@ -137,7 +137,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 	    hashEntry = Tcl_CreateHashEntry (row_head_tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
 	    Tcl_IncrRefCount(objv[3]);
-	    ctable_SetHashValue (hashEntry, (ClientData)objv[3]);
+	    Tcl_SetHashValue (hashEntry, (ClientData)objv[3]);
 	    return TCL_OK;
 	}
 
