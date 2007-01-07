@@ -207,7 +207,9 @@ namespace eval ::scache {
     # to have a single place you call init_ctable.
     #
     lappend tcl [namespace which init_ctable] $name $tables $where_clause
-    set tcl [concat $tcl $args]
+    foreach arg $args {
+      lappend tcl $arg
+    }
     set tclfile [workname $ctable_name tcl]
 
     if [file exists $tclfile] {
@@ -328,6 +330,63 @@ namespace eval ::scache {
 
     unlockfile $build_dir
     return 1
+  }
+
+  # create_sql_table table_name ?-temp? ?-tablespace tablespace? columns...
+  #
+  # Using the same column format as init_ctable, this creates an SQL table
+  # to match.
+  # 
+  #   table_name - SQL table name
+  #   columns - List of column val
+  #   options:
+  #     -temp
+  #       create a temp table
+  #     -tablespace tablespace
+  #       create table in the specified tablespace
+  #
+  proc create_sql_table {table_name args} { debug
+    set temp 0
+    set tablespace ""
+    while {[string match "-*" [set opt [lindex $args 0]]]} {
+      set args [lrange $args 1 end]
+      switch -exact -- $opt {
+        -temp { set temp 1 }
+        -tablespace {
+	  set tablespace [lindex $args 0]
+	  set args [lrange $args 1 end]
+	}
+	default {
+	  return -code error "Unknown option $opt"
+	}
+      }
+    }
+    if {[llength $args] == 0} {
+      return -code error "No columns specified"
+    }
+    if {[llength $args] == 1} {
+      set args [lindex $args 0]
+    }
+    if {[llength $args] <= 1} {
+      return -code error "Not enough columns specified"
+    }
+
+    set create_sql "CREATE"
+    if {$temp} {
+      append create_sql " TEMP"
+    }
+    append create_sql " TABLE $table_name"
+    foreach column $args {
+      foreach {field type} $column { break }
+      lappend code "$field $type"
+    }
+    append create_sql " ([join $code ", "])"
+    if {"$tablespace" != ""} {
+      append create_sql " TABLESPACE $tablespace"
+    }
+    append create_sql ";"
+
+    exec_sql $create_sql
   }
 
   # open_cached name ?pattern? ?-opt val?...
