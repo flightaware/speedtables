@@ -178,4 +178,14 @@ Adopt a thing like in indexes where you can say the expected number of
 rows.  This should be on an instance-by-instance basis rather than on
 the meta table.
 
+--
 
+There is a superfluous pointer in every bidirectionally linked list (one
+for each row and one for each indexable fileld in a row) back to the head
+which we need because our linked list routines are dumb.
+
+Switch to better linked list routines and save a pointer for ever row plus
+a pointer for every indexable field in a row.
+
+
+--

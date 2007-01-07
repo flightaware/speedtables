@@ -1,12 +1,10 @@
     // $Id$
 int ${table}_delete_all_rows(Tcl_Interp *interp, struct ctableTable *ctable) {
-    ctable_HashSearch     hashSearch;
-    ctable_HashEntry     *hashEntry;
-    struct ${table}      *row;
+    struct ctable_baseRow    *row;
+    struct ctable_baseRow    *nextRow;
 
-    for (hashEntry = ctable_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (ctable_HashEntry *) NULL; hashEntry = ctable_NextHashEntry (&hashSearch)) {
-	row = (struct $table *) ctable_GetHashValue (hashEntry);
-	${table}_delete(row);
+    CTABLE_LIST_FOREACH_SAFE (ctable->ll_head, row, nextRow, 0) {
+	${table}_delete((struct ${table} *)row);
     }
 
     ctable_DeleteHashTable (ctable->keyTablePtr);

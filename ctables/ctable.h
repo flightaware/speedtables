@@ -69,9 +69,9 @@ struct ctable_baseRow {
 #define CTABLE_LIST_FOREACH(list, var, i) \
     for ((var) = list; (var); (var) = (var)->_ll_nodes[i].next)
 
-#define CTABLE_LIST_FOREACH_SAFE(ctable, var, tvar, i) \
+#define CTABLE_LIST_FOREACH_SAFE(list, var, tvar, i) \
     for ((var) = list; \
-        (var) && ((tvar) = (var)->ll_nodes[i].next, 1); \
+        (var) && ((tvar) = (var)->_ll_nodes[i].next); \
          var = tvar)
 
 // define ctable search comparison types

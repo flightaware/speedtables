@@ -2,6 +2,11 @@
 $Id$
 
 1/7/2007 karl
+    * Update "reset" and "destroy" methods to walk the table using
+      the all-rows linked list instead of walking the hash table,
+      resulting in a 33% performance improvement deleteing a
+      million-row four-element table on a G4.
+
     * Revert handling of the registered proc hashtables to using the
       Tcl hashtable routines rather than our custom version as the
       custom version is about to evolve specifically to go into rows
