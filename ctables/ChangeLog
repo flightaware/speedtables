@@ -16,6 +16,10 @@ $Id$
       actual field in the row as the hash key and bootstrapping our
       existing per-field compare routines to do the comparing.
 
+    * When generating the field compare routine for strings, check the
+      first characters for nonequality and handle explicitly, only
+      calling strcmp if the first characters are identical.
+
 1/6/2007 karl
     * Make write_tabsep walk the all-rows linked list instead of the
       hashtable, for no good reason as it's deprecated anyway but

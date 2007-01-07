@@ -3117,6 +3117,13 @@ set numberFieldCompSource {
 # a string for use in searching, sorting, etc.
 #
 set varstringFieldCompSource {
+    if (*row1->$field != *row2->$field) {
+        if (*row1->$field < *row2->$field) {
+	    return -1;
+	} else {
+	    return 1;
+	}
+    }
     return strcmp (row1->$field, row2->$field);
 }
 
@@ -3125,6 +3132,13 @@ set varstringFieldCompSource {
 # fixed-length string for use in a searching, sorting, etc.
 #
 set fixedstringFieldCompSource {
+    if (*row1->$field != *row2->$field) {
+        if (*row1->$field < *row2->$field) {
+	    return -1;
+	} else {
+	    return 1;
+	}
+    }
     return strncmp (row1->$field, row2->$field, $length);
 }
 
