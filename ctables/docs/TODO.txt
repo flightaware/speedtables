@@ -35,15 +35,6 @@ Make set return a 1 if it created the row and a 0 if it already exists.
 Do something like GNU autoconf/configure or dig compiler switches, etc, out
 of tclConfig.sh.
 
-DONE Add an "incr" method.
-
-DONE In search, make it store the native value being compared in a union in
-the search component structure or something.  Compare that directly
-rather than repetitively digging it out with Tcl_GetIntFromObj or
-whatever, even though it's fast when it's native.
-(Even better, we generate a row and put what we want in the field via a
-standard *_set routine and possibly fiddle the null bit for the field.)
-
 fixed strings allocate one more character than requested
 
 provide a way for a ctable to provide a complete replayable definition
@@ -53,15 +44,6 @@ it can get off from whatever files are in the vicinity.
 implement btree-style index option for fields with both unique and not-unique
 styles.
 
-For big searches Tcl_NextHashEntry is responsible for almost 50% of the
-overhead.  Unacceptable.  At the very least do a bidirectionally linked
-list between rows in a table and traverse them that way.  (Hey, not bad.)
-Or go to fancy skip lists or whatever and traverse them that way.  Skip
-lists have easy and fast straight traversal.
-Turns out skip lists are slower to traverse than the hash tables, however
-we did implement the straight bidirectionally linked lists and it was a big
-win.  DONE
-
 Adopt TclX's test structure and make lots more tests.
 
 In the _comp routine for varstring, if the pointer is NULL use the
@@ -69,11 +51,6 @@ default value for the field.
 
 -----
 
-DONE Generate a row when the search type is range and we're doing skip list
-search.  Eventually make this generated row business, as used in the
-skip list cmp routines, standard in other places.
-
-----
 
 read_tabsep can fail but add a thing where you can specify -error proc and
 if it's going to fail and the error proc has been specified, it'll call
@@ -100,7 +77,7 @@ length.
 
 Make skip lists support enforcement of unique constraint as they originally did.
 
-Write the compiler debug flag into the stuff we see to see if anything got changed.
+Write the compiler debug flag into the stuff we look at to see if anything got changed, requiring a recompile of the speedtable definitions.
 
 ----
 
@@ -157,3 +134,33 @@ make "names" method do the same.
 make a speed table driver package that has all the non-generated source
 like searching, sorting, hash tables, skip lists, etc, into a shared
 library such that they aren't completely compiled every time.
+
+This will require solving the problem on Mac OS X where I can't link to
+libpgtcl from my shared library.
+
+Create that driver package as a full-fledged Tcl extension including
+an autoconf/configure script so that it works not just on FreeBSD and
+Mac OS X but Linux, Solaris, UNIX, etc.
+
+--
+
+Implement a straight "-array arrayName" in search where they don't have to
+do "array set" on the key-value pairs returned by -array_get and 
+-array_get_with_nulls.  When using -array, fields that are null should
+explicitly be unset from the array, although it might be desirable to have
+a switch to cause null fields to be set into the array with the default
+value.
+
+--
+
+possibly store the first values set for a varstring when a new row is
+created in-band in a single malloc with an offset rather than a pointer or
+a pointer into the allocated memory but keep track of that you can't free
+it in the normal manner.  also that static area can be reused if a new
+value is set in that is the same size or smaller.
+
+also peter suggested using fields that are part of a varstring in a speedtable
+row in the fields themselves if they're short enough, like 4 or 8 or
+maybe 12 bytes.
+
+

@@ -1131,13 +1131,11 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
 
 int
 ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
-    Tcl_Channel       channel;
-    int               mode;
-    Tcl_DString       dString;
-    ctable_HashSearch hashSearch;
-    ctable_HashEntry *hashEntry;
-    char             *key;
-    struct ${table}  *row;
+    Tcl_Channel             channel;
+    int                     mode;
+    Tcl_DString             dString;
+    char                   *key;
+    struct ctable_baseRow  *row;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -1150,22 +1148,29 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST ch
 
     Tcl_DStringInit (&dString);
 
-    for (hashEntry = ctable_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (ctable_HashEntry *) NULL; hashEntry = ctable_NextHashEntry (&hashSearch)) {
-
-	key = ctable_GetHashKey (ctable->keyTablePtr, hashEntry);
-	if ((pattern != NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
+    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+	// if there's no pattern and no keys has been set, no need to
+	// get the key
+        if ((pattern == NULL) && noKeys) {
+	    key = NULL;
+	} else {
+	    // key is needed and if there's a pattern, check it
+	    key = ctable_GetHashKey (ctable->keyTablePtr, row->hashEntry);
+	    if ((pattern != NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
+	}
 
         Tcl_DStringSetLength (&dString, 0);
-	row = (struct $table *) ctable_GetHashValue (hashEntry);
 
-	${table}_dstring_append_get_tabsep (key, row, fieldNums, nFields, &dString, noKeys);
+	${table}_dstring_append_get_tabsep (key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys);
 
 	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
+	    Tcl_DStringFree (&dString);
 	    return TCL_ERROR;
 	}
     }
 
+    Tcl_DStringFree (&dString);
     return TCL_OK;
 }
 

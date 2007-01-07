@@ -1,6 +1,11 @@
 
 $Id$
 
+1/6/2007 karl
+    * Make write_tabsep walk the all-rows linked list instead of the
+      hashtable, for no good reason as it's deprecated anyway but
+      I guess it's good practice.
+
 1/4/2007 karl
     * Adapt the Tcl hashtable routines for speedtables's own use.
 
