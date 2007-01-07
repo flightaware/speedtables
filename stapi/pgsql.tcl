@@ -79,9 +79,7 @@ namespace eval ::scache {
     return $result
   }
 
-  proc read_ctable_from_sql {ctable sql {_err ""}} {
-    debug "Setting up database request" $sql
-
+  proc read_ctable_from_sql {ctable sql {_err ""}} { debug
     if ![catch {set pg_res [pg_exec [conn] $sql]} pg_err] {
       unset -nocomplain pg_err
       set pg_stat [pg_result $pg_res -status]
@@ -100,7 +98,7 @@ namespace eval ::scache {
       return -code error -errorinfo "$pg_err\nIn \"$sql\"" $pg_err
     }
 
-    debug "Reading $ctable from database"
+    debug "$ctable import_postgres_result $pg_res"
     $ctable import_postgres_result $pg_res
 
     pg_result $pg_res -clear

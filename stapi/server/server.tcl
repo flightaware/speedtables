@@ -158,6 +158,9 @@ namespace eval ::scache {
     variable sql2ctable
 
     # Validate arguments.
+    if {"$name" == ""} {
+      return -code error "Empty ctable name"
+    }
     if {[llength $args] == 0} {
       set args "name tables where_clause ?columns|key_col column...?"
       return -code error "Usage [namespace which init_ctable] $args"
@@ -289,13 +292,6 @@ namespace eval ::scache {
     #
     set cext_name "c_$name"
 
-    debug [
-      list CExtension $cext_name 1.1 "
-	CTable $ctable_name {
-	    [join $ctable "\n\t    "]
-	}
-      "
-    ]
     # Once we start creating files, we need to completely trash whatever's
     # partially created if there's an error...
     #
@@ -446,15 +442,11 @@ namespace eval ::scache {
     # the table from cache or db, this improves locality and improves
     # performance measurably.
     #
-    if [llength $indices] {
-      debug "Creating indices"
-      foreach list $indices {
-	foreach i $list {
-	  debug "$ctable index create $i 24"
-	  $ctable index create $i 24
-	}
+    foreach list $indices {
+      foreach i $list {
+	debug "$ctable index create $i 24"
+	$ctable index create $i 24
       }
-      debug "Indexes created"
     }
 
     # If no file, we want the last read time to be 0 (Jan 1 1970)
@@ -526,10 +518,10 @@ namespace eval ::scache {
     set sql_file [workname $ctable_name sql]
     if ![file exists $sql_file] {
       unlockfile $tsv_file
-      return -code error "Uninitialised ctable $ctable_name"
+      return -code error "Uninitialised ctable $ctable_name: $sql_file not found"
     }
     set fp [open $sql_file r]
-    set sql [read $fp]
+    set sql [read -nonewline $fp]
     close $fp
 
     # If we're doing an update, and last_read is non-zero, this will patch the
@@ -563,7 +555,7 @@ namespace eval ::scache {
   # if last_read is non-zero use that rather than last modify time of the cache,
   # return success or failure if err variable name is provided.
   #
-  proc refresh_ctable {ctable {last_read 0} {_err ""}} {
+  proc refresh_ctable {ctable time_col {last_read 0} {_err ""}} { debug
     variable ctable2name
     variable time_column
 
@@ -577,14 +569,9 @@ namespace eval ::scache {
       set reason "$ctable: Not a cached ctable"
     } else {
       set ctable_name $ctable2name($ctable)
-      if ![info exists time_column($ctable_name)] {
-	set reason "$ctable_name: No time column"
-      } else {
-	set time_col $time_column($ctable_name)
-        set sql_file [workname $ctable_name sql]
-        if ![file exists $sql_file] {
-	  set reason "$ctable_name: Uninitialized ctable"
-        }
+      set sql_file [workname $ctable_name sql]
+      if ![file exists $sql_file] {
+        set reason "Uninitialised ctable $ctable_name: $sql_file not found"
       }
     }
 
@@ -836,7 +823,7 @@ namespace eval ::scache {
     }
     if ![file isdir $build_dir] {
       unlockfile $build_dir
-      return -code error "$ctable_name: Uninitialised ctable"
+      return -code error "Uninitialised ctable $ctable_name: $build_dir not found or not a directory"
     }
 
     # make sure the build directory is in my path
@@ -868,6 +855,9 @@ namespace eval ::scache {
 
   # Create a working file name in the build root
   proc workname {name {ext ""}} {
+    if {"$name" == ""} {
+      return -code error "Invalid ctable name (null)"
+    }
     variable build_root
     if {"$ext" != ""} {
       append name . $ext

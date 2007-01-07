@@ -8,7 +8,6 @@ namespace eval ::scache {
   variable lock_level 0
   proc lockfile {name _err {timeout 120} {recursing 0}} {
     variable lock_level
-    # debug [info level 0]
     if $lock_level {
       incr lock_level
       return 1
@@ -81,8 +80,7 @@ namespace eval ::scache {
       if {!$recursing} {
 	# We're not locking the lockfile, so lock the lockfile...
 	if ![lockfile $lockfile err 20 1] {
-	  debug $err
-	  debug "Can't lock lockfile to check stale lock!"
+	  debug "Can't lock lockfile to check stale lock: $err"
 	} else {
 	  # It shouldn't be possible for this to break out, but be paranoid
 	  set lockfile_locked 1
