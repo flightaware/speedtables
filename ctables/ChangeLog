@@ -10,6 +10,12 @@ $Id$
     * Copy Hash.3 that documents hashtable routines in Tcl and update it
       for changes made for our private version.  More to come.
 
+    * Change speedtables hash routines to have compare routines return
+      0 for a match, -1 for less than and 1 for greater than rather than
+      1 for a match and 0 for "not equal" in preparation of using the
+      actual field in the row as the hash key and bootstrapping our
+      existing per-field compare routines to do the comparing.
+
 1/6/2007 karl
     * Make write_tabsep walk the all-rows linked list instead of the
       hashtable, for no good reason as it's deprecated anyway but

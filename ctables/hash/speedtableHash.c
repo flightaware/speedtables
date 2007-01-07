@@ -289,7 +289,7 @@ ctable_CreateHashEntry(
 	    if (hash != (unsigned int)(hPtr->hash)) {
 		continue;
 	    }
-	    if (compareKeysProc ((VOID *) key, hPtr)) {
+	    if (!compareKeysProc ((VOID *) key, hPtr)) {
 		if (newPtr)
 		    *newPtr = 0;
 		return hPtr;
@@ -671,8 +671,9 @@ AllocArrayEntry(
  *	Compares two array keys.
  *
  * Results:
- *	The return value is 0 if they are different and 1 if they are the
- *	same.
+ *	The return value is 0 if they are are the same, -1 if the new
+ *      key is less than the existing key and 1 if the new key is
+ *      greater than the existing key.
  *
  * Side effects:
  *	None.
@@ -692,12 +693,18 @@ CompareArrayKeys(
 
     for (count = tablePtr->keyType; ; count--, iPtr1++, iPtr2++) {
 	if (count == 0) {
-	    return 1;
+	    return 0;
 	}
 	if (*iPtr1 != *iPtr2) {
+	    if (*iPtr1 < *iPtr2) {
+	        return -1;
+	    } else {
+	        return 1;
+	    }
 	    break;
 	}
     }
+    Tcl_Panic ("didn't think it could reach this point in CompareArrayKeys");
     return 0;
 }
 
@@ -778,8 +785,9 @@ AllocStringEntry(
  *	Compares two string keys.
  *
  * Results:
- *	The return value is 0 if they are different and 1 if they are the
- *	same.
+ *	The return value is 0 if they are the same, and -1 if the new key
+ *      is less than the existing key and 1 if the new key is greater
+ *      than the existing key.
  *
  * Side effects:
  *	None.
@@ -796,16 +804,22 @@ CompareStringKeys(
     register CONST char *p2 = (CONST char *) hPtr->key.string;
 
 #ifdef CTABLE_COMPARE_HASHES_WITH_STRCMP
-    return !strcmp(p1, p2);
+    return strcmp(p1, p2);
 #else
     for (;; p1++, p2++) {
 	if (*p1 != *p2) {
+	    if (*p1 < *p2) {
+	        return -1;
+	    } else {
+	        return 1;
+	    }
 	    break;
 	}
 	if (*p1 == '\0') {
-	    return 1;
+	    return 0;
 	}
     }
+    Tcl_Panic ("code failure in CompareStringKeys - should not be here");
     return 0;
 #endif /* CTABLE_COMPARE_HASHES_WITH_STRCMP */
 }
