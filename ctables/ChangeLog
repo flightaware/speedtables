@@ -2,6 +2,11 @@
 $Id$
 
 1/7/2007 karl
+    * Revert handling of the registered proc hashtables to using the
+      Tcl hashtable routines rather than our custom version as the
+      custom version is about to evolve specifically to go into rows
+      of ctables.
+
     * Copy Hash.3 that documents hashtable routines in Tcl and update it
       for changes made for our private version.  More to come.
 

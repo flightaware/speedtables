@@ -163,4 +163,12 @@ also peter suggested using fields that are part of a varstring in a speedtable
 row in the fields themselves if they're short enough, like 4 or 8 or
 maybe 12 bytes.
 
+--
+
+See how hard it would be to put the hash table entry at the start of the row,
+in the row definition, obviating the need for a pointer to the row in the
+hash table entry and in conjunction with looking at the actual value in the
+field in the row that's being used for the hash table, not have a pointer
+to the key either.
+
 

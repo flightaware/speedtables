@@ -209,7 +209,7 @@ struct ctableFieldInfo {
 };
 
 struct ctableCreatorTable {
-    ctable_HashTable     *registeredProcTablePtr;
+    Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int     nextAutoCounter;
 
     CONST char          **fieldNames;

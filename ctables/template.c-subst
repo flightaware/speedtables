@@ -128,14 +128,14 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	     * is, like, a method name, and a proc which will be invoked
 	     * when the method is invoked
 	     */
-	    ctable_HashEntry *hashEntry;
+	    Tcl_HashEntry *hashEntry;
 	    int               new;
 
 	    if (objc != 4) {
 		Tcl_WrongNumArgs (interp, 2, objv, "name proc");
 		return TCL_ERROR;
 	    }
-	    hashEntry = ctable_CreateHashEntry (row_head_tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
+	    hashEntry = Tcl_CreateHashEntry (row_head_tbl_ptr->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
 	    Tcl_IncrRefCount(objv[3]);
 	    ctable_SetHashValue (hashEntry, (ClientData)objv[3]);
 	    return TCL_OK;

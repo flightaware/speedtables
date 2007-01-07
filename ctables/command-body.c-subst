@@ -31,6 +31,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     struct $table *row;
     int optIndex;
     ctable_HashEntry *hashEntry;
+    Tcl_HashEntry *registeredProcHashEntry;
     int indexCtl;
 
     static CONST char *options[] = {"get", "set", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", (char *)NULL};
@@ -47,22 +48,22 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int           i;
 	int           result;
 
-	hashEntry = ctable_FindHashEntry (ctable->creatorTable->registeredProcTablePtr, Tcl_GetString (objv[1]));
+	registeredProcHashEntry = Tcl_FindHashEntry (ctable->creatorTable->registeredProcTablePtr, Tcl_GetString (objv[1]));
 
-	if (hashEntry == (ctable_HashEntry *) NULL) {
-	    ctable_HashSearch hashSearch;
+	if (registeredProcHashEntry == (Tcl_HashEntry *) NULL) {
+	    Tcl_HashSearch hashSearch;
 
 	    Tcl_AppendResult (interp, ", or one of the registered methods:", (char *)NULL);
 
-	    for (hashEntry = ctable_FirstHashEntry (ctable->creatorTable->registeredProcTablePtr, &hashSearch); hashEntry != (ctable_HashEntry *) NULL; hashEntry = ctable_NextHashEntry (&hashSearch)) {
-	        char *key = ctable_GetHashKey (ctable->creatorTable->registeredProcTablePtr, hashEntry);
+	    for (registeredProcHashEntry = Tcl_FirstHashEntry (ctable->creatorTable->registeredProcTablePtr, &hashSearch); registeredProcHashEntry != (Tcl_HashEntry *) NULL; registeredProcHashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	        char *key = Tcl_GetHashKey (ctable->creatorTable->registeredProcTablePtr, registeredProcHashEntry);
 		Tcl_AppendResult (interp, " ", key, (char *)NULL);
 	    }
 	    return TCL_ERROR;
 	}
 
 	calloutObjv = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj *) * objc);
-	calloutObjv[0] = (Tcl_Obj *)ctable_GetHashValue (hashEntry);
+	calloutObjv[0] = (Tcl_Obj *)Tcl_GetHashValue (registeredProcHashEntry);
 	calloutObjv[1] = objv[0];
 	for (i = 2; i < objc; i++) {
 	    calloutObjv[i] = objv[i];
