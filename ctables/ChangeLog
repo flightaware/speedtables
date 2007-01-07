@@ -1,6 +1,10 @@
 
 $Id$
 
+1/7/2007 karl
+    * Copy Hash.3 that documents hashtable routines in Tcl and update it
+      for changes made for our private version.  More to come.
+
 1/6/2007 karl
     * Make write_tabsep walk the all-rows linked list instead of the
       hashtable, for no good reason as it's deprecated anyway but
