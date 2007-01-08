@@ -325,7 +325,7 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
     }
 
     if (search->codeBody != NULL) {
-	Tcl_Obj *listObj = Tcl_NewObj();
+	Tcl_Obj *listObj = NULL;
 	int      evalResult;
 
 	if (search->useGet) {
@@ -334,6 +334,7 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	    } else {
 	       int i;
 
+	       listObj = Tcl_NewObj ();
 	       for (i = 0; i < search->nRetrieveFields; i++) {
 		   creatorTable->lappend_field (interp, listObj, row, creatorTable->fieldList[i]);
 	       }
@@ -342,12 +343,14 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	    if (search->nRetrieveFields < 0) {
 	       int i;
 
+	       listObj = Tcl_NewObj ();
 	       for (i = 0; i < creatorTable->nFields; i++) {
 		   creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, i);
 	       }
 	    } else {
 	       int i;
 
+	       listObj = Tcl_NewObj ();
 	       for (i = 0; i < search->nRetrieveFields; i++) {
 		   creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
 	       }
@@ -356,6 +359,7 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	    if (search->nRetrieveFields < 0) {
 		listObj = (*creatorTable->gen_keyvalue_list) (interp, row);
 	    } else {
+	       listObj = Tcl_NewObj ();
 		for (i = 0; i < search->nRetrieveFields; i++) {
 		    creatorTable->lappend_field_and_name (interp, listObj, row, search->retrieveFields[i]);
 		}

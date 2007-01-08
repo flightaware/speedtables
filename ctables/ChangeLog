@@ -1,6 +1,12 @@
 
 $Id$
 
+1/8/2007 karl
+    * Fix critical memory leak in *_set_from_tabsep, used by read_tabsep.
+
+    * Fix minor memory leak in ctable_SearchAction that occurred under
+      certain circumstances based on what form the results were requested in.
+
 1/7/2007 karl
     * Update "reset" and "destroy" methods to walk the table using
       the all-rows linked list instead of walking the hash table,

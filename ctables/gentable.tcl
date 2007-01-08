@@ -1201,6 +1201,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, char *
 	}
     }
 
+    Tcl_DecrRefCount (utilityObj);
     return TCL_OK;
 }
 
@@ -3678,6 +3679,9 @@ proc compile {fileFragName version} {
 		set stub "-ltclstub84"
 		set lib "-ltcl84"
 	    }
+
+	    # put -DTCL_MEM_DEBUG in there if you're building with
+	    # memory debugging (see Tcl docs)
 
 	    myexec "gcc -pipe $optflag $dbgflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
 

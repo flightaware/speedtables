@@ -924,7 +924,7 @@ RebuildTable(
     tablePtr->downShift -= 4;
     tablePtr->mask = (tablePtr->mask << 4) + 15;
 
-    printf("rebuilding table from %d buckets to %d buckets\n", oldSize, tablePtr->numBuckets);
+    // printf("rebuilding table from %d buckets to %d buckets\n", oldSize, tablePtr->numBuckets);
 
     /*
      * Rehash all of the existing entries into the new bucket array.
@@ -952,7 +952,7 @@ RebuildTable(
 	ckfree((char *) oldBuckets);
     }
 
-    printf("done\n");
+    // printf("done\n");
 }
 
 /*
