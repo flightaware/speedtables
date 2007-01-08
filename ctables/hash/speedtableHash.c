@@ -227,6 +227,20 @@ ctable_FindHashEntry(
 
 
 /*
+ * defaultHashKeyProc --
+ *
+ *      Given a pointer of a type with an unknown hash key proc, generate
+ *      a hash for it.
+ */
+#if defined(__amd64__) || defined(__ia64__)
+# define defaultHashKeyProc(p) \
+	((((quad_t)(p)) & 0xFFFFFFFF) ^ (((quad_t)(p)) >> 32))
+#else
+# define defaultHashKeyProc(p) ((unsigned int)(p))
+#endif
+
+
+/*
  *----------------------------------------------------------------------
  *
  * ctable_CreateHashEntry --
@@ -274,7 +288,7 @@ ctable_CreateHashEntry(
 	    index = hash & tablePtr->mask;
 	}
     } else {
-	hash = (unsigned int)(key);
+	hash = defaultHashKeyProc(key);
 	index = RANDOM_INDEX (tablePtr, hash);
     }
 
