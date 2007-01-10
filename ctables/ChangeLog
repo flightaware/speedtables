@@ -45,6 +45,12 @@ $Id$
       inserting into a large table, providing about a 7% increase
       in overall speed table insertion performance.
 
+1/4/2007 karl
+    * Simplify init-exten.c-subst by exploiting the not per-definition
+      customized "struct ctableCreatorTable", removing a substitution,
+      and making speed tables compile properly again when defining
+      multiple tables.
+
 1/3/2007 karl
     * Support unique indexes using "unique 1" in field definition.
 

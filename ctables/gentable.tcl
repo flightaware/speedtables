@@ -2273,13 +2273,7 @@ proc put_init_extension_source {extension extensionVersion} {
     variable initExtensionSource
     variable tables
 
-    set structHeadTablePointers ""
-    foreach name $tables {
-        append structHeadTablePointers "    struct ctableCreatorTable *t;\n";
-    }
-
     set Id {init extension Id}
-
     emit [subst -nobackslashes -nocommands $initExtensionSource]
 }
 
