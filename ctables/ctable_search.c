@@ -865,6 +865,7 @@ ctable_SetupSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *CON
     }
 
     // initialize search control structure
+    search->ctable = ctable;
     search->nComponents = 0;
     search->components = NULL;
     search->countOnly = 0;
@@ -1074,20 +1075,21 @@ ctable_TeardownSearch (struct ctableSearchStruct *search) {
     for (i = 0; i < search->nComponents; i++) {
 	struct ctableSearchComponentStruct  *component = &search->components[i];
 	if (component->clientData != NULL) {
+
+	    if (component->row1 != NULL) {
+	        search->ctable->creatorTable->delete (search->ctable, component->row1, CTABLE_INDEX_PRIVATE);
+	    }
+
+	    if (component->row2 != NULL) {
+	        search->ctable->creatorTable->delete (search->ctable, component->row2, CTABLE_INDEX_PRIVATE);
+	    }
+
 	    // this needs to be pluggable
 	    if ((component->comparisonType == CTABLE_COMP_MATCH) || (component->comparisonType == CTABLE_COMP_NOTMATCH) || (component->comparisonType == CTABLE_COMP_MATCH_CASE) || (component->comparisonType == CTABLE_COMP_NOTMATCH_CASE)) {
 		struct ctableSearchMatchStruct *sm = component->clientData;
 		if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
 		    boyer_moore_teardown (sm);
 		}
-	    }
-
-	    if (component->row1 != NULL) {
-	        ckfree (component->row1);
-	    }
-
-	    if (component->row2 != NULL) {
-	        ckfree (component->row2);
 	    }
 
 	    ckfree (component->clientData);
@@ -1157,32 +1159,26 @@ ctable_SetupAndPerformSkipSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int
 // structure and set the field's pointer to the skip list to NULL
 //
 //
-int
-ctable_DropIndex (Tcl_Interp *interp, struct ctableTable *ctable, int field) {
+void
+ctable_DropIndex (struct ctableTable *ctable, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
 
-    if (skip == NULL) {
-        return TCL_OK;
-    }
+    if (skip == NULL) return;
 
     ctable->skipLists[field] = NULL;
     jsw_sdelete_skiplist (skip);
-    return TCL_OK;
 }
 
 //
 // ctable_DropAllIndexes - delete all of a table's indexes
 //
-int
-ctable_DropAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable) {
+void
+ctable_DropAllIndexes (struct ctableTable *ctable) {
     int field;
 
     for (field = 0; field < ctable->creatorTable->nFields; field++) {
-        if (ctable_DropIndex (interp, ctable, field) != TCL_OK) {
-	    return TCL_ERROR;
-	}
+        ctable_DropIndex (ctable, field);
     }
-    return TCL_OK;
 }
 
 //
@@ -1259,8 +1255,8 @@ ctable_ListIndex (Tcl_Interp *interp, struct ctableTable *ctable, int fieldNum) 
     return TCL_OK;
 }
 
-inline int
-ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, int field) {
+inline void
+ctable_RemoveFromIndex (struct ctableTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     struct ctable_baseRow *row = vRow;
     int index;
@@ -1269,7 +1265,7 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vR
 
     if (skip == NULL) {
 // printf("it's null\n");
-        return TCL_OK;
+        return;
     }
 
     if (ctable_ListRemoveMightBeTheLastOne (row, ctable->creatorTable->fields[field]->indexNumber)) {
@@ -1288,7 +1284,8 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vR
 	    // *row->ll_nodex[index].head = NULL; // don't think this is needed
 	}
     }
-    return TCL_OK;
+
+    return;
 }
 
 //
@@ -1297,8 +1294,8 @@ ctable_RemoveFromIndex (Tcl_Interp *interp, struct ctableTable *ctable, void *vR
 //
 //
 //
-int
-ctable_RemoveFromAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable, void *row) {
+void
+ctable_RemoveFromAllIndexes (struct ctableTable *ctable, void *row) {
     int         field;
     
     // everybody's in index 0, take this guy out
@@ -1309,10 +1306,9 @@ ctable_RemoveFromAllIndexes (Tcl_Interp *interp, struct ctableTable *ctable, voi
     // in a hurry
     for (field = 0; field < ctable->creatorTable->nFields; field++) {
 	if (ctable->skipLists[field] != NULL) {
-	    ctable_RemoveFromIndex (interp, ctable, row, field);
+	    ctable_RemoveFromIndex (ctable, row, field);
 	}
     }
-    return TCL_OK;
 }
 
 //

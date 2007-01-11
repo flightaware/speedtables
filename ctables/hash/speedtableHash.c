@@ -285,22 +285,6 @@ void
 ctable_DeleteHashTable(
     register ctable_HashTable *tablePtr)	/* Table to delete. */
 {
-    int i;
-    register ctable_HashEntry *hPtr, *nextPtr;
-
-    /*
-     * Free up all the entries in the table.
-     */
-
-    for (i = 0; i < tablePtr->numBuckets; i++) {
-	hPtr = tablePtr->buckets[i];
-	while (hPtr != NULL) {
-	    nextPtr = hPtr->nextPtr;
-	    ckfree (hPtr->key);
-	    hPtr = nextPtr;
-	}
-    }
-
     /*
      * Free up the bucket array, if it was dynamically allocated.
      */

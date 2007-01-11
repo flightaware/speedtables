@@ -243,6 +243,7 @@ struct ctableCreatorTable {
 
     int (*search_compare) (Tcl_Interp *interp, struct ctableSearchStruct *searchControl, void *pointer, int tailoredWalk);
     int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
+    void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
 };
 
 struct ctableTable {
@@ -252,7 +253,6 @@ struct ctableTable {
     jsw_skip_t                         **skipLists;
     struct ctable_baseRow               *ll_head;
 
-    int                                  nLinkedLists;
     int                                  autoRowNumber;
     Tcl_Command                          commandInfo;
     long                                 count;

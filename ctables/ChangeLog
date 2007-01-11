@@ -2,6 +2,27 @@
 $Id$
 
 1/10/2007 karl
+    * Make the *_delete routine take the ctable and a flag that says
+      CTABLE_INDEX_NORMAL if the row is in its indexes, etc, or
+      CTABLE_INDEX_PRIVATE if it isn't.  (For instance, rows generated
+      as part of search components are never inserted into a table).
+
+      If the delete type is "normal", the *_delete routine will remove
+      the row from all of the indexes that are in existence for that
+      table and it will remove the row from the table's hash table.
+
+      In either case, the delete routine will delete any varstrings that
+      are part of the row and then delete the row itself.
+
+      This means that code doesn't have to know how and when to remove the
+      row from any indexes.
+
+    * By the above changes and a bit more, fixed a memory leak when
+      completing searches.
+
+    * Altered ctable_RemoveFromIndex and ctable_RemoveFromAllIndexes to
+      not take an interpreter and have a void return as they cannot fail.
+
     * Now that performance has gotten a lot of attention we are turning
       our attention, at least temporarily, to memory utilization.
 

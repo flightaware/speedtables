@@ -4,18 +4,21 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, struct ctableTable *ctable) {
     struct ctable_baseRow    *nextRow;
 
     CTABLE_LIST_FOREACH_SAFE (ctable->ll_head, row, nextRow, 0) {
-	${table}_delete((struct ${table} *)row);
-    }
 
-    ctable_DeleteHashTable (ctable->keyTablePtr);
+	// we say CTABLE_INDEX_PRIVATE to cause the index entries
+	// to not be deleted, drop all indexes later will do a
+	// much faster job
+
+	${table}_delete(ctable, (struct ${table} *)row, CTABLE_INDEX_PRIVATE);
+    }
 
     // reset the linked list of all rows
     ctable_ListInit (&ctable->ll_head);
 
     // drop all indexes, if any
-    if (ctable_DropAllIndexes (interp, ctable) == TCL_ERROR) {
-        return TCL_ERROR;
-    }
+    ctable_DeleteHashTable (ctable->keyTablePtr);
+
+    ctable_DropAllIndexes (ctable);
 
     ctable->count = 0;
     ctable->autoRowNumber = 0;
@@ -270,9 +273,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	row = (struct $table *) hashEntry;
 
-	ctable_RemoveFromAllIndexes (interp, ctable, row);
-	${table}_delete(row);
-	ctable_DeleteHashEntry (ctable->keyTablePtr, hashEntry);
+	${table}_delete(ctable, row, CTABLE_INDEX_NORMAL);
 	ctable->count--;
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
 	return TCL_OK;
@@ -630,9 +631,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    if (Tcl_GetIndexFromObj (interp, objv[3], ${table}_fields, "field", TCL_EXACT, &fieldNum) != TCL_OK) {
 		return TCL_ERROR;
 	    }
-	    if (ctable_DropIndex (interp, ctable, fieldNum) != TCL_OK) {
-	        return TCL_ERROR;
-	    }
+
+	    ctable_DropIndex (ctable, fieldNum);
 	    break;
 	  }
 

@@ -141,8 +141,8 @@ set nullCheckDuringSetSource {
 	if (${table}_obj_is_null (obj)) {
 	    if (!row->_${field}IsNull) {
 	        if (ctable->skipLists[field] != NULL) {
-		    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR)) {
-		        return TCL_ERROR;
+		    if (indexCtl == CTABLE_INDEX_NORMAL) {
+		        ctable_RemoveFromIndex (ctable, row, field);
 		    }
 
 		    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable_InsertNullIntoIndex (interp, ctable, row, field) == TCL_ERROR)) {
@@ -210,9 +210,7 @@ proc gen_unset_null_during_set_source {table field} {
 
 set removeFromIndexSource {
 	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
-		if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
+		ctable_RemoveFromIndex (ctable, row, field);
 	    }
 }
 
@@ -1488,6 +1486,7 @@ proc gen_defaults_subr {subr struct} {
     emit ""
     emit "        // $baseCopy.__dirtyIsNull = 0;"
     emit "        // $baseCopy._dirty = 1;"
+    emit "       $baseCopy.hashEntry.key = NULL;"
 
     foreach myfield $fieldList {
 	upvar ::ctable::fields::$myfield field
@@ -1599,7 +1598,15 @@ proc gen_delete_subr {subr struct} {
     variable leftCurly
     variable rightCurly
 
-    emit "void ${subr}(struct $struct *row) {"
+    emit "void ${subr}(struct ctableTable *ctable, void *vRow, int indexCtl) {"
+    emit "    struct $struct *row = vRow;"
+    emit ""
+    emit "    if (indexCtl == CTABLE_INDEX_NORMAL) {"
+    emit "        ctable_RemoveFromAllIndexes (ctable, (void *)row);"
+    emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);"
+    emit "    }"
+    emit ""
+    emit "    if (row->hashEntry.key != NULL) ckfree ((void *)row->hashEntry.key);"
 
     foreach myfield $fieldList {
 	upvar ::ctable::fields::$myfield field
@@ -1960,9 +1967,7 @@ set numberIncrSource {
 [gen_number_incr_null_check_code $table $field]
 
 	if ((indexCtl == CTABLE_INDEX_NORMAL) && ctable->skipLists\[field] != NULL) {
-	    if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-	        return TCL_ERROR;
-	    }
+	    ctable_RemoveFromIndex (ctable, row, field);
 	}
 
 	row->$field += incrAmount;
@@ -2182,9 +2187,7 @@ set setNullSource {
 	}
 
 	if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
-	    if (ctable_RemoveFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-		return TCL_ERROR;
-	    }
+	    ctable_RemoveFromIndex (ctable, row, field);
 	}
         row->_${myField}IsNull = 1; 
 	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {

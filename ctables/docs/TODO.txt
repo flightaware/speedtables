@@ -189,3 +189,24 @@ a pointer for every indexable field in a row.
 
 
 --
+
+FIXED 
+
+About for sure a memory leak in search teardown when search keys are strings.
+
+If we're going to call the delete routine, we're going to need to make sure
+that hashEntry.key is NULL and that we check it before freeing it in the
+delete routine.
+
+
+----
+
+Prepared searches
+
+Provide a way to cache the entire search created by ctable_SetupSearch.
+
+Within that, provide a way to change the values of the synthesized rows
+that are part of the search components.
+
+This will actually be easy -- you simply provide an interface to invoking
+the *_set routine on the synthesized row being altered.

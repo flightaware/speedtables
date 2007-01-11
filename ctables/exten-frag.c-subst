@@ -51,6 +51,8 @@
     t->search_compare = ${table}_search_compare;
     t->sort_compare = ${table}_sort_compare;
 
+    t->delete = ${table}_delete;
+
     // allocate and populate the field info structures
     t->fields = (struct ctableFieldInfo **)ckalloc (t->nFields * sizeof (struct ctableFieldInfo *));
     for (i = 0; i < t->nFields; i++) {
