@@ -38,7 +38,7 @@ namespace eval ctable {
     if {$tcl_platform(os) == "Darwin"} {
        set withPgtcl 0
     } else {
-       set withPgtcl 1
+       set withPgtcl 0
     }
 
     set tables ""
@@ -1738,7 +1738,7 @@ proc gen_struct {} {
 
     emit "struct $table $leftCurly"
 
-    putfield "ctable_HashEntry" "*hashEntry"
+    putfield "ctable_HashEntry" "hashEntry"
     putfield "struct ctable_linkedListNodeStruct"  "_ll_nodes\[$NLINKED_LISTS\]"
 
     foreach myfield $nonBooleans {
@@ -3674,9 +3674,10 @@ proc compile {fileFragName version} {
 	    # put -DTCL_MEM_DEBUG in there if you're building with
 	    # memory debugging (see Tcl docs)
 
-	    myexec "gcc -pipe $optflag $dbgflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
+	    myexec "gcc -pipe $optflag $dbgflag -DTCL_MEM_DEBUG -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
 
-	    myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub"
+	    #myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub"
+	    myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -L/usr/local/lib $stub"
 	}
 
 # -finstrument-functions / -lSaturn
