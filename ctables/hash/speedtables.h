@@ -26,13 +26,19 @@ typedef struct ctable_HashKeyType ctable_HashKeyType;
 typedef struct ctable_HashTable ctable_HashTable;
 typedef struct ctable_HashEntry ctable_HashEntry;
 
-typedef unsigned int (ctable_HashKeyProc) _ANSI_ARGS_((ctable_HashTable *tablePtr,
-	VOID *keyPtr));
-typedef int (ctable_CompareHashKeysProc) _ANSI_ARGS_((VOID *keyPtr,
-	ctable_HashEntry *hPtr));
-typedef ctable_HashEntry *(ctable_AllocHashEntryProc) _ANSI_ARGS_((
-	ctable_HashTable *tablePtr, VOID *keyPtr));
-typedef void (ctable_FreeHashEntryProc) _ANSI_ARGS_((ctable_HashEntry *hPtr));
+typedef unsigned int (ctable_HashKeyProc) (
+        ctable_HashTable *tablePtr,
+	VOID *keyPtr);
+
+typedef int (ctable_CompareHashKeysProc) (
+        ctable_HashTable *tablePtr, 
+	VOID *keyPtr,
+	ctable_HashEntry *hPtr);
+
+typedef ctable_HashEntry *(ctable_AllocHashEntryProc) (
+	ctable_HashTable *tablePtr, VOID *keyPtr);
+
+typedef void (ctable_FreeHashEntryProc) (ctable_HashEntry *hPtr);
 
 /*
  * Structure definition for an entry in a hash table. No-one outside Tcl
@@ -42,7 +48,6 @@ typedef void (ctable_FreeHashEntryProc) _ANSI_ARGS_((ctable_HashEntry *hPtr));
 struct ctable_HashEntry {
     ctable_HashEntry *nextPtr;	/* Pointer to next entry in this hash bucket,
 				 * or NULL for end of chain. */
-    ctable_HashTable *tablePtr;	/* Pointer to table containing entry. */
     unsigned int hash;		/* Hash value. */
     ClientData clientData;	/* Application stores something here with
 				 * ctable_SetHashValue. */

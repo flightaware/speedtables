@@ -272,7 +272,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	ctable_RemoveFromAllIndexes (interp, ctable, row);
 	${table}_delete(row);
-	ctable_DeleteHashEntry (hashEntry);
+	ctable_DeleteHashEntry (ctable->keyTablePtr, hashEntry);
 	ctable->count--;
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
 	return TCL_OK;

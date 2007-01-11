@@ -37,7 +37,7 @@
  */
 
 static ctable_HashEntry *	AllocArrayEntry(ctable_HashTable *tablePtr, VOID *keyPtr);
-static int		CompareArrayKeys(VOID *keyPtr, ctable_HashEntry *hPtr);
+static int		CompareArrayKeys(ctable_HashTable *tablePtr, VOID *keyPtr, ctable_HashEntry *hPtr);
 static unsigned int	HashArrayKey(ctable_HashTable *tablePtr, VOID *keyPtr);
 
 /*
@@ -46,7 +46,7 @@ static unsigned int	HashArrayKey(ctable_HashTable *tablePtr, VOID *keyPtr);
 
 static ctable_HashEntry *	AllocStringEntry(ctable_HashTable *tablePtr,
 			    VOID *keyPtr);
-static int		CompareStringKeys(VOID *keyPtr, ctable_HashEntry *hPtr);
+static int		CompareStringKeys(ctable_HashTable *tablePtr, VOID *keyPtr, ctable_HashEntry *hPtr);
 static unsigned int	HashStringKey(ctable_HashTable *tablePtr, VOID *keyPtr);
 
 /*
@@ -298,12 +298,15 @@ ctable_CreateHashEntry(
 
     if (typePtr->compareKeysProc) {
 	ctable_CompareHashKeysProc *compareKeysProc = typePtr->compareKeysProc;
+
 	for (hPtr = tablePtr->buckets[index]; hPtr != NULL;
 		hPtr = hPtr->nextPtr) {
+
 	    if (hash != (unsigned int)(hPtr->hash)) {
 		continue;
 	    }
-	    if (!compareKeysProc ((VOID *) key, hPtr)) {
+
+	    if (!compareKeysProc (tablePtr, (VOID *) key, hPtr)) {
 		if (newPtr)
 		    *newPtr = 0;
 		return hPtr;
@@ -315,6 +318,7 @@ ctable_CreateHashEntry(
 	    if (hash != (unsigned int)(hPtr->hash)) {
 		continue;
 	    }
+
 	    if (key == hPtr->key.oneWordValue) {
 		if (newPtr)
 		    *newPtr = 0;
@@ -339,7 +343,6 @@ ctable_CreateHashEntry(
 	hPtr->key.oneWordValue = (char *) key;
     }
 
-    hPtr->tablePtr = tablePtr;
     hPtr->hash = hash;
     hPtr->nextPtr = tablePtr->buckets[index];
     tablePtr->buckets[index] = hPtr;
@@ -376,16 +379,13 @@ ctable_CreateHashEntry(
  */
 
 void
-ctable_DeleteHashEntry(
-    ctable_HashEntry *entryPtr)
+ctable_DeleteHashEntry(ctable_HashTable *tablePtr, ctable_HashEntry *entryPtr)
 {
     register ctable_HashEntry *prevPtr;
     ctable_HashKeyType *typePtr;
-    ctable_HashTable *tablePtr;
     ctable_HashEntry **bucketPtr;
     int index;
 
-    tablePtr = entryPtr->tablePtr;
     typePtr = tablePtr->typePtr;
 
     if (typePtr->hashKeyProc == NULL
@@ -697,12 +697,12 @@ AllocArrayEntry(
 
 static int
 CompareArrayKeys(
+    ctable_HashTable *tablePtr,
     VOID *keyPtr,		/* New key to compare. */
     ctable_HashEntry *hPtr)	/* Existing key to compare. */
 {
     register CONST int *iPtr1 = (CONST int *) keyPtr;
     register CONST int *iPtr2 = (CONST int *) hPtr->key.words;
-    ctable_HashTable *tablePtr = hPtr->tablePtr;
     int count;
 
     for (count = tablePtr->keyType; ; count--, iPtr1++, iPtr2++) {
@@ -811,6 +811,7 @@ AllocStringEntry(
 
 static int
 CompareStringKeys(
+    ctable_HashTable *tablePtr,
     VOID *keyPtr,		/* New key to compare. */
     ctable_HashEntry *hPtr)	/* Existing key to compare. */
 {
@@ -968,6 +969,124 @@ RebuildTable(
 
     // printf("done\n");
 }
+
+#if 0
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ctable_HashStringKey --
+ *
+ *	Compute a hash index from a char *.
+ *
+ * Results:
+ *	The return value is a one-word summary of the information in string.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+static unsigned int
+ctable_HashStringKey(ctable_HashTable *tablePtr, CONST char *string)
+{
+    register unsigned int result;
+    register int c;
+
+    result = 0;
+
+    for (c=*string++ ; c ; c=*string++) {
+	result += (result<<3) + c;
+    }
+
+    return result & tablePtr->mask;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ctable_HashFixedStringKey --
+ *
+ *	Compute a hash index from a fixed-length string that may be
+ *      terminated early.
+ *
+ * Results:
+ *	The return value is a one-word summary of the information in string.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+static unsigned int
+ctable_HashFixedStringKey(ctable_HashTable *tablePtr, CONST char *string, int length)
+{
+    register unsigned int result;
+    register int c;
+
+    result = 0;
+
+    for (;length > 0; --length) {
+        if ((c = *string++) == '\0') break;
+	result += (result << 3) + c;
+    }
+
+    return result & tablePtr->mask;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ctable_HashByteArrayKey --
+ *
+ *	Compute a hash index from a byte array.
+ *
+ * Results:
+ *	The return value is a one-word summary of the information in string.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+static unsigned int
+ctable_HashByteArrayKey(ctable_HashTable *tablePtr, CONST char *string, int length)
+{
+    register unsigned int result;
+    register int c;
+
+    result = 0;
+
+    for (;length > 0; --length) {
+        c = *string++;
+	result += (result << 3) + c;
+    }
+
+    return result & tablePtr->mask;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ctable_HashIntKey --
+ *
+ *	Compute a hash index from an integer.
+ *
+ * Results:
+ *	The return value is a one-word summary of the information in string.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+static unsigned int
+ctable_HashIntKey(ctable_HashTable *tablePtr, int key)
+{
+    return RANDOM_INDEX (tablePtr, key);
+}
+#endif
+
 
 /*
  * Local Variables:

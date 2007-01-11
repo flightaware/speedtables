@@ -1,11 +1,19 @@
 
 $Id$
 
+1/10/2007 karl
+    * Now that performance has gotten a lot of attention we are turning
+      our attention, at least temporarily, to memory utilization.
+
+      In the ctable hash stuff, remove the pointer back to the hash
+      table that used to be stored in each hash entry.
+
 1/8/2007 karl
     * Fix critical memory leak in *_set_from_tabsep, used by read_tabsep.
 
-    * Fix minor memory leak in ctable_SearchAction that occurred under
-      certain circumstances based on what form the results were requested in.
+    * Fix minor memory leak in ctable_SearchAction that could occur
+      for matching rows under certain circumstances based on what form 
+      the results were requested in.
 
 1/7/2007 karl
     * Update "reset" and "destroy" methods to walk the table using
