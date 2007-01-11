@@ -210,3 +210,9 @@ that are part of the search components.
 
 This will actually be easy -- you simply provide an interface to invoking
 the *_set routine on the synthesized row being altered.
+
+Probably save off searches as an executable Tcl command that accesses the
+search struct through clientData and manipulates with subcommands (methods)
+that manipulate the search components.
+
+
