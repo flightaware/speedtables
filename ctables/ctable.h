@@ -54,7 +54,10 @@ struct ctable_linkedListNodeStruct {
 };
 
 struct ctable_baseRow {
+    // hashEntry absolutely must be the first thing defined in the base row
     ctable_HashEntry hashEntry;
+
+    // _ll_nodes absolutely must be the last thing defined in the base row
     struct ctable_linkedListNodeStruct _ll_nodes[];
 };
 
