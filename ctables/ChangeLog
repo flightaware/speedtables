@@ -2,6 +2,8 @@
 $Id$
 
 1/10/2007 karl
+    * Allow optional -nokeys argument to import_postgres_result.
+
     * Make the *_delete routine take the ctable and a flag that says
       CTABLE_INDEX_NORMAL if the row is in its indexes, etc, or
       CTABLE_INDEX_PRIVATE if it isn't.  (For instance, rows generated
