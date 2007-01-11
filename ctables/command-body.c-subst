@@ -235,7 +235,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 
 	  for (hashEntry = ctable_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (ctable_HashEntry *) NULL; hashEntry = ctable_NextHashEntry (&hashSearch)) {
-	      key = ctable_GetHashKey (ctable->keyTablePtr, hashEntry);
+	      key = hashEntry->key;
 	      if ((pattern != (char *) NULL)  && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (key, -1)) == TCL_ERROR) {
 	          return TCL_ERROR;
@@ -248,7 +248,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  if (${table}_delete_all_rows (interp, ctable) != TCL_OK) {
 	      return TCL_ERROR;
 	  }
-	  ctable_InitCustomHashTable (ctable->keyTablePtr, TCL_STRING_KEYS, (ctable_HashKeyType *)NULL);
+	  ctable_InitHashTable (ctable->keyTablePtr);
 	  return TCL_OK;
       }
 
@@ -268,7 +268,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_OK;
 	}
 
-	row = (struct $table *) ctable_GetHashValue (hashEntry);
+	row = (struct $table *) hashEntry;
 
 	ctable_RemoveFromAllIndexes (interp, ctable, row);
 	${table}_delete(row);
@@ -814,7 +814,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 
 	  for (hashEntry = ctable_FirstHashEntry (ctable->keyTablePtr, &hashSearch); hashEntry != (ctable_HashEntry *) NULL; hashEntry = ctable_NextHashEntry (&hashSearch)) {
-	      key = ctable_GetHashKey (ctable->keyTablePtr, hashEntry);
+	      key = hashEntry->key;
 	      if ((pattern != (char *) NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 	      if (Tcl_ObjSetVar2 (interp, objv[2], (Tcl_Obj *)NULL, Tcl_NewStringObj (key, -1), TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL) {
 	          return TCL_ERROR;

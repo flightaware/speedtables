@@ -22,7 +22,6 @@
  * Forward declarations of ctable_HashTable and related types.
  */
 
-typedef struct ctable_HashKeyType ctable_HashKeyType;
 typedef struct ctable_HashTable ctable_HashTable;
 typedef struct ctable_HashEntry ctable_HashEntry;
 
@@ -48,18 +47,8 @@ typedef void (ctable_FreeHashEntryProc) (ctable_HashEntry *hPtr);
 struct ctable_HashEntry {
     ctable_HashEntry *nextPtr;	/* Pointer to next entry in this hash bucket,
 				 * or NULL for end of chain. */
-    unsigned int hash;		/* Hash value. */
-    ClientData clientData;	/* Application stores something here with
-				 * ctable_SetHashValue. */
-    union {			/* Key has one of these forms: */
-	char *oneWordValue;	/* One-word value for key. */
-	Tcl_Obj *objPtr;	/* Tcl_Obj * key value. */
-	int words[1];		/* Multiple integer words for key. The actual
-				 * size will be as large as necessary for this
-				 * table's keys. */
-	char string[4];		/* String for key. The actual size will be as
-				 * large as needed to hold the key. */
-    } key;			/* MUST BE LAST FIELD IN RECORD!! */
+    char             *key;
+    unsigned int      hash;	/* Hash value. */
 };
 
 /*
@@ -83,45 +72,6 @@ struct ctable_HashEntry {
 /*
  * Structure definition for the methods associated with a hash table key type.
  */
-
-#define CTABLE_HASH_KEY_TYPE_VERSION 1
-struct ctable_HashKeyType {
-    int version;		/* Version of the table. If this structure is
-				 * extended in future then the version can be
-				 * used to distinguish between different
-				 * structures. */
-    int flags;			/* Flags, see above for details. */
-    ctable_HashKeyProc *hashKeyProc;
-				/* Calculates a hash value for the key. If
-				 * this is NULL then the pointer itself is
-				 * used as a hash value. */
-    ctable_CompareHashKeysProc *compareKeysProc;
-				/* Compares two keys and returns zero if they
-				 * do not match, and non-zero if they do. If
-				 * this is NULL then the pointers are
-				 * compared. */
-    ctable_AllocHashEntryProc *allocEntryProc;
-				/* Called to allocate memory for a new entry,
-				 * i.e. if the key is a string then this could
-				 * allocate a single block which contains
-				 * enough space for both the entry and the
-				 * string. Only the key field of the allocated
-				 * ctable_HashEntry structure needs to be filled
-				 * in. If something else needs to be done to
-				 * the key, i.e. incrementing a reference
-				 * count then that should be done by this
-				 * function. If this is NULL then ctable_Alloc is
-				 * used to allocate enough space for a
-				 * ctable_HashEntry and the key pointer is
-				 * assigned to key.oneWordValue. */
-    ctable_FreeHashEntryProc *freeEntryProc;
-				/* Called to free memory associated with an
-				 * entry. If something else needs to be done
-				 * to the key, i.e. decrementing a reference
-				 * count then that should be done by this
-				 * function. If this is NULL then ctable_Free is
-				 * used to free the ctable_HashEntry. */
-};
 
 /*
  * Structure definition for a hash table.  Must be in speedtables.h so clients 
@@ -147,13 +97,6 @@ struct ctable_HashTable {
 				 * Designed to use high-order bits of
 				 * randomized keys. */
     int mask;			/* Mask value used in hashing function. */
-    int keyType;		/* Type of keys used in this table. It's
-				 * either CTABLE_CUSTOM_KEYS, CTABLE_STRING_KEYS,
-				 * CTABLE_ONE_WORD_KEYS, or an integer giving
-				 * the number of ints that is the size of the
-				 * key. */
-    ctable_HashKeyType *typePtr;	/* Type of the keys used in the
-				 * ctable_HashTable. */
 };
 
 /*
@@ -169,61 +112,8 @@ typedef struct ctable_HashSearch {
 				 * bucket. */
 } ctable_HashSearch;
 
-/*
- * Acceptable key types for hash tables:
- *
- * CTABLE_STRING_KEYS:		The keys are strings, they are copied into the
- *				entry.
- * CTABLE_ONE_WORD_KEYS:		The keys are pointers, the pointer is stored
- *				in the entry.
- * CTABLE_CUSTOM_TYPE_KEYS:	The keys are arbitrary types which are copied
- *				into the entry.
- * CTABLE_CUSTOM_PTR_KEYS:		The keys are pointers to arbitrary types, the
- *				pointer is stored in the entry.
- *
- * While maintaining binary compatability the above have to be distinct values
- * as they are used to differentiate between old versions of the hash table
- * which don't have a typePtr and new ones which do. Once binary compatability
- * is discarded in favour of making more wide spread changes CTABLE_STRING_KEYS
- * can be the same as CTABLE_CUSTOM_TYPE_KEYS, and CTABLE_ONE_WORD_KEYS can be the
- * same as CTABLE_CUSTOM_PTR_KEYS because they simply determine how the key is
- * accessed from the entry and not the behaviour.
- */
 
-#define CTABLE_STRING_KEYS	0
-#define CTABLE_ONE_WORD_KEYS	1
-
-#   define CTABLE_CUSTOM_TYPE_KEYS	CTABLE_STRING_KEYS
-#   define CTABLE_CUSTOM_PTR_KEYS	CTABLE_ONE_WORD_KEYS
-
-/*
- * Macros for clients to use to access fields of hash entries:
- */
-
-#define ctable_GetHashValue(h) ((h)->clientData)
-#define ctable_SetHashValue(h, value) ((h)->clientData = (ClientData) (value))
-#   define ctable_GetHashKey(tablePtr, h) \
-	((char *) (((tablePtr)->keyType == CTABLE_ONE_WORD_KEYS) \
-		   ? (h)->key.oneWordValue \
-		   : (h)->key.string))
-
-/*
- * Macros to use for clients to use to invoke find and create functions for
- * hash tables:
- */
-
-/*
- * Macro to use new extended version of ctable_InitHashTable.
- */
-#   undef  ctable_InitHashTable
-#   define ctable_InitHashTable(tablePtr, keyType) \
-	ctable_InitHashTableEx((tablePtr), (keyType), NULL)
-#   undef  ctable_FindHashEntry
-#   define ctable_FindHashEntry(tablePtr, key) \
-        ctable_CreateHashEntry((tablePtr), (key), NULL)
-
-EXTERN void ctable_InitCustomHashTable (ctable_HashTable *tablePtr, 
-                 int keyType, ctable_HashKeyType *typePtr);
+EXTERN void ctable_InitHashTable (ctable_HashTable *tablePtr);
 
 EXTERN ctable_HashEntry *  ctable_NextHashEntry (ctable_HashSearch * searchPtr);
 

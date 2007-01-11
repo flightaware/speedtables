@@ -11,21 +11,17 @@
 .TH ctable_Hash 3 "" Tcl "Tcl Library Procedures"
 .BS
 .SH NAME
-ctable_InitHashTable, ctable_InitCustomHashTable, ctable_InitObjHashTable, ctable_DeleteHashTable, ctable_CreateHashEntry, ctable_DeleteHashEntry, ctable_FindHashEntry, ctable_GetHashValue, ctable_SetHashValue, ctable_GetHashKey, ctable_FirstHashEntry, ctable_NextHashEntry, ctable_HashStats \- procedures to manage hash tables
+ctable_InitHashTable, ctable_InitCustomHashTable, ctable_InitObjHashTable, ctable_DeleteHashTable, ctable_InitHashEntry, ctable_DeleteHashEntry, ctable_FindHashEntry, ctable_GetHashValue, ctable_SetHashValue, ctable_GetHashKey, ctable_FirstHashEntry, ctable_NextHashEntry, ctable_HashStats \- procedures to manage hash tables
 .SH SYNOPSIS
 .nf
 \fB#include <speedtables.h>\fR
 .sp
-\fBctable_InitHashTable\fR(\fItablePtr, keyType\fR)
-.sp
-\fBctable_InitCustomHashTable\fR(\fItablePtr, keyType, typePtr\fR)
-.sp
-\fBctable_InitObjHashTable\fR(\fItablePtr\fR)
+\fBctable_InitHashTable\fR(\fItablePtr\fR)
 .sp
 \fBctable_DeleteHashTable\fR(\fItablePtr\fR)
 .sp
 ctable_HashEntry *
-\fBctable_CreateHashEntry\fR(\fItablePtr, key, newPtr\fR)
+\fBctable_InitHashEntry\fR(\fItablePtr, hashEntry, key, newPtr\fR)
 .sp
 \fBctable_DeleteHashEntry\fR(\fIentryPtr\fR)
 .sp
@@ -159,7 +155,7 @@ If the entry values point to dynamically-allocated memory, then
 it is the client's responsibility to free these structures
 before deleting the table.
 .PP
-\fBctable_CreateHashEntry\fR locates the entry corresponding to a
+\fBctable_InitHashEntry\fR locates the entry corresponding to a
 particular key, creating a new entry in the table if there
 wasn't already one with the given key.
 If an entry already existed with the given key then \fI*newPtr\fR

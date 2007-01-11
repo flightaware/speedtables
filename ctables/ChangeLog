@@ -5,8 +5,10 @@ $Id$
     * Now that performance has gotten a lot of attention we are turning
       our attention, at least temporarily, to memory utilization.
 
-      In the ctable hash stuff, remove the pointer back to the hash
-      table that used to be stored in each hash entry.
+      Bring the hash table entry inline into the row being generated.
+      Get rid of code for different hash key types.
+      This saves two pointers, 8 bytes per row on a 32-bit machine,
+      16 bytes per row if you have 64-bit pointers.
 
 1/8/2007 karl
     * Fix critical memory leak in *_set_from_tabsep, used by read_tabsep.

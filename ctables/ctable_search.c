@@ -303,7 +303,7 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
     int             i;
     struct ctableCreatorTable *creatorTable = ctable->creatorTable;
 
-    key = ctable_GetHashKey (ctable->keyTablePtr, row->hashEntry);
+    key = row->hashEntry.key;
 
     if (search->writingTabsep) {
 	Tcl_DString     dString;
@@ -498,7 +498,6 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, struct ctableTable *ctable, 
 inline static int
 ctable_SearchCompareRow (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, struct ctable_baseRow *row)
 {
-    char *key;
     int   compareResult;
     int   actionResult;
 
@@ -506,8 +505,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, struct ctableTable *ctable, struct 
     // skip this row
 
     if (search->pattern != (char *) NULL) {
-	key = ctable_GetHashKey (ctable->keyTablePtr, row->hashEntry);
-	if (!Tcl_StringCaseMatch (key, search->pattern, 1)) {
+	if (!Tcl_StringCaseMatch (row->hashEntry.key, search->pattern, 1)) {
 	    return TCL_CONTINUE;
 	}
     }

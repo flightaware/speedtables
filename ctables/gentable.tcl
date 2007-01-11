@@ -903,17 +903,14 @@ struct $table *${table}_make_row_struct () {
 struct $table *${table}_find_or_create (struct ctableTable *ctable, char *key, int *newPtr) {
     struct $table *row;
 
-    ctable_HashEntry *hashEntry = ctable_CreateHashEntry (ctable->keyTablePtr, key, newPtr);
+    ctable_HashEntry *hashEntry = ctable_InitHashEntry (ctable->keyTablePtr, key, (ctable_HashEntry *(*)())${table}_make_row_struct, newPtr);
 
+    row = (struct $table *)hashEntry;
     if (*newPtr) {
-        row = ${table}_make_row_struct ();
-	ctable_SetHashValue (hashEntry, (ClientData)row);
-	row->hashEntry = hashEntry;
 	ctable_ListInsertHead (&ctable->ll_head, (struct ctable_baseRow *)row, 0);
 	ctable->count++;
 	// printf ("created new entry for '%s'\n", key);
     } else {
-        row = (struct $table *) ctable_GetHashValue (hashEntry);
 	// printf ("found existing entry for '%s'\n", key);
     }
 
@@ -949,7 +946,7 @@ struct $table *${table}_find (struct ctableTable *ctable, char *key) {
         return (struct $table *) NULL;
     }
     
-    return (struct $table *) ctable_GetHashValue (hashEntry);
+    return (struct $table *) hashEntry;
 }
 
 Tcl_Obj *
@@ -1155,7 +1152,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST ch
 	    key = NULL;
 	} else {
 	    // key is needed and if there's a pattern, check it
-	    key = ctable_GetHashKey (ctable->keyTablePtr, row->hashEntry);
+	    key = row->hashEntry.key;
 	    if ((pattern != NULL) && (!Tcl_StringCaseMatch (key, pattern, 1))) continue;
 	}
 

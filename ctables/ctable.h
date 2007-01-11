@@ -54,7 +54,7 @@ struct ctable_linkedListNodeStruct {
 };
 
 struct ctable_baseRow {
-    ctable_HashEntry *hashEntry;
+    ctable_HashEntry hashEntry;
     struct ctable_linkedListNodeStruct _ll_nodes[];
 };
 
