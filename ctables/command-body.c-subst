@@ -408,6 +408,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  char             *key;
 	  char             *value;
 	  int              *fieldList;
+	  int               firstField;
 	  int               fieldIndex;
 	  int               nFields;
 	  int               nTuples;
