@@ -10,6 +10,13 @@ $Id$
       This saves two pointers, 8 bytes per row on a 32-bit machine,
       16 bytes per row if you have 64-bit pointers.
 
+      This reduced the program size after loading the million-row test
+      data set in "bigtests", with no indexes defined, on a Pentium 4 from
+      123 MB to 105 MB, a 17% reduction in memory usage, with the loaded
+      data now using about 2.5 times the amount of space used by the
+      corresponding text file.  It grows to 190 MB with two indexes defined 
+      and fully populated.
+
 1/8/2007 karl
     * Fix critical memory leak in *_set_from_tabsep, used by read_tabsep.
 
