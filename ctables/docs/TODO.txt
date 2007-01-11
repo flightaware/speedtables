@@ -171,6 +171,9 @@ hash table entry and in conjunction with looking at the actual value in the
 field in the row that's being used for the hash table, not have a pointer
 to the key either.
 
+DONE - hash entries are now integral to rows, not pointed to by them and
+from them, etc.
+
 --
 
 Revisit how hashtables are expanded.  16X at a time is probably too many.
