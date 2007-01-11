@@ -3751,6 +3751,7 @@ proc EndExtension {} {
 proc extension_already_built {name version code} {
     variable buildPath
     variable cvsID
+    variable genCompilerDebug
 
     set ctFile $buildPath/$name-$version.ct
 
@@ -3761,16 +3762,19 @@ proc extension_already_built {name version code} {
     }
 
     # read the first line for the prior CVS ID, if failed, report not built
-    if {[gets $fp priorCvsID] < 0} {
+    if {[gets $fp controlLine] < 0} {
         #puts "first line read of .ct file failed, build required"
         close $fp
 	return 0
     }
 
-    # see if this file's cvs id matches the cvs id we saved in the .ct file
-    # if not, rebuilt not built
-    if {$cvsID != $priorCvsID} {
-        #puts "prior cvs id does not match, build required"
+    # this needs to match whavtever save_extension_code writes
+    set expectControlLine [list $cvsID $genCompilerDebug]
+
+    # See if this file's control line matches the line in the .ct file.
+    # If not, rebuild not built.
+    if {$controlLine != $expectControlLine} {
+        #puts "control line does not match, build required"
 	return 0
     }
 
@@ -3797,11 +3801,14 @@ proc save_extension_code {name version code} {
     variable cvsID
     variable leftCurly
     variable rightCurly
+    variable genCompilerDebug
 
     set ctFile $buildPath/$name-$version.ct
 
     set fp [open $ctFile w]
-    puts $fp $cvsID
+
+    # this needs to match whavtever extension_ready_built expects
+    puts $fp [list $cvsID $genCompilerDebug]
     puts $fp $code
     close $fp
 }
