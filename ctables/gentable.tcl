@@ -134,12 +134,7 @@ set preambleCannedSource {
 #include "ctable.h"
 }
 
-#
-# nullCheckDuringSetSource - standard stuff for handling nulls during set
-#
-set nullCheckDuringSetSource {
-	if (${table}_obj_is_null (obj)) {
-	    if (!row->_${field}IsNull) {
+set nullIndexDuringSetSource {
 	        if (ctable->skipLists[field] != NULL) {
 		    if (indexCtl == CTABLE_INDEX_NORMAL) {
 		        ctable_RemoveFromIndex (ctable, row, field);
@@ -149,6 +144,15 @@ set nullCheckDuringSetSource {
 		        return TCL_ERROR;
 		    }
 		}
+}
+
+#
+# nullCheckDuringSetSource - standard stuff for handling nulls during set
+#
+set nullCheckDuringSetSource {
+	if (${table}_obj_is_null (obj)) {
+	    if (!row->_${field}IsNull) {
+$handleNullIndex
 	        // field wasn't null but now is
 		row->_${field}IsNull = 1;
 		// row->_dirty = 1;
@@ -163,9 +167,16 @@ set nullCheckDuringSetSource {
 #
 proc gen_null_check_during_set_source {table field} {
     variable nullCheckDuringSetSource
+    variable nullIndexDuringSetSource
     variable fields
 
     upvar ::ctable::fields::$field fieldInfo
+
+    if {[info exists fieldInfo(indexed)] && $fieldInfo(indexed)} {
+        set handleNullIndex $nullIndexDuringSetSource
+    } else {
+        set handleNullIndex ""
+    }
 
     if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
         return ""
@@ -177,11 +188,19 @@ proc gen_null_check_during_set_source {table field} {
 set unsetNullDuringSetSource {
 	if (row->_${field}IsNull) {
 	    row->_${field}IsNull = 0;
+
 	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
+	        indexCtl = CTABLE_INDEX_NEW; // inhibit a second removal
 		if (ctable_RemoveNullFromIndex (interp, ctable, row, field) == TCL_ERROR) {
 		    return TCL_ERROR;
 		}
 	    }
+	}
+}
+
+set unsetNullDuringSetSource_unindexed {
+	if (row->_${field}IsNull) {
+	    row->_${field}IsNull = 0;
 	}
 }
 
@@ -191,6 +210,7 @@ set unsetNullDuringSetSource {
 #
 proc gen_unset_null_during_set_source {table field} {
     variable unsetNullDuringSetSource
+    variable unsetNullDuringSetSource_unindexed
     variable fields
 
     upvar ::ctable::fields::$field fieldInfo
@@ -198,7 +218,11 @@ proc gen_unset_null_during_set_source {table field} {
     if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
         return ""
     } else {
-	return [string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource] 1 end-1]
+	if {[info exists fieldInfo(indexed)] && $fieldInfo(indexed)} {
+	    return [string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource] 1 end-1]
+	} else {
+	    return [string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource_unindexed] 1 end-1]
+	}
     }
 }
 
@@ -266,11 +290,12 @@ set boolSetSource {
       case $optname: {
         int boolean;
 
+[gen_null_check_during_set_source $table $field]
         if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
             Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
             return TCL_ERROR;
         }
-
+[gen_unset_null_during_set_source $table $field]
         row->$field = boolean;
       }
 }
@@ -288,14 +313,10 @@ set numberSetSource {
 	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
 	    return TCL_ERROR;
 	}
-[gen_unset_null_during_set_source $table $field]
-	  else {
-	    if (row->$field == value) {
-	        return TCL_OK;
-	    }
-[gen_ctable_remove_from_index $field]
+[gen_unset_null_during_set_source $table $field] else if (row->$field == value) {
+	    return TCL_OK;
 	}
-
+[gen_ctable_remove_from_index $field]
 	row->$field = value;
 [gen_ctable_insert_into_index $field]
 	break;
@@ -400,8 +421,12 @@ set fixedstringSetSource {
 	char *string;
 [gen_null_check_during_set_source $table $field]
 	string = Tcl_GetString (obj);
+[gen_unset_null_during_set_source $table $field] else if (strncmp(row->$field, value, $length) == 0) {
+	    return TCL_OK;
+	}
+[gen_ctable_remove_from_index $field]
 	strncpy (row->$field, string, $length);
-[gen_unset_null_during_set_source $table $field]
+[gen_ctable_insert_into_index $field]
 	break;
       }
 }
@@ -412,12 +437,19 @@ set fixedstringSetSource {
 #
 set inetSetSource {
       case $optname: {
+        struct in_addr value;
 [gen_null_check_during_set_source $table $field]
 	if (!inet_aton (Tcl_GetString (obj), &row->$field)) {
 	    Tcl_AppendResult (interp, "expected IP address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$field\\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
-[gen_unset_null_during_set_source $table $field]
+[gen_unset_null_during_set_source $table $field] else if (memcmp (&row->$field, &value, sizeof (struct in_addr)) == 0) {
+            return TCL_OK;
+	}
+
+[gen_ctable_remove_from_index $field]
+	row->$field = value;
+[gen_ctable_insert_into_index $field]
 	break;
       }
 }
@@ -436,8 +468,12 @@ set macSetSource {
 	    return TCL_ERROR;
 	}
 
+[gen_unset_null_during_set_source $table $field] else if (memcmp (&row->$field, mac, sizeof (struct ether_addr) == 0) {
+            return TCL_OK;
+        }
+[gen_ctable_remove_from_index $field]
 	row->$field = *mac;
-[gen_unset_null_during_set_source $table $field]
+[gen_ctable_insert_into_index $field]
 	break;
       }
 }

@@ -2,7 +2,14 @@
 $Id$
 
 1/12/2007 karl
-    * Add test for search's "false" compare function and more tests
+    * Inhibited generating index checking code in additional places
+      when an index isn't defined for a field and reworked setting
+      values around allowing and not allowing null values and having
+      and not having indexes.
+
+    * Added test for search's array_get and limited-field array_get.
+
+    * Added test for search's "false" compare function and more tests
       for the "fields" method.
 
 1/10/2007 karl

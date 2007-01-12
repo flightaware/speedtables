@@ -195,3 +195,21 @@ if {[t index unique show] != 0} {
 }
 puts "ok"
 
+puts -nonewline "testing 'search with array get'..."
+t search -compare {{= name {Rusty Venture}}} -array_get_with_nulls foo -code {
+    set expect [list id rusty name {Rusty Venture} home {Venture Compound} show {Venture Bros} dad jonas alive 1 gender male age 45 coolness 6]
+    if {$foo != $expect} {
+        error "got '$foo' , expected '$expect'"
+    }
+}
+puts "ok"
+
+puts -nonewline "testing 'search with array get and limited fields'..."
+t search -compare {{= name {Rusty Venture}}} -fields {name age} -array_get_with_nulls foo -code {
+    set expect [list name {Rusty Venture} age 45]
+    if {$foo != $expect} {
+        error "got '$foo' , expected '$expect'"
+    }
+}
+puts "ok"
+
