@@ -73,6 +73,8 @@ search_test "unsorted search with offset 5 and limit 10" {-offset 5 -limit 10} {
 
 search_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {clarence thundercleese mom zorak brak}
 
+search_test "search where alive is false" {-compare {{false alive}}} {jonas}
+
 t index create name
 search+_test "indexed search 1" {} {angel baron brak brock carr carl clarence rick dad dean doctor_girlfriend jonas jonas_jr orpheus frylock hank hoop inignot stroker shake meatwad mom 21 28 phantom_limb rusty the_monarch thundercleese triana ur zorak}
 
