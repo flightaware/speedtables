@@ -86,6 +86,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  Tcl_Obj *obj;
 	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
 
+	  if (objc != 2) {
+	    Tcl_WrongNumArgs (interp, 1, objv, "fields");
+	    return TCL_ERROR;
+	  }
+
 	  for (i = 0; (obj = ${table}_NameObjList[i]) != NULL; i++) {
 	      if (Tcl_ListObjAppendElement (interp, resultObj, obj) == TCL_ERROR) {
 	          return TCL_ERROR;

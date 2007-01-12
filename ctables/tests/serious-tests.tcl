@@ -95,6 +95,17 @@ if {[t fields] != {id name home show dad alive gender age coolness}} {
 }
 puts "ok"
 
+puts -nonewline "testing 'fields' with wrong # args..."
+if {[catch {t fields bork} result] == 1} {
+    if {$result == "wrong # args: should be \"t fields\""} {
+    } else {
+        puts $result
+    }
+} else {
+    error "should have gotten an error"
+}
+puts "ok"
+
 puts -nonewline "testing 'field'..."
 if {[catch {t field} result] == 1} {
     if {$result == "wrong # args: should be \"t field fieldName opt ?arg?\""} {

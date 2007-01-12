@@ -1,6 +1,10 @@
 
 $Id$
 
+1/12/2007 karl
+    * Add test for search's "false" compare function and more tests
+      for the "fields" method.
+
 1/10/2007 karl
     * Allow optional -nokeys argument to import_postgres_result.
 
