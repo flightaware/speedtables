@@ -7,6 +7,7 @@
 #
 
 namespace eval ctable {
+    variable ctablePackageVersion
     variable table
     variable tables
     variable booleans
@@ -20,6 +21,8 @@ namespace eval ctable {
 
     variable genCompilerDebug
     variable showCompilerCommands
+
+    set ctablePackageVersion 1.2
 
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
@@ -3923,6 +3926,8 @@ proc CExtension {name version code} {
     ::ctable::emit "static char *sourceCode = \"[::ctable::cquote "CExtension $name $version { $code }"]\";"
     ::ctable::emit ""
 
+    ::ctable::emit "static char *ctablePackageVersion = \"$::ctable::ctablePackageVersion\";"
+
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""
@@ -3994,5 +3999,4 @@ proc CTableBuildPath {dir} {
     }
 }
 
-package provide ctable 1.1
-
+package provide ctable $::ctable::ctablePackageVersion
