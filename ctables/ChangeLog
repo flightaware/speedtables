@@ -2,6 +2,14 @@
 $Id$
 
 1/12/2007 karl
+    * Fixed bug in search using -array_get with a specified set of fields
+      (instead of all fields by default).  It used to not include the
+      field names in the key-value pairs under those circumstances.
+
+    * Removed superfluous argument to ctable_SetupSearch -- routines
+      that have access to the ctable structure can find their own
+      list of field names.
+
     * Inhibited generating index checking code in additional places
       when an index isn't defined for a field and reworked setting
       values around allowing and not allowing null values and having

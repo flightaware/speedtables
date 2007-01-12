@@ -1034,7 +1034,7 @@ ${table}_lappend_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, void 
     struct $table *row = vPointer;
     Tcl_Obj   *obj;
 
-    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_NameObjList[field]) == TCL_ERROR) {
+    if (Tcl_ListObjAppendElement (interp, destListObj, ${table}_NameObjList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
@@ -3788,6 +3788,7 @@ proc extension_already_built {name version code} {
     variable buildPath
     variable cvsID
     variable genCompilerDebug
+    variable srcDir
 
     set ctFile $buildPath/$name-$version.ct
 
@@ -3805,7 +3806,7 @@ proc extension_already_built {name version code} {
     }
 
     # this needs to match whavtever save_extension_code writes
-    set expectControlLine [list $cvsID $genCompilerDebug]
+    set expectControlLine [list $cvsID $genCompilerDebug [file mtime $srcDir]]
 
     # See if this file's control line matches the line in the .ct file.
     # If not, rebuild not built.
@@ -3838,13 +3839,14 @@ proc save_extension_code {name version code} {
     variable leftCurly
     variable rightCurly
     variable genCompilerDebug
+    variable srcDir
 
     set ctFile $buildPath/$name-$version.ct
 
     set fp [open $ctFile w]
 
     # this needs to match whavtever extension_ready_built expects
-    puts $fp [list $cvsID $genCompilerDebug]
+    puts $fp [list $cvsID $genCompilerDebug [file mtime $srcDir]]
     puts $fp $code
     close $fp
 }

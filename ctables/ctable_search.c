@@ -850,9 +850,10 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 }
 
 static int
-ctable_SetupSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *CONST objv[], int objc, struct ctableSearchStruct *search, CONST char **fieldNames) {
+ctable_SetupSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *CONST objv[], int objc, struct ctableSearchStruct *search) {
     int             i;
     int             searchTerm = 0;
+    CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
 
     static CONST char *searchOptions[] = {"-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-include_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
 
@@ -1113,9 +1114,8 @@ ctable_TeardownSearch (struct ctableSearchStruct *search) {
 int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable) {
     struct ctableSearchStruct    search;
-    CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
 
-    if (ctable_SetupSearch (interp, ctable, objv, objc, &search, fieldNames) == TCL_ERROR) {
+    if (ctable_SetupSearch (interp, ctable, objv, objc, &search) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
@@ -1139,9 +1139,8 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 int
 ctable_SetupAndPerformSkipSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct ctableTable *ctable) {
     struct ctableSearchStruct    search;
-    CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
 
-    if (ctable_SetupSearch (interp, ctable, objv, objc, &search, fieldNames) == TCL_ERROR) {
+    if (ctable_SetupSearch (interp, ctable, objv, objc, &search) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
