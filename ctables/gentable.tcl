@@ -471,7 +471,7 @@ set macSetSource {
 	    return TCL_ERROR;
 	}
 
-[gen_unset_null_during_set_source $table $field] else if (memcmp (&row->$field, mac, sizeof (struct ether_addr) == 0) {
+[gen_unset_null_during_set_source $table $field] else if (memcmp (&row->$field, mac, sizeof (struct ether_addr)) == 0) {
             return TCL_OK;
         }
 [gen_ctable_remove_from_index $field]
