@@ -3716,7 +3716,7 @@ proc compile {fileFragName version} {
 	    # put -DTCL_MEM_DEBUG in there if you're building with
 	    # memory debugging (see Tcl docs)
 
-	    myexec "gcc -pipe $optflag $dbgflag -DTCL_MEM_DEBUG -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
+	    myexec "gcc -pipe $optflag $dbgflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
 
 	    myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub"
 	    #myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -L/usr/local/lib $stub"

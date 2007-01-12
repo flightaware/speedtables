@@ -11,4 +11,9 @@ FIXED Boolean retrieval isn't correct in search.  more to the point, it looks
 
 Is "definition" documented and does it work?
 
+gen_null_check_during_set_source and gen_unset_null_during_set_source
+need to not generate index management code if the field isn't indexable.
+
+trying to define an index on a boolean should generate an error
+
 

@@ -60,9 +60,9 @@ proc test3b1 {} {
 puts [cputime test3b1]
 
 proc test3b2 {} {
-    puts "match_case *Bauer* count only"
+    puts "match_case *Karl Lehenbauer* count only"
 
-    puts [n search -compare {{match_case name "*Bauer*"}} -countOnly 1]
+    puts [n search -compare {{match_case name "*Karl Lehenbauer*"}} -countOnly 1]
 }
 
 puts [cputime test3b2]
@@ -155,8 +155,8 @@ proc test9 {} {
 puts [cputime test9]
 
 proc test10 {} {
-    puts "\n= Tatiana lehenbauer with fairly empty -code loop"
-    puts [n search -compare {{= name "Tatiana Lehenbauer"}} -key key -array_get_with_nulls data -code {}]
+    puts "\n= Tatiana Lehenbauer with fairly empty -code loop"
+    puts [n search -compare {{= name "Tatiana Lehenbauer"}} -key key -array_get_with_nulls data -code {puts "$key -> $data"}]
 
 }
 
