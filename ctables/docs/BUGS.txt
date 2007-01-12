@@ -3,4 +3,12 @@ $Id$
 
 It should detect using the same field name more than once in a table definition.
 
+When searching, array_get_with_nulls and array_get don't include the 
+fieldnames if a list of fields is specified.
+
+Boolean retrieval isn't correct in search.  more to the point, it looks
+like boolean importing from postgres isn't working.
+
+Is "definition" documented and does it work?
+
 
