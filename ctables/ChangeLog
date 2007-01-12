@@ -2,6 +2,12 @@
 $Id$
 
 1/12/2007 karl
+    * Include the modification time of the ctable library directory
+      ($srcDir) in what we compare to see if we need to rebuild, 
+      so if the mtime has changed, we'll regenerate and recompile 
+      the extension.  This is at least helpful for the ctables 
+      developers.
+
     * Fixed bug in search using -array_get with a specified set of fields
       (instead of all fields by default).  It used to not include the
       field names in the key-value pairs under those circumstances.
