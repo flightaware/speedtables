@@ -218,4 +218,13 @@ Probably save off searches as an executable Tcl command that accesses the
 search struct through clientData and manipulates with subcommands (methods)
 that manipulate the search components.
 
+---
+
+Eliminate the search->nRetrieveFields < 0 business that's in quite a few
+places in ctable_serach.c by setting search->nRetrieveFields and
+search->retrieveFields even if no fields were specified in the search
+request, resulting in all fields.
+
+
+
 

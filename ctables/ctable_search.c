@@ -55,24 +55,24 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **f
     return TCL_OK;
 }
 
-/*
- * ctable_ParseSortFieldList - given a Tcl list object, and a pointer to a
- * ctable sort structure, store the number of fields in the list in the
- * sort structure's field count.  allocate an array of integers for the
- * field numbers and directions and store them into the sort structure passed.
- *
- * Strip the prepending dash of each field, if present, and do the lookup
- * and store the field number in the corresponding field number array.
- *
- * If the dash was present set the corresponding direction in the direction
- * array to 0 else set it to 1.
- *
- * It is up to the caller to free the memory pointed to through the
- * fieldList argument.
- *
- * return TCL_OK if all went according to plan, else TCL_ERROR.
- *
- */
+//
+// ctable_ParseSortFieldList - given a Tcl list object, and a pointer to a
+// ctable sort structure, store the number of fields in the list in the
+// sort structure's field count.  allocate an array of integers for the
+// field numbers and directions and store them into the sort structure passed.
+//
+// Strip the prepending dash of each field, if present, and do the lookup
+// and store the field number in the corresponding field number array.
+//
+// If the dash was present set the corresponding direction in the direction
+// array to 0 else set it to 1.
+//
+// It is up to the caller to free the memory pointed to through the
+// fieldList argument.
+//
+// return TCL_OK if all went according to plan, else TCL_ERROR.
+//
+//
 int
 ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, struct ctableSortStruct *sort) {
     int             nFields;
@@ -112,6 +112,21 @@ ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char
     return TCL_OK;
 }
 
+//
+// ctable_searchMatchPatternCheck - examine the match pattern to determine
+// a strategy for matching the pattern.
+//
+// If it's anchored, i.e. doesn't start with an asterisk, that's good to know, 
+// we'll be real fast.
+//
+// If it's a pattern, we'll use more full blown pattern matching.
+//
+// If it's unanchored, we'll use Boyer-Moore to go as fast as we can.
+//
+// There are oppportunities for optimization here, check out Peter's
+// speedtable query optimizer for optimizations the determination of
+// which can be made here instead.  Shrug.
+//
 int
 ctable_searchMatchPatternCheck (char *s) {
     char c;
@@ -249,6 +264,8 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 
 		component->inListObj = &termList[2];
 		component->inCount = termListCount - 2;
+		component->row1 = (*ctable->creatorTable->make_empty_row) ();
+
 	    } else if (term == CTABLE_COMP_RANGE) {
 	        void *row;
 
@@ -256,6 +273,7 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 4 arguments (term, field, lowValue, highValue)", (char *) NULL);
 		    goto err;
 		}
+
 		row = (*ctable->creatorTable->make_empty_row) ();
 		if ((*ctable->creatorTable->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 		    goto err;
@@ -307,6 +325,10 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
     return TCL_OK;
 }
 
+//
+// ctable_SearchAction - Perform the search action on a row that's matched
+//  the search criteria.
+//
 static int
 ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search, struct ctable_baseRow *row) {
     char           *key;
@@ -315,16 +337,22 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 
     key = row->hashEntry.key;
 
+    // if we're tab-separated...
+
     if (search->writingTabsep) {
 	Tcl_DString     dString;
 
 	Tcl_DStringInit (&dString);
+
+	// string-append the specified fields, or all fields, tab separated
 
         if (search->nRetrieveFields < 0) {
 	    (*creatorTable->dstring_append_get_tabsep) (key, row, creatorTable->fieldList, creatorTable->nFields, &dString, search->noKeys);
 	} else {
 	    (*creatorTable->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
 	}
+
+        // write the line out
 
 	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    return TCL_ERROR;
@@ -334,9 +362,16 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	return TCL_OK;
     }
 
+    // if there's a code body to eval...
+
     if (search->codeBody != NULL) {
 	Tcl_Obj *listObj = NULL;
 	int      evalResult;
+
+	// generate the list of requested fields, or all fields, in
+	// "get style" (value only), "array get style" (key-value
+	// pairs with nulls suppressed) and "array get with nulls"
+	// style, (all requested fields, null or not)
 
 	if (search->useGet) {
 	    if (search->nRetrieveFields < 0) {
@@ -390,6 +425,12 @@ ctable_SearchAction (Tcl_Interp *interp, struct ctableTable *ctable, struct ctab
 	    return TCL_ERROR;
 	}
 
+	// evaluate the code body
+	//
+	// By using a Tcl object for the code body, the code body will be
+        // on-the-fly compiled by Tcl once and cached on subsequent
+	// evals.  Cool.
+	//
 	evalResult = Tcl_EvalObjEx (interp, search->codeBody, 0);
 	switch (evalResult) {
 	  case TCL_ERROR:
@@ -452,6 +493,16 @@ ctable_WriteFieldNames (Tcl_Interp *interp, struct ctableTable *ctable, struct c
     return TCL_OK;
 }
 
+//
+// ctable_PostSearchCommonActions - actions taken at the end of a search
+//
+// If results sorting is required, we sort the results.
+//
+// We interpret start and offset, if set, to limit rows returned.
+//
+// We walk the sort results, calling ctable_SearchAction on each.
+//
+//
 static int
 ctable_PostSearchCommonActions (Tcl_Interp *interp, struct ctableTable *ctable, struct ctableSearchStruct *search)
 {
@@ -685,6 +736,9 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     int                    indexNumber;
     int                    tailoredTerm = 0;
 
+    int                    inIndex = 0; // used when handling {in ...}
+    int                    normal = 1;
+
 
     search->matchCount = 0;
     search->tailoredWalk = 0;
@@ -720,13 +774,18 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	field = component->fieldID;
 	tailoredTerm = component->comparisonType;
         if (ctable->skipLists[field] != NULL) {
-	    if ((tailoredTerm == CTABLE_COMP_RANGE) || (tailoredTerm == CTABLE_COMP_EQ)) {
+	    if ((tailoredTerm == CTABLE_COMP_RANGE) || (tailoredTerm == CTABLE_COMP_EQ) || (tailoredTerm = CTABLE_COMP_IN)) {
 		// ding ding ding - we have a winner, time for an accelerated
 		// search
 		search->tailoredWalk = 1;
 		skip = ctable->skipLists[field];
-		row1 = component->row1;
-		row2 = component->row2;
+
+		if (tailoredTerm == CTABLE_COMP_IN) {
+		    normal = 0;
+		} else {
+		    row1 = component->row1;
+		    row2 = component->row2;
+		}
 	    }
         }
     }
@@ -799,30 +858,54 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     // CTABLE_LIST_FOREACH (ctable->ll_head, row, 0)
     //
     //  for (; curl != NULL && (row = curl->item); curl = curl->next[0])
+    // curl = ((struct jsw_skip *)skip)->curl;
 
     compareFunction = creatorTable->fields[field]->compareFunction;
     indexNumber = creatorTable->fields[field]->indexNumber;
 
-    for (; ((row = jsw_srow (skip)) != NULL); jsw_snext(skip)) {
+    // for (; ((row = jsw_srow (skip)) != NULL); jsw_snext(skip)) {
 
-    // curl = ((struct jsw_skip *)skip)->curl;
+    // DO NOT use continue to continue, you have to "goto contin" because
+    // we have multiple ways we want to do for loops and we can't pull
+    // it off that way -- we have the loops set out into an explicit
+    // before assignment, a comparison to see if we're done, and a
+    // move-to-the-next piece, and the move-to-the-next piece has to
+    // be explicitly called out as there are different possible pathways.
 
-      if (search->tailoredWalk) {
-          if (tailoredTerm == CTABLE_COMP_RANGE) {
-	      if (compareFunction (row, row2) >= 0) {
-		 // it was a tailored walk and we're past the end of the
-		 // range of stuff so we can blow off the rest, hopefully
-		 // a huge number
-		break;
-	    }
-	  } else if (tailoredTerm == CTABLE_COMP_EQ) {
-	      if (compareFunction (row, row1) != 0) {
-	          break;
+    while (1) {
+
+      if (normal) {
+          if ((row = jsw_srow (skip)) != NULL) break;
+
+	  if (search->tailoredWalk) {
+	      if (tailoredTerm == CTABLE_COMP_RANGE) {
+		  if (compareFunction (row, row2) >= 0) {
+		     // it was a tailored walk and we're past the end of the
+		     // range of stuff so we can blow off the rest, hopefully
+		     // a huge number
+		    break;
+		}
+	      } else if (tailoredTerm == CTABLE_COMP_EQ) {
+		  if (compareFunction (row, row1) != 0) {
+		      break;
+		  }
+	      } else {
+		  // it may not be an error to not have a terminating condition 
+		  // on a tailored walk
+		  // panic("software failure - no terminating condition for tailored walk");
 	      }
-	  } else {
-	      // it may not be an error to not have a terminating condition 
-	      // on a tailored walk
-	      // panic("software failure - no terminating condition for tailored walk");
+	  }
+      } else {
+	  if ((tailoredTerm == CTABLE_COMP_IN) && (search->tailoredWalk)) {
+	      struct ctableSearchComponentStruct *component = &search->components[0];
+
+	      if (inIndex >= component->inCount) break;
+
+	      if ((*ctable->creatorTable->set) (interp, ctable, component->inListObj[inIndex], component->row1, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+		  goto err;
+	      }
+
+	       if ((row = jsw_sfind (skip, component->row1)) == NULL) goto contin;
 	  }
       }
 
@@ -844,6 +927,16 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	    goto clean_and_return;
 	}
       }
+
+    contin:
+
+      if (normal) {
+	  jsw_snext(skip);
+      } else {
+          if ((tailoredTerm == CTABLE_COMP_IN) && (search->tailoredWalk)) {
+	      inIndex++;
+	  }
+      }
     }
 
     actionResult = ctable_PostSearchCommonActions (interp, ctable, search);
@@ -859,6 +952,11 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     return actionResult;
 }
 
+//
+// ctable_SetupSearch - prepare to search by parsing the command line arguments
+// specified when the ctables "search" method is invoked.
+//
+//
 static int
 ctable_SetupSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *CONST objv[], int objc, struct ctableSearchStruct *search) {
     int             i;
