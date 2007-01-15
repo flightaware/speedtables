@@ -3456,7 +3456,7 @@ proc gen_sort_comp {} {
 set searchCompareHeaderSource {
 
 // compare a row to a block of search components and see if it matches
-int ${table}_search_compare(Tcl_Interp *interp, struct ctableSearchStruct *searchControl, void *vPointer, int firstComponent) $leftCurly
+int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, void *vPointer, int firstComponent) $leftCurly
     struct $table *row = (struct $table *)vPointer;
     struct $table *row1;
 

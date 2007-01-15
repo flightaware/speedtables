@@ -153,7 +153,7 @@ struct ctableSearchComponentStruct {
 };
 
 // ctable search struct - this controls everything about a search
-struct ctableSearchStruct {
+typedef struct ctableSearchStruct {
     struct ctableTable                  *ctable;
     struct ctableSearchComponentStruct  *components;
     char                                *pattern;
@@ -199,7 +199,7 @@ struct ctableSearchStruct {
     // we use sort table to accumulate matching rows for sorting when
     // searching with sorting
     struct ctable_baseRow              **sortTable;
-};
+} CTableSearch;
 
 struct ctableFieldInfo {
     CONST char              *name;

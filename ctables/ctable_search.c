@@ -185,7 +185,7 @@ ctable_searchMatchPatternCheck (char *s) {
 
 
 static int
-ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListObj, CONST char **fieldNames, struct ctableSearchStruct *search) {
+ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListObj, CONST char **fieldNames, CTableSearch *search) {
     Tcl_Obj    **componentList;
     int          componentIdx;
     int          componentListCount;
@@ -330,7 +330,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 //  the search criteria.
 //
 static int
-ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, struct ctableSearchStruct *search, struct ctable_baseRow *row) {
+ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, struct ctable_baseRow *row) {
     char           *key;
     int             i;
     struct ctableCreatorTable *creatorTable = ctable->creatorTable;
@@ -454,7 +454,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, struct ctableSearchStru
 //
 //
 static int
-ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, struct ctableSearchStruct *search)
+ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 {
     int i;
     Tcl_DString     dString;
@@ -504,7 +504,7 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, struct ctableSearchS
 //
 //
 static int
-ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, struct ctableSearchStruct *search)
+ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 {
     int sortIndex;
 
@@ -557,7 +557,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, struct ctabl
 // ctable_SearchCompareRow - perform comparisons on a row
 //
 inline static int
-ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, struct ctableSearchStruct *search, struct ctable_baseRow *row)
+ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, struct ctable_baseRow *row)
 {
     int   compareResult;
     int   actionResult;
@@ -652,7 +652,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, struct ctableSearch
 //
 //
 static int
-ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, struct ctableSearchStruct *search) {
+ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
     int                    compareResult;
     int                    actionResult = TCL_OK;
     struct ctable_baseRow *row;
@@ -718,7 +718,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, struct ctableSearchStr
 //
 //
 static int
-ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, struct ctableSearchStruct *search) {
+ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
     int              compareResult;
     int              actionResult = TCL_OK;
 
@@ -963,7 +963,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, struct ctableSearc
 //
 //
 static int
-ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, struct ctableSearchStruct *search) {
+ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search) {
     int             i;
     int             searchTerm = 0;
     CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
@@ -1178,7 +1178,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 //  stuff within it.
 //
 static void
-ctable_TeardownSearch (struct ctableSearchStruct *search) {
+ctable_TeardownSearch (CTableSearch *search) {
     int i;
 
     if (search->components == NULL) {
@@ -1226,7 +1226,7 @@ ctable_TeardownSearch (struct ctableSearchStruct *search) {
 //
 int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable) {
-    struct ctableSearchStruct    search;
+    CTableSearch    search;
 
     if (ctable_SetupSearch (interp, ctable, objv, objc, &search) == TCL_ERROR) {
         return TCL_ERROR;
@@ -1251,7 +1251,7 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 //
 int
 ctable_SetupAndPerformSkipSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable) {
-    struct ctableSearchStruct    search;
+    CTableSearch    search;
 
     if (ctable_SetupSearch (interp, ctable, objv, objc, &search) == TCL_ERROR) {
         return TCL_ERROR;
