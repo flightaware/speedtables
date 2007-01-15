@@ -937,7 +937,7 @@ struct $table *${table}_make_row_struct () {
     return row;
 }
 
-struct $table *${table}_find_or_create (struct ctableTable *ctable, char *key, int *newPtr) {
+struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) {
     struct $table *row;
 
     ctable_HashEntry *hashEntry = ctable_InitHashEntry (ctable->keyTablePtr, key, (ctable_HashEntry *(*)())${table}_make_row_struct, newPtr);
@@ -955,7 +955,7 @@ struct $table *${table}_find_or_create (struct ctableTable *ctable, char *key, i
 }
 
 int
-${table}_set_fieldobj (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
+${table}_set_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
 {
     int field;
 
@@ -969,13 +969,13 @@ ${table}_set_fieldobj (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *
 
 set fieldSetSource {
 int
-${table}_set (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
+${table}_set (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
 set fieldObjGetSource {
-struct $table *${table}_find (struct ctableTable *ctable, char *key) {
+struct $table *${table}_find (CTable *ctable, char *key) {
     ctable_HashEntry *hashEntry;
 
     hashEntry = ctable_FindHashEntry (ctable->keyTablePtr, key);
@@ -1164,7 +1164,7 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
+${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
     Tcl_Channel             channel;
     int                     mode;
     Tcl_DString             dString;
@@ -1209,7 +1209,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST ch
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, char *string, int *fieldIds, int nFields, int noKey) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int noKey) {
     struct $table *row;
     char          *key;
     char          *field;
@@ -1240,7 +1240,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, char *
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, struct ctableTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = Tcl_NewObj();
@@ -1637,7 +1637,7 @@ proc gen_delete_subr {subr struct} {
     variable leftCurly
     variable rightCurly
 
-    emit "void ${subr}(struct ctableTable *ctable, void *vRow, int indexCtl) {"
+    emit "void ${subr}(CTable *ctable, void *vRow, int indexCtl) {"
     emit "    struct $struct *row = vRow;"
     emit ""
     emit "    if (indexCtl == CTABLE_INDEX_NORMAL) {"
@@ -1935,7 +1935,7 @@ proc emit_set_fixedstring_field {field length} {
 
 set fieldIncrSource {
 int
-${table}_incr (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
+${table}_incr (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
@@ -2030,7 +2030,7 @@ set illegalIncrSource {
 
 set incrFieldObjSource {
 int
-${table}_incr_fieldobj (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
+${table}_incr_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
 {
     int field;
 
@@ -2255,7 +2255,7 @@ proc gen_set_null_function {table} {
     variable setNullNotNullSource
 
     emit "int"
-    emit "${table}_set_null (Tcl_Interp *interp, struct ctableTable *ctable, struct $table *row, int field, int indexCtl) $leftCurly"
+    emit "${table}_set_null (Tcl_Interp *interp, CTable *ctable, struct $table *row, int field, int indexCtl) $leftCurly"
 
     emit "    switch ((enum ${table}_fields) field) $leftCurly"
 

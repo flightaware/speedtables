@@ -9,6 +9,8 @@ $Id$
       Still not done, "in" when not the first term or the field isn't
       indexed, etc.
 
+    * Define a CTable typedef for struct ctableTable and switch to that.
+
 1/14/2007 karl
     * Begin laying in the infrastructure for the new "in" search term.
 

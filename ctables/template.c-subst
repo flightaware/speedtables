@@ -37,7 +37,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
     struct ctableCreatorTable *row_head_tbl_ptr = (struct ctableCreatorTable *)clientData;
 
-    struct ctableTable *ctable;
+    CTable *ctable;
 
     if (objc < 2 || objc > 4) {
       err:
@@ -63,7 +63,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		return TCL_ERROR;
 	    }
 
-	    ctable = (struct ctableTable *)ckalloc (sizeof(struct ctableTable));
+	    ctable = (CTable *)ckalloc (sizeof(struct ctableTable));
 	    ctable->creatorTable = row_head_tbl_ptr;
 	    ctable->keyTablePtr = (ctable_HashTable *)ckalloc (sizeof (ctable_HashTable));
 	    ctable->count = 0;

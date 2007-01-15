@@ -249,7 +249,7 @@ struct ctableCreatorTable {
     void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
 };
 
-struct ctableTable {
+typedef struct ctableTable {
     struct ctableCreatorTable           *creatorTable;
     ctable_HashTable                    *keyTablePtr;
 
@@ -259,9 +259,9 @@ struct ctableTable {
     int                                  autoRowNumber;
     Tcl_Command                          commandInfo;
     long                                 count;
-};
+} CTable;
 
 extern int
-ctable_CreateIndex (Tcl_Interp *interp, struct ctableTable *ctable, int fieldNum, int depth);
+ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth);
 
 #endif

@@ -1,5 +1,5 @@
     // $Id$
-int ${table}_delete_all_rows(Tcl_Interp *interp, struct ctableTable *ctable) {
+int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
     struct ctable_baseRow    *row;
     struct ctable_baseRow    *nextRow;
 
@@ -28,7 +28,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, struct ctableTable *ctable) {
 
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-    struct ctableTable *ctable = (struct ctableTable *)cData;
+    CTable *ctable = (CTable *)cData;
     struct $table *row;
     int optIndex;
     ctable_HashEntry *hashEntry;
