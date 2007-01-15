@@ -15,7 +15,7 @@ namespace eval ::scache {
   # output - a possibly optimised search in the array
   #	   - true if optimization was possible and you can use search+
 
-  proc optimize {_request {indices {}} {_types {}}} {
+  proc optimize_array {_request {indices {}} {_types {}}} {
     if ![llength $indices] {
       return 0
     }
@@ -37,6 +37,9 @@ namespace eval ::scache {
       }
     }
 
+    # Keep track of how many "in" clauses there are
+    set in_count 0
+
     # We're building four lists, ranged, anchored matches, indexed, and
     # unindexed. 
     set unindexed_tuples {}
@@ -48,6 +51,14 @@ namespace eval ::scache {
     # into an array of indexed tuple lists for later
     foreach tuple $request(-compare) {
       foreach {op field} $tuple {break}
+
+      # Check for duplicate "in" clauses
+      if {"$op" == "in"} {
+	incr in_count
+	if {$in_count > 1} {
+	  return -code error "Multiple 'in' clauses"
+	}
+      }
 
       # hack, if a <> has leaked through from a postgres-compatible
       # expression, squash it
