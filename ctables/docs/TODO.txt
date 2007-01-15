@@ -225,6 +225,15 @@ places in ctable_serach.c by setting search->nRetrieveFields and
 search->retrieveFields even if no fields were specified in the search
 request, resulting in all fields.
 
+---
 
+a "batch set" capability.  Possibly a batch delete as well.  This could
+just go into the client-server stuff.  Sending stuff to be read by
+read_tabsep is pretty batchish anyway.
 
-
+Maybe you send a batch and it's a list of commands and each command gets
+executed and all the errors are accumulated and at the end you get back an
+OK if everything was cool and either an error or a status that's a list of
+all the commands that failed or partially failed, with the index of each 
+command that failed and the reason and maybe even the full command in
+the status return.
