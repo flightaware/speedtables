@@ -1,6 +1,9 @@
 
 $Id$
 
+1/14/2007 karl
+    * Begin laying in the infrastructure for the new "in" search term.
+
 1/12/2007 karl
     * To the command that's created corresponding to a C
       extension, add a new option, builder_version, which

@@ -95,6 +95,7 @@ struct ctable_baseRow {
 #define CTABLE_COMP_MATCH_CASE 12
 #define CTABLE_COMP_NOTMATCH_CASE 13
 #define CTABLE_COMP_RANGE 14
+#define CTABLE_COMP_IN 15
 
 // when setting, incr'ing, read_tabsepping, etc, we can control at the
 // C level whether we want normal index behavior (if the field is
@@ -145,6 +146,8 @@ struct ctableSearchComponentStruct {
     void                    *row1;
     void                    *row2;
     fieldCompareFunction_t   compareFunction;
+    Tcl_Obj                **inListObj;
+    int                      inCount;
     int                      fieldID;
     int                      comparisonType;
 };

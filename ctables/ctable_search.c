@@ -184,7 +184,7 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
     struct ctableSearchComponentStruct  *component;
     
     // these terms must line up with the CTABLE_COMP_* defines
-    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "notmatch", "match_case", "notmatch_case", "range", (char *)NULL};
+    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "notmatch", "match_case", "notmatch_case", "range", "in", (char *)NULL};
 
     if (Tcl_ListObjGetElements (interp, componentListObj, &componentListCount, &componentList) == TCL_ERROR) {
         return TCL_ERROR;
@@ -210,7 +210,7 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 	    return TCL_ERROR;
 	}
 
-	if (termListCount < 2 || termListCount > 4) {
+	if (termListCount < 2) {
 	    // would be cool to support regexps here too
 	    Tcl_WrongNumArgs (interp, 0, termList, "term field ?value..?");
 	    goto err;
@@ -231,6 +231,8 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 	component->clientData = NULL;
 	component->row1 = NULL;
 	component->row2 = NULL;
+	component->inListObj = NULL;
+	component->inCount = 0;
 	component->compareFunction = ctable->creatorTable->fields[field]->compareFunction;
 
 	if (term == CTABLE_COMP_FALSE || term == CTABLE_COMP_TRUE || term == CTABLE_COMP_NULL || term == CTABLE_COMP_NOTNULL) {
@@ -239,7 +241,15 @@ ctable_ParseSearch (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *com
 		goto err;
 	    }
 	}  else {
-	    if (term == CTABLE_COMP_RANGE) {
+	    if (term == CTABLE_COMP_IN) {
+	        if (termListCount < 3) {
+		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require at least 3 arguments (term, field, ?value...?)", (char *) NULL);
+		    goto err;
+		}
+
+		component->inListObj = &termList[2];
+		component->inCount = termListCount - 2;
+	    } else if (term == CTABLE_COMP_RANGE) {
 	        void *row;
 
 	        if (termListCount != 4) {
