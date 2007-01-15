@@ -31,6 +31,15 @@ proc test1 {} {
 
 puts [cputime test1]
 
+proc test1b {} {
+    set compare {{in name "Shemika Lehenbauer" "Roberta Lehenbauer" "Shemeka Lehenbauer" "Tamatha Lehenbauer" "Teofila Lehenbauer" "Palma Lehenbauer" "Rene Lehenbauer" "Rosie Lehenbauer" "Tayna Lehenbauer" "Tarsha Lehenbauer" "Petronila Lehenbauer" "Shavon Lehenbauer" "Sharron Lehenbauer" "Tatiana Lehenbauer"}}
+    puts "'in' looking for $compare"
+
+    n search+ -compare $compare -write_tabsep stdout
+}
+
+puts [cputime test1b]
+
 proc test2 {} {
     puts "matching *Sylvester*Bakerville*"
 
@@ -234,5 +243,6 @@ proc test14 {} {
 }
 
 puts [cputime test14]
+
 
 

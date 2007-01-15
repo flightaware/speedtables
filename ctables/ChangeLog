@@ -25,6 +25,11 @@ $Id$
 
 	struct ctableFieldInfo -> ctable_FieldInfo
 
+    * Add testing the "in" search compare function to the big tests.
+
+    * Generate a second million row test file containing some IP
+      addresses and MAC addresses for testing that stuff.
+
 1/14/2007 karl
     * Begin laying in the infrastructure for the new "in" search term.
 
