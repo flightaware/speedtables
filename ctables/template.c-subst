@@ -63,7 +63,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		return TCL_ERROR;
 	    }
 
-	    ctable = (CTable *)ckalloc (sizeof(struct ctableTable));
+	    ctable = (CTable *)ckalloc (sizeof(CTable));
 	    ctable->creatorTable = row_head_tbl_ptr;
 	    ctable->keyTablePtr = (ctable_HashTable *)ckalloc (sizeof (ctable_HashTable));
 	    ctable->count = 0;
