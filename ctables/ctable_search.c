@@ -74,7 +74,7 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **f
 //
 //
 int
-ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, struct ctableSortStruct *sort) {
+ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, CTableSort *sort) {
     int             nFields;
     Tcl_Obj       **fieldsObjv;
     Tcl_Obj        *fieldNameObj;

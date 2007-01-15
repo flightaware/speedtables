@@ -9,16 +9,19 @@ $Id$
       Still not done, "in" when not the first term or the field isn't
       indexed, etc.
 
-    * Define a CTable typedef for struct ctableTable and switch to that.
+    * Mapped the following structs to typedefs and made it use the typedefs:
 
-    * Switch to CTableSearch typedef for "struct ctableSearchStruct".
+        struct ctableTable -> CTable
 
-    * Switch to a CTableSearchComponent typdef from "struct ctableSearchStruct"
+	struct ctableSearchStruct -> CTableSearch
 
-    * Switch to a ctable_LinkedListNode typedef from
-      "struct ctable_linkedListNodeStruct".
+	struct ctableSearchComponentStruct -> CTableSearchComponent
 
-    * Switch to a ctable_BaseRow typedef from "struct ctable_baseRow"
+	struct ctable_linkedListNodeStruct -> ctable_LinkedListNode
+
+	struct ctable_baseRow -> ctable_BaseRows
+
+
 
 1/14/2007 karl
     * Begin laying in the infrastructure for the new "in" search term.

@@ -3311,7 +3311,7 @@ proc gen_field_compare_functions {} {
 set sortCompareHeaderSource {
 
 int ${table}_sort_compare(void *clientData, const void *vRow1, const void *vRow2) $leftCurly
-    struct ctableSortStruct *sortControl = (struct ctableSortStruct *)clientData;
+    CTableSort *sortControl = (CTableSort *)clientData;
     const struct $table *row1 = (*(void **)vRow1);
     const struct $table *row2 = (*(void **)vRow2);
     int              i;

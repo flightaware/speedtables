@@ -117,11 +117,11 @@ typedef struct ctable_baseRowStruct {
 typedef int (*fieldCompareFunction_t) (const ctable_BaseRow *row1, const ctable_BaseRow *row2);
 
 // ctable sort struct - this controls everything about a sort
-struct ctableSortStruct {
+typedef struct {
     int *fields;
     int *directions;
     int nFields;
-};
+} CTableSort;
 
 #define CTABLE_STRING_MATCH_ANCHORED 0
 #define CTABLE_STRING_MATCH_UNANCHORED 1
@@ -153,7 +153,7 @@ typedef struct {
 } CTableSearchComponent;
 
 // ctable search struct - this controls everything about a search
-typedef struct ctableSearchStruct {
+typedef struct {
     struct ctableTable                  *ctable;
     CTableSearchComponent               *components;
     char                                *pattern;
@@ -174,7 +174,7 @@ typedef struct ctableSearchStruct {
     int                                  offset;
     int                                  limit;
 
-    struct ctableSortStruct              sortControl;
+    CTableSort                           sortControl;
 
     int                                  nRetrieveFields;
 
@@ -244,7 +244,7 @@ struct ctableCreatorTable {
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey);
 
-    int (*search_compare) (Tcl_Interp *interp, struct ctableSearchStruct *searchControl, void *pointer, int tailoredWalk);
+    int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer, int tailoredWalk);
     int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
     void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
 };
