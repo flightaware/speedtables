@@ -195,8 +195,8 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
     int          field;
 
-    struct ctableSearchComponentStruct  *components;
-    struct ctableSearchComponentStruct  *component;
+    CTableSearchComponent  *components;
+    CTableSearchComponent  *component;
     
     // these terms must line up with the CTABLE_COMP_* defines
     static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "notmatch", "match_case", "notmatch_case", "range", "in", (char *)NULL};
@@ -212,7 +212,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
     search->nComponents = componentListCount;
 
-    components = (struct ctableSearchComponentStruct *)ckalloc (componentListCount * sizeof (struct ctableSearchComponentStruct));
+    components = (CTableSearchComponent *)ckalloc (componentListCount * sizeof (CTableSearchComponent));
 
     search->components = components;
 
@@ -769,7 +769,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
     // at least for now
 
     if (search->nComponents > 0) {
-	struct ctableSearchComponentStruct *component = &search->components[0];
+	CTableSearchComponent *component = &search->components[0];
 
 	field = component->fieldID;
 	tailoredTerm = component->comparisonType;
@@ -806,7 +806,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
 
 	// find the first index used in any search expression from left to right
 	for (i = 0; i < search->nComponents; i++) {
-	    struct ctableSearchComponentStruct *component = &search->components[i];
+	    CTableSearchComponent *component = &search->components[i];
 
 	    if ((skip = ctable->skipLists[component->fieldID]) != NULL) {
 	        // printf("not tailored walk, found index on field %d\n", component->fieldID);
@@ -897,7 +897,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
 	  }
       } else {
 	  if ((tailoredTerm == CTABLE_COMP_IN) && (search->tailoredWalk)) {
-	      struct ctableSearchComponentStruct *component = &search->components[0];
+	      CTableSearchComponent *component = &search->components[0];
 
 	      if (inIndex >= component->inCount) break;
 
@@ -1187,7 +1187,7 @@ ctable_TeardownSearch (CTableSearch *search) {
 
     // teardown components
     for (i = 0; i < search->nComponents; i++) {
-	struct ctableSearchComponentStruct  *component = &search->components[i];
+	CTableSearchComponent  *component = &search->components[i];
 	if (component->clientData != NULL) {
 
 	    if (component->row1 != NULL) {

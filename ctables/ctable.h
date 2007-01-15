@@ -141,7 +141,7 @@ struct ctableSearchMatchStruct {
 
 // ctable search component struct - one for each search expression in a
 // ctable search
-struct ctableSearchComponentStruct {
+typedef struct {
     void                    *clientData;
     void                    *row1;
     void                    *row2;
@@ -150,12 +150,12 @@ struct ctableSearchComponentStruct {
     int                      inCount;
     int                      fieldID;
     int                      comparisonType;
-};
+} CTableSearchComponent;
 
 // ctable search struct - this controls everything about a search
 typedef struct ctableSearchStruct {
     struct ctableTable                  *ctable;
-    struct ctableSearchComponentStruct  *components;
+    CTableSearchComponent               *components;
     char                                *pattern;
     int                                 *retrieveFields;
 

@@ -3463,7 +3463,7 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
     int                                 i;
     int                                 exclude = 0;
     int                                 compType;
-    struct ctableSearchComponentStruct *component;
+    CTableSearchComponent              *component;
 
     for (i = firstComponent; i < searchControl->nComponents; i++) $leftCurly
       component = &searchControl->components[i];

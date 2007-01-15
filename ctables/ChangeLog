@@ -10,7 +10,10 @@ $Id$
       indexed, etc.
 
     * Define a CTable typedef for struct ctableTable and switch to that.
-      switch to CTableSearch typedef for "struct ctableSearchStruct".
+
+    * Switch to CTableSearch typedef for "struct ctableSearchStruct".
+
+    * Switch to a CTableSearchComponent typdef from "struct ctableSearchStruct"
 
 1/14/2007 karl
     * Begin laying in the infrastructure for the new "in" search term.
