@@ -47,19 +47,19 @@ enum ctable_types {
 };
 
 // define ctable linked lists structures et al
-struct ctable_linkedListNodeStruct {
-    struct ctable_baseRow *next;
-    struct ctable_baseRow **prev;
-    struct ctable_baseRow **head;
-};
+typedef struct {
+    struct ctable_baseRowStruct *next;
+    struct ctable_baseRowStruct **prev;
+    struct ctable_baseRowStruct **head;
+} ctable_LinkedListNode;
 
-struct ctable_baseRow {
+typedef struct ctable_baseRowStruct {
     // hashEntry absolutely must be the first thing defined in the base row
-    ctable_HashEntry hashEntry;
+    ctable_HashEntry     hashEntry;
 
     // _ll_nodes absolutely must be the last thing defined in the base row
-    struct ctable_linkedListNodeStruct _ll_nodes[];
-};
+    ctable_LinkedListNode _ll_nodes[];
+} ctable_BaseRow;
 
 #include "jsw_slib.h"
 
@@ -114,7 +114,7 @@ struct ctable_baseRow {
 #define CTABLE_INDEX_NORMAL 0
 #define CTABLE_INDEX_NEW 1
 
-typedef int (*fieldCompareFunction_t) (const struct ctable_baseRow *row1, const struct ctable_baseRow *row2);
+typedef int (*fieldCompareFunction_t) (const ctable_BaseRow *row1, const ctable_BaseRow *row2);
 
 // ctable sort struct - this controls everything about a sort
 struct ctableSortStruct {
@@ -198,7 +198,7 @@ typedef struct ctableSearchStruct {
 
     // we use sort table to accumulate matching rows for sorting when
     // searching with sorting
-    struct ctable_baseRow              **sortTable;
+    ctable_BaseRow                     **sortTable;
 } CTableSearch;
 
 struct ctableFieldInfo {
@@ -254,7 +254,7 @@ typedef struct ctableTable {
     ctable_HashTable                    *keyTablePtr;
 
     jsw_skip_t                         **skipLists;
-    struct ctable_baseRow               *ll_head;
+    ctable_BaseRow                      *ll_head;
 
     int                                  autoRowNumber;
     Tcl_Command                          commandInfo;

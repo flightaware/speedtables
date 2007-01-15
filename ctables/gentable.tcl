@@ -944,7 +944,7 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) 
 
     row = (struct $table *)hashEntry;
     if (*newPtr) {
-	ctable_ListInsertHead (&ctable->ll_head, (struct ctable_baseRow *)row, 0);
+	ctable_ListInsertHead (&ctable->ll_head, (ctable_BaseRow *)row, 0);
 	ctable->count++;
 	// printf ("created new entry for '%s'\n", key);
     } else {
@@ -1169,7 +1169,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     int                     mode;
     Tcl_DString             dString;
     char                   *key;
-    struct ctable_baseRow  *row;
+    ctable_BaseRow         *row;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -1785,7 +1785,7 @@ proc gen_struct {} {
     emit "struct $table $leftCurly"
 
     putfield "ctable_HashEntry" "hashEntry"
-    putfield "struct ctable_linkedListNodeStruct"  "_ll_nodes\[$NLINKED_LISTS\]"
+    putfield "ctable_LinkedListNode"  "_ll_nodes\[$NLINKED_LISTS\]"
 
     foreach myfield $nonBooleans {
 	upvar ::ctable::fields::$myfield field
@@ -3101,7 +3101,7 @@ proc gen_field_compare_null_check_source {table fieldName} {
 #
 set fieldCompareHeaderSource {
 // field compare function for field '$field' of the '$table' table...
-int ${table}_field_${field}_compare(const struct ctable_baseRow *vPointer1, const struct ctable_baseRow *vPointer2) $leftCurly
+int ${table}_field_${field}_compare(const ctable_BaseRow *vPointer1, const ctable_BaseRow *vPointer2) $leftCurly
     struct ${table} *row1, *row2;
 
     row1 = (struct $table *) vPointer1;
@@ -3473,37 +3473,37 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
 
       switch (compType) {
 	case CTABLE_COMP_LT:
-	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) < 0) {
+	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) < 0) {
 	      continue;
 	  }
 	  return TCL_CONTINUE;
 
 	case CTABLE_COMP_LE:
-	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) <= 0) {
+	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) <= 0) {
 	      continue;
 	  }
 	  return TCL_CONTINUE;
 
 	case CTABLE_COMP_EQ:
-	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) == 0) {
+	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) == 0) {
 	      continue;
 	  }
 	  return TCL_CONTINUE;
 
 	case CTABLE_COMP_NE:
-	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) != 0) {
+	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) != 0) {
 	      continue;
 	  }
 	  return TCL_CONTINUE;
 
 	case CTABLE_COMP_GE:
-	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) >= 0) {
+	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) >= 0) {
 	      continue;
 	  }
 	  return TCL_CONTINUE;
 
 	case CTABLE_COMP_GT:
-	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) > 0) {
+	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) > 0) {
 	      continue;
 	  }
 	  return TCL_CONTINUE;
@@ -3511,13 +3511,13 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
         case CTABLE_COMP_RANGE: {
 	  struct $table *row2;
 
-	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row1) < 0) {
+	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) < 0) {
 	      return TCL_CONTINUE;
 	  }
 
 	  row2 = (struct $table *)component->row2;
 
-	  if (component->compareFunction ((struct ctable_baseRow *)row, (struct ctable_baseRow *)row2) >= 0) {
+	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row2) >= 0) {
 	      return TCL_CONTINUE;
 	  }
 	  continue;

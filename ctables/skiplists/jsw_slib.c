@@ -22,7 +22,7 @@ using std::size_t;
 #endif
 
 typedef struct jsw_node {
-  struct ctable_baseRow  *row;      /* Data row with combined key */
+  ctable_BaseRow         *row;      /* Data row with combined key */
   size_t                  height;   /* Column height of this node */
   struct jsw_node        *next[];   /* Dynamic array of next links */
 } jsw_node_t;
@@ -85,7 +85,7 @@ static size_t rlevel ( size_t max )
 // new_node - construct an empty new node, does not make a copy of the row
 //
 inline
-static jsw_node_t *new_node ( struct ctable_baseRow *row, size_t height )
+static jsw_node_t *new_node ( ctable_BaseRow *row, size_t height )
 {
   jsw_node_t *node = (jsw_node_t *)ckalloc ( sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
   size_t i;
@@ -113,7 +113,7 @@ static void free_node ( jsw_node_t *node )
 // locate - find an existing row, or the position before where it would be
 //
 inline
-static jsw_node_t *locate ( jsw_skip_t *skip, struct ctable_baseRow *row )
+static jsw_node_t *locate ( jsw_skip_t *skip, ctable_BaseRow *row )
 {
   jsw_node_t *p = skip->head;
   size_t i;
@@ -190,7 +190,7 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip )
 //             skip list node pointer or NULL if none is found.
 //
 inline
-void *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row )
+void *jsw_sfind ( jsw_skip_t *skip, ctable_BaseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
 
@@ -208,7 +208,7 @@ void *jsw_sfind ( jsw_skip_t *skip, struct ctable_baseRow *row )
 //     row or exceeds it.
 //
 inline
-void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, struct ctable_baseRow *row )
+void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, ctable_BaseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
 
@@ -251,7 +251,7 @@ void *jsw_findlast ( jsw_skip_t *skip)
 // forces there to be no duplicate row by failing if a matching row is found
 //
 inline
-int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
+int jsw_sinsert ( jsw_skip_t *skip, ctable_BaseRow *row )
 {
   // void *p = locate ( skip, row )->row;
   jsw_node_t *p = locate ( skip, row )->next[0];
@@ -294,7 +294,7 @@ int jsw_sinsert ( jsw_skip_t *skip, struct ctable_baseRow *row )
 // currently can only succeed
 //
 inline
-int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int nodeIdx, int unique)
+int jsw_sinsert_linked ( jsw_skip_t *skip, ctable_BaseRow *row , int nodeIdx, int unique)
 {
   // void *p = locate ( skip, row )->row;
   jsw_node_t *p = locate ( skip, row )->next[0];
@@ -348,7 +348,7 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, struct ctable_baseRow *row , int node
 //
 // you have to release the node externally to this
 //
-int jsw_serase ( jsw_skip_t *skip, struct ctable_baseRow *row )
+int jsw_serase ( jsw_skip_t *skip, ctable_BaseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
 
@@ -389,7 +389,7 @@ void
 jsw_dump_node (const char *s, jsw_skip_t *skip, jsw_node_t *p, int indexNumber) {
     int         height;
     int         i;
-    struct ctable_baseRow *walkRow;
+    ctable_BaseRow *walkRow;
 
     height = p->height;
     printf("%8lx '%s' height %d\n    list ", (long unsigned int)p, s, height);
@@ -456,7 +456,7 @@ void jsw_sreset_head ( jsw_skip_t *skip )
 // jsw_srow - get row pointed to by the the current link or NULL if none
 //
 inline
-struct ctable_baseRow *jsw_srow ( jsw_skip_t *skip )
+ctable_BaseRow *jsw_srow ( jsw_skip_t *skip )
 {
   return skip->curl == NULL ? NULL : skip->curl->row;
 }

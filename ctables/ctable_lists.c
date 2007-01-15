@@ -10,7 +10,7 @@
 // ctable_ListInit - initialize a list
 //
 inline void
-ctable_ListInit (struct ctable_baseRow **listPtr)
+ctable_ListInit (ctable_BaseRow **listPtr)
 {
     *listPtr = NULL;
 }
@@ -19,7 +19,7 @@ ctable_ListInit (struct ctable_baseRow **listPtr)
 // ctable_ListEmpty - return 1 if the list is empty, else 0.
 //
 inline int
-ctable_ListEmpty (struct ctable_baseRow *list)
+ctable_ListEmpty (ctable_BaseRow *list)
 {
     return (list == NULL);
 }
@@ -28,7 +28,7 @@ ctable_ListEmpty (struct ctable_baseRow *list)
 // ctable_ListRemove - remove a row from a list
 //
 inline void
-ctable_ListRemove (struct ctable_baseRow *row, int i)
+ctable_ListRemove (ctable_BaseRow *row, int i)
 {
     // if there's an object following me, make his prev be my prev
     if (row->_ll_nodes[i].next != NULL) {
@@ -45,7 +45,7 @@ ctable_ListRemove (struct ctable_baseRow *row, int i)
 // ctable_ListRemoveMightBeTheLastOne - remove a row from a list
 //
 inline int
-ctable_ListRemoveMightBeTheLastOne (struct ctable_baseRow *row, int i)
+ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 {
     int mightBeTheLastOne;
 
@@ -66,7 +66,7 @@ ctable_ListRemoveMightBeTheLastOne (struct ctable_baseRow *row, int i)
 
 
 inline void
-ctable_ListInsertHead (struct ctable_baseRow **listPtr, struct ctable_baseRow *row, int i)
+ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 {
     // make the new row's next point to what the head currently points
     // to, possibly NULL
@@ -94,7 +94,7 @@ ctable_ListInsertHead (struct ctable_baseRow **listPtr, struct ctable_baseRow *r
 // ctable_ListInsertBefore - insert row2 before row1
 //
 inline void
-ctable_ListInsertBefore (struct ctable_baseRow *row1, struct ctable_baseRow *row2, int i)
+ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
 {
     // make row2's head point to row1's head
     row2->_ll_nodes[i].head = row1->_ll_nodes[i].head;
@@ -116,7 +116,7 @@ ctable_ListInsertBefore (struct ctable_baseRow *row1, struct ctable_baseRow *row
 // ctable_ListInsertAfter - insert row2 after row1
 //
 inline void
-ctable_ListInsertAfter (struct ctable_baseRow *row1, struct ctable_baseRow *row2, int i) {
+ctable_ListInsertAfter (ctable_BaseRow *row1, ctable_BaseRow *row2, int i) {
     // make row2's head point to row1's head
     row2->_ll_nodes[i].head = row1->_ll_nodes[i].head;
 

@@ -330,7 +330,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 //  the search criteria.
 //
 static int
-ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, struct ctable_baseRow *row) {
+ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, ctable_BaseRow *row) {
     char           *key;
     int             i;
     struct ctableCreatorTable *creatorTable = ctable->creatorTable;
@@ -557,7 +557,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 // ctable_SearchCompareRow - perform comparisons on a row
 //
 inline static int
-ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, struct ctable_baseRow *row)
+ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, ctable_BaseRow *row)
 {
     int   compareResult;
     int   actionResult;
@@ -655,7 +655,7 @@ static int
 ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
     int                    compareResult;
     int                    actionResult = TCL_OK;
-    struct ctable_baseRow *row;
+    ctable_BaseRow        *row;
 
     search->matchCount = 0;
     search->tailoredWalk = 0;
@@ -673,7 +673,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     // if we're sorting, allocate a space for the search results that
     // we'll then sort from
     if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
-	search->sortTable = (struct ctable_baseRow **)ckalloc (sizeof (void *) * ctable->count);
+	search->sortTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
     }
 
     // walk the table 
@@ -724,9 +724,9 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
 
     struct ctableCreatorTable *creatorTable = ctable->creatorTable;
 
-    struct ctable_baseRow   *row = NULL;
-    struct ctable_baseRow   *row1 = NULL;
-    struct ctable_baseRow   *walkRow;
+    ctable_BaseRow          *row = NULL;
+    ctable_BaseRow          *row1 = NULL;
+    ctable_BaseRow          *walkRow;
     void                    *row2 = NULL;
 
     jsw_skip_t      *skip = NULL;
@@ -756,7 +756,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
     // if we're sorting, allocate a space for the search results that
     // we'll then sort from
     if ((search->sortControl.nFields > 0) && (!search->countOnly)) {
-        search->sortTable = (struct ctable_baseRow **)ckalloc (ctable->count * sizeof (void *));
+        search->sortTable = (ctable_BaseRow **)ckalloc (ctable->count * sizeof (void *));
     }
 
     // if the first compare thing is something we understand how to do
@@ -1370,7 +1370,7 @@ ctable_ListIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum) {
 inline void
 ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
-    struct ctable_baseRow *row = vRow;
+    ctable_BaseRow *row = vRow;
     int index;
 
 // printf("remove from index field %d\n", field);
@@ -1494,7 +1494,7 @@ ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int f
 //
 int
 ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
-    struct ctable_baseRow *row;
+    ctable_BaseRow *row;
 
     jsw_skip_t      *skip = ctable->skipLists[field];
 
@@ -1547,7 +1547,7 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
 int
 ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
     jsw_skip_t            *skip = ctable->skipLists[field];
-    struct ctable_baseRow *row;
+    ctable_BaseRow        *row;
     Tcl_Obj               *resultObj = Tcl_GetObjResult (interp);
 
     if (skip == NULL) {

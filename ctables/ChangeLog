@@ -15,6 +15,11 @@ $Id$
 
     * Switch to a CTableSearchComponent typdef from "struct ctableSearchStruct"
 
+    * Switch to a ctable_LinkedListNode typedef from
+      "struct ctable_linkedListNodeStruct".
+
+    * Switch to a ctable_BaseRow typedef from "struct ctable_baseRow"
+
 1/14/2007 karl
     * Begin laying in the infrastructure for the new "in" search term.
 

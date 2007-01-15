@@ -1,7 +1,7 @@
     // $Id$
 int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
-    struct ctable_baseRow    *row;
-    struct ctable_baseRow    *nextRow;
+    ctable_BaseRow           *row;
+    ctable_BaseRow           *nextRow;
 
     CTABLE_LIST_FOREACH_SAFE (ctable->ll_head, row, nextRow, 0) {
 
