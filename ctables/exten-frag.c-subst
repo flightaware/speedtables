@@ -54,11 +54,11 @@
     t->delete = ${table}_delete;
 
     // allocate and populate the field info structures
-    t->fields = (struct ctableFieldInfo **)ckalloc (t->nFields * sizeof (struct ctableFieldInfo *));
+    t->fields = (ctable_FieldInfo **)ckalloc (t->nFields * sizeof (ctable_FieldInfo *));
     for (i = 0; i < t->nFields; i++) {
-        struct ctableFieldInfo *f;
+        ctable_FieldInfo *f;
 
-        f = t->fields[i] = (struct ctableFieldInfo *)ckalloc (sizeof (struct ctableFieldInfo));
+        f = t->fields[i] = (ctable_FieldInfo *)ckalloc (sizeof (ctable_FieldInfo));
 
 	f->name = ${table}_fields[i];
 	f->nameObj = ${table}_NameObjList[i];

@@ -201,7 +201,7 @@ typedef struct {
     ctable_BaseRow                     **sortTable;
 } CTableSearch;
 
-struct ctableFieldInfo {
+typedef struct {
     CONST char              *name;
     Tcl_Obj                 *nameObj;
     char                   **propKeys;
@@ -212,7 +212,7 @@ struct ctableFieldInfo {
     int                      indexNumber;
     int                      unique;
     enum ctable_types        type;
-};
+} ctable_FieldInfo;
 
 typedef struct ctableCreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
@@ -224,7 +224,7 @@ typedef struct ctableCreatorTable {
     enum ctable_types    *fieldTypes;
     int                  *fieldsThatNeedQuoting;
 
-    struct ctableFieldInfo **fields;
+    ctable_FieldInfo    **fields;
 
     int                nFields;
     int                nLinkedLists;

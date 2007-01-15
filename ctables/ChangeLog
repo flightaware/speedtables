@@ -23,6 +23,8 @@ $Id$
 
 	struct ctableCreatorTable -> ctable_CreatorTable
 
+	struct ctableFieldInfo -> ctable_FieldInfo
+
 1/14/2007 karl
     * Begin laying in the infrastructure for the new "in" search term.
 

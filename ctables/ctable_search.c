@@ -1431,7 +1431,7 @@ ctable_RemoveFromAllIndexes (CTable *ctable, void *row) {
 inline int
 ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
-    struct ctableFieldInfo *f;
+    ctable_FieldInfo *f;
     Tcl_Obj *utilityObj;
 
     if (skip == NULL) {

@@ -105,7 +105,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int                      suboptIndex;
 	int                      fieldNum;
 	int                      propIndex;
-        struct ctableFieldInfo  *f;
+        ctable_FieldInfo        *f;
       Tcl_Obj                   *resultObj = Tcl_GetObjResult (interp);
 
 	enum suboptions {SUBOPT_GETPROP, SUBOPT_PROPERTIES, SUBOPT_PROPLIST};
@@ -671,7 +671,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      // to the Tcl result object
 
 	      for (field = 0; field < ctable->creatorTable->nFields; field++) {
-	          struct ctableFieldInfo *f = ctable->creatorTable->fields[field];
+	          ctable_FieldInfo *f = ctable->creatorTable->fields[field];
 
 		  if (f->indexNumber >= 0) {
 		      if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), f->nameObj) == TCL_ERROR) {
