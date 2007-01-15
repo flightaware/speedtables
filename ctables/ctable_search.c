@@ -724,7 +724,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 
     struct ctableCreatorTable *creatorTable = ctable->creatorTable;
 
-    struct ctable_baseRow   *row;
+    struct ctable_baseRow   *row = NULL;
     struct ctable_baseRow   *row1 = NULL;
     struct ctable_baseRow   *walkRow;
     void                    *row2 = NULL;
@@ -831,7 +831,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	goto clean_and_return;
     }
 
-    if (search->tailoredWalk) {
+    if (search->tailoredWalk && normal) {
        // yay get the huge win by zooming past hopefully a zillion records
        // right here
        //
@@ -875,7 +875,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
     while (1) {
 
       if (normal) {
-          if ((row = jsw_srow (skip)) != NULL) break;
+          if ((row = jsw_srow (skip)) == NULL) break;
 
 	  if (search->tailoredWalk) {
 	      if (tailoredTerm == CTABLE_COMP_RANGE) {
@@ -902,10 +902,15 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, struct ctableTable *ctable, struct
 	      if (inIndex >= component->inCount) break;
 
 	      if ((*ctable->creatorTable->set) (interp, ctable, component->inListObj[inIndex], component->row1, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
-		  goto err;
+	          Tcl_AppendResult (interp, " while processing \"in\" compare function", (char *) NULL);
+		  actionResult = TCL_ERROR;
+		  goto clean_and_return;
 	      }
 
-	       if ((row = jsw_sfind (skip, component->row1)) == NULL) goto contin;
+	      if (jsw_sfind (skip, component->row1) == NULL) goto contin;
+	      row = jsw_srow (skip);
+	  } else {
+	      panic ("unexpected code path in ctable_PerformSkipSearch");
 	  }
       }
 

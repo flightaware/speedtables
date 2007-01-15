@@ -1,6 +1,14 @@
 
 $Id$
 
+1/15/2007 karl
+    * Complete work on search+ where the first compare term is "in" and
+      the field being compared is indexed.  Tests updated, although
+      more comprehensive tests need to be written.
+
+      Still not done, "in" when not the first term or the field isn't
+      indexed, etc.
+
 1/14/2007 karl
     * Begin laying in the infrastructure for the new "in" search term.
 
