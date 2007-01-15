@@ -21,7 +21,7 @@ $Id$
 
 	struct ctable_baseRow -> ctable_BaseRows
 
-
+	struct ctableCreatorTable -> ctable_CreatorTable
 
 1/14/2007 karl
     * Begin laying in the infrastructure for the new "in" search term.

@@ -333,7 +333,7 @@ static int
 ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, ctable_BaseRow *row) {
     char           *key;
     int             i;
-    struct ctableCreatorTable *creatorTable = ctable->creatorTable;
+    ctable_CreatorTable *creatorTable = ctable->creatorTable;
 
     key = row->hashEntry.key;
 
@@ -722,7 +722,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
     int              compareResult;
     int              actionResult = TCL_OK;
 
-    struct ctableCreatorTable *creatorTable = ctable->creatorTable;
+    ctable_CreatorTable *creatorTable = ctable->creatorTable;
 
     ctable_BaseRow          *row = NULL;
     ctable_BaseRow          *row1 = NULL;

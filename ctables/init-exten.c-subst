@@ -99,7 +99,7 @@ ${extension}_SafeInit(Tcl_Interp *interp)
 EXTERN int
 ${extension}_Init(Tcl_Interp *interp)
 {
-    struct ctableCreatorTable *t;
+    ctable_CreatorTable       *t;
     Tcl_HashTable             *hashTablePtr;
     int                        i;
 

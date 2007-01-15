@@ -214,7 +214,7 @@ struct ctableFieldInfo {
     enum ctable_types        type;
 };
 
-struct ctableCreatorTable {
+typedef struct ctableCreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int     nextAutoCounter;
 
@@ -247,10 +247,10 @@ struct ctableCreatorTable {
     int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer, int tailoredWalk);
     int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
     void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
-};
+} ctable_CreatorTable;
 
 typedef struct ctableTable {
-    struct ctableCreatorTable           *creatorTable;
+    ctable_CreatorTable                 *creatorTable;
     ctable_HashTable                    *keyTablePtr;
 
     jsw_skip_t                         **skipLists;

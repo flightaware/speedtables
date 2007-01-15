@@ -10,7 +10,7 @@
      *   table
      */
 
-    t = (struct ctableCreatorTable *)ckalloc (sizeof (struct ctableCreatorTable));
+    t = (ctable_CreatorTable *)ckalloc (sizeof (ctable_CreatorTable));
 
     /* create the table for registering Tcl commands to appear as methods
      * of the table class and pass it in through Tcl's client data
