@@ -225,7 +225,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
-	return ctable_RunBatch (interp, ctable, objv[2]);
+	return ctable_RunBatch (interp, ctable, objv[0], objv[2]);
       }
 
       case OPT_SEARCH: {

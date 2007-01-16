@@ -2,7 +2,22 @@
 $Id$
 
 1/16/2007 karl
-    * Add "command" to the ctable creator table as a pointer to the
+    * Added new method, "batch", which takes a list of ctable commands,
+      minus the table name (as that's implicit) and invokes each element
+      as a method invocation on the current ctable, without invoking the
+      tcl interpreter, accumulating results for elements that return 
+      results or generate error returns, returning those as a list at
+      the end.  
+      
+      This is pretty amazing.  
+      
+      This isn't so important for local ctables but will be a big win for 
+      remote ctables, saving many network round-trips when there are many
+      commands in the batch.
+
+      search is not supported in a batch and the results are undefined.
+
+    * Added "command" to the ctable creator table as a pointer to the
       ${table}ObjCmd, allowing direct calls from C to all Tcl-callable
       speed table functions without requiring the use of the Tcl interpreter!
 
