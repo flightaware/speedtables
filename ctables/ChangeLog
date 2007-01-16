@@ -21,6 +21,9 @@ $Id$
       ${table}ObjCmd, allowing direct calls from C to all Tcl-callable
       speed table functions without requiring the use of the Tcl interpreter!
 
+    * Change -include_field_names in search to -with_field_names in 
+      preparation for adding the same to read_tabsep.
+
     * Updated speed table pages file (and export new PDF) to include docs on
       the "in" search term.
 
