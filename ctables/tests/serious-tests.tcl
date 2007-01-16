@@ -6,8 +6,8 @@
 
 package require ctable
 
-set ::ctable::genCompilerDebug 1
-set ::ctable::showCompilerCommands 1
+set ::ctable::genCompilerDebug 0
+set ::ctable::showCompilerCommands 0
 
 source searchtest-def.tcl
 
@@ -89,7 +89,7 @@ search+_test "indexed range" {-compare {{range show A M}}} {meatwad shake fryloc
 
 search+_test "sorted search+ with offset 0 and limit 10" {-sort name -offset 0 -limit 10} {angel baron brak brock carr carl clarence rick dad dean}
 
-search+_test "using 'in'" {-compare {{in show "The Brak Show" "Stroker and Hoop"}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
+search+_test "using 'in'" {-compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
 puts -nonewline "testing 'fields'..."
 if {[t fields] != {id name home show dad alive gender age coolness}} {

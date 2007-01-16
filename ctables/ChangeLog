@@ -9,6 +9,9 @@ $Id$
       Still not done, "in" when not the first term or the field isn't
       indexed, etc.
 
+      Make "in" take a list of match values as the third argument.
+      We originally did not have a sublist, it was "in field val val..."
+
     * Mapped the following structs to typedefs and made it use the typedefs:
 
         struct ctableTable -> CTable

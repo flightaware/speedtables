@@ -257,13 +257,15 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 	    }
 	}  else {
 	    if (term == CTABLE_COMP_IN) {
-	        if (termListCount < 3) {
-		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require at least 3 arguments (term, field, ?value...?)", (char *) NULL);
+	        if (termListCount != 3) {
+		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 3 arguments (term, field, list)", (char *) NULL);
 		    goto err;
 		}
 
-		component->inListObj = &termList[2];
-		component->inCount = termListCount - 2;
+		if (Tcl_ListObjGetElements (interp, termList[2], &component->inCount, &component->inListObj) == TCL_ERROR) {
+		    goto err;
+		}
+
 		component->row1 = (*ctable->creatorTable->make_empty_row) ();
 
 	    } else if (term == CTABLE_COMP_RANGE) {
