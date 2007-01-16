@@ -215,3 +215,12 @@ t search -compare {{= name {Rusty Venture}}} -fields {name age} -array_get_with_
 }
 puts "ok"
 
+puts -nonewline "testing delete..."
+if {[t delete dean] != 1} {
+    error "t delete dean should have returned 1 the first time"
+}
+
+if {[t delete dean] != 0} {
+    error "t delete dene should have returned 0 the second time"
+}
+puts "ok"

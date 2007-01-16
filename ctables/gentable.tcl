@@ -1645,7 +1645,6 @@ proc gen_delete_subr {subr struct} {
     emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);"
     emit "    }"
     emit ""
-    emit "    if (row->hashEntry.key != NULL) ckfree ((void *)row->hashEntry.key);"
 
     foreach myfield $fieldList {
 	upvar ::ctable::fields::$myfield field
