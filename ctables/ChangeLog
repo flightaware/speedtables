@@ -1,6 +1,14 @@
 
 $Id$
 
+1/16/2007 karl
+    * Add "command" to the ctable creator table as a pointer to the
+      ${table}ObjCmd, allowing direct calls from C to all Tcl-callable
+      speed table functions without requiring the use of the Tcl interpreter!
+
+    * Updated speed table pages file (and export new PDF) to include docs on
+      the "in" search term.
+
 1/15/2007 karl
     * Complete work on search+ where the first compare term is "in" and
       the field being compared is indexed.  Tests updated, although

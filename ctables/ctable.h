@@ -247,6 +247,8 @@ typedef struct ctableCreatorTable {
     int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer, int tailoredWalk);
     int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
     void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
+
+    int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 } ctable_CreatorTable;
 
 typedef struct ctableTable {

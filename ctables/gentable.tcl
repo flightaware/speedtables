@@ -3862,8 +3862,8 @@ proc install_ch_files {targetDir} {
     variable srcDir
 
     set copyFiles {
-	ctable.h ctable_search.c ctable_lists.c boyer_moore.c
-	jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
+	ctable.h ctable_search.c ctable_lists.c ctable_batch.c
+	boyer_moore.c jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
 	speedtables.h speedtableHash.c
     }
 

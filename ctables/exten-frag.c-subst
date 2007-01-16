@@ -53,6 +53,8 @@
 
     t->delete = ${table}_delete;
 
+    t->command = ${table}ObjCmd;
+
     // allocate and populate the field info structures
     t->fields = (ctable_FieldInfo **)ckalloc (t->nFields * sizeof (ctable_FieldInfo *));
     for (i = 0; i < t->nFields; i++) {

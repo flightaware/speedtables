@@ -237,3 +237,31 @@ OK if everything was cool and either an error or a status that's a list of
 all the commands that failed or partially failed, with the index of each 
 command that failed and the reason and maybe even the full command in
 the status return.
+
+OK after some thinking, here's the plan.  It's not a batch set, it's a batch.
+Batch doesn't mean it's a transaction, it's not.  It's simply a batch of
+zero or more batchable commands.
+
+Each command is executed in turn.  If it succeeds and returns no result,
+we're done.  If it succeeds and returns a result, we accumulate into our
+return value the index number of the command, a success status, and the
+return value, in a way that facilitates array get, i.e. the key is the
+row number and the value is everything else.  In there, there are key-value
+pairs too, perhaps, like status and value.
+
+If the command gets an error, its index and error return are recorded and
+accumulated into the result list.
+
+Finally, the result list is returned.  You do not get an error if there were
+errors in the batched commands -- you have to examine the return to see
+what the errors are.
+
+You can get an error back from batch but only for argument errors to batch
+or a malformed list.  Other than that, it will succeed, even if everything
+you asked to happen in the batch failed.
+
+
+---
+
+Change the name of creatorTable in the ctable typedef and wherever referenced
+to creator.

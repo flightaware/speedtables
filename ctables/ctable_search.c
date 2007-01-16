@@ -13,6 +13,8 @@
 
 #include "ctable_lists.c"
 
+#include "ctable_batch.c"
+
 #include "jsw_slib.c"
 
 #include "speedtableHash.c"
