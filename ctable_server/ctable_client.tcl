@@ -288,7 +288,7 @@ proc remote_ctable_invoke {localTableName level command} {
 		}
 	    }
 
-	    set pairs(-include_field_names) 1
+	    set pairs(-with_field_names) 1
 	}
 	set body [array get pairs]
 #puts "new body is '$body'"
