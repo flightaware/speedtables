@@ -24,6 +24,11 @@ $Id$
     * Change -include_field_names in search to -with_field_names in 
       preparation for adding the same to read_tabsep.
 
+    * Fix bug in -with_field_names where it just emitted the fields left
+      to right instead of actually looking them up in the field list.
+
+      Worked fine for all fields, not so good with a subset.
+
     * Updated speed table pages file (and export new PDF) to include docs on
       the "in" search term.
 

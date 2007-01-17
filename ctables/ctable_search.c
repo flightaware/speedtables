@@ -461,15 +461,16 @@ static int
 ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 {
     int i;
-    Tcl_DString     dString;
-    int            *fields;
-    int             nFields;
+    Tcl_DString          dString;
+    int                 *fields;
+    int                  nFields;
+    ctable_CreatorTable *creator = ctable->creator;
 
     Tcl_DStringInit (&dString);
 
     if (search->nRetrieveFields < 0) {
-	fields = ctable->creator->fieldList;
-	nFields = ctable->creator->nFields;
+	fields = creator->fieldList;
+	nFields = creator->nFields;
     } else {
 	nFields = search->nRetrieveFields;
 	fields = search->retrieveFields;
@@ -484,7 +485,7 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search
 	    Tcl_DStringAppend(&dString, "\t", 1);
 	}
 
-	Tcl_DStringAppend(&dString, ctable->creator->fields[i]->name, -1);
+	Tcl_DStringAppend(&dString, creator->fields[fields[i]]->name, -1);
     }
     Tcl_DStringAppend(&dString, "\n", 1);
 
@@ -974,7 +975,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
     static CONST char *searchOptions[] = {"-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_INCLUDE_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP};
+    enum searchOptions {SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP};
 
     if (objc < 2) {
       wrong_args:
@@ -1044,7 +1045,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    break;
 	  }
 
-	  case SEARCH_OPT_INCLUDE_FIELD_NAMES: {
+	  case SEARCH_OPT_WITH_FIELD_NAMES: {
 	    if (Tcl_GetBooleanFromObj (interp, objv[i++], &search->writingTabsepIncludeFieldNames) == TCL_ERROR) {
 	        Tcl_AppendResult (interp, " while processing search -with_field_names", (char *) NULL);
 	        return TCL_ERROR;
