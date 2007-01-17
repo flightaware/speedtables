@@ -35,7 +35,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
         OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD, OPT_CEXTENSION
     };
 
-    ctable_CreatorTable *creatorTable = (ctable_CreatorTable *)clientData;
+    ctable_CreatorTable *creator = (ctable_CreatorTable *)clientData;
 
     CTable *ctable;
 
@@ -64,15 +64,15 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 	    ctable = (CTable *)ckalloc (sizeof(CTable));
-	    ctable->creatorTable = creatorTable;
+	    ctable->creator = creator;
 	    ctable->keyTablePtr = (ctable_HashTable *)ckalloc (sizeof (ctable_HashTable));
 	    ctable->count = 0;
 	    ctable->autoRowNumber = 0;
 
 	    // create an array of pointers to possible skip lists,
 	    // one per field
-	    ctable->skipLists = (jsw_skip_t **)ckalloc (creatorTable->nFields * sizeof (jsw_skip_t *));
-	    for (i = 0; i < creatorTable->nFields; i++) {
+	    ctable->skipLists = (jsw_skip_t **)ckalloc (creator->nFields * sizeof (jsw_skip_t *));
+	    for (i = 0; i < creator->nFields; i++) {
 		ctable->skipLists[i] = NULL;
 	    }
 
@@ -89,7 +89,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	        objName = Tcl_GetStringFromObj (objv[0], &baseNameLength);
 		baseNameLength += 42;
 		commandName = ckalloc (baseNameLength);
-		snprintf (commandName, baseNameLength, "%s%lu", objName, creatorTable->nextAutoCounter++);
+		snprintf (commandName, baseNameLength, "%s%lu", objName, creator->nextAutoCounter++);
 	    }
 
 	    ctable->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) ctable, NULL);
@@ -135,7 +135,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		Tcl_WrongNumArgs (interp, 2, objv, "name proc");
 		return TCL_ERROR;
 	    }
-	    hashEntry = Tcl_CreateHashEntry (creatorTable->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
+	    hashEntry = Tcl_CreateHashEntry (creator->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
 	    Tcl_IncrRefCount(objv[3]);
 	    Tcl_SetHashValue (hashEntry, (ClientData)objv[3]);
 	    return TCL_OK;

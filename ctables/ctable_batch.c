@@ -70,7 +70,7 @@ ctable_RunBatch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *tableCmdObj, Tcl_O
 	// result if anything's there after executing the command.
 
         Tcl_ResetResult (interp);
-        commandResult = ctable->creatorTable->command (ctable, interp, cmdObjc, cmdObjv);
+        commandResult = ctable->creator->command (ctable, interp, cmdObjc, cmdObjv);
 	commandResultObj = Tcl_GetObjResult (interp);
 
         // if we got an OK result and nothing in the result object, there's

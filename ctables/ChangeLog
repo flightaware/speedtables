@@ -30,6 +30,8 @@ $Id$
     * Hashtable key was getting deleted twice when a row was deleted.
       Fixed this and added tests.
 
+    * Change all the ctable->creatorTable->stuff to ctable->creator->stuff.
+
 1/15/2007 karl
     * Complete work on search+ where the first compare term is "in" and
       the field being compared is indexed.  Tests updated, although

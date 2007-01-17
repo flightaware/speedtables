@@ -250,7 +250,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 	component->row2 = NULL;
 	component->inListObj = NULL;
 	component->inCount = 0;
-	component->compareFunction = ctable->creatorTable->fields[field]->compareFunction;
+	component->compareFunction = ctable->creator->fields[field]->compareFunction;
 
 	if (term == CTABLE_COMP_FALSE || term == CTABLE_COMP_TRUE || term == CTABLE_COMP_NULL || term == CTABLE_COMP_NOTNULL) {
 	    if (termListCount != 2) {
@@ -268,7 +268,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		    goto err;
 		}
 
-		component->row1 = (*ctable->creatorTable->make_empty_row) ();
+		component->row1 = (*ctable->creator->make_empty_row) ();
 
 	    } else if (term == CTABLE_COMP_RANGE) {
 	        void *row;
@@ -278,14 +278,14 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		    goto err;
 		}
 
-		row = (*ctable->creatorTable->make_empty_row) ();
-		if ((*ctable->creatorTable->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+		row = (*ctable->creator->make_empty_row) ();
+		if ((*ctable->creator->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 		    goto err;
 		}
 		component->row1 = row;
 
-		row = (*ctable->creatorTable->make_empty_row) ();
-		if ((*ctable->creatorTable->set) (interp, ctable, termList[3], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+		row = (*ctable->creator->make_empty_row) ();
+		if ((*ctable->creator->set) (interp, ctable, termList[3], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 		    goto err;
 		}
 		component->row2 = row;
@@ -317,8 +317,8 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
 	    /* stash what we want to compare to into a row as in "range"
 	     */
-	    row = (*ctable->creatorTable->make_empty_row) ();
-	    if ((*ctable->creatorTable->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+	    row = (*ctable->creator->make_empty_row) ();
+	    if ((*ctable->creator->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 		goto err;
 	    }
 	    component->row1 = row;
@@ -337,7 +337,7 @@ static int
 ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, ctable_BaseRow *row) {
     char           *key;
     int             i;
-    ctable_CreatorTable *creatorTable = ctable->creatorTable;
+    ctable_CreatorTable *creator = ctable->creator;
 
     key = row->hashEntry.key;
 
@@ -351,9 +351,9 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	// string-append the specified fields, or all fields, tab separated
 
         if (search->nRetrieveFields < 0) {
-	    (*creatorTable->dstring_append_get_tabsep) (key, row, creatorTable->fieldList, creatorTable->nFields, &dString, search->noKeys);
+	    (*creator->dstring_append_get_tabsep) (key, row, creator->fieldList, creator->nFields, &dString, search->noKeys);
 	} else {
-	    (*creatorTable->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
+	    (*creator->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
 	}
 
         // write the line out
@@ -379,13 +379,13 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	if (search->useGet) {
 	    if (search->nRetrieveFields < 0) {
-		listObj = (*creatorTable->gen_list) (interp, row);
+		listObj = (*creator->gen_list) (interp, row);
 	    } else {
 	       int i;
 
 	       listObj = Tcl_NewObj ();
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   creatorTable->lappend_field (interp, listObj, row, creatorTable->fieldList[i]);
+		   creator->lappend_field (interp, listObj, row, creator->fieldList[i]);
 	       }
 	    }
 	} else if (search->useArrayGet) {
@@ -393,24 +393,24 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	       int i;
 
 	       listObj = Tcl_NewObj ();
-	       for (i = 0; i < creatorTable->nFields; i++) {
-		   creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, i);
+	       for (i = 0; i < creator->nFields; i++) {
+		   creator->lappend_nonnull_field_and_name (interp, listObj, row, i);
 	       }
 	    } else {
 	       int i;
 
 	       listObj = Tcl_NewObj ();
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   creatorTable->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
+		   creator->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
 	       }
 	    }
 	} else if (search->useArrayGetWithNulls) {
 	    if (search->nRetrieveFields < 0) {
-		listObj = (*creatorTable->gen_keyvalue_list) (interp, row);
+		listObj = (*creator->gen_keyvalue_list) (interp, row);
 	    } else {
 	        listObj = Tcl_NewObj ();
 		for (i = 0; i < search->nRetrieveFields; i++) {
-		    creatorTable->lappend_field_and_name (interp, listObj, row, search->retrieveFields[i]);
+		    creator->lappend_field_and_name (interp, listObj, row, search->retrieveFields[i]);
 		}
 	    }
 	} else {
@@ -468,8 +468,8 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search
     Tcl_DStringInit (&dString);
 
     if (search->nRetrieveFields < 0) {
-	fields = ctable->creatorTable->fieldList;
-	nFields = ctable->creatorTable->nFields;
+	fields = ctable->creator->fieldList;
+	nFields = ctable->creator->nFields;
     } else {
 	nFields = search->nRetrieveFields;
 	fields = search->retrieveFields;
@@ -484,7 +484,7 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search
 	    Tcl_DStringAppend(&dString, "\t", 1);
 	}
 
-	Tcl_DStringAppend(&dString, ctable->creatorTable->fields[i]->name, -1);
+	Tcl_DStringAppend(&dString, ctable->creator->fields[i]->name, -1);
     }
     Tcl_DStringAppend(&dString, "\n", 1);
 
@@ -517,7 +517,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
         return TCL_OK;
     }
 
-    qsort_r (search->sortTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, ctable->creatorTable->sort_compare);
+    qsort_r (search->sortTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, ctable->creator->sort_compare);
 
     // it's sorted
     // now let's see what we've got within the offset and limit
@@ -578,7 +578,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     //
     // run the supplied compare routine
     //
-    compareResult = (*ctable->creatorTable->search_compare) (interp, search, (void *)row, search->tailoredWalk);
+    compareResult = (*ctable->creator->search_compare) (interp, search, (void *)row, search->tailoredWalk);
     if (compareResult == TCL_CONTINUE) {
 	return TCL_CONTINUE;
     }
@@ -726,7 +726,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
     int              compareResult;
     int              actionResult = TCL_OK;
 
-    ctable_CreatorTable *creatorTable = ctable->creatorTable;
+    ctable_CreatorTable *creator = ctable->creator;
 
     ctable_BaseRow          *row = NULL;
     ctable_BaseRow          *row1 = NULL;
@@ -820,7 +820,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
 
         // no relevant skip list?  see if we can find any 
 	if (skip == NULL) {
-	    for (field= 0; field < creatorTable->nFields; field++) {
+	    for (field= 0; field < creator->nFields; field++) {
 		if ((skip = ctable->skipLists[field]) != NULL) {
 		    // printf("not tailored walk, found arbitrary index on field %d\n", field);
 		    break;
@@ -864,8 +864,8 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
     //  for (; curl != NULL && (row = curl->item); curl = curl->next[0])
     // curl = ((struct jsw_skip *)skip)->curl;
 
-    compareFunction = creatorTable->fields[field]->compareFunction;
-    indexNumber = creatorTable->fields[field]->indexNumber;
+    compareFunction = creator->fields[field]->compareFunction;
+    indexNumber = creator->fields[field]->indexNumber;
 
     // for (; ((row = jsw_srow (skip)) != NULL); jsw_snext(skip)) {
 
@@ -905,7 +905,7 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
 
 	      if (inIndex >= component->inCount) break;
 
-	      if ((*ctable->creatorTable->set) (interp, ctable, component->inListObj[inIndex], component->row1, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+	      if ((*ctable->creator->set) (interp, ctable, component->inListObj[inIndex], component->row1, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 	          Tcl_AppendResult (interp, " while processing \"in\" compare function", (char *) NULL);
 		  actionResult = TCL_ERROR;
 		  goto clean_and_return;
@@ -970,7 +970,7 @@ static int
 ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search) {
     int             i;
     int             searchTerm = 0;
-    CONST char                 **fieldNames = ctable->creatorTable->fieldNames;
+    CONST char                 **fieldNames = ctable->creator->fieldNames;
 
     static CONST char *searchOptions[] = {"-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", (char *)NULL};
 
@@ -1195,11 +1195,11 @@ ctable_TeardownSearch (CTableSearch *search) {
 	if (component->clientData != NULL) {
 
 	    if (component->row1 != NULL) {
-	        search->ctable->creatorTable->delete (search->ctable, component->row1, CTABLE_INDEX_PRIVATE);
+	        search->ctable->creator->delete (search->ctable, component->row1, CTABLE_INDEX_PRIVATE);
 	    }
 
 	    if (component->row2 != NULL) {
-	        search->ctable->creatorTable->delete (search->ctable, component->row2, CTABLE_INDEX_PRIVATE);
+	        search->ctable->creator->delete (search->ctable, component->row2, CTABLE_INDEX_PRIVATE);
 	    }
 
 	    // this needs to be pluggable
@@ -1292,7 +1292,7 @@ void
 ctable_DropAllIndexes (CTable *ctable) {
     int field;
 
-    for (field = 0; field < ctable->creatorTable->nFields; field++) {
+    for (field = 0; field < ctable->creator->nFields; field++) {
         ctable_DropIndex (ctable, field);
     }
 }
@@ -1334,8 +1334,8 @@ ctable_DumpIndex (Tcl_Interp *interp, CTable *ctable, int field) {
     jsw_dump_head (skip);
 
     for (jsw_sreset (skip); (row = jsw_srow (skip)) != NULL; jsw_snext(skip)) {
-        s = ctable->creatorTable->get_string (row, field, NULL, utilityObj);
-	jsw_dump (s, skip, ctable->creatorTable->fields[field]->indexNumber);
+        s = ctable->creator->get_string (row, field, NULL, utilityObj);
+	jsw_dump (s, skip, ctable->creator->fields[field]->indexNumber);
     }
 
     Tcl_DecrRefCount (utilityObj);
@@ -1362,7 +1362,7 @@ ctable_ListIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum) {
 
     for (jsw_sreset (skip); (p = jsw_srow (skip)) != NULL; jsw_snext(skip)) {
 
-        if (ctable->creatorTable->lappend_field (interp, resultObj, p, fieldNum) == TCL_ERROR) {
+        if (ctable->creator->lappend_field (interp, resultObj, p, fieldNum) == TCL_ERROR) {
 	    Tcl_AppendResult (interp, " while walking index fields", (char *) NULL);
 	    return TCL_ERROR;
 	}
@@ -1384,9 +1384,9 @@ ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
         return;
     }
 
-    if (ctable_ListRemoveMightBeTheLastOne (row, ctable->creatorTable->fields[field]->indexNumber)) {
+    if (ctable_ListRemoveMightBeTheLastOne (row, ctable->creator->fields[field]->indexNumber)) {
 // printf("i might be the last one, field %d\n", field);
-	index = ctable->creatorTable->fields[field]->indexNumber;
+	index = ctable->creator->fields[field]->indexNumber;
         // it might be the last one, see if it really was
 // printf ("row->ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
 	if (*row->_ll_nodes[index].head == NULL) {
@@ -1395,7 +1395,7 @@ ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
 	    // something to match
             *row->_ll_nodes[index].head = row;
 	    if (!jsw_serase (skip, row)) {
-		panic ("corrupted index detected for field %s", ctable->creatorTable->fields[field]->name);
+		panic ("corrupted index detected for field %s", ctable->creator->fields[field]->name);
 	    }
 	    // *row->ll_nodex[index].head = NULL; // don't think this is needed
 	}
@@ -1420,7 +1420,7 @@ ctable_RemoveFromAllIndexes (CTable *ctable, void *row) {
     // NB slightly gross, we shouldn't have to look at all of the fields
     // to even see which ones could be indexed but the programmer is
     // in a hurry
-    for (field = 0; field < ctable->creatorTable->nFields; field++) {
+    for (field = 0; field < ctable->creator->nFields; field++) {
 	if (ctable->skipLists[field] != NULL) {
 	    ctable_RemoveFromIndex (ctable, row, field);
 	}
@@ -1442,19 +1442,19 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field
     return TCL_OK;
     }
 
-    f = ctable->creatorTable->fields[field];
+    f = ctable->creator->fields[field];
 
 # if 0
 // dump info about row being inserted
 utilityObj = Tcl_NewObj();
-printf("ctable_InsertIntoIndex field %d, field name %s, index %d, value %s\n", field, f->name, f->indexNumber, ctable->creatorTable->get_string (row, field, NULL, utilityObj));
+printf("ctable_InsertIntoIndex field %d, field name %s, index %d, value %s\n", field, f->name, f->indexNumber, ctable->creator->get_string (row, field, NULL, utilityObj));
 Tcl_DecrRefCount (utilityObj);
 #endif
 
     if (!jsw_sinsert_linked (skip, row, f->indexNumber, f->unique)) {
 
 	utilityObj = Tcl_NewObj();
-	Tcl_AppendResult (interp, "unique check failed for field \"", f->name, "\", value \"", ctable->creatorTable->get_string (row, field, NULL, utilityObj), "\"", (char *) NULL);
+	Tcl_AppendResult (interp, "unique check failed for field \"", f->name, "\", value \"", ctable->creator->get_string (row, field, NULL, utilityObj), "\"", (char *) NULL);
 	Tcl_DecrRefCount (utilityObj);
         return TCL_ERROR;
     }
@@ -1511,12 +1511,12 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
         return TCL_OK;
     }
 
-    if (ctable->creatorTable->fields[field]->indexNumber < 0) {
+    if (ctable->creator->fields[field]->indexNumber < 0) {
 	Tcl_AppendResult (interp, "can't create an index on a field that hasn't been defined as allowing an index", (char *)NULL);
 	return TCL_ERROR;
     }
 
-    skip = jsw_snew (depth, ctable->creatorTable->fields[field]->compareFunction);
+    skip = jsw_snew (depth, ctable->creator->fields[field]->compareFunction);
 
     // we plug the list in last
     // we'll have to do a lot more here for concurrent access NB
@@ -1566,14 +1566,14 @@ ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
         return TCL_OK;
     }
 
-    if (ctable->creatorTable->lappend_field (interp, resultObj, row, ctable->creatorTable->fieldList[field]) == TCL_ERROR) {
+    if (ctable->creator->lappend_field (interp, resultObj, row, ctable->creator->fieldList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
     jsw_findlast (skip);
     row = jsw_srow (skip);
 
-    if (ctable->creatorTable->lappend_field (interp, resultObj, row, ctable->creatorTable->fieldList[field]) == TCL_ERROR) {
+    if (ctable->creator->lappend_field (interp, resultObj, row, ctable->creator->fieldList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 

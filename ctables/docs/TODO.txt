@@ -265,3 +265,11 @@ you asked to happen in the batch failed.
 
 Change the name of creatorTable in the ctable typedef and wherever referenced
 to creator.
+
+---
+
+Change read_tabsep to take "-keys 0|1" and "-include_field_names 0|1"
+
+---
+
+

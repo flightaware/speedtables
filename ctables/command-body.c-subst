@@ -49,15 +49,15 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int           i;
 	int           result;
 
-	registeredProcHashEntry = Tcl_FindHashEntry (ctable->creatorTable->registeredProcTablePtr, Tcl_GetString (objv[1]));
+	registeredProcHashEntry = Tcl_FindHashEntry (ctable->creator->registeredProcTablePtr, Tcl_GetString (objv[1]));
 
 	if (registeredProcHashEntry == (Tcl_HashEntry *) NULL) {
 	    Tcl_HashSearch hashSearch;
 
 	    Tcl_AppendResult (interp, ", or one of the registered methods:", (char *)NULL);
 
-	    for (registeredProcHashEntry = Tcl_FirstHashEntry (ctable->creatorTable->registeredProcTablePtr, &hashSearch); registeredProcHashEntry != (Tcl_HashEntry *) NULL; registeredProcHashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	        char *key = Tcl_GetHashKey (ctable->creatorTable->registeredProcTablePtr, registeredProcHashEntry);
+	    for (registeredProcHashEntry = Tcl_FirstHashEntry (ctable->creator->registeredProcTablePtr, &hashSearch); registeredProcHashEntry != (Tcl_HashEntry *) NULL; registeredProcHashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	        char *key = Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry);
 		Tcl_AppendResult (interp, " ", key, (char *)NULL);
 	    }
 	    return TCL_ERROR;
@@ -123,7 +123,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
-        f = ctable->creatorTable->fields[fieldNum];
+        f = ctable->creator->fields[fieldNum];
 
 	switch (suboptIndex) {
 
@@ -679,8 +679,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      // per-field structure is >= 0 then lappend the field name
 	      // to the Tcl result object
 
-	      for (field = 0; field < ctable->creatorTable->nFields; field++) {
-	          ctable_FieldInfo *f = ctable->creatorTable->fields[field];
+	      for (field = 0; field < ctable->creator->nFields; field++) {
+	          ctable_FieldInfo *f = ctable->creator->fields[field];
 
 		  if (f->indexNumber >= 0) {
 		      if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), f->nameObj) == TCL_ERROR) {
@@ -697,9 +697,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      // for each field if the skipList pointer for that table is
 	      // non-null, lappend the field name
 
-	      for (field = 0; field < ctable->creatorTable->nFields; field++) {
+	      for (field = 0; field < ctable->creator->nFields; field++) {
 	          if (ctable->skipLists[field] != NULL) {
-		      if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ctable->creatorTable->fields[field]->nameObj) == TCL_ERROR) {
+		      if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ctable->creator->fields[field]->nameObj) == TCL_ERROR) {
 		          return TCL_ERROR;
 		      }
 		  }
@@ -717,7 +717,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		return TCL_ERROR;
 	    }
 
-	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), ctable->creatorTable->fields[fieldNum]->unique);
+	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), ctable->creator->fields[fieldNum]->unique);
 	    return TCL_OK;
 	  }
 

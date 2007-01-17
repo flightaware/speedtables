@@ -252,7 +252,7 @@ typedef struct ctableCreatorTable {
 } ctable_CreatorTable;
 
 typedef struct ctableTable {
-    ctable_CreatorTable                 *creatorTable;
+    ctable_CreatorTable                 *creator;
     ctable_HashTable                    *keyTablePtr;
 
     jsw_skip_t                         **skipLists;
