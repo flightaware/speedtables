@@ -221,6 +221,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 			error "no action, need -write_tabsep or -code: $actionData"
 		    }
 		}
+    		set line [gets $sock]
 	    }
 
 	    default {

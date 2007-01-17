@@ -41,18 +41,25 @@ proc register_instantiator {cTable} {
 }
 
 proc register_redirect {ctableUrl redirectedToCtableUrl} {
-    variable registeredCtableRedirects
-
     lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
 
     register_redirect_ctable $table $port $redirectedToCtableUrl
 }
 
 proc register_redirect_ctable {table port redirectedToCtableUrl} {
+    variable registeredCtableRedirects
+    variable ctableUrlCache
     start_server $port
 
     #serverlog "register_redirect_ctable $table:$port $redirectedToCtableUrl"
     set registeredCtableRedirects($table:$port) $redirectedToCtableUrl
+
+    # Uncache all URLs that refer to the table we're redirecting - this
+    # is possibly overkill but the cost of a one-time cache revocation
+    # is minimal. We could probably trash the whole cache here and be OK.
+    foreach name [array names ctableUrlCache "*/$table*"] {
+	unset ctableUrlCache($name)
+    }
 }
 
 #
