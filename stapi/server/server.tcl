@@ -233,6 +233,7 @@ namespace eval ::scache {
     #
     array unset options
     foreach arg $args {
+      set field ""; set type ""; set expr ""
       foreach {field type expr} $arg break
       if {[llength $arg] > 3} {
         set options($field) [lrange $arg 3 end]
@@ -301,11 +302,15 @@ namespace eval ::scache {
       # These two statements create the generated ctable and compile it.
       CTableBuildPath $build_dir
 
-      CExtension $cext_name 1.1 "
-	CTable $ctable_name {
+      if [catch {
+        CExtension $cext_name 1.1 "
+	  CTable $ctable_name {
 	    [join $ctable "\n\t    "]
-	}
-      "
+	  }
+        "
+      } ctable_err] {
+	error $ctable_err "$::errorInfo\n\tIn CTable $ctable_name {\n\t   [join $ctable "\n\t    "]\n\t}"
+      }
 
       set fp [open $verfile w]
       puts $fp $full_version
@@ -803,6 +808,7 @@ namespace eval ::scache {
 
       lappend columns $column
     }
+    # debug "from_table --> [concat $columns $extra_columns]"
     return [concat $columns $extra_columns]
   }
 
