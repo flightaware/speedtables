@@ -98,8 +98,7 @@ proc accept_connection {sock ip port} {
     fconfigure $sock -blocking 0 -translation auto
     fileevent $sock readable [list ::ctable_server::remote_receive $sock $theirPort]
 
-    puts $sock [list ctable_server 1.0 ready]
-    flush $sock
+    remote_send $sock [list ctable_server 1.0 ready] 0
 }
 
 #
@@ -139,15 +138,13 @@ proc remote_receive {sock myPort} {
 	      lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
 	    } err] {
 	      serverlog "$ctableUrl: $err";# $::errorInfo
-	      puts $sock [list e $err "" $::errorCode]
-	      flush $sock
+	      remote_send $sock [list e $err "" $::errorCode]
 	      return
 	    }
 
 	    if {[info exists registeredCtableRedirects($table:$myPort)]} {
 #puts "sending redirect to $sock, $ctableUrl -> $registeredCtableRedirects($table:$myPort)"
-		puts $sock [list r $registeredCtableRedirects($table:$myPort)]
-		flush $sock
+		remote_send $sock [list r $registeredCtableRedirects($table:$myPort)]
 		return
 	    }
 #puts "setting ctable url cache $ctableUrl -> $table"
@@ -164,14 +161,20 @@ proc remote_receive {sock myPort} {
 	    # about
 	    if {$errorCode == "ctable_quit"} return
 	    ### puts stdout [list e $result "" $errorCode]
-	    puts $sock [list e $result "" $errorCode]
+	    remote_send $sock [list e $result "" $errorCode]
 	} else {
 	    ### puts stdout [list k $result]
-	    puts $sock [list k $result]
+	    remote_send $sock [list k $result]
 	}
-
-	flush $sock
     }
+}
+
+proc remote_send {sock line {multi 1}} {
+    if {$multi && [string match "*\n*" $line]} {
+	puts $sock "x [expr [string length $line] + 1]"
+    }
+    puts $sock $line
+    flush $sock
 }
 
 #
@@ -269,12 +272,11 @@ proc remote_invoke {sock ctable line port} {
 	    set cmd [linsert $remoteArgs 0 $myCtable $command -write_tabsep $sock]
 #puts "search command '$cmd'"
 #puts "start multiline response"
-	    puts $sock "m"
+	    remote_send $sock "m"
 #puts "evaling '$cmd'"
 	    set code [catch {eval $cmd} result]
-	    puts $sock "\\."
+	    remote_send $sock "\\." 0
 	    ### puts "start sent multiline terminal response"
-	    flush $sock
 	    return -code $code $result
 	}
 

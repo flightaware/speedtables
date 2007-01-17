@@ -135,9 +135,9 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 	set sock [remote_ctable_cache_connect $cttpUrl]
     }
 
-    while 1 {
-	set line [gets $sock]
+    set line [gets $sock]
 
+    while 1 {
 	switch [lindex $line 0] {
 	    "e" {
 		error [lindex $line 1] [lindex $line 2] [lindex $line 3]
@@ -145,6 +145,10 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 
 	    "k" {
 		return [lindex $line 1]
+	    }
+
+	    "x" {
+		set line [read $sock [lindex $line 1]]
 	    }
 
 	    "r" {
