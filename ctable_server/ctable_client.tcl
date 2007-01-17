@@ -107,7 +107,14 @@ proc remote_ctable_cache_connect {cttpUrl} {
 #
 # remote_sock_send - send a command over a socket
 #
+# Multi-line commands are sent as a line containing "# NNNN" followed by
+# NNNN bytes
+#
 proc remote_sock_send {sock cttpUrl command} {
+    set line [list $cttpUrl $command]
+    if [string match "*\n*" $line] {
+	puts $sock [list # [expr [string length $line] + 1]]
+    }
     puts $sock [list $cttpUrl $command]
     flush $sock
 }
@@ -147,7 +154,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 		return [lindex $line 1]
 	    }
 
-	    "x" {
+	    "#" { # Multi-line response: "# NNNN", read NNNN bytes & try again
 		set line [read $sock [lindex $line 1]]
 	    }
 

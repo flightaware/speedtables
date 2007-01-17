@@ -131,6 +131,10 @@ proc remote_receive {sock myPort} {
     }
 
     if {[gets $sock line] >= 0} {
+	# "# NNNN" means a multi-line request NNNN bytes long
+	if {"[lindex $line 0]" == "#"} {
+	    set line [read $sock [lindex $line 1]]
+	}
 	lassign $line ctableUrl line 
 
 	if {![info exists ctableUrlCache($ctableUrl)]} {
@@ -169,9 +173,13 @@ proc remote_receive {sock myPort} {
     }
 }
 
+#
+# Send a response, and flush. If the response is multi-line send
+# as "# NNNN" followed by the NNNN-byte response.
+#
 proc remote_send {sock line {multi 1}} {
     if {$multi && [string match "*\n*" $line]} {
-	puts $sock "x [expr [string length $line] + 1]"
+	puts $sock "# [expr [string length $line] + 1]"
     }
     puts $sock $line
     flush $sock
