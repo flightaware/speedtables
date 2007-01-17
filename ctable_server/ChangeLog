@@ -2,6 +2,31 @@
 
 $Id$
 
+01/16/07 peter
+    * Send requests and simple responses with newlines in them as
+      # NNNN
+      multi-line request or
+      response NNNN bytes long
+
+    * Make redirect remove cached ctable info in server.
+
+12/30/06 peter
+
+    * Add local "destroy" command to ctable client.
+      This allows us to destroy the client without destroying the
+      server. Kind of like the Neutron bomb.
+
+    * Add remote "shutdown" and "redirect" to ctable server.
+      And redirect ... -shutdown to kill both birds with one stone.
+
+    * Make client *not* follow redirections for "shutdown" and "redirect".
+      This allows us to attempt to shutdown a server without worrying
+      about taking the wrong server out with friendly fire.
+
+    * Make socket close always remove cached socket info in server.
+
+    * Make socket close always remove cached table info in client.
+
 11/28/06 karl
     * Parse all the variants of the ctable://-style URL including host,
       optional port, directory, table name, and optional stuff.
