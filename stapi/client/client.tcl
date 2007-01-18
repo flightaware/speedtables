@@ -1,6 +1,6 @@
 # $Id$
 
-package provide scache_client 1.0
+package require ctable_client
 
 namespace eval ::scache {
   variable transport_handlers
@@ -36,12 +36,6 @@ namespace eval ::scache {
   }
   register ctable connect_ctable
 
-  # sql://[user[:password]]@[host:]database/table[/cols][?selector]
-  proc connect_sql {table {address "-"} args} {
-    return -code error "SQL connector not implemented"
-  }
-  register sql connect_sql
-
   # local:///ctable_name - dummy connector for local tables
   proc connect_local {table {address "-"} args} {
     if {"$address" != "*" && "$address" != ""} {
@@ -51,4 +45,6 @@ namespace eval ::scache {
   }
   register local connect_local
 }
+
+package provide scache_client 1.0
 
