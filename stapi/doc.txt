@@ -102,11 +102,50 @@
   it locates and locks the correct tsv file.
 
 ::scache::remove_tsv_file table_name
-
-
+::scache::remove_tcl_file table_name
 
 ::scache::open_raw_ctable name
 
-Open an initialized ctable but don't fetch anything from SQL, used
-internally, and useful for temporary tables, copies, etcetera...
+  Open an initialized ctable but don't fetch anything from SQL, used
+  internally, and useful for temporary tables, copies, etcetera...
+
+::scache::optimize_array array_name {indexed_col ...} {col type...}
+
+  query optimizer
+  input  - an array containing the arguments to a $ctable search
+         - a list of indexed fields
+         - a name-value pair set of field types
+  output - a possibly optimised search in the array
+         - true if optimization was possible and you can use search+
+
+::scache::connect uri ?-name value...?
+
+  Connect to a ctable or other database with a ctable interface via a URI.
+
+  Return an open ctable.
+
+  Methods intially defined:
+
+    ctable://[host:port]/[dir/]table[/stuff][?stuff]
+
+	 Use a ctable server via remote_ctable
+
+    sql://[user[:password]]@[host:]database/table[/cols][?selector]
+
+	Create a ctable interface to a PostgreSQL table
+
+    local:///ctable
+
+	Pass-through interface, just returns whatever ctable specified
+
+  With CableAware:
+
+    cache://[host:host:host...]/table
+
+	Look up ctable in CableAware's ctable registry, preferring hosts
+	listed.
+
+::scache::register method transport_handler
+
+  register a transport method for ::scache::connect
 

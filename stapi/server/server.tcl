@@ -34,11 +34,7 @@ namespace eval ::scache {
   #
   variable build_root
 
-  # $debugging is defined in debug.tcl
-  variable default_build_root /var/tmp/speedcache
-  if {[info exists debugging] && $debugging} {
-    set default_build_root ctables
-  }
+  variable default_build_root ctables
 
   # Saved information about open ctables
   variable ctable2name
@@ -853,7 +849,7 @@ namespace eval ::scache {
   }
 
   # Invalidate the ctable the hard way
-  proc trash_old_files {ctable_name} {
+  proc trash_old_files {ctable_name} { debug
     foreach ext {ver sql tcl tsv ""} {
       file delete -force [workname $ctable_name $ext]
     }
@@ -878,6 +874,15 @@ namespace eval ::scache {
       set tsv_file [workname c_$table_name tsv]
     }
     catch {file delete -force $tsv_file}
+  }
+
+  # Invalidate the whole shooting match
+  proc remove_tcl_file {table_name} {
+    set tcl_file [workname $table_name tcl]
+    if ![file exists $tcl_file] {
+      set tcl_file [workname c_$table_name tcl]
+    }
+    catch {file delete -force $tcl_file}
   }
 }
 
