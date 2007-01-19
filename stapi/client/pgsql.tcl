@@ -10,6 +10,23 @@ namespace eval ::scache {
 
     set path ""
     regexp {^/*([^/]*)/(.*)} $table _ table path
+    set vars ""
+    regexp {^([^?]*)?(.*)} $path _ path params
+    set path [split $path "/"]
+
+    foreach param [split $params "&"] {
+      if [regexp {^([^=]*)=(.*)} $expr _ name val] {
+	set vars($name) $val
+      } else {
+	set vars($name) ""
+      }
+    }
+
+    if [info exists vars(_key)] {
+      if {[lsearch $path _key] == -1} {
+	set path [concat {_key} $path]
+      }
+    }
 
     set raw_fields {}
     foreach {name type} [get_columns $table] {
@@ -17,32 +34,29 @@ namespace eval ::scache {
       set field2type($name) $type
     }
 
-    if {"$path" == ""} {
-      set fields $raw_fields
-    } else {
-      set vars ""
-      regexp {^([^/]*)?(.*)} $path _ path vars
-      set fields {}
+    if {[llength $path] > 1} {
+      set raw_fields {}
       foreach field [split $path "/"] {
 	if [regexp {^([^:]*):(.*)} $field _ name type] {
 	  set field2type($field) $type
 	}
-        lappend fields $field
-      }
-      foreach expr [split $vars "&"] {
-	if [regexp {^([^=]*)=(.*)} $expr _ name val] {
-	  if {[lsearch -exact $fields $name] == -1} {
-	    lappend args $name $val
-	  } else {
-	    set field2sql($name) $val
-	  }
-	}
+        lappend raw_fields $field
       }
     }
 
-    if [info exists args(_key)] {
-      set key $args(_key)
-    } else {
+    foreach field $raw_fields {
+      if {"$field" == "_key"} {
+	set key _key
+      } else {
+	lappend fields $field
+      }
+      if [info exists params($field)] {
+        set field2sql($field) $params($field)
+	unset params($field)
+      }
+    }
+
+    if ![info exists key] {
       set key [lindex $fields 0]
       set fields [lrange $fields 1 end]
     }
@@ -141,7 +155,8 @@ namespace eval ::scache {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     append sql " LIMIT 1;"
-    set pg_res [pg_exec [conn] $request]
+    debug "\[pg_exec \[conn] \"$sql\"]"
+    set pg_res [pg_exec [conn] $sql]
     if {[pg_result $pg_res -status] != "PGRES_COMMAND_OK"} {
       set pg_err [pg_result $pg_res -error]
       pg_result $pg_res -clear
@@ -197,9 +212,10 @@ namespace eval ::scache {
       lappend code "set $request(-array_get_with_nulls) \[array get $array]"
     }
     if [info exists request(-key)] {
-      lappend code "set $request(-key) \$${array}(_key)"
+      lappend code "set $request(-key) \$${array}(__key)"
     }
     lappend code $request(-code)
+    debug [list pg_select [conn] $sql $array [join $code "\n"]]
     uplevel #$level [list pg_select [conn] $sql $array [join $code "\n"]]
   }
 
@@ -230,15 +246,15 @@ namespace eval ::scache {
     } else {
       if [info exists request(-key)] {
 	if [info exists sql($key)] {
-	  lappend select "$sql($key) AS _key"
+	  lappend select "$sql($key) AS __key"
 	} else {
-          lappend select "$key AS _key"
+          lappend select "$key AS __key"
 	}
       }
       if [info exists request(-fields)] {
         set cols $request(fields)
       } else {
-        set cols $table(fields)
+        set cols $fields
       }
   
       foreach col $cols {
@@ -330,6 +346,7 @@ namespace eval ::scache {
   }
 
   proc sql_get_one_tuple {request} {
+    debug "\[pg_exec \[conn] \"$request\"]"
     set pg_res [pg_exec [conn] $request]
     if {[pg_result $pg_res -status] != "PGRES_COMMAND_OK"} {
       set pg_err [pg_result $pg_res -error]

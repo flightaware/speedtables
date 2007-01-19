@@ -8,6 +8,7 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
+package ifneeded sc_ca_scache_client 1.0 [list source [file join $dir client_glue.tcl]]
 package ifneeded sc_ca_scache_glue 1.0 [list source [file join $dir glue.tcl]]
 package ifneeded scache 1.0 [list source [file join $dir cache.tcl]]
 package ifneeded scache_client 1.0 [list source [file join $dir client.tcl]]
@@ -15,3 +16,4 @@ package ifneeded scache_debug 1.0 [list source [file join $dir debug.tcl]]
 package ifneeded scache_locks 1.0 [list source [file join $dir lock.tcl]]
 package ifneeded scache_optimizer 1.0 [list source [file join $dir optimizer.tcl]]
 package ifneeded scache_pgtcl 1.0 [list source [file join $dir pgsql.tcl]]
+package ifneeded scache_sql_client 1.0 [list source [file join $dir client_pgsql.tcl]]
