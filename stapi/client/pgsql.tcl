@@ -1,6 +1,7 @@
 # $Id$
 
 package require scache_client
+package require scache_pgtcl
 
 namespace eval ::scache {
   variable sqltable_seq 0
@@ -120,7 +121,7 @@ namespace eval ::scache {
       }
     }
     set sql "SELECT [join $select ,] FROM [set ${ns}::table_name]"
-    append sql " WHERE [set ${ns}::key] = [quote_sql $val]"
+    append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     append sql " LIMIT 1;"
     return [sql_get_one_tuple $sql]
   }
@@ -138,7 +139,7 @@ namespace eval ::scache {
 
   proc sql_ctable_exists {level ns cmd val} {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
-    append sql " WHERE [set ${ns}::key] = [quote_sql $val]"
+    append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     append sql " LIMIT 1;"
     set pg_res [pg_exec [conn] $request]
     if {[pg_result $pg_res -status] != "PGRES_COMMAND_OK"} {
@@ -153,7 +154,7 @@ namespace eval ::scache {
 
   proc sql_ctable_count {level ns cmd val} {
     set sql "SELECT COUNT([set ${ns}::key]) FROM [set ${ns}::table_name]"
-    append sql " WHERE [set ${ns}::key] = [quote_sql $val];"
+    append sql " WHERE [set ${ns}::key] = [pg_quote $val];"
     return [lindex [sql_get_one_tuple $sql] 0]
   }
 
@@ -212,10 +213,6 @@ namespace eval ::scache {
   proc sql_ctable_names {level ns cmd args} { sql_ctable_unimplemented }
   proc sql_ctable_read_tabsep {level ns cmd args} { sql_ctable_unimplemented }
 
-  proc quote_sql {value type} {
-    
-  }
-
   #
   # This is never evaluated directly, it's only copied into a namespace
   # with [info body], so variables are from $ns and anything in ::scache
@@ -255,7 +252,7 @@ namespace eval ::scache {
   
     set where {}
     if [info exists request(-glob)] {
-      lappend where "$key LIKE [glob_to_quoted_match $request(-glob)"
+      lappend where "$key LIKE [quote_glob $request(-glob)"
     }
   
     if [info exists request(-compare)] {
@@ -266,8 +263,8 @@ namespace eval ::scache {
 	} else {
 	  set type varchar
 	}
-	set q1 [::scache::quote_sql $v1 $type]
-	set q2 [::scache::quote_sql $v2 $type]
+	set q1 [pg_quote $v1]
+	set q2 [pg_quote $v2]
   
 	if [info exists sql($col)] {
 	  set col $sql($col)
@@ -287,11 +284,11 @@ namespace eval ::scache {
 	  match_case { lappend where "$col LIKE [::scache::quote_glob $v1]" }
 	  range {
 	    lappend where "$col >= $q1"
-	    lappend where "$col < [::scache::quote_sql $v2 $type]"
+	    lappend where "$col < [pg_quote $v2]"
 	  }
 	  in {
 	    foreach v [lrange $tuple 2 end] {
-	      lappend q [quote_sql $v $type]
+	      lappend q [pg_quote $v]
 	    }
 	    lappend where "$col IN ([join $q ","])"
 	  }
@@ -348,6 +345,18 @@ namespace eval ::scache {
     return $result
   }
 
+  proc quote_glob {pattern} {
+    regsub -all {[%_]} $pattern {\\&} pattern
+    regsub -all {@} $pattern {@%} pattern
+    regsub -all {\\[*]} $pattern @_ pattern
+    regsub -all {[*]} $pattern "%" pattern
+    regsub -all {@_} $pattern {*} pattern
+    regsub -all {\\[?]} $pattern @_ pattern
+    regsub -all {[?]} $pattern "_" pattern
+    regsub -all {@_} $pattern {?} pattern
+    regsub -all {@%} $pattern {@} pattern
+    return [pg_quote $pattern]
+  }
 }
 
 package provide scache_sql_client 1.0
