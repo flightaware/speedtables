@@ -3,8 +3,64 @@
 package require scache_client
 
 namespace eval ::scache {
+  variable sqltable_seq 0
   proc connect_sql {table {address "-"} args} {
-    return -code error "SQL transport method not implemented"
+    variable sqltable_seq
+
+    set path ""
+    regexp {^/*([^/]*)/(.*)} $table _ table path
+
+    set raw_fields {}
+    foreach {name type} [get_columns $table] {
+      lappend raw_fields $name
+      set field2type($name) $type
+    }
+
+    if {"$path" == ""} {
+      set fields $raw_fields
+    } else {
+      set vars ""
+      regexp {^([^/]*)?(.*)} $path _ path vars
+      set fields {}
+      foreach field [split $path "/"] {
+	if [regexp {^([^:]*):(.*)} $field _ name type] {
+	  set field2type($field) $type
+	}
+        lappend fields $field
+      }
+      foreach expr [split $vars "&"] {
+	if [regexp {^([^=]*)=(.*)} $expr _ name val] {
+	  if {[lsearch -exact $fields $name] == -1} {
+	    lappend args $name $val
+	  } else {
+	    set field2sql($name) $val
+	  }
+	}
+      }
+    }
+
+    if [info exists args(_key)] {
+      set key $args(_key)
+    } else {
+      set key [lindex $fields 0]
+      set fields [lrange $fields 1 end]
+    }
+
+    set ns ::scache::sqltable[incr sqltable_seq]
+
+    namespace eval $ns {
+      proc ctable {args} {
+	uplevel 1 [concat [list ::scache::sql_ctable [namespace current]] $args]
+      }
+    }
+
+    set ${ns}::table_name $table
+    set ${ns}::sql [array get field2sql]
+    set ${ns}::key $key
+    set ${ns}::fields $fields
+    set ${ns}::types [array get field2type]
+
+    return ${ns}::ctable
   }
   register sql connect_sql
 
