@@ -91,14 +91,46 @@ namespace eval ::scache {
     write_tabsep		sql_ctable_write_tabsep
     read_tabsep			sql_ctable_unimplemented
   }
-  proc sql_ctable {level namespace cmd args} {
+  proc sql_ctable {level ns cmd args} {
     variable ctable_commands
     if ![info exists ctable_commands($cmd)] {
       set proc sql_ctable_unimplemented
     } else {
       set proc $ctable_commands($cmd)
     }
-    return [uplevel #$level [concat [list $proc $namespace] $args]]
+    return [eval [list $proc $level $ns $cmd] $args]
+  }
+
+  proc sql_ctable_unimplemented {level ns cmd args} {
+    return -code error "Unimplemented command $cmd"
+  }
+
+  proc sql_ctable_get {level ns cmd val args} {
+    if ![llength $args] {
+      set args [set ${ns}::fields]
+    }
+    foreach arg $args {
+      if [info exists ${ns}::sql($arg)] {
+	lappend select [set ${ns}::sql($arg)]
+      } else {
+	lappend select $arg
+      }
+    }
+    set sql "SELECT [join $select ,] FROM [set ${ns}::table_name]"
+    append sql " WHERE [set ${ns}::key] = [quote_for_sql $val];"
+    set pg_res [pg_exec [conn] $request]
+    if {[pg_result $pg_res -status] != "PGRES_COMMAND_OK"} {
+      set pg_err [pg_result $pg_res -error]
+    } elseif {[pg_result -numTuples] == 0} {
+      set pg_err "No match"
+    } else {
+      set result [pg_result $pg_res -getTuple 0]
+    }
+    pg_result $pg_res -clear
+    if [info exists pg_err] {
+      return -code error -errorInfo "$pg_err\nIn $sql" $pg_err
+    }	
+    return $result
   }
 
   proc search_to_sql {_table _request} {
