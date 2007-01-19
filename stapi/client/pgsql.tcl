@@ -50,7 +50,8 @@ namespace eval ::scache {
 
     namespace eval $ns {
       proc ctable {args} {
-	uplevel 1 [concat [list ::scache::sql_ctable [namespace current]] $args]
+	set level [expr {[info level] - 1}]
+	eval [list ::scache::sql_ctable $level [namespace current]] $args
       }
     }
 
@@ -63,6 +64,42 @@ namespace eval ::scache {
     return ${ns}::ctable
   }
   register sql connect_sql
+
+  variable ctable_commands
+  array set ctable_commands {
+    get				sql_ctable_get
+    set				sql_ctable_set
+    array_get			sql_ctable_unimplemented
+    array_get_with_nulls	sql_ctable_array_get_with_nulls
+    exists			sql_ctable_exists
+    delete			sql_ctable_delete
+    count			sql_ctable_count
+    foreach			sql_ctable_foreach
+    type			sql_ctable_type
+    import			sql_ctable_unimplemented
+    import_postgres_result	sql_ctable_unimplemented
+    export			sql_ctable_unimplemented
+    fields			sql_ctable_fields
+    fieldtype			sql_ctable_fieldtype
+    needs_quoting		sql_ctable_needs_quoting
+    names			sql_ctable_names
+    reset			sql_ctable_unimplemented
+    destroy			sql_ctable_destroy
+    search			sql_ctable_search
+    search+			sql_ctable_search
+    statistics			sql_ctable_unimplemented
+    write_tabsep		sql_ctable_write_tabsep
+    read_tabsep			sql_ctable_unimplemented
+  }
+  proc sql_ctable {level namespace cmd args} {
+    variable ctable_commands
+    if ![info exists ctable_commands($cmd)] {
+      set proc sql_ctable_unimplemented
+    } else {
+      set proc $ctable_commands($cmd)
+    }
+    return [uplevel #$level [concat [list $proc $namespace] $args]]
+  }
 
   proc search_to_sql {_table _request} {
     upvar 1 $_table table
