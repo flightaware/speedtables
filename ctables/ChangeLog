@@ -1,6 +1,14 @@
 
 $Id$
 
+1/20/2007 karl
+    * Added "-array" and "-array_with_nulls" search options.  Both take an
+      array name, -array will set the fields all nonnull fields into the
+      array and unset any fields that are null.  -array_with_nulls will
+      set all the fields from the row into the named array, substituting
+      the null value (by default, an empty string, but can be set in the
+      creator table) for any fields that are null.
+
 1/16/2007 karl
     * Added new method, "batch", which takes a list of ctable commands,
       minus the table name (as that's implicit) and invokes each element
