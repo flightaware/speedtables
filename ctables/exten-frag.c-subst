@@ -48,6 +48,9 @@
     t->lappend_field_and_name = ${table}_lappend_field_and_name;
     t->lappend_nonnull_field_and_name = ${table}_lappend_nonnull_field_and_name;
 
+    t->array_set = ${table}_array_set;
+    t->array_set_with_nulls = ${table}_array_set_with_nulls;
+
     t->search_compare = ${table}_search_compare;
     t->sort_compare = ${table}_sort_compare;
 

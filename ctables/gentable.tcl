@@ -1100,6 +1100,43 @@ ${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, void *vPointer, 
 
 }
 
+set arraySetFromFieldSource {
+int
+${table}_array_set (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *vPointer, int field)
+{
+    struct $table *row = vPointer;
+    Tcl_Obj   *obj;
+
+    obj = ${table}_get (interp, row, field);
+    if (obj == ${table}_NullValueObj) {
+        // it's null?  unset it from the array, might not be there, ignore error
+        Tcl_UnsetVar2 (interp, Tcl_GetString (arrayNameObj), ${table}_fields[field], 0);
+        return TCL_OK;
+    }
+
+    if (Tcl_ObjSetVar2 (interp, arrayNameObj, ${table}_NameObjList[field], obj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *)NULL) {
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+
+int
+${table}_array_set_with_nulls (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *vPointer, int field)
+{
+    struct $table *row = vPointer;
+    Tcl_Obj   *obj;
+
+    obj = ${table}_get (interp, row, field);
+    if (Tcl_ObjSetVar2 (interp, arrayNameObj, ${table}_NameObjList[field], obj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *)NULL) {
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+
+}
+
 #####
 #
 # Generating Code To Get Fields From A Rows
@@ -2353,6 +2390,7 @@ proc gen_get_function {table} {
     variable fieldObjGetSource
     variable lappendFieldAndNameObjSource
     variable lappendNonnullFieldAndNameObjSource
+    variable arraySetFromFieldSource
     variable tabSepFunctionsSource
     variable fieldGetSource
     variable fieldGetStringSource
@@ -2378,6 +2416,8 @@ proc gen_get_function {table} {
     emit "$rightCurly"
 
     emit [string range [subst -nobackslashes -nocommands $tabSepFunctionsSource] 1 end-1]
+
+    emit [string range [subst -nobackslashes -nocommands $arraySetFromFieldSource] 1 end-1]
 }
 
 #

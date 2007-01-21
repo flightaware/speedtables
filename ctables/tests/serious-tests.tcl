@@ -198,8 +198,17 @@ if {[t index unique show] != 0} {
 puts "ok"
 
 puts -nonewline "testing 'search with array get'..."
-t search -compare {{= name {Rusty Venture}}} -array_get_with_nulls foo -code {
-    set expect [list id rusty name {Rusty Venture} home {Venture Compound} show {Venture Bros} dad jonas alive 1 gender male age 45 coolness 6]
+t search -compare {{= name {Brock Sampson}}} -array_get foo -code {
+    set expect [list id brock name {Brock Sampson} home {Venture Compound} show {Venture Bros} alive 1 gender male age 35 coolness 100]
+    if {$foo != $expect} {
+        error "got '$foo' , expected '$expect'"
+    }
+}
+puts "ok"
+
+puts -nonewline "testing 'search with array get with nulls'..."
+t search -compare {{= name {Brock Sampson}}} -array_get_with_nulls foo -code {
+    set expect [list id brock name {Brock Sampson} home {Venture Compound} show {Venture Bros} dad {} alive 1 gender male age 35 coolness 100]
     if {$foo != $expect} {
         error "got '$foo' , expected '$expect'"
     }
@@ -211,6 +220,24 @@ t search -compare {{= name {Rusty Venture}}} -fields {name age} -array_get_with_
     set expect [list name {Rusty Venture} age 45]
     if {$foo != $expect} {
         error "got '$foo' , expected '$expect'"
+    }
+}
+puts "ok"
+
+puts -nonewline "testing 'search with -array'..."
+unset -nocomplain foo
+t search -compare {{= name {Brock Sampson}}} -array foo -fields {id dad} -code {
+    if {[array names foo] != [list id]} {
+        error "expected only 'id' element in test array"
+    }
+}
+puts "ok"
+
+puts -nonewline "testing 'search with -array_with_nulls'..."
+unset -nocomplain foo
+t search -compare {{= name {Brock Sampson}}} -array_with_nulls foo -fields {id dad} -code {
+    if {[lsort [array names foo]] != [list dad id]} {
+        error "expected each and only 'id' and 'dad' elements in test array"
     }
 }
 puts "ok"

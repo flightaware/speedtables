@@ -46,7 +46,7 @@ puts "OK"
 puts "search of t in descending coolness limit 5 / -fields {id name show} / code body..."
 set i 0
 t search -sort -coolness -limit 5 -fields {id name show} -key key -array_get_with_nulls data -code {
-    parray data
+puts $data
     if {$key != $expectKey($i)} {
 	error "got key '$key' expected '$expectKey($i)'"
     }

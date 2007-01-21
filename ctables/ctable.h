@@ -152,6 +152,15 @@ typedef struct {
     int                      comparisonType;
 } CTableSearchComponent;
 
+#define CTABLE_SEARCH_ACTION_NONE 0
+#define CTABLE_SEARCH_ACTION_GET 1
+#define CTABLE_SEARCH_ACTION_ARRAY_GET 2
+#define CTABLE_SEARCH_ACTION_ARRAY_GET_WITH_NULLS 3
+#define CTABLE_SEARCH_ACTION_ARRAY 4
+#define CTABLE_SEARCH_ACTION_ARRAY_WITH_NULLS 5
+#define CTABLE_SEARCH_ACTION_WRITE_TABSEP 6
+#define CTABLE_SEARCH_ACTION_COUNT_ONLY 7
+
 // ctable search struct - this controls everything about a search
 typedef struct {
     struct ctableTable                  *ctable;
@@ -168,8 +177,9 @@ typedef struct {
     void                                 *row1;
     void                                 *row2;
 
+    int                                  endAction;
+
     int                                  nComponents;
-    int                                  countOnly;
     int                                  countMax;
     int                                  offset;
     int                                  limit;
@@ -179,12 +189,8 @@ typedef struct {
     int                                  nRetrieveFields;
 
     int                                  noKeys;
-    int                                  useArrayGet;
-    int                                  useArrayGetWithNulls;
-    int                                  useGet;
 
     Tcl_Channel                          tabsepChannel;
-    int                                  writingTabsep;
     int                                  writingTabsepIncludeFieldNames;
 
     // count of matches during a search
@@ -243,6 +249,9 @@ typedef struct ctableCreatorTable {
     int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey);
+
+    int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
+    int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
 
     int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer, int tailoredWalk);
     int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);

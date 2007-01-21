@@ -260,11 +260,13 @@ You can get an error back from batch but only for argument errors to batch
 or a malformed list.  Other than that, it will succeed, even if everything
 you asked to happen in the batch failed.
 
+DONE
+
 
 ---
 
 Change the name of creatorTable in the ctable typedef and wherever referenced
-to creator.
+to creator.  DONE
 
 ---
 
