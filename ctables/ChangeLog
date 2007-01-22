@@ -1,6 +1,12 @@
 
 $Id$
 
+1/21/2007 karl
+    * Bug fix involving search with -write_tabsep not happening.
+
+    * Split out tests from serious-tests.tcl into serious-tests-body.tcl
+      so we can use the same tests for client-server testing.
+
 1/20/2007 karl
     * Added "-array" and "-array_with_nulls" search options.  Both take an
       array name, -array will set the fields all nonnull fields into the

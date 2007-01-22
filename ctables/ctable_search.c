@@ -341,7 +341,28 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
     key = row->hashEntry.key;
 
+    if (search->endAction == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
+	Tcl_DString     dString;
 
+	Tcl_DStringInit (&dString);
+
+	// string-append the specified fields, or all fields, tab separated
+
+	if (search->nRetrieveFields < 0) {
+	    (*creator->dstring_append_get_tabsep) (key, row, creator->fieldList, creator->nFields, &dString, search->noKeys);
+	} else {
+	    (*creator->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
+	}
+
+	// write the line out
+
+	if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
+	    return TCL_ERROR;
+	}
+
+	Tcl_DStringFree (&dString);
+	return TCL_OK;
+    }
 
     // if there's a code body to eval...
 
@@ -355,29 +376,6 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	// style, (all requested fields, null or not)
 
 	switch (search->endAction) {
-
-	  case CTABLE_SEARCH_ACTION_WRITE_TABSEP: {
-	    Tcl_DString     dString;
-
-	    Tcl_DStringInit (&dString);
-
-	    // string-append the specified fields, or all fields, tab separated
-
-	    if (search->nRetrieveFields < 0) {
-		(*creator->dstring_append_get_tabsep) (key, row, creator->fieldList, creator->nFields, &dString, search->noKeys);
-	    } else {
-		(*creator->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys);
-	    }
-
-	    // write the line out
-
-	    if (Tcl_WriteChars (search->tabsepChannel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
-		return TCL_ERROR;
-	    }
-
-	    Tcl_DStringFree (&dString);
-	    return TCL_OK;
-	  }
 
 	  case CTABLE_SEARCH_ACTION_GET: {
 	    if (search->nRetrieveFields < 0) {
@@ -1220,21 +1218,19 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    Tcl_AppendResult (interp, "can't use -code or -key along with -write_tabsep", (char *) NULL);
 	    return TCL_ERROR;
 	}
-
-	if (search->writingTabsepIncludeFieldNames) {
-	    Tcl_AppendResult (interp, "can't use -with_field_names without -write_tabsep", (char *) NULL);
-	    return TCL_ERROR;
-	}
+    } else if (search->writingTabsepIncludeFieldNames) {
+	Tcl_AppendResult (interp, "can't use -with_field_names without -write_tabsep", (char *) NULL);
+	return TCL_ERROR;
     }
 
-    if (search->sortControl.nFields && search->endAction == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
+    if ((search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) && search->sortControl.nFields) {
 	Tcl_AppendResult (interp, "it's nuts to -sort something that's a -countOnly anyway", (char *) NULL);
 	return TCL_ERROR;
     }
 
     if ((search->endAction != CTABLE_SEARCH_ACTION_WRITE_TABSEP) && (search->endAction != CTABLE_SEARCH_ACTION_COUNT_ONLY)) {
         if (!search->codeBody) {
-	    Tcl_AppendResult (interp, "-code must be set if -array_get, -array_get_with_nulls or -get is set", (char *)NULL);
+	    Tcl_AppendResult (interp, "-code must be set if -array, -array_with_nulls, -array_get, -array_get_with_nulls or -get is used", (char *)NULL);
 	    return TCL_ERROR;
 	}
     }
