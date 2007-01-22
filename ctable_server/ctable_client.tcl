@@ -195,7 +195,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 			}
 
 #puts "fields '$fields' value '$line'"
-			set result ""
+			set dataList ""
 			foreach var $fields value [split $line "\t"] {
 #puts "var '$var' value '$value"
 			    if {$var == "_key"} {
@@ -206,15 +206,26 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 				continue
 			    }
 
-			    if {[info exists actions(-get)]} {
-				lappend result $value
+			    if {$actions(action) == "-get"} {
+				lappend dataList $value
 			    } else {
-				lappend result $var $value
+			        # it's -array_get, -array_get_with_nulls,
+				# -array or -array_with_nulls
+				lappend dataList $var $value
 			    }
 			}
 
+			if {$actions(action) == "-array" || $actions(action) == "-array_with_nulls"} {
+			    set dataCmd [linsert $dataList 0 array set $actions(bodyVar)]
+			} else {
+			    set dataCmd [list set $actions(bodyVar) $dataList]
+			}
+
+#puts "executing '$dataCmd'"
+#puts "executing '$actions(-code)'"
+
 			uplevel #$callerLevel "
-			    [list set $actions(bodyVar) $result]
+			    $dataCmd
 			    $actions(-code)
 			"
 		    } else {
@@ -225,7 +236,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 	    }
 
 	    default {
-		error "unknown command response $line"
+		error "unknown command response '$line'"
 	    }
 	}
     }
@@ -275,8 +286,9 @@ proc remote_ctable_invoke {localTableName level command} {
 	    set actions(-code) $pairs(-code)
 	    unset pairs(-code)
 
-	    foreach var {-key -array_get -array_get_with_nulls -get} {
+	    foreach var {-key -array_get -array_get_with_nulls -array -array_with_nulls -get} {
 		if {[info exists pairs($var)]} {
+		    set actions(action) $var
 		    set actions($var) $pairs($var)
 		    unset pairs($var)
 

@@ -2,6 +2,9 @@
 
 $Id$
 
+1/21/07 karl
+    * Add server-side support for search with -array and -array_with_nulls.
+
 01/16/07 peter
     * Send requests and simple responses with newlines in them as
       # NNNN
