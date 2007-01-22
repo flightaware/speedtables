@@ -1,6 +1,11 @@
 
 $Id$
 
+1/22/2007 karl
+    * Add primary-key-design.txt to document a design for bringing the
+      primary key in-band into the row, making it accessible for use in
+      search and sort expressions, etc.
+
 1/21/2007 karl
     * Bug fix involving search with -write_tabsep not happening.
 

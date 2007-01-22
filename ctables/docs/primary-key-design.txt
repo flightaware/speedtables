@@ -1,0 +1,73 @@
+
+
+$Id$
+
+This file explains the plan for adding primary keys in-band to speed tables
+that's being worked on in late January 2007.
+
+As of 1/22/07, speed tables has always had an implicit key that is always
+a string and is always hashed and must be unique.
+
+In many respects much of that's reasonable.  It's nice to have a unique handle
+for each row.  Some databases have an OID, for example.
+
+However, it's inconvenient that the key is out-of-band.  That is, the key
+does not appear as a field in the row and isn't accessible in the standard way 
+for searching, sorting, and the like.
+
+When we've come across this, we've often duplicated the key into a field
+in the table and even created a skip list index on the field, making two
+different types of indexes on the same field.
+
+Also since our hashed indexes are limited to strings, they're inefficient
+if we're using numbers, etc, and can be prone to number/string collating
+problems and the like, i.e. sorts returning 1, 10, 11, 12, etc.
+
+We currently have two kinds of indexes, hash tables and skip lists.
+
+Skip lists are better when you need to do partial matches or in some way
+exploit the locality of stuff close to the key you're looking for, as with
+skip lists, traversing the key results in a sorted order.
+
+Hash tables are faster for straight lookups, however.  Our hash table code
+will find any item while typically requiring less than two comparisons.
+Skip lists will take many more.
+
+Also the overhead of creating and updating skip lists is higher.
+
+We currently support a row being in an arbitrary number of skip lists (up to
+one per defined field in the row), but only one hash table entry can be
+present.
+
+It might be nice when defining an index to be able to specify whether it
+is to be a hash table or a skip list, and support a row appearing in multiple
+hashtables, as with skip lists.
+
+Currently our hash tables do not support duplicates, although this can easily
+be added by supporting the same linked list routines for duplicates that we
+use with skip lists.
+
+We may not even want to do that, however, if we don't generalize the hash
+stuff.
+
+We also need to support backwards compatibility to how things work now, for
+the time being at least, as we have a lot of code, including generated code,
+that uses ctables how they current work.
+
+I'm thinking of possibly having an option to define a field "primary 1" and,
+if that's defined, that'll be the primary (unique) key for the table, but
+will appear in-band.
+
+We'll have to generate or reference a hash function for each data type that
+can be a primary index -- we'll reasonably exclude booleans, for example,
+from consideration as a primary key.
+
+We'll be able to use existing field compare functions in the hash code that we 
+already generate for use with sorting and searching.  We have already, in fact,
+modified the hash table functions to use a compare function that returns -1, 0, 1 instead of 0, 1 for this very purpose.
+
+If a field is defined as primary and is a string, we simply use that char *
+instead of the char *key we normally put out there in the ctable_HashEntry
+structure that we include in the row structures we define.
+
+
