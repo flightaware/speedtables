@@ -1,4 +1,4 @@
-# ctdisplay.tcl -- derived from diodisplay.tcl
+# sttpdisplay.tcl -- derived from diodisplay.tcl
 
 # Copyright 2006 Superconnect
 
@@ -21,16 +21,16 @@
 # $Id$
 #
 
-package provide ctdisplay 1.0
+package provide sdisplay 1.0
 
 package require Itcl
-package require ct
+package require sttp
 package require form
 
 #
 # Only load ::csv:: if it's actually wanted.
 #
-namespace eval ::ctdisplay {
+namespace eval ::sttp_display {
   variable csv_loaded 0
   proc load_csv {} {
     variable csv_loaded
@@ -41,9 +41,9 @@ namespace eval ::ctdisplay {
   }
 }
 
-catch { ::itcl::delete class CTDisplay }
+catch { ::itcl::delete class STTPDisplay }
 
-::itcl::class ::CTDisplay {
+::itcl::class ::STTPDisplay {
     constructor {args} {
 	eval configure $args
 	load_response
@@ -56,10 +56,12 @@ catch { ::itcl::delete class CTDisplay }
 	    set hosts ""
 	  }
 	  set uri "cache://[join $hosts ":"]/$ctable"
+	}
+	if ![::sttp::connected $uri] {
 	  if ![info exists keyfields] {
 	    return -code error "No uri and no keyfields"
 	  }
-	  ::ct::connect $uri $keyfields
+	  ::sttp::connect $uri $keyfields
 	}
 
 	if {[lempty $form]} {
@@ -86,7 +88,7 @@ catch { ::itcl::delete class CTDisplay }
 
     method debug {args} {
 	if {$debug} {
-	    lappend ::request::debug $args
+	    eval ::sttp::debug $args
 	}
     }
 
@@ -94,7 +96,7 @@ catch { ::itcl::delete class CTDisplay }
     ## The way DIO builds SQL that can be exposed outside DIO in assembling
     ## a request is used by DIODisplay. We have to make that more abstract
 
-    ## New exposed configvars for CTDisplay
+    ## New exposed configvars for STTPDisplay
     public variable ctable
     public variable uri
     public variable keyfields
@@ -230,7 +232,7 @@ catch { ::itcl::delete class CTDisplay }
 
     # state - return a list of name-value pairs that represents the current
     # state of the query, which can be used to properly populate links
-    # outside CTDisplay.
+    # outside STTPDisplay.
     method state {} {
 	set state {}
 	foreach var {mode query by how sort rev num page} {
@@ -255,12 +257,15 @@ catch { ::itcl::delete class CTDisplay }
 	    set response(mode) $mode
 	}
 
-	# if there's a "search by" and it's a column name, change it to a
-	# label
-	if {[info exists response(by)]
-	 && [lsearch $allfields $response(by)] != -1} {
-	  set name $response(by)
-	  set response(by) [$name text]
+	# sanitize "by":
+	# If it's empty, remove it.
+	# If it's a label, change it to a field
+	if [info exists response(by)] {
+	  if {"$response(by)" == ""} {
+	    unset response(by)
+	  } elseif {[info exists NameTextMap($response(by))]
+	    set response(by) $NameTextMap($response(by))
+	  }
 	}
   
 	# if there was a request to generate a CSV file, generate it
@@ -395,7 +400,7 @@ catch { ::itcl::delete class CTDisplay }
 	if [info exists response(mode)] {
 	    $form hidden DIODfromMode -value $response(mode)
 	}
-	$form hidden DIODkey -value [::ct::makekey $uri array]
+	$form hidden DIODkey -value [::sttp::makekey $uri array]
 	puts {<TABLE CLASS="DIOForm">}
 
 	# emit the fields for each field using the showform method
@@ -403,8 +408,9 @@ catch { ::itcl::delete class CTDisplay }
 	# search field and it matches one of the fields in the
 	# record (and it should), put that in as the default
 	foreach field $fields {
-	    if [info exists alias($field)] { continue }
-	    if {[info exists response(by)] && $response(by) == [$field text]} {
+	    set name [$field name]
+	    if [info exists alias($name)] { continue }
+	    if {[info exists response(by)] && $response(by) == $name} {
 		if {![$field readonly] && $response(query) != ""} {
 		    $field value $response(query)
 		}
@@ -588,6 +594,7 @@ catch { ::itcl::delete class CTDisplay }
 	puts "<TR CLASS=DIORowHeader>"
         set W [expr {100 / [llength $fieldList]}]
 	foreach field $fieldList {
+	    set name [$field name]
 	    set text [$field text]
 	    set sorting $allowsort
 	    ## If sorting is turned off, or this field is not in the
@@ -599,20 +606,20 @@ catch { ::itcl::delete class CTDisplay }
 	    }
 if 0 {
 	    if {$sorting && [info exists response(sort)]} {
-		if {"$response(sort)" == "$field"} {
+		if {"$response(sort)" == "$name"} {
 		    set sorting 0
 	        }
 	    }
 }
-	    if {$sorting && [info exists alias($field)]} {
+	    if {$sorting && [info exists alias($name)]} {
 		set sorting 0
 	    }
 
 	    regsub -all $labelsplit $text "<BR>" text
 	    set ttl ""
 	    set ttl_text $text
-	    if [info exists hovertext($field)] {
-		set ttl " title=\"$hovertext($field)\""
+	    if [info exists hovertext($name)] {
+		set ttl " title=\"$hovertext($name)\""
 		set ttl_text "<span$ttl>$text</span>"
 	    }
 	    if {!$sorting} {
@@ -626,9 +633,9 @@ if 0 {
 			set sep "&"
 		    }
 		}
-	        lappend list sort $field
+	        lappend list sort $name
 		set a_attr ""
-		if {[info exists response(sort)] && "$response(sort)" == "$field"} {
+		if {[info exists response(sort)] && "$response(sort)" == "$name"} {
 		    set rev 1
 		    if {[info exists response(rev)]} {
 			set rev [expr 1 - $response(rev)]
@@ -637,8 +644,8 @@ if 0 {
 		    append html "$ttl_text&nbsp;"
 
 		    set desc $rev
-		    if [info exists order($field)] {
-			switch -glob -- [string tolower $order($field)] {
+		    if [info exists order($name)] {
+			switch -glob -- [string tolower $order($name)] {
 			    desc* {
 				set desc [expr 1 - $desc]
 			    }
@@ -651,7 +658,7 @@ if 0 {
 		append html [document $list]
 		append html "\"$a_attr$ttl>$text</A>"
 	    }
-	    set class [get_css_class TH DIORowHeader DIORowHeader-$field]
+	    set class [get_css_class TH DIORowHeader DIORowHeader-$name]
 	    puts "<TH CLASS=\"$class\" WIDTH=$W%>$html</TH>"
 	}
 
@@ -673,31 +680,32 @@ if 0 {
 
 	puts "<TR CLASS=\"DIORowField$alt\">"
 	foreach field $fieldList {
-	    set column $field
-	    if [info exists alias($field)] {
-		set column $alias($field)
+	    set name [$field name]
+	    set column $name
+	    if [info exists alias($name)] {
+		set column $alias($name)
 	    }
-	    set class [get_css_class TD DIORowField$alt DIORowField$alt-$field]
+	    set class [get_css_class TD DIORowField$alt DIORowField$alt-$name]
 	    set text ""
 	    if {[info exists a($column)]} {
 	        set text $a($column)
 	    }
-	    if [info exists filters($field)] {
-		if {[info exists filtercol($field)]
-		 && [info exists a($filtercol($field))]} {
-		    set text [$filters($field) $text $a($filtercol($field))]
+	    if [info exists filters($name)] {
+		if {[info exists filtercol($name)]
+		 && [info exists a($filtercol($name))]} {
+		    set text [$filters($name) $text $a($filtercol($name))]
 		} else {
-		    set text [$filters($field) $text]
+		    set text [$filters($name) $text]
 		}
 	    }
 	    if ![string length $text] {
 		set text "&nbsp;"
 	    }
 	    set attr NOWRAP
-	    if [info exists attributes($field)] {
-		append attr " $attributes($field) "
+	    if [info exists attributes($name)] {
+		append attr " $attributes($name) "
 	        if [regsub -nocase { +wrap +} " $attr " { } attr] {
-		    set attr $attributes($field)
+		    set attr $attributes($name)
 		}
 	        set attr [string trim $attr]
 	    }
@@ -710,7 +718,7 @@ if 0 {
 	    puts "<TD NOWRAP CLASS=\"DIORowFunctions$alt\">"
 	    hide_hidden_vars $f
 	    hide_selection $f
-	    $f hidden query -value [::ct::makekey $uri a]
+	    $f hidden query -value [::sttp::makekey $uri a]
 	    if {[llength $rowfunctions] > 2} {
 	      $f select mode -values $rowfunctions -class DIORowFunctionSelect$alt
 	      $f submit submit -value "Go" -class DIORowFunctionButton$alt
@@ -740,27 +748,24 @@ if 0 {
     ## Define a field in the object.
     method field {name args} {
 	import_keyvalue_pairs data $args
-	lappend fields $name
-	lappend allfields $name
 
-	set class CTDisplayField
+	set class STTPDisplayField
 	if {[info exists data(type)]} {
-	    if {![lempty [::itcl::find classes *CTDisplayField_$data(type)]]} {
-		set class CTDisplayField_$data(type)
+	    if {![lempty [::itcl::find classes *STTPDisplayField_$data(type)]]} {
+		set class STTPDisplayField_$data(type)
 	    }
 	}
 
-	set cmd [
-	    concat $class $name -name $name -display $this -form $form $args
+	set field [
+	    eval [
+		list $class #auto -name $name -display $this -form $form
+	    ] $args
 	]
-	if [catch $cmd] {
-	    catch {::itcl::delete object $name}
-	    if [catch $cmd err] {
-	        return -code error -errorinfo $cmd $err
-	    }
-        }
-
-	set FieldTextMap([$name text]) $name
+	lappend fields $field
+	lappend allfields $field
+ 	
+	set FieldNameMap($name) $field
+	set NameTextMap([$field text]) $name
     }
 
     private method make_limit_selector {values _selector {_array ""}} {
@@ -771,7 +776,7 @@ if 0 {
 	    upvar 1 $_array array
 	}
 	
-        foreach val $values field [::ct::keyfield $uri] {
+        foreach val $values field [::sttp::keyfield $uri] {
 	    lappend selector [list = $field $val]
         }
 	foreach {key val} $limit {
@@ -785,9 +790,9 @@ if 0 {
     method fetch {key arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector $key selector] {
-	    set result [::ct::search $uri -compare $selector -array_with_nulls array]
+	    set result [::sttp::search $uri -compare $selector -array_with_nulls array]
 	} else {
-	    set result [::ct::fetch $uri $key array]
+	    set result [::sttp::fetch $uri $key array]
 	}
 	return $result
     }
@@ -795,22 +800,22 @@ if 0 {
     method store {arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector {} selector array] {
-	    if ![::ct::search $uri -compare $selector -key key] {
+	    if ![::sttp::search $uri -compare $selector -key key] {
 		return 0
 	    }
 	}
-	return [::ct::store $uri array]
+	return [::sttp::store $uri array]
     }
 
     method delete {key} {
 	if [make_limit_selector $key selector] {
-	    if ![::ct::search $uri -compare $selector -getkey key] {
+	    if ![::sttp::search $uri -compare $selector -getkey key] {
 		return 0
 	    }
 	} else {
-	    set key [::sc::makekey $uri array]
+	    set key [::sttp::makekey $uri array]
 	}
-	return [::ct::delete $uri $key]
+	return [::sttp::delete $uri $key]
     }
 
     method pretty_fields {list} {
@@ -839,13 +844,14 @@ if 0 {
 	foreach field $allfields {
 
             # for some reason the method for getting the value doesn't
-	    # work for boolean values, which inherit CTDisplayField,
+	    # work for boolean values, which inherit STTPDisplayField,
 	    # something to do with configvar
 	    #set array($field) [$field value]
 	    set t [$field type]
 	    set v [$field value]
-	    if {"$v" == "" && [info exists blankval($field)]} {
-		if {"$blankval($field)" != "$v"} continue
+	    set n [$field name]
+	    if {"$v" == "" && [info exists blankval($name)]} {
+		if {"$blankval($name)" != "$v"} continue
 	    }
 	    set array($field) $v
 	}
@@ -894,7 +900,7 @@ if 0 {
 	    return
 	}
 
-        ::ctdisplay::load_csv
+        ::sttp_display::load_csv
 
 	make_request request
 	set_limit request
@@ -917,7 +923,7 @@ if 0 {
 	    puts $fp [::csv::join $textlist]
 	}
 
-	::ct::perform request -array_with_nulls a -code {
+	::sttp::perform request -array_with_nulls a -code {
 	    if {![llength $columns]} {
 		set columns [array names a]
 		puts $fp [::csv::join $columns]
@@ -988,10 +994,10 @@ if 0 {
 	    if {$rows} {
 	        set total $rows
 	    } else {
-	        set total [::ct::count $uri]
+	        set total [::sttp::count $uri]
 	    }
 	} else {
-	    set total [::ct::perform request -countOnly 1]
+	    set total [::sttp::perform request -countOnly 1]
 	}
 
 	if {$total <= [get_offset]} {
@@ -1003,7 +1009,7 @@ if 0 {
 
 	set_order request
 	set_page request
-	::ct::perform request -array_with_nulls a -code { showrow a } -debug $debug
+	::sttp::perform request -array_with_nulls a -code { showrow a } -debug $debug
 
 	rowfooter $total
 
@@ -1081,12 +1087,13 @@ if 0 {
 	    # alias fields aren't searchable
 	    set searchable {}
 	    foreach field $useFields {
+	        set name [$field name]
 	        if {
-		  ![info exists filters($field)] ||
-		  [info exists unfilters($field)] ||
-		  [string match *_ok $filters($field)]
+		  ![info exists filters($name)] ||
+		  [info exists unfilters($name)] ||
+		  [string match *_ok $filters($name)]
 		} {
-	            if ![info exists alias($field)] {
+	            if ![info exists alias($name)] {
 			lappend searchable $field
 		    }
 		}
@@ -1143,7 +1150,7 @@ if 0 {
 	puts "</TABLE>"
     }
 
-    protected method parse_order {field list reverse} {
+    protected method parse_order {name list reverse} {
 	set descending 0
 	foreach word $list {
 	    if [info exists nextvar] {
@@ -1168,28 +1175,27 @@ if 0 {
 	    set descending [expr 1 - $descending]
 	}
 	if $descending {
-	    set field -$field
+	    set name -$name
 	}
 
-        return $field
+        return $name
     }
 
     method request_to_sort {} {
 	if {[info exists response(sort)] && ![lempty $response(sort)]} {
-	    if {[lsearch $allfields $response(sort)] != -1} {
-		set field $response(sort)
-
+	    set name $response(sort)
+	    if [info exists NameFieldMap($name)] {
 		set rev 0
 	        if {[info exists response(rev)] && $response(rev)} {
 		    set rev 1
 		}
 
 	        set ord ascending
-	        if [info exists order($field)] {
-		    set ord $order($field)
+	        if [info exists order($name)] {
+		    set ord $order($name)
 		}
 
-		return [list [parse_order $field $ord $rev]]
+		return [list [parse_order $name $ord $rev]]
 	    } else {
 		unset response(sort)
 	    }
@@ -1292,8 +1298,8 @@ if 0 {
 	}
 	set new_list $search_list
 
-	if [info exists FieldTextMap($response(by))] {
-	    set searchField $FieldTextMap($response(by))	
+	if [info exists response(by)] {
+	    set name $response(by)
 
 	    set what $response(query)
 
@@ -1315,17 +1321,17 @@ if 0 {
 		    -*    { set how "-" }
 		    default { set how "" }
 	        }
-	    	if {[info exists case($searchField)]} {
+	    	if {[info exists case($name)]} {
 		    append how [
-			string tolower [string index $case($searchField) 0]
+			string tolower [string index $case($name) 0]
 		    ]
 		}
 		append how match
 	    }
 
-	    set search [list $how $searchField $what]
+	    set search [list $how $name $what]
 	    if {[lsearch $new_list $search] == -1} {
-	        lappend new_list [list $how $searchField $what]
+	        lappend new_list [list $how $name $what]
 	    }
 	}
 	set ct_selection(1) $new_list
@@ -1343,13 +1349,13 @@ if 0 {
     protected method display_request_with_selection {selection} {
 	set request {}
 	foreach target $selection {
-	    foreach {how searchField what} $target { break }
+	    foreach {how column what} $target { break }
 
-	    if [info exists unfilters($searchField)] {
-	        set what [$unfilters($searchField) $what]
+	    if [info exists unfilters($column)] {
+	        set what [$unfilters($column) $what]
 	    }
 
-	    lappend request [list $how $searchField $what]
+	    lappend request [list $how $column $what]
 	}
 	DisplayRequest $request
     }
@@ -1389,11 +1395,11 @@ if 0 {
 	## reason to check it.
         set adding [expr {$response(DIODfromMode) == "Add"}]
 	if {$adding} {
-	    set key [::ct::makekey response]
-	    ::ct::fetch $key a
+	    set key [::sttp::makekey $uri response]
+	    ::sttp::fetch $uri $key a
 	} else {
 	    set key $response(DIODkey)
-	    set newkey [::ct::makekey response]
+	    set newkey [::sttp::makekey $uri response]
 
 	    ## If we have a new key, and the newkey doesn't exist in the
 	    ## database, we are moving this record to a new key, so we
@@ -1523,125 +1529,129 @@ if 0 {
     ## Define variable functions for each variable.
     ###
 
-    method fields {{list ""}} {
-	if {[lempty $list]} { return $fields }
-	foreach field $list {
-	    if {[lsearch $allfields $field] < 0} {
-		return -code error "Field $field does not exist."
+    private method names2fields {names} {
+	set fields {}
+	foreach name $names {
+	    if ![info exists FieldNameMap($name)] {
+		return -code error "Field $name does not exist."
 	    }
+	    lappend fields $FieldNameMap($name)
 	}
-	set fields $list
+	return $fields
+    }
+
+    protected method fields2names {fields} {
+	set names {}
+	foreach field $fields {
+	    lappend names [$field name]
+	}
+	return $fields
+    }
+
+    method fields {{list ""}} {
+	if {[lempty $list]} { return [fields2names $fields] }
+	set fields [names2fields $list]
     }
 
     method searchfields {{list ""}} {
-	if {[lempty $list]} { return $searchfields }
-	foreach field $list {
-	    if {[lsearch $allfields $field] < 0} {
-		return -code error "Field $field does not exist."
-	    }
-	}
-	set searchfields $list
+	if {[lempty $list]} { return [fields2names $searchfields] }
+	set searchfields [names2fields $list]
     }
 
     method rowfields {{list ""}} {
-	if {[lempty $list]} { return $rowfields }
-	foreach field $list {
-	    if {[lsearch $allfields $field] < 0} {
-		return -code error "Field $field does not exist."
-	    }
-	}
-	set rowfields $list
+	if {[lempty $list]} { return [fields2names $rowfields] }
+	set rowfields [names2fields $list]
     }
 
-    method alias {field {value ""}} {
+    method alias {name {value ""}} {
 	if [string length $value] {
-	    set alias($field) $value
+	    set alias($name) $value
 	} else {
-	    if [info exists alias($field)] {
-		set value $alias($field)
+	    if [info exists alias($name)] {
+		set value $alias($name)
 	    }
 	}
 	return $value
     }
 
-    method filter {field {value ""}} {
+    method filter {name {value ""}} {
 	if [string length $value] {
 	    set f [uplevel 1 [list namespace which $value]]
 	    if {"$f" == ""} {   
 		return -code error "Unknown filter $value"
 	    }
-	    set filters($field) $f
+	    set filters($name) $f
 	} else {
-	    if [info exists filters($field)] {
-		set value $filters($field)
+	    if [info exists filters($name)] {
+		set value $filters($name)
 	    }
 	}
 	return $value
     }
 
-    method smartfilter {field filter column} {
+    method smartfilter {name filter column} {
 	set f [uplevel 1 [list namespace which $filter]]
 	if {"$f" == ""} {
 	    return -code error "Unknown filter $filter"
 	}
-	set filters($field) $f
-	set filtercol($field) $column
+	set filters($name) $f
+	set filtercol($name) $column
     }
 
-    method csvfilter {field {value ""}} {
+    method csvfilter {name {value ""}} {
 	if [string length $value] {
 	    set f [uplevel 1 [list namespace which $value]]
 	    if {"$f" == ""} {
 		return -code error "Unknown filter $value"
 	    }
-	    set csvfilters($field) $f
+	    set csvfilters($name) $f
 	} else {
-	    if [info exists csvfilters($field)] {
-		set value $csvfilters($field)
+	    if [info exists csvfilters($name)] {
+		set value $csvfilters($name)
 	    }
 	}
 	return $value
     }
 
-    method order {field {value ""}} {
+    method order {name {value ""}} {
 	if [string length $value] {
-	    set order($field) $value
+	    set order($name) $value
 	} else {
-	    if [info exists order($field)] {
-		set value $order($field)
+	    if [info exists order($name)] {
+		set value $order($name)
 	    }
 	}
 	return $value
     }
 
-    method case {field {value ""}} {
+    method case {name {value ""}} {
 	if [string length $value] {
-	    set case($field) $value
+	    set case($name) $value
 	} else {
-	    if [info exists case($field)] {
-		set value $case($field)
+	    if [info exists case($name)] {
+		set value $case($name)
 	    }
 	}
 	return $value
     }
 
-    method hovertext {field {value ""}} {
+    method hovertext {name {value ""}} {
 	if [string length $value] {
-	    set hovertext($field) $value
+	    set hovertext($name) $value
 	} else {
-	    if [info exists hovertext($field)] {
-		set value $hovertext($field)
+	    if [info exists hovertext($name)] {
+		set value $hovertext($name)
 	    }
 	}
 	return $value
     }
 
-    method blankval {field {value ""}} {
+    method blankval {name {value ""}} {
 	if [string length $value] {
-	    set blankval($field) $value
+	    set blankval($name) $value
 	} else {
-	    if [info exists blankval($field)] {
-		set value $blankval($field)
+	    if [info exists blankval($name)] {
+		set value $blankval($name)
 	    }
 	}
 	return $value
@@ -1659,27 +1669,27 @@ if 0 {
 	}
     }
 
-    method unfilter {field {value ""}} {
+    method unfilter {name {value ""}} {
 	if [string length $value] {
 	    set f [uplevel 1 [list namespace which $value]]
 	    if {"$f" == ""} {
 		return -code error "Unknown filter $value"
 	    }
-	    set unfilters($field) $f
+	    set unfilters($name) $f
 	} else {
-	    if [info exists unfilters($field)] {
-		set value $unfilters($field)
+	    if [info exists unfilters($name)] {
+		set value $unfilters($name)
 	    }
 	}
 	return $value
     }
 
-    method attributes {field {value ""}} {
+    method attributes {name {value ""}} {
 	if [string length $value] {
-	    set attributes($field) $value
+	    set attributes($name) $value
 	} else {
-	    if [info exists attributes($field)] {
-		set value $attributes($field)
+	    if [info exists attributes($name)] {
+		set value $attributes($name)
 	    }
 	}
 	return $value
@@ -1690,7 +1700,7 @@ if 0 {
 	    set hidden($name) $value
 	} else {
 	    if [info exists hidden($name)] {
-		set value $hidden($field)
+		set value $hidden($name)
 	    }
 	}
 	return $value
@@ -1753,14 +1763,15 @@ if 0 {
     public variable defaultsortfield	""
     public variable labelsplit		"\n"
 
-    public variable rowfields	 ""
+    protected variable rowfields	 ""
     public variable rowfunctions "Details Edit Delete"
 
     public variable response
     public variable cssArray
     public variable document	 ""
-    public variable allfields    ""
-    public variable FieldTextMap
+    protected variable allfields    ""
+    protected variable NameTextMap
+    protected variable FieldNameMap
     public variable allfunctions {
 	Search
 	List
@@ -1809,14 +1820,14 @@ if 0 {
     private variable limit
     private variable search_list
 
-} ; ## ::itcl::class CTDisplay
+} ; ## ::itcl::class STTPDisplay
 
-catch { ::itcl::delete class ::CTDisplayField }
+catch { ::itcl::delete class ::STTPDisplayField }
 
 #
-# CTDisplayField object -- defined for each field we're displaying
+# STTPDisplayField object -- defined for each field we're displaying
 #
-::itcl::class ::CTDisplayField {
+::itcl::class ::STTPDisplayField {
 
     constructor {args} {
 	## We want to simulate Itcl's configure command, but we want to
@@ -1979,16 +1990,16 @@ catch { ::itcl::delete class ::CTDisplayField }
     # readonly - if 1, we don't allow the value to be changed
     public variable readonly		0
 
-} ; ## ::itcl::class CTDisplayField
+} ; ## ::itcl::class STTPDisplayField
 
-catch { ::itcl::delete class ::CTDisplayField_boolean }
+catch { ::itcl::delete class ::STTPDisplayField_boolean }
 
 #
-# CTDisplayField_boolen -- superclass of CTDisplayField that overrides
+# STTPDisplayField_boolen -- superclass of STTPDisplayField that overrides
 # a few methods to specially handle booleans
 #
-::itcl::class ::CTDisplayField_boolean {
-    inherit ::CTDisplayField
+::itcl::class ::STTPDisplayField_boolean {
+    inherit ::STTPDisplayField
 
     constructor {args} {eval configure $args} {
 	eval configure $args
@@ -2072,5 +2083,5 @@ catch { ::itcl::delete class ::CTDisplayField_boolean }
 	}
     }
 
-} ; ## ::itcl::class ::CTDisplayField_boolean
+} ; ## ::itcl::class ::STTPDisplayField_boolean
 

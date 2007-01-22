@@ -6,11 +6,10 @@
 # $Id$
 #
 
-package provide ct 1.0
 package require cache_client
 package require scache_optimizer
 
-namespace eval ::ct {
+namespace eval ::sttp {
   proc indexed {uri} {
     variable indexed
     if ![info exists indexed($uri)] {
@@ -50,7 +49,7 @@ namespace eval ::ct {
       }
     }
 
-    set ct($uri) [eval [list ::cache::connect $uri] $args]
+    set ct($uri) [eval [list ::scache::connect $uri] $args]
     set kf($uri) $keyfields
     return $ct($uri)
   }
@@ -67,7 +66,12 @@ namespace eval ::ct {
     }
     return $ct($uri)
   }
-    
+
+  proc connected {uri} {
+    variable kf
+    return [info exists kf($uri)]
+  }
+
   proc makekey {uri _k} {
     variable kf
     if ![info exists kf($uri)] {
@@ -233,3 +237,5 @@ namespace eval ::ct {
     uplevel 1 $cmd
   }
 }
+
+package provide sttp 1.0
