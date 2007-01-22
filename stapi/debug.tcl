@@ -4,15 +4,20 @@
 namespace eval ::scache {
   variable debugging 1
   variable debug_timestamp_format "%Y-%m-%d %H:%M:%S %Z"
+  variable debug_handler
 
   proc debug {args} {
     variable debugging
     variable debug_timestamp_format
+    variable debug_handler
 
     if !$debugging return
     if ![llength $args] {
       if {$debugging < 2} return
       lappend args [info level -1]
+    }
+    if [info exists debug_handler] {
+      return [eval $debug_handler $args]
     }
     set args [split [join $args "\n"] "\n"]
     set m ""
@@ -20,6 +25,11 @@ namespace eval ::scache {
     set timestamp [clock format [clock seconds] -format $debug_timestamp_format]
     append m "$timestamp [pid] [join $args "\n\t"]"
     puts stderr $m
+  }
+
+  proc debug_handler {proc} {
+    variable debug_handler
+    set debug_handler [uplevel 1 [list namespace which $proc]]
   }
 }
 

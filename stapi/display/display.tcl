@@ -21,7 +21,7 @@
 # $Id$
 #
 
-package provide sdisplay 1.0
+package provide sttp_display 1.0
 
 package require Itcl
 package require sttp
@@ -859,7 +859,7 @@ if 0 {
 
     method make_request {_request} {
 	upvar 1 $_request request
-	set request(-table) $uri
+	set request(-uri) $uri
     }
 
     method set_limit {_request {selector {}}} {
@@ -923,7 +923,7 @@ if 0 {
 	    puts $fp [::csv::join $textlist]
 	}
 
-	::sttp::perform request -array_with_nulls a -code {
+	::sttp::perform request -array_with_nulls a -key k -code {
 	    if {![llength $columns]} {
 		set columns [array names a]
 		puts $fp [::csv::join $columns]

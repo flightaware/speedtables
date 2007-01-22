@@ -8,21 +8,21 @@ namespace eval ::scache {
   proc connect_sql {table {address "-"} args} {
     variable sqltable_seq
 
+    set params ""
+    regexp {^([^?]*)?(.*)} $table _ table params
     set path ""
     regexp {^/*([^/]*)/(.*)} $table _ table path
-    set vars ""
-    regexp {^([^?]*)?(.*)} $path _ path params
     set path [split $path "/"]
 
     foreach param [split $params "&"] {
-      if [regexp {^([^=]*)=(.*)} $expr _ name val] {
+      if [regexp {^([^=]*)=(.*)} $param _ name val] {
 	set vars($name) $val
       } else {
 	set vars($name) ""
       }
     }
 
-    if [info exists vars(_key)] {
+    if {[info exists vars(_key)] || [info exists vars(_keys)]} {
       if {[lsearch $path _key] == -1} {
 	set path [concat {_key} $path]
       }
@@ -44,6 +44,30 @@ namespace eval ::scache {
       }
     }
 
+    if [info exists vars(_keys)] {
+      regsub -all {[+: ]+} $vars(_keys) ":" vars(_keys)
+      set keys [split $vars(_keys) ":"]
+      if {[llength $keys] == 1} {
+	set vars(_key) [lindex $keys 0]
+      } elseif {[llength $keys] > 1} {
+	set list {}
+        foreach field $keys {
+	  if [info exists vars($field)] {
+	    lappend list $vars($field)
+	  } elseif {
+		[info exists field2type($field)] &&
+		![string match "CHAR" [string toupper $field2type($field)] &&
+		![string match "TEXT" string toupper $field2type($field)]
+	  } {
+	    lappend list "TEXT($field)"
+	  } else {
+	    lappend list $field
+	  }
+	}
+	set vars(_key) [join $keys "||"]
+      }
+    }
+
     foreach field $raw_fields {
       if {"$field" == "_key"} {
 	set key _key
@@ -58,7 +82,7 @@ namespace eval ::scache {
 
     if ![info exists key] {
       set key [lindex $fields 0]
-      set fields [lrange $fields 1 end]
+      # set fields [lrange $fields 1 end]
     }
 
     set ns ::scache::sqltable[incr sqltable_seq]
@@ -108,7 +132,9 @@ namespace eval ::scache {
     statistics			sql_ctable_unimplemented
     write_tabsep		sql_ctable_unimplemented
     read_tabsep			sql_ctable_read_tabsep
+    index			sql_ctable_ignore_null
   }
+
   proc sql_ctable {level ns cmd args} {
     variable ctable_commands
     if ![info exists ctable_commands($cmd)] {
@@ -121,6 +147,18 @@ namespace eval ::scache {
 
   proc sql_ctable_unimplemented {level ns cmd args} {
     return -code error "Unimplemented command $cmd"
+  }
+
+  proc sql_ctable_ignore_null {args} {
+    return ""
+  }
+
+  proc sql_ctable_ignore_true {args} {
+    return 1
+  }
+
+  proc sql_ctable_ignore_false {args} {
+    return 0
   }
 
   proc sql_ctable_get {level ns cmd val args} {
@@ -155,21 +193,24 @@ namespace eval ::scache {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     append sql " LIMIT 1;"
-    debug "\[pg_exec \[conn] \"$sql\"]"
+    # debug "\[pg_exec \[conn] \"$sql\"]"
     set pg_res [pg_exec [conn] $sql]
-    if {[pg_result $pg_res -status] != "PGRES_COMMAND_OK"} {
+    if {![string match "PGRES_*_OK" [pg_result $pg_res -status]]} {
       set pg_err [pg_result $pg_res -error]
       pg_result $pg_res -clear
-      return -code error -errorInfo "$pg_err\nIn $sql" $pg_err
+      return -code error -errorinfo "$pg_err\nIn $sql" $pg_err
     }
     set result [pg_result $pg_res -numTuples]
     pg_result $pg_res -clear
     return $result
   }
 
-  proc sql_ctable_count {level ns cmd val} {
+  proc sql_ctable_count {level ns cmd args} {
     set sql "SELECT COUNT([set ${ns}::key]) FROM [set ${ns}::table_name]"
-    append sql " WHERE [set ${ns}::key] = [pg_quote $val];"
+    if {[llength $args] == 1} {
+      append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
+    }
+    append sql ";"
     return [lindex [sql_get_one_tuple $sql] 0]
   }
 
@@ -218,7 +259,7 @@ namespace eval ::scache {
       lappend code "set $request(-key) \$${array}(__key)"
     }
     lappend code $request(-code)
-    debug [list pg_select [conn] $sql $array [join $code "\n"]]
+    # debug [list pg_select [conn] $sql $array [join $code "\n"]]
     uplevel #$level [list pg_select [conn] $sql $array [join $code "\n"]]
   }
 
@@ -349,18 +390,21 @@ namespace eval ::scache {
   }
 
   proc sql_get_one_tuple {request} {
-    debug "\[pg_exec \[conn] \"$request\"]"
+    # debug "\[pg_exec \[conn] \"$request\"]"
     set pg_res [pg_exec [conn] $request]
-    if {[pg_result $pg_res -status] != "PGRES_COMMAND_OK"} {
+    if {![string match "PGRES_*_OK" [pg_result $pg_res -status]]} {
       set pg_err [pg_result $pg_res -error]
-    } elseif {[pg_result -numTuples] == 0} {
+      if {"$pg_err" == ""} {
+	set pg_err [pg_result $pg_res -status]
+      }
+    } elseif {[pg_result $pg_res -numTuples] == 0} {
       set pg_err "No match"
     } else {
       set result [pg_result $pg_res -getTuple 0]
     }
     pg_result $pg_res -clear
     if [info exists pg_err] {
-      return -code error -errorInfo "$pg_err\nIn $sql" $pg_err
+      return -code error -errorinfo "$pg_err\nIn $request" $pg_err
     }	
     return $result
   }

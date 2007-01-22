@@ -6,7 +6,7 @@
 # $Id$
 #
 
-package require cache_client
+package require scache_client
 package require scache_optimizer
 
 namespace eval ::sttp {
@@ -49,6 +49,7 @@ namespace eval ::sttp {
       }
     }
 
+    # debug "[list ::scache::connect $uri] $args"
     set ct($uri) [eval [list ::scache::connect $uri] $args]
     set kf($uri) $keyfields
     return $ct($uri)
@@ -222,7 +223,7 @@ namespace eval ::sttp {
     array set temp [array get request]
     array set temp $args
     if ![info exists temp(-uri)] {
-      return -code error "No table specified in $_request"
+      return -code error "No URI specified in $_request"
     }
     if [info exists temp(-count)] {
       set result_var $temp(-count)
