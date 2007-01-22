@@ -13,16 +13,13 @@ namespace eval ::scache {
 
   proc connect {uri args} {
     variable transport_handlers
-    if [regexp {^([^:]+)://([^/]*)/(.*)} $uri _ method address path] {
+    if [regexp {^([^:]+)://([^/]*)/*(.*)} $uri _ method address path] {
       if ![info exists transport_handlers($method)] {
 	return -code error "No transport registered for method $method"
       }
       return [$transport_handlers($method) $path $address $args]
     }
-    if ![info exists transport_handlers(*)] {
-      return -code error "No default transport method registered"
-    }
-    return [$transport_handlers(*) $uri "-" $args]
+    return $uri
   }
 
   # ctable://[host:port]/[dir/]table[/stuff][?stuff]

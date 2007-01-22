@@ -193,6 +193,9 @@ namespace eval ::scache {
     if [info exists request(-array_get)] {
       return -code error "Unimplemented: search -array_get"
     }
+    if [info exists request(-array)] {
+      return -code error "Unimplemented: search -array"
+    }
     if {[info exists request(-countOnly)] && $request(-countOnly) == 0} {
       unset request(-countOnly)
     }
@@ -205,8 +208,8 @@ namespace eval ::scache {
     }
     set code {}
     set array __array
-    if [info exists request(-array)] {
-      set array $request(-array)
+    if [info exists request(-array_with_nulls)] {
+      set array $request(-array_with_nulls)
     }
     if [info exists request(-array_get_with_nulls)] {
       lappend code "set $request(-array_get_with_nulls) \[array get $array]"
