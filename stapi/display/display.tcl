@@ -87,7 +87,12 @@ catch { ::itcl::delete class STTPDisplay }
     }
 
     method debug {args} {
-	if {$debug} {
+	set show $debug
+	if {"[lindex $args 0]" == "-force"} {
+	    set show 1
+	    set args [lrange $args 1 end]
+	}
+	if {$show} {
 	    eval ::sttp::debug $args
 	}
     }
@@ -832,8 +837,9 @@ if 0 {
 	# for all the elements in the specified array, try to invoke
 	# the element as an object, invoking the method "value" to
 	# set the value to the specified value
-	foreach var [array names array] {
-	    if {[catch { $var configure -value $array($var) } result] == 1} {
+	foreach name [array names array] {
+	    if [info exists FieldNameMap($name)] {
+	        $FieldNameMap($name) configure -value $array($name)
 	    }
 	}
     }
@@ -853,7 +859,7 @@ if 0 {
 	    if {"$v" == "" && [info exists blankval($name)]} {
 		if {"$blankval($name)" != "$v"} continue
 	    }
-	    set array($field) $v
+	    set array($n) $v
 	}
     }
 
@@ -1184,7 +1190,7 @@ if 0 {
     method request_to_sort {} {
 	if {[info exists response(sort)] && ![lempty $response(sort)]} {
 	    set name $response(sort)
-	    if [info exists NameFieldMap($name)] {
+	    if [info exists FieldNameMap($name)] {
 		set rev 0
 	        if {[info exists response(rev)] && $response(rev)} {
 		    set rev 1

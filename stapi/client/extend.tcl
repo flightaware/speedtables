@@ -102,7 +102,8 @@ namespace eval ::sttp {
     if ![$ct($uri) exists $key] {
       return 0
     }
-    array set a [$ct($uri) array_get_with_nulls $key]
+    set list [$ct($uri) array_get_with_nulls $key]
+    array set a $list
     return 1
   }
 

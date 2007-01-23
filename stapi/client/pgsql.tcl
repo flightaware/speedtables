@@ -9,7 +9,7 @@ namespace eval ::scache {
     variable sqltable_seq
 
     set params ""
-    regexp {^([^?]*)?(.*)} $table _ table params
+    regexp {^([^?]*)[?](.*)} $table _ table params
     set path ""
     regexp {^/*([^/]*)/(.*)} $table _ table path
     set path [split $path "/"]
@@ -22,25 +22,25 @@ namespace eval ::scache {
       }
     }
 
-    if {[info exists vars(_key)] || [info exists vars(_keys)]} {
-      if {[lsearch $path _key] == -1} {
-	set path [concat {_key} $path]
-      }
-    }
-
     set raw_fields {}
     foreach {name type} [get_columns $table] {
       lappend raw_fields $name
       set field2type($name) $type
     }
 
-    if {[llength $path] > 1} {
+    if [llength $path] {
       set raw_fields {}
       foreach field [split $path "/"] {
 	if [regexp {^([^:]*):(.*)} $field _ name type] {
 	  set field2type($field) $type
 	}
         lappend raw_fields $field
+      }
+    }
+
+    if {[info exists vars(_key)] || [info exists vars(_keys)]} {
+      if {[lsearch $path _key] == -1} {
+	set raw_fields [concat {_key} $raw_fields]
       }
     }
 
@@ -54,23 +54,25 @@ namespace eval ::scache {
         foreach field $keys {
 	  if [info exists vars($field)] {
 	    lappend list $vars($field)
-	  } elseif {
-		[info exists field2type($field)] &&
-		![string match "CHAR" [string toupper $field2type($field)] &&
-		![string match "TEXT" string toupper $field2type($field)]
-	  } {
-	    lappend list "TEXT($field)"
 	  } else {
-	    lappend list $field
+	    set type varchar
+	    if {[info exists field2type($field)]} {
+	      set type $field2type($field)
+	    }
+	    if {"$type" == "varchar" || "$type" == "text"} {
+	      lappend list $field
+	    } else {
+	      lappend list TEXT($field)
+	    }
 	  }
 	}
-	set vars(_key) [join $keys "||"]
+	set vars(_key) [join $list "||':'||"]
       }
     }
 
     foreach field $raw_fields {
       if {"$field" == "_key"} {
-	set key _key
+	set key $vars(_key)
       } else {
 	lappend fields $field
       }
@@ -182,7 +184,7 @@ namespace eval ::scache {
     if ![llength $args] {
       set args [set ${ns}::fields]
     }
-    set vals [eval [list sql_ctable_get $level $ns $cmd] $args]
+    set vals [eval [list sql_ctable_get $level $ns $cmd $val] $args]
     foreach arg $args val $vals {
       lappend result $arg $val
     }
