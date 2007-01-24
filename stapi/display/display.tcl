@@ -1,4 +1,4 @@
-# sttpdisplay.tcl -- derived from diodisplay.tcl
+# sttp/display/display.tcl -- derived from diodisplay.tcl
 
 # Copyright 2006 Superconnect
 
@@ -24,7 +24,6 @@
 package provide sttp_display 1.0
 
 package require Itcl
-package require sttp
 package require form
 
 #
@@ -57,11 +56,11 @@ catch { ::itcl::delete class STTPDisplay }
 	  }
 	  set uri "cache://[join $hosts ":"]/$ctable"
 	}
-	if ![::sttp::connected $uri] {
+	if ![::sttp_display::connected $uri] {
 	  if ![info exists keyfields] {
 	    return -code error "No uri and no keyfields"
 	  }
-	  ::sttp::connect $uri $keyfields
+	  ::sttp_display::connect $uri $keyfields
 	}
 
 	if {[lempty $form]} {
@@ -93,7 +92,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    set args [lrange $args 1 end]
 	}
 	if {$show} {
-	    eval ::sttp::debug $args
+	    eval ::sttp_display::debug $args
 	}
     }
 
@@ -405,7 +404,7 @@ catch { ::itcl::delete class STTPDisplay }
 	if [info exists response(mode)] {
 	    $form hidden DIODfromMode -value $response(mode)
 	}
-	$form hidden DIODkey -value [::sttp::makekey $uri array]
+	$form hidden DIODkey -value [::sttp_display::makekey $uri array]
 	puts {<TABLE CLASS="DIOForm">}
 
 	# emit the fields for each field using the showform method
@@ -723,7 +722,7 @@ if 0 {
 	    puts "<TD NOWRAP CLASS=\"DIORowFunctions$alt\">"
 	    hide_hidden_vars $f
 	    hide_selection $f
-	    $f hidden query -value [::sttp::makekey $uri a]
+	    $f hidden query -value [::sttp_display::makekey $uri a]
 	    if {[llength $rowfunctions] > 2} {
 	      $f select mode -values $rowfunctions -class DIORowFunctionSelect$alt
 	      $f submit submit -value "Go" -class DIORowFunctionButton$alt
@@ -781,7 +780,7 @@ if 0 {
 	    upvar 1 $_array array
 	}
 	
-        foreach val $values field [::sttp::keyfield $uri] {
+        foreach val $values field [::sttp_display::keyfield $uri] {
 	    lappend selector [list = $field $val]
         }
 	foreach {key val} $limit {
@@ -795,9 +794,9 @@ if 0 {
     method fetch {key arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector $key selector] {
-	    set result [::sttp::search $uri -compare $selector -array_with_nulls array]
+	    set result [::sttp_display::search $uri -compare $selector -array_with_nulls array]
 	} else {
-	    set result [::sttp::fetch $uri $key array]
+	    set result [::sttp_display::fetch $uri $key array]
 	}
 	return $result
     }
@@ -805,22 +804,22 @@ if 0 {
     method store {arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector {} selector array] {
-	    if ![::sttp::search $uri -compare $selector -key key] {
+	    if ![::sttp_display::search $uri -compare $selector -key key] {
 		return 0
 	    }
 	}
-	return [::sttp::store $uri array]
+	return [::sttp_display::store $uri array]
     }
 
     method delete {key} {
 	if [make_limit_selector $key selector] {
-	    if ![::sttp::search $uri -compare $selector -getkey key] {
+	    if ![::sttp_display::search $uri -compare $selector -getkey key] {
 		return 0
 	    }
 	} else {
-	    set key [::sttp::makekey $uri array]
+	    set key [::sttp_display::makekey $uri array]
 	}
-	return [::sttp::delete $uri $key]
+	return [::sttp_display::delete $uri $key]
     }
 
     method pretty_fields {list} {
@@ -929,7 +928,7 @@ if 0 {
 	    puts $fp [::csv::join $textlist]
 	}
 
-	::sttp::perform request -array_with_nulls a -key k -code {
+	::sttp_display::perform request -array_with_nulls a -key k -code {
 	    if {![llength $columns]} {
 		set columns [array names a]
 		puts $fp [::csv::join $columns]
@@ -1000,10 +999,10 @@ if 0 {
 	    if {$rows} {
 	        set total $rows
 	    } else {
-	        set total [::sttp::count $uri]
+	        set total [::sttp_display::count $uri]
 	    }
 	} else {
-	    set total [::sttp::perform request -countOnly 1]
+	    set total [::sttp_display::perform request -countOnly 1]
 	}
 
 	if {$total <= [get_offset]} {
@@ -1015,7 +1014,7 @@ if 0 {
 
 	set_order request
 	set_page request
-	::sttp::perform request -array_with_nulls a -code { showrow a } -debug $debug
+	::sttp_display::perform request -array_with_nulls a -code { showrow a } -debug $debug
 
 	rowfooter $total
 
@@ -1401,11 +1400,11 @@ if 0 {
 	## reason to check it.
         set adding [expr {$response(DIODfromMode) == "Add"}]
 	if {$adding} {
-	    set key [::sttp::makekey $uri response]
-	    ::sttp::fetch $uri $key a
+	    set key [::sttp_display::makekey $uri response]
+	    ::sttp_display::fetch $uri $key a
 	} else {
 	    set key $response(DIODkey)
-	    set newkey [::sttp::makekey $uri response]
+	    set newkey [::sttp_display::makekey $uri response]
 
 	    ## If we have a new key, and the newkey doesn't exist in the
 	    ## database, we are moving this record to a new key, so we

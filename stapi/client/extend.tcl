@@ -6,10 +6,10 @@
 # $Id$
 #
 
-package require scache_client
-package require scache_optimizer
+package require sttp
+package require sttp_optimizer
 
-namespace eval ::sttp {
+namespace eval ::sttp_display {
   proc indexed {uri} {
     variable indexed
     if ![info exists indexed($uri)] {
@@ -240,4 +240,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp 1.0
+package provide sttp_display 1.0
