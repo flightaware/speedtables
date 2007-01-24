@@ -52,24 +52,6 @@ struct ctable_HashEntry {
 };
 
 /*
- * Flags used in ctable_HashKeyType.
- *
- * CTABLE_HASH_KEY_RANDOMIZE_HASH -
- *				There are some things, pointers for example
- *				which don't hash well because they do not use
- *				the lower bits. If this flag is set then the
- *				hash table will attempt to rectify this by
- *				randomising the bits and then using the upper
- *				N bits as the index into the table.
- * CTABLE_HASH_KEY_SYSTEM_HASH -	If this flag is set then all memory internally
- *                              allocated for the hash table that is not for an
- *                              entry will use the system heap.
- */
-
-#define CTABLE_HASH_KEY_RANDOMIZE_HASH 0x1
-#define CTABLE_HASH_KEY_SYSTEM_HASH    0x2
-
-/*
  * Structure definition for the methods associated with a hash table key type.
  */
 
