@@ -2,14 +2,14 @@
 
 lappend auto_path [exec pwd]
 
-package require scache
+package require sttp_server
 package require sc_postgres
-package require scache_client
-package require scache_sql_client
+package require sttp_client
+package require sttp_client_pgtcl
 
 # Open a sql ctable
-set ctable [::scache::connect sql:///sc_ca_jobs]
-puts "\[::scache::connect sql:///sc_ca_jobs] = $ctable"
+set ctable [::sttp::connect sql:///sc_ca_jobs]
+puts "\[::sttp::connect sql:///sc_ca_jobs] = $ctable"
 
 set fields [$ctable fields]
 puts "\$ctable fields = [$ctable fields]"

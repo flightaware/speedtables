@@ -1,9 +1,9 @@
 # $Id$
 
-package require scache_client
-package require scache_pgtcl
+package require sttp_client
+package require sttp_pgtcl
 
-namespace eval ::scache {
+namespace eval ::sttp {
   variable sqltable_seq 0
   proc connect_sql {table {address "-"} args} {
     variable sqltable_seq
@@ -87,16 +87,16 @@ namespace eval ::scache {
       # set fields [lrange $fields 1 end]
     }
 
-    set ns ::scache::sqltable[incr sqltable_seq]
+    set ns ::sttp::sqltable[incr sqltable_seq]
 
     namespace eval $ns {
       proc ctable {args} {
 	set level [expr {[info level] - 1}]
-	eval [list ::scache::sql_ctable $level [namespace current]] $args
+	eval [list ::sttp::sql_ctable $level [namespace current]] $args
       }
 
       # copy the search proc into this namespace
-      proc search_to_sql [info args ::scache::search_to_sql] [info body ::scache::search_to_sql]
+      proc search_to_sql [info args ::sttp::search_to_sql] [info body ::sttp::search_to_sql]
     }
 
     set ${ns}::table_name $table
@@ -277,7 +277,7 @@ namespace eval ::scache {
 
   #
   # This is never evaluated directly, it's only copied into a namespace
-  # with [info body], so variables are from $ns and anything in ::scache
+  # with [info body], so variables are from $ns and anything in ::sttp
   # needs direct quoting
   #
   proc search_to_sql {_request} {
@@ -342,8 +342,8 @@ namespace eval ::scache {
 	  != { lappend where "$col <> $q1" }
 	  >= { lappend where "$col >= $q1" }
 	  > { lappend where "$col > $q1" }
-	  match { lappend where "$col ILIKE [::scache::quote_glob $v1]" }
-	  match_case { lappend where "$col LIKE [::scache::quote_glob $v1]" }
+	  match { lappend where "$col ILIKE [::sttp::quote_glob $v1]" }
+	  match_case { lappend where "$col LIKE [::sttp::quote_glob $v1]" }
 	  range {
 	    lappend where "$col >= $q1"
 	    lappend where "$col < [pg_quote $v2]"
@@ -425,4 +425,4 @@ namespace eval ::scache {
   }
 }
 
-package provide scache_sql_client 1.0
+package provide sttp_client_pgtcl 1.0

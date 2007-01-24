@@ -2,20 +2,20 @@
 
 lappend auto_path [exec pwd]
 
-package require scache
+package require sttp_server
 package require sc_postgres
 
 # Get a list of columns.
 set columns [
-  ::scache::from_table sc_ca_no_response device_id -index time -index ip
+  ::sttp::from_table sc_ca_no_response device_id -index time -index ip
 ]
 puts "\$columns = [list $columns]"
 
 # Set up the ctable
-::scache::init_ctable sc_ca_no_response {} "" $columns
+::sttp::init_ctable sc_ca_no_response {} "" $columns
 
 # Open and read it
-set nr [::scache::open_cached sc_ca_no_response -col time -index time -index ip]
+set nr [::sttp::open_cached sc_ca_no_response -col time -index time -index ip]
 
 # Check size
 puts "\[$nr count] = [$nr count]"
@@ -30,7 +30,7 @@ $nr search -sort {-time} -array_get _a -limit 3 -code {
 puts "Sleeping for 10s"
 sleep 10
 
-::scache::refresh_ctable $nr $last_time
+::sttp::refresh_ctable $nr $last_time
 
 puts "Most recent 3 values"
 $nr search -sort {-time} -array_get _a -limit 3 -code {

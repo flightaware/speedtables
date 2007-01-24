@@ -3,7 +3,7 @@
 
 package require Tclx
 
-namespace eval ::scache {
+namespace eval ::sttp {
   variable locking 0
   variable lock_level 0
   proc lockfile {name _err {timeout 120} {recursing 0}} {
@@ -142,4 +142,4 @@ namespace eval ::scache {
   }
 }
 
-package provide scache_locks 1.0
+package provide sttp_locks 1.0

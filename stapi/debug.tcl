@@ -1,7 +1,7 @@
 #
 # $Id$
 
-namespace eval ::scache {
+namespace eval ::sttp {
   variable debugging 1
   variable debug_timestamp_format "%Y-%m-%d %H:%M:%S %Z"
   variable debug_handler
@@ -33,4 +33,4 @@ namespace eval ::scache {
   }
 }
 
-package provide scache_debug 1.0
+package provide sttp_debug 1.0

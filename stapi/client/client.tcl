@@ -2,7 +2,7 @@
 
 package require ctable_client
 
-namespace eval ::scache {
+namespace eval ::sttp {
   variable transport_handlers
 
   proc register {transport handler} {
@@ -27,7 +27,7 @@ namespace eval ::scache {
   proc connect_ctable {table_path {address "localhost"} args} {
     variable ctable_serial
     set uri ctable://$address/$table_path
-    set local_table ::scache::ctable[incr ctable_serial]
+    set local_table ::sttp::ctable[incr ctable_serial]
     remote_ctable $uri $local_table
     return $local_table
   }
@@ -61,5 +61,5 @@ namespace eval ::scache {
   register package connect_package
 }
 
-package provide scache_client 1.0
+package provide sttp 1.0
 

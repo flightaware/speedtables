@@ -8,7 +8,7 @@
 
 package require Pgtcl
 
-namespace eval ::scache {
+namespace eval ::sttp {
   variable pg_conn
   variable dio_initted 0
 
@@ -107,4 +107,4 @@ namespace eval ::scache {
   }
 }
 
-package provide scache_pgtcl 1.0
+package provide sttp_pgtcl 1.0

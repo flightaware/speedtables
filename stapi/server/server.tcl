@@ -2,13 +2,13 @@
 # $Id$
 
 package require ctable
-package require scache_locks
-package require scache_pgtcl
-package require scache_debug
+package require sttp_locks
+package require sttp_pgtcl
+package require sttp_debug
 package require Pgtcl
 package require sc_postgres
 
-namespace eval ::scache {
+namespace eval ::sttp {
   # Generated file version - change any time there's an incompatible change
   # in the format or behaviour of speedcache
   variable version 0.1
@@ -65,7 +65,7 @@ namespace eval ::scache {
     varstring	varchar
   }
 
-  # ::scache::init ?options?
+  # ::sttp::init ?options?
   #
   # Options:
   #   -root build_root
@@ -886,4 +886,4 @@ namespace eval ::scache {
   }
 }
 
-package provide scache 1.0
+package provide sttp_server 1.0
