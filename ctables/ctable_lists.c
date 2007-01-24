@@ -53,6 +53,7 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
     if (row->_ll_nodes[i].next == NULL) {
         mightBeTheLastOne = 1;
     } else {
+        // set the next guy's prev ptr to be my prev ptr
         row->_ll_nodes[i].next->_ll_nodes[i].prev = row->_ll_nodes[i].prev;
 	mightBeTheLastOne = 0;
     }

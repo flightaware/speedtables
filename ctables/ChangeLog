@@ -4,6 +4,8 @@ $Id$
 1/24/2007 karl
     * Bump version to 1.3 and tag it.
 
+    * Fix compiler error from fixedstring comparison routine generation.
+
 1/22/2007 karl
     * Add primary-key-design.txt to document a design for bringing the
       primary key in-band into the row, making it accessible for use in
@@ -27,14 +29,6 @@ $Id$
     * Added tests for -array and -array_with_nulls.
 
     * Updated docs, including stuff on how to make remote speed tables go fast.
-
-1/20/2007 karl
-    * Added "-array" and "-array_with_nulls" search options.  Both take an
-      array name, -array will set all non-null fields into the
-      array *and* unset any fields that are null.  -array_with_nulls will
-      set all the fields from the row into the named array, substituting
-      the null value (by default, an empty string, but can be set in the
-      creator table) for any fields that are null.
 
 1/16/2007 karl
     * Added new method, "batch", which takes a list of ctable commands,

@@ -424,7 +424,7 @@ set fixedstringSetSource {
 	char *string;
 [gen_null_check_during_set_source $table $field]
 	string = Tcl_GetString (obj);
-[gen_unset_null_during_set_source $table $field] else if (strncmp(row->$field, value, $length) == 0) {
+[gen_unset_null_during_set_source $table $field] else if (strncmp(row->$field, string, $length) == 0) {
 	    return TCL_OK;
 	}
 [gen_ctable_remove_from_index $field]
