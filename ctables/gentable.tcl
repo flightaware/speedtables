@@ -442,7 +442,7 @@ set inetSetSource {
       case $optname: {
         struct in_addr value;
 [gen_null_check_during_set_source $table $field]
-	if (!inet_aton (Tcl_GetString (obj), &row->$field)) {
+	if (!inet_aton (Tcl_GetString (obj), &value)) {
 	    Tcl_AppendResult (interp, "expected IP address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$field\\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
