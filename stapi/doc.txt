@@ -1,4 +1,6 @@
-::scache::init ?options?
+==== sttp_server ====
+
+::sttp::init ?options?
 
    Options:
      -dir work_directory
@@ -10,7 +12,7 @@
      -cache minutes
         How long to treat a cached tsv file as "good"
 
-::scache::init_ctable name table_list where_clause ?columns|column...?
+::sttp::init_ctable name table_list where_clause ?columns|column...?
 
    Initialize a cache ctable based on one or more SQL tables. If necessary,
    this builds a ctable based on the columns, and generates new SQL to read
@@ -41,7 +43,7 @@
    If the expression is missing or blank, it's assumed to be the same as
       the field name.
 
-::scache::from_table table_name keys ?-option value?
+::sttp::from_table table_name keys ?-option value?
 
    Generate a column list for init_ctable by querying the SQL database
    for the table definition.
@@ -68,7 +70,7 @@
      -prefix text
         If specified, prefix column names with "$prefix"
 
-::scache::open_cached name ?pattern? ?-opt val?...
+::sttp::open_cached name ?pattern? ?-opt val?...
 
    Open an initialised ctable, maintaining a local cache of the underlying
    SQL table in a .tsv file in the workdir.
@@ -86,7 +88,7 @@
      -index field_name
         Name of a field to create an index on. Multiple -index are allowed.
 
-::scache::refresh_ctable ctable ?last_read? ?err?
+::sttp::refresh_ctable ctable ?last_read? ?err?
  
    Update new rows from SQL for ctable 'ctable'.
 
@@ -96,20 +98,22 @@
    If err is provided, return success or failure and put reason for failure
    in $err, otherwise abort.
 
-::scache::save_ctable ctable ?tsv_file?
+::sttp::save_ctable ctable ?tsv_file?
 
   Save a ctable. If the tsv_file is provided, that's all it does. If not,
   it locates and locks the correct tsv file.
 
-::scache::remove_tsv_file table_name
-::scache::remove_tcl_file table_name
+::sttp::remove_tsv_file table_name
+::sttp::remove_tcl_file table_name
 
-::scache::open_raw_ctable name
+::sttp::open_raw_ctable name
 
   Open an initialized ctable but don't fetch anything from SQL, used
   internally, and useful for temporary tables, copies, etcetera...
 
-::scache::optimize_array array_name {indexed_col ...} {col type...}
+==== sttp_client ====
+
+::sttp::optimize_array array_name {indexed_col ...} {col type...}
 
   query optimizer
   input  - an array containing the arguments to a $ctable search
@@ -118,7 +122,7 @@
   output - a possibly optimised search in the array
          - true if optimization was possible and you can use search+
 
-::scache::connect uri ?-name value...?
+::sttp::connect uri ?-name value...?
 
   Connect to a ctable or other database with a ctable interface via a URI.
 
@@ -126,26 +130,44 @@
 
   Methods intially defined:
 
+    package require sttp_client
     ctable://[host:port]/[dir/]table[/stuff][?stuff]
 
 	 Use a ctable server via remote_ctable
 
-    sql://[user[:password]]@[host:]database/table[/cols][?selector]
+    package require sttp_client_pgtcl
+    sql://connection/table[/col[:type]/col...][?param&param...]
 
 	Create a ctable interface to a PostgreSQL table
 
-    local:///ctable
+	connection:
+		Not implemented yet, will be something like:
+			[user[:password]]@[host:]database
+	cols:
+		If no keys defined, first column is assumed to be the key.
+
+	params:
+		column=sql_code
+			Define the SQL required to perform the selection
+		_key=sql_code
+			Define the SQL for the key
+		_keys=column:column:...
+			Define the key in terms of a list of columns.
+
+    package require sttp_client
+    ctable (no method)
 
 	Pass-through interface, just returns whatever ctable specified
 
   With CableAware:
 
+    package require sc_ca_cttp_client
     cache://[host:host:host...]/table
 
 	Look up ctable in CableAware's ctable registry, preferring hosts
 	listed.
 
-::scache::register method transport_handler
+::sttp::register method transport_handler
 
   register a transport method for ::scache::connect
 
