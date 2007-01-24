@@ -22,7 +22,7 @@ namespace eval ctable {
     variable genCompilerDebug
     variable showCompilerCommands
 
-    set ctablePackageVersion 1.2
+    set ctablePackageVersion 1.3
 
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
