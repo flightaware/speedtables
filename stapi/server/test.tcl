@@ -4,6 +4,9 @@ lappend auto_path [exec pwd]
 
 package require sttp_server
 package require sc_postgres
+package require ctable
+set ::ctable::genCompilerDebug 1
+set quick 1
 
 # Get a list of columns.
 set columns [
@@ -15,7 +18,7 @@ puts "\$columns = [list $columns]"
 ::sttp::init_ctable sc_ca_no_response {} "" $columns
 
 # Open and read it
-set nr [::sttp::open_cached sc_ca_no_response -col time -index time -index ip]
+set nr [::sttp::open_cached sc_ca_no_response -col time -index time]
 
 # Check size
 puts "\[$nr count] = [$nr count]"
@@ -26,6 +29,8 @@ $nr search -sort {-time} -array_get _a -limit 3 -code {
   set last_time [::sc_pg::sql_time_to_clock $a(time)]
   puts "$a(device_id)\t$a(time)"
 }
+
+if $quick exit
 
 puts "Sleeping for 10s"
 sleep 10

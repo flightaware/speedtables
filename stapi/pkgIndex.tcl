@@ -10,7 +10,7 @@
 
 package ifneeded sc_ca_sttp_client 1.0 [list source [file join $dir sc-ca/client_glue.tcl]]
 package ifneeded sc_ca_sttp_server 1.0 [list source [file join $dir sc-ca/server_glue.tcl]]
-package ifneeded sttp 1.0 [list source [file join $dir client/client.tcl]]
+package ifneeded sttp_client 1.0 [list source [file join $dir client/client.tcl]]
 package ifneeded sttp_client_pgtcl 1.0 [list source [file join $dir client/pgtcl.tcl]]
 package ifneeded sttp_debug 1.0 [list source [file join $dir debug.tcl]]
 package ifneeded sttp_display 1.0 [list source [file join $dir display/display.tcl]]\n[list source [file join $dir display/util.tcl]]

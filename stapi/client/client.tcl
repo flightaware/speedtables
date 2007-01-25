@@ -61,5 +61,5 @@ namespace eval ::sttp {
   register package connect_package
 }
 
-package provide sttp 1.0
+package provide sttp_client 1.0
 
