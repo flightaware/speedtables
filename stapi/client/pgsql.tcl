@@ -4,6 +4,77 @@ package require sttp_client
 package require sttp_postgres
 
 namespace eval ::sttp {
+  proc make_sql_uri {table args} {
+    while {[llength $args]} {
+      set arg [lindex $args 0]
+      set args [lrange $args 1 end]
+      if {![regexp {^-(.*)} $arg _ opt]} {
+	lappend cols [uri_esc $arg /?]
+      } else {
+	set val [lindex $args 0]
+	set args [lrange $args 1 end]
+        switch -- $opt {
+	  cols {
+	    foreach col $val {
+	      lappend cols [uri_esc $col /?]
+	    }
+	  }
+	  host { set host [uri_esc $val @/:] }
+	  user { set user [uri_esc $val @/:] }
+	  pass { set pass [uri_esc $val @/:] }
+	  db { set db [uri_esc $val @/:] }
+	  keys { lappend params [uri_esc _keys=[join $val :] &] }
+	  key { lappend params [uri_esc _key=$val &] }
+	  -* {
+	    regexp {^-(.*)} $opt _ opt
+	    lappend params [uri_esc $opt &=]=[uri_esc $val &]
+	  }
+	  * {
+	    lappend params [uri_esc $opt &=]=[uri_esc $val &]
+	  }
+	}
+      }
+    }
+    set uri sql://
+    if [info exists user] {
+      if [info exists pass] {
+	append user : $pass
+      }
+      append uri $user @
+    }
+    if [info exists host] {
+      append uri $host :
+    }
+    if [info exists db] {
+      append uri $db
+    }
+    append uri / [uri_esc $table /?]
+    if [info exists cols] {
+      append uri / [join $cols /]
+    }
+    if [info exists params] {
+      append uri ? [join $params &]
+    }
+    return $uri
+  }
+
+  proc uri_esc {string {extra ""}} {
+    foreach c [split "%\"'<> $extra" ""] {
+      scan $c "%c" i
+      regsub -all "\[$c]" $string [format "%%%02X" $i] string
+    }
+    return $string
+  }
+
+  proc uri_unesc {string} {
+    foreach c [split {\\$[} ""] {
+      scan $c "%c" i
+      regsub -all "\\$c" $string [format "%%%02X" $i] string
+    }
+    regsub -all {%([0-9A-Fa-f][0-9A-Fa-f])} $string {[format %c 0x\1]} string
+    return [subst $string]
+  }
+
   variable sqltable_seq 0
   proc connect_sql {table {address "-"} args} {
     variable sqltable_seq
@@ -13,12 +84,13 @@ namespace eval ::sttp {
     set path ""
     regexp {^/*([^/]*)/(.*)} $table _ table path
     set path [split $path "/"]
+    set table [uri_unesc $table]
 
     foreach param [split $params "&"] {
       if [regexp {^([^=]*)=(.*)} $param _ name val] {
-	set vars($name) $val
+	set vars([uri_unesc $name]) [uri_unesc $val]
       } else {
-	set vars($name) ""
+	set vars([uri_unesc $name]) ""
       }
     }
 
@@ -30,8 +102,9 @@ namespace eval ::sttp {
 
     if [llength $path] {
       set raw_fields {}
-      foreach field [split $path "/"] {
-	if [regexp {^([^:]*):(.*)} $field _ name type] {
+      foreach field $path {
+	set field [uri_unesc $field]
+	if [regexp {^([^:]*):(.*)} $field _ field type] {
 	  set field2type($field) $type
 	}
         lappend raw_fields $field

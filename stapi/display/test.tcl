@@ -13,10 +13,8 @@ namespace eval ::sttp_display {
   }
   ::sttp::debug_handler dumper
 
-  proc display_test {uri keys} {
-    if ![string match *_key* $uri] {
-      append uri [lindex {? &} [string match {*\?*} $uri]] _keys=[join $keys :]
-    }
+  proc display_test {table keys {cols {}}} {
+    set uri [::sttp::make_sql_uri $table -cols $cols -keys $keys]
     dumper [list ::sttpx::connect $uri $keys]
     set ctable [::sttpx::connect $uri $keys]
     dumper [list STTPDisplay test -ctable $ctable -mode List]
@@ -30,7 +28,7 @@ namespace eval ::sttp_display {
 }
 
 proc sttp_display_test {} {
-  if [catch {::sttp_display::display_test sql:///sc_ca_ctable_servers {table_name host}} err] {
+  if [catch {::sttp_display::display_test sc_ca_ctable_servers {table_name host}} err] {
     ::sttp_display::dumper $::errorInfo
   }
 }
