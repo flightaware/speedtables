@@ -274,7 +274,7 @@ catch { ::itcl::delete class STTPDisplay }
 	if [info exists response(by)] {
 	  if {"$response(by)" == ""} {
 	    unset response(by)
-	  } elseif {[info exists NameTextMap($response(by))]
+	  } elseif {[info exists NameTextMap($response(by))]} {
 	    set response(by) $NameTextMap($response(by))
 	  }
 	}

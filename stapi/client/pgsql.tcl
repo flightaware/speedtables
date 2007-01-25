@@ -338,12 +338,35 @@ namespace eval ::sttp {
     uplevel #$level [list pg_select [conn] $sql $array [join $code "\n"]]
   }
 
+  proc sql_ctable_foreach {level ns cmd keyvar value code} {
+    set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
+    append sql " WHERE [set ${ns}::key] ILIKE [::sttp::quote_glob $val];"
+    set code "set $keyvar \[lindex $__key 0]\n$code"
+    uplevel #$level [list pg_select [conn] $sql __key $code]
+  }
+
   proc sql_ctable_destroy {level ns cmd args} {
     namespace delete $ns
   }
 
-  proc sql_ctable_set {level ns cmd args} { sql_ctable_unimplemented }
-  proc sql_ctable_foreach {level ns cmd args} { sql_ctable_unimplemented }
+  proc sql_ctable_set {level ns cmd key args} {
+    if ![llength $args] {
+      return
+    }
+    if {[llength $args] == 1} {
+      set args [lindex $args 0]
+    }
+    foreach {col value} $args {
+      if [info exists ${ns}::sql($col)] {
+	set col [set ${ns}::sql($col)]
+      }
+      lappend assigns "$col = [pg_quote $value]"
+    }
+    set sql "UPDATE [set ${ns}::table_name]"
+    append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
+    return [exec_sql $sql]
+  }
+
   proc sql_ctable_needs_quoting {level ns cmd args} { sql_ctable_unimplemented }
   proc sql_ctable_names {level ns cmd args} { sql_ctable_unimplemented }
   proc sql_ctable_read_tabsep {level ns cmd args} { sql_ctable_unimplemented }
