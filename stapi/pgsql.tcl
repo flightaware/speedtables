@@ -107,4 +107,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_pgtcl 1.0
+package provide sttp_postgres 1.0

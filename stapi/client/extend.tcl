@@ -78,7 +78,7 @@ namespace eval ::sttpx {
     incr seq
     set stable($handle) ::sttpx::_table$seq
     proc $stable($handle) {cmd args} "
-	uplevel 1 \[concat \[stapi \$cmd $handle] \$args]]
+	uplevel 1 \[concat \[stapi \$cmd $handle] \$args]
     "
     return $stable($handle)
   }
@@ -104,9 +104,9 @@ namespace eval ::sttpx {
 
     set list {}
     if [info exists stapi_cmds($cmd)] {
-      lappend list $stapi_cmds($cmd) $handle
+      lappend list ::sttpx::$stapi_cmds($cmd) $handle
     } else {
-      lappend list $ctable($handle)
+      lappend list $ctable($handle) $cmd
     }
     return $list
   }
@@ -215,7 +215,7 @@ namespace eval ::sttpx {
     if ![info exists ctable($handle)] {
       error "No ctable open for $handle"
     }
-    lappend cmd [namespace which $ctable($handle)]
+    lappend cmd $ctable($handle)
     array set options $args
 
     set debug 0
@@ -292,10 +292,10 @@ namespace eval ::sttpx {
     if ![info exists temp(-handle)] {
       return -code error "No URI specified in $_request"
     }
-    return [uplevel 1 [list _perform $temp(-handle) $_request] $args]
+    return [uplevel 1 [list ::sttpx::_perform $temp(-handle) $_request] $args]
   }
 
-  proc _perform {_request handle args} {
+  proc _perform {handle _request args} {
     upvar 1 $_request request
     array set temp [array get request]
     array set temp $args
@@ -308,7 +308,7 @@ namespace eval ::sttpx {
       set handle $temp(-handle)
       unset temp(-handle)
     }
-    lappend cmd [namespace which search] $handle
+    lappend cmd ::sttpx::search $handle
     set cmd [concat $cmd [array get temp]]
     if [info exists result_var] {
       set cmd "set $result_var \[$cmd]"

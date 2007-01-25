@@ -1,7 +1,7 @@
 package require sttp_display
 package require sttpx
 package require sttp_debug
-package require sttp_client_pgtcl
+package require sttp_client_postgres
 
 namespace eval ::sttp_display {
   proc dumper {args} {

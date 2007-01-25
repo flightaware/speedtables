@@ -1,7 +1,7 @@
 # $Id$
 
 package require sttp_client
-package require sttp_pgtcl
+package require sttp_postgres
 
 namespace eval ::sttp {
   variable sqltable_seq 0
@@ -425,4 +425,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_client_pgtcl 1.0
+package provide sttp_client_postgres 1.0

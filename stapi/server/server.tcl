@@ -3,7 +3,7 @@
 
 package require ctable
 package require sttp_locks
-package require sttp_pgtcl
+package require sttp_postgres
 package require sttp_debug
 package require Pgtcl
 package require sc_postgres

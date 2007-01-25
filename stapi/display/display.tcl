@@ -411,7 +411,7 @@ catch { ::itcl::delete class STTPDisplay }
 	if [info exists response(mode)] {
 	    $form hidden DIODfromMode -value $response(mode)
 	}
-	$form hidden DIODkey -value [$xtable makekey array]
+	$form hidden DIODkey -value [$ctable makekey array]
 	puts {<TABLE CLASS="DIOForm">}
 
 	# emit the fields for each field using the showform method
@@ -729,7 +729,7 @@ if 0 {
 	    puts "<TD NOWRAP CLASS=\"DIORowFunctions$alt\">"
 	    hide_hidden_vars $f
 	    hide_selection $f
-	    $f hidden query -value [$xtable makekey a]
+	    $f hidden query -value [$ctable makekey a]
 	    if {[llength $rowfunctions] > 2} {
 	      $f select mode -values $rowfunctions -class DIORowFunctionSelect$alt
 	      $f submit submit -value "Go" -class DIORowFunctionButton$alt
@@ -787,7 +787,7 @@ if 0 {
 	    upvar 1 $_array array
 	}
 	
-        foreach val $values field [$xtable keys] {
+        foreach val $values field [$ctable keys] {
 	    lappend selector [list = $field $val]
         }
 	foreach {key val} $limit {
@@ -801,9 +801,9 @@ if 0 {
     method fetch {key arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector $key selector] {
-	    set result [$xtable search -compare $selector -array_with_nulls array]
+	    set result [$ctable search -compare $selector -array_with_nulls array]
 	} else {
-	    set result [$xtable fetch $key array]
+	    set result [$ctable fetch $key array]
 	}
 	return $result
     }
@@ -811,22 +811,22 @@ if 0 {
     method store {arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector {} selector array] {
-	    if ![$xtable search -compare $selector -key key] {
+	    if ![$ctable search -compare $selector -key key] {
 		return 0
 	    }
 	}
-	return [$xtable store array]
+	return [$ctable store array]
     }
 
     method delete {key} {
 	if [make_limit_selector $key selector] {
-	    if ![$xtable search -compare $selector -getkey key] {
+	    if ![$ctable search -compare $selector -getkey key] {
 		return 0
 	    }
 	} else {
-	    set key [$xtable makekey array]
+	    set key [$ctable makekey array]
 	}
-	return [$xtable clear $key]
+	return [$ctable clear $key]
     }
 
     method pretty_fields {list} {
@@ -936,7 +936,7 @@ if 0 {
 	    puts $fp [::csv::join $textlist]
 	}
 
-	$xtable perform request -array_with_nulls a -key k -code {
+	$ctable perform request -array_with_nulls a -key k -code {
 	    if {![llength $columns]} {
 		set columns [array names a]
 		puts $fp [::csv::join $columns]
@@ -1007,10 +1007,10 @@ if 0 {
 	    if {$rows} {
 	        set total $rows
 	    } else {
-	        set total [$xtable count]
+	        set total [$ctable count]
 	    }
 	} else {
-	    set total [$xtable perform request -countOnly 1]
+	    set total [$ctable perform request -countOnly 1]
 	}
 
 	if {$total <= [get_offset]} {
@@ -1022,7 +1022,7 @@ if 0 {
 
 	set_order request
 	set_page request
-	$xtable perform request -array_with_nulls a -code { showrow a } -debug $debug
+	$ctable perform request -array_with_nulls a -code { showrow a } -debug $debug
 
 	rowfooter $total
 
@@ -1408,11 +1408,11 @@ if 0 {
 	## reason to check it.
         set adding [expr {$response(DIODfromMode) == "Add"}]
 	if {$adding} {
-	    set key [$xtable makekey response]
-	    $xtable fetch $key a
+	    set key [$ctable makekey response]
+	    $ctable fetch $key a
 	} else {
 	    set key $response(DIODkey)
-	    set newkey [$xtable makekey response]
+	    set newkey [$ctable makekey response]
 
 	    ## If we have a new key, and the newkey doesn't exist in the
 	    ## database, we are moving this record to a new key, so we
