@@ -1,7 +1,7 @@
 package require sttp_display
+package require sttp_display_util
 package require sttp_debug
-package require sttp_client_pgsql
-package provide sttp_display_test 1.0
+package require sttp_client_pgtcl
 
 namespace eval ::sttp_display {
   proc dumper {args} {
@@ -32,3 +32,5 @@ proc sttp_display_test {} {
     ::sttp_display::dumper $::errorInfo
   }
 }
+
+package provide sttp_display_test 1.0

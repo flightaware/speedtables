@@ -49,8 +49,8 @@ namespace eval ::sttp_display {
       }
     }
 
-    # debug "[list ::scache::connect $uri] $args"
-    set ct($uri) [eval [list ::scache::connect $uri] $args]
+    # debug "[list ::sttp::connect $uri] $args"
+    set ct($uri) [eval [list ::sttp::connect $uri] $args]
     set kf($uri) $keyfields
     return $ct($uri)
   }
@@ -141,7 +141,7 @@ namespace eval ::sttp_display {
   }
 
   proc debug {args} {
-    eval ::scache::debug $args
+    eval ::sttp::debug $args
   }
 
   proc search {uri args} {
@@ -195,7 +195,7 @@ namespace eval ::sttp_display {
 
     set search search
     if {"[set i [indexed $uri]]" != ""} {
-      if [::scache::optimize options $i [types $uri]] {
+      if [::sttp::optimize_array options $i [types $uri]] {
 	set search search+
       }
     }
@@ -240,4 +240,4 @@ namespace eval ::sttp_display {
   }
 }
 
-package provide sttp_display 1.0
+package provide sttp_display_util 1.0

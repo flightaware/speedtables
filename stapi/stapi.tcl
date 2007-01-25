@@ -2,5 +2,5 @@
 
 package require sttp_client
 
-package provide sttp
+package provide sttp 1.0
 

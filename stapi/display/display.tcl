@@ -21,10 +21,9 @@
 # $Id$
 #
 
-package provide sttp_display 1.0
-
 package require Itcl
 package require form
+package require sttp_display_util
 
 #
 # Only load ::csv:: if it's actually wanted.
@@ -47,6 +46,7 @@ catch { ::itcl::delete class STTPDisplay }
 	eval configure $args
 	load_response
 
+	::sttp_display::dumper [info level 0]
 	if ![info exists uri] {
 	  if ![info exists ctable] {
 	    return -code error "No registered ctable name or uri"
@@ -2089,4 +2089,6 @@ catch { ::itcl::delete class ::STTPDisplayField_boolean }
     }
 
 } ; ## ::itcl::class ::STTPDisplayField_boolean
+
+package provide sttp_display 1.0
 
