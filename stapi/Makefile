@@ -2,9 +2,9 @@
 V=""
 V=-verbose
 
-CLIENT=client/client.tcl client/pgtcl.tcl client/optimizer.tcl
+CLIENT=client/client.tcl client/pgtcl.tcl client/optimizer.tcl client/sttpx.tcl
 SERVER=server/server.tcl server/lock.tcl
-DISPLAY=display/display.tcl display/util.tcl display/test.tcl
+DISPLAY=display/display.tcl display/test.tcl
 COMMON=debug.tcl pgsql.tcl sttp.tcl
 CA=sc-ca/client_glue.tcl sc-ca/server_glue.tcl
 TEST=server/test.tcl client/test.tcl
