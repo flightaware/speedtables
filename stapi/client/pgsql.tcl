@@ -362,7 +362,7 @@ namespace eval ::sttp {
       }
       lappend assigns "$col = [pg_quote $value]"
     }
-    set sql "UPDATE [set ${ns}::table_name]"
+    set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
     return [exec_sql $sql]
   }

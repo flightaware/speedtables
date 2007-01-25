@@ -1433,9 +1433,12 @@ if 0 {
 	get_field_values storeArray
 
 	# Don't try and write readonly values.
-        foreach field [array names storeArray] {
-	  if [$field readonly] {
-	    unset storeArray($field)
+        foreach name [array names storeArray] {
+	  if ![info exists FieldNameMap($name)] {
+	    return -code error "Field $name does not exist."
+	  }
+	  if [$FieldNameMap($name) readonly] {
+	    unset storeArray($name)
 	  }
         }
 

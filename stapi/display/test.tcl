@@ -9,7 +9,7 @@ namespace eval ::sttp_display {
     regsub -all {\<} $text {\&lt;} text
     regsub -all {\>} $text {\&gt;} text
     puts stdout "<PRE>$text</PRE>"
-    flush stdout
+    # flush stdout
   }
   ::sttp::debug_handler dumper
 
