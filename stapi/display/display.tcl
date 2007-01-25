@@ -46,7 +46,6 @@ catch { ::itcl::delete class STTPDisplay }
 	eval configure $args
 	load_response
 
-	::sttp_display::dumper [info level 0]
 	if ![info exists uri] {
 	  if ![info exists ctable] {
 	    return -code error "No registered ctable name or uri"
