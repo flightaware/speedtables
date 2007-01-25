@@ -9,147 +9,213 @@
 package require sttp
 package require sttp_optimizer
 
-namespace eval ::sttp_display {
-  proc indexed {uri} {
+namespace eval ::sttpx {
+  variable stapi_cmds
+  array set stapi_cmds {
+    indexed indexed
+    types   types
+    destroy destroy
+    ctable  ctable
+    makekey makekey
+    fetch   fetch
+    store   store
+    clear   clear
+    search  search
+    perform _perform
+  }
+
+  proc indexed {handle} {
     variable indexed
-    if ![info exists indexed($uri)] {
-      variable ct
-      if ![info exists ct($uri)] {
-        error "No ctable open for $uri"
+    if ![info exists indexed($handle)] {
+      variable ctable
+      if ![info exists ctable($handle)] {
+        error "No ctable open for $handle"
       }
-      set indexed($uri) [$ct($uri) index indexed]
+      set indexed($handle) [$ctable($handle) index indexed]
     }
-    return $indexed($uri)
+    return $indexed($handle)
   }
 
-  proc types {uri} {
+  proc types {handle} {
     variable types
-    if ![info exists types($uri)] {
-      variable ct
-      if ![info exists ct($uri)] {
-        error "No ctable open for $uri"
+    if ![info exists types($handle)] {
+      variable ctable
+      if ![info exists ctable($handle)] {
+        error "No ctable open for $handle"
       }
-      set types($uri) {}
-      foreach f [$ct($uri) fields] {
-	lappend types($uri) $f [$ct($uri) fieldtype $f]
-      }
-    }
-    return $types($uri)
-  }
-
-  proc connect {uri keyfields args} {
-    variable kf
-    variable ct
-
-    if [info exists kf($uri)] {
-      if [info exists ct($uri)] {
-	return $ct($uri)
-      } else {
-        unset kf($uri)
+      set types($handle) {}
+      foreach f [$ctable($handle) fields] {
+	lappend types($handle) $f [$ctable($handle) fieldtype $f]
       }
     }
-
-    # debug "[list ::sttp::connect $uri] $args"
-    set ct($uri) [eval [list ::sttp::connect $uri] $args]
-    set kf($uri) $keyfields
-    return $ct($uri)
+    return $types($handle)
   }
 
-  proc ctable {uri} {
-    variable kf
-    variable ct
+  variable seq -1
+  proc connect {handle keys args} {
+    variable keyfields
+    variable ctable
+    variable seq
+    variable stable
 
-    if ![info exists kf($uri)] {
-      return -code error "No connection for $uri"
+    # If we're given an already-open table, return it
+    if [extended $handle] {
+      return $handle
     }
-    if ![info exists ct($uri)] {
-      return -code error "No ctable open for $uri"
+    if [info exists stable($handle)] {
+      return $stable($handle)
     }
-    return $ct($uri)
+
+    # debug "[list ::sttp::connect $handle] $args"
+    # If URI format, connect, otherwise assume it's already an open ctable
+    if [string match "*://*" $handle] {
+      set ctable($handle) [eval [list ::sttp::connect $handle] $args]
+    } else {
+      set ctable($handle) [uplevel 1 [list namespace which $handle]]
+    }
+    set keyfields($handle) $keys
+
+    incr seq
+    set stable($handle) ::sttpx::_table$seq
+    proc $stable($handle) {cmd args} "
+	uplevel 1 \[concat \[stapi \$cmd $handle] \$args]]
+    "
+    return $stable($handle)
   }
 
-  proc connected {uri} {
-    variable kf
-    return [info exists kf($uri)]
+  proc extended {handle} {
+    return [string match ::sttpx::_table* $handle]
   }
 
-  proc makekey {uri _k} {
-    variable kf
-    if ![info exists kf($uri)] {
-      error "No connection for $uri"
+  proc keys {handle} {
+    variable keyfields
+    if ![info exists keyfields($handle)] {
+      error "No connection for $handle"
+    }
+    return $keyfields($handle)
+  }
+
+  proc stapi {cmd handle} {
+    variable stapi_cmds
+    variable ctable
+    if ![info exists ctable($handle)] {
+      return -code error "No ctable open for $handle"
+    }
+
+    set list {}
+    if [info exists stapi_cmds($cmd)] {
+      lappend list $stapi_cmds($cmd) $handle
+    } else {
+      lappend list $ctable($handle)
+    }
+    return $list
+  }
+
+  proc destroy {handle} {
+    variable ctable
+    variable keyfields
+    variable indexed
+    variable types
+    variable stable
+
+    if ![info exists ctable($handle)] {
+      error "No ctable open for $handle"
+    }
+
+    $ctable($handle) destroy
+    rename $stable($handle)
+
+    unset ctable($handle)
+    unset stable($handle)
+    unset keyfields($handle)
+    unset -nocomplain indexed($handle)
+    unset -nocomplain types($handle)
+  }
+
+  proc ctable {handle} {
+    variable keyfields
+    variable ctable
+
+    if ![info exists ctable($handle)] {
+      return -code error "No ctable open for $handle"
+    }
+    return $ctable($handle)
+  }
+
+  proc connected {handle} {
+    variable keyfields
+    return [expr {[info exists keyfields($handle)] || [extended $handle]}]
+  }
+
+  proc makekey {handle _k} {
+    variable keyfields
+    if ![info exists keyfields($handle)] {
+      error "No connection for $handle"
     }
     upvar $_k k
     set key {}
-    foreach n $kf($uri) {
+    foreach n $keyfields($handle) {
       lappend key $k($n)
     }
     return [join $key :]
   }
 
-  proc fetch {uri key _a} {
-    variable kf
-    variable ct
-    if ![info exists kf($uri)] {
-      error "No connection for $uri"
+  proc fetch {handle key _a} {
+    variable keyfields
+    variable ctable
+    if ![info exists keyfields($handle)] {
+      error "No connection for $handle"
     }
     upvar 1 $_a a
     if [regexp {^@(.*)} $key _ _k] {
       upvar $_k k
-      set key [makekey $uri k]
+      set key [makekey $handle k]
     } elseif {![string match "*:*" $key]} {
       set key [join $key :]
     }
-    if ![$ct($uri) exists $key] {
+    if ![$ctable($handle) exists $key] {
       return 0
     }
-    set list [$ct($uri) array_get_with_nulls $key]
+    set list [$ctable($handle) array_get_with_nulls $key]
     array set a $list
     return 1
   }
 
-  proc store {uri _a} {
-    variable kf
-    variable ct
-    if ![info exists kf($uri)] {
-      error "No connection for $uri"
+  proc store {handle _a} {
+    variable keyfields
+    variable ctable
+    if ![info exists keyfields($handle)] {
+      error "No connection for $handle"
     }
     upvar 1 $_a a
-    $ct($uri) set [makekey $uri a] [array get a]
+    $ctable($handle) set [makekey $handle a] [array get a]
   }
 
-  proc delete {uri key} {
-    variable ct
-    variable kf
-    if ![info exists kf($uri)] {
-      error "No connection for $uri"
+  proc clear {handle key} {
+    variable ctable
+    variable keyfields
+    if ![info exists keyfields($handle)] {
+      error "No connection for $handle"
     }
     if [regexp {^@(.*)} $key _ _k] {
       upvar $_k k
-      set key [makekey $uri a]
+      set key [makekey $handle a]
     } elseif {![string match "*:*" $key]} {
       set key [join $key :]
     }
-    $ct($uri) delete $key
-  }
-
-  proc sync {uri} {
-    variable ct
-    if ![info exists ct($uri)] {
-      error "No ctable open for $uri"
-    }
-    $ct($uri) sync
+    $ctable($handle) delete $key
   }
 
   proc debug {args} {
     eval ::sttp::debug $args
   }
 
-  proc search {uri args} {
-    variable ct
-    if ![info exists ct($uri)] {
-      error "No ctable open for $uri"
+  proc search {handle args} {
+    variable ctable
+    if ![info exists ctable($handle)] {
+      error "No ctable open for $handle"
     }
-    lappend cmd [namespace which $ct($uri)]
+    lappend cmd [namespace which $ctable($handle)]
     array set options $args
 
     set debug 0
@@ -194,8 +260,8 @@ namespace eval ::sttp_display {
     }
 
     set search search
-    if {"[set i [indexed $uri]]" != ""} {
-      if [::sttp::optimize_array options $i [types $uri]] {
+    if {"[set i [indexed $handle]]" != ""} {
+      if [::sttp::optimize_array options $i [types $handle]] {
 	set search search+
       }
     }
@@ -211,27 +277,38 @@ namespace eval ::sttp_display {
     return [uplevel 1 $cmd]
   }
 
-  proc count {uri} {
-    variable ct
-    if ![info exists ct($uri)] {
-      error "No ctable open for $uri"
+  proc count {handle} {
+    variable ctable
+    if ![info exists ctable($handle)] {
+      error "No ctable open for $handle"
     }
-    return [$ct($uri) count]
+    return [$ctable($handle) count]
   }
 
   proc perform {_request args} {
     upvar 1 $_request request
     array set temp [array get request]
     array set temp $args
-    if ![info exists temp(-uri)] {
+    if ![info exists temp(-handle)] {
       return -code error "No URI specified in $_request"
     }
+    return [uplevel 1 [list _perform $temp(-handle) $_request] $args]
+  }
+
+  proc _perform {_request handle args} {
+    upvar 1 $_request request
+    array set temp [array get request]
+    array set temp $args
     if [info exists temp(-count)] {
       set result_var $temp(-count)
       unset temp(-count)
     }
-    lappend cmd [namespace which search] $temp(-uri)
-    unset temp(-uri)
+    # Allow overriding
+    if [info exists temp(-handle)] {
+      set handle $temp(-handle)
+      unset temp(-handle)
+    }
+    lappend cmd [namespace which search] $handle
     set cmd [concat $cmd [array get temp]]
     if [info exists result_var] {
       set cmd "set $result_var \[$cmd]"
@@ -240,4 +317,5 @@ namespace eval ::sttp_display {
   }
 }
 
-package provide sttp_display_util 1.0
+package provide sttpx 1.0
+

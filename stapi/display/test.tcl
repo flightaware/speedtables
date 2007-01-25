@@ -1,5 +1,5 @@
 package require sttp_display
-package require sttp_display_util
+package require sttpx
 package require sttp_debug
 package require sttp_client_pgtcl
 
@@ -17,10 +17,12 @@ namespace eval ::sttp_display {
     if ![string match *_key* $uri] {
       append uri [lindex {? &} [string match {*\?*} $uri]] _keys=[join $keys :]
     }
-    dumper [list STTPDisplay test -uri $uri -keyfields $keys -mode List]
-    STTPDisplay test -uri $uri -keyfields $keys -mode List
+    dumper [list ::sttpx::connect $uri $keys]
+    set ctable [::sttpx::connect $uri $keys]
+    dumper [list STTPDisplay test -ctable $ctable -mode List]
+    STTPDisplay test -ctable $ctable -mode List
   
-    foreach field [[::sttp_display::ctable $uri] fields] {
+    foreach field [$ctable fields] {
       test field $field
     }
     test show

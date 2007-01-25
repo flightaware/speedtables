@@ -46,20 +46,29 @@ catch { ::itcl::delete class STTPDisplay }
 	eval configure $args
 	load_response
 
-	if ![info exists uri] {
-	  if ![info exists ctable] {
-	    return -code error "No registered ctable name or uri"
+        # If it's not already an extended table, treat it like a URI
+        if {[info exists ctable] && ![::sttpx::extended $ctable]} {
+	  set uri $ctable
+	  unset ctable
+        }
+	if {![info exists ctable]} {
+	  if ![info exists uri] {
+	    if ![info exists table] {
+	      return -code error "No ctable, table, or uri"
+	    }
+	    if ![info exists hosts] {
+	      set hosts {}
+	    }
+	    set uri "cache://[join $hosts ":"]/$ctable"
 	  }
-	  if ![info exists hosts] {
-	    set hosts ""
-	  }
-	  set uri "cache://[join $hosts ":"]/$ctable"
-	}
-	if ![::sttp_display::connected $uri] {
 	  if ![info exists keyfields] {
-	    return -code error "No uri and no keyfields"
+	    if ![::sttpx::connected $uri] {
+	      return -code error "No keyfields"
+	    } else {
+	      set keyfields {}
+	    }
 	  }
-	  ::sttp_display::connect $uri $keyfields
+	  set ctable [::sttpx::connect $uri $keyfields]
 	}
 
 	if {[lempty $form]} {
@@ -91,7 +100,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    set args [lrange $args 1 end]
 	}
 	if {$show} {
-	    eval ::sttp_display::debug $args
+	    eval ::sttpx::debug $args
 	}
     }
 
@@ -108,7 +117,6 @@ catch { ::itcl::delete class STTPDisplay }
 
     ## Background configvars
     private variable ct_selection
-    private variable ct_request
 
     private variable case
 
@@ -403,7 +411,7 @@ catch { ::itcl::delete class STTPDisplay }
 	if [info exists response(mode)] {
 	    $form hidden DIODfromMode -value $response(mode)
 	}
-	$form hidden DIODkey -value [::sttp_display::makekey $uri array]
+	$form hidden DIODkey -value [$xtable makekey array]
 	puts {<TABLE CLASS="DIOForm">}
 
 	# emit the fields for each field using the showform method
@@ -721,7 +729,7 @@ if 0 {
 	    puts "<TD NOWRAP CLASS=\"DIORowFunctions$alt\">"
 	    hide_hidden_vars $f
 	    hide_selection $f
-	    $f hidden query -value [::sttp_display::makekey $uri a]
+	    $f hidden query -value [$xtable makekey a]
 	    if {[llength $rowfunctions] > 2} {
 	      $f select mode -values $rowfunctions -class DIORowFunctionSelect$alt
 	      $f submit submit -value "Go" -class DIORowFunctionButton$alt
@@ -779,7 +787,7 @@ if 0 {
 	    upvar 1 $_array array
 	}
 	
-        foreach val $values field [::sttp_display::keyfield $uri] {
+        foreach val $values field [$xtable keys] {
 	    lappend selector [list = $field $val]
         }
 	foreach {key val} $limit {
@@ -793,9 +801,9 @@ if 0 {
     method fetch {key arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector $key selector] {
-	    set result [::sttp_display::search $uri -compare $selector -array_with_nulls array]
+	    set result [$xtable search -compare $selector -array_with_nulls array]
 	} else {
-	    set result [::sttp_display::fetch $uri $key array]
+	    set result [$xtable fetch $key array]
 	}
 	return $result
     }
@@ -803,22 +811,22 @@ if 0 {
     method store {arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector {} selector array] {
-	    if ![::sttp_display::search $uri -compare $selector -key key] {
+	    if ![$xtable search -compare $selector -key key] {
 		return 0
 	    }
 	}
-	return [::sttp_display::store $uri array]
+	return [$xtable store array]
     }
 
     method delete {key} {
 	if [make_limit_selector $key selector] {
-	    if ![::sttp_display::search $uri -compare $selector -getkey key] {
+	    if ![$xtable search -compare $selector -getkey key] {
 		return 0
 	    }
 	} else {
-	    set key [::sttp_display::makekey $uri array]
+	    set key [$xtable makekey array]
 	}
-	return [::sttp_display::delete $uri $key]
+	return [$xtable clear $key]
     }
 
     method pretty_fields {list} {
@@ -863,7 +871,8 @@ if 0 {
 
     method make_request {_request} {
 	upvar 1 $_request request
-	set request(-uri) $uri
+	unset -nocomplain request
+	array unset request
     }
 
     method set_limit {_request {selector {}}} {
@@ -927,7 +936,7 @@ if 0 {
 	    puts $fp [::csv::join $textlist]
 	}
 
-	::sttp_display::perform request -array_with_nulls a -key k -code {
+	$xtable perform request -array_with_nulls a -key k -code {
 	    if {![llength $columns]} {
 		set columns [array names a]
 		puts $fp [::csv::join $columns]
@@ -998,10 +1007,10 @@ if 0 {
 	    if {$rows} {
 	        set total $rows
 	    } else {
-	        set total [::sttp_display::count $uri]
+	        set total [$xtable count]
 	    }
 	} else {
-	    set total [::sttp_display::perform request -countOnly 1]
+	    set total [$xtable perform request -countOnly 1]
 	}
 
 	if {$total <= [get_offset]} {
@@ -1013,7 +1022,7 @@ if 0 {
 
 	set_order request
 	set_page request
-	::sttp_display::perform request -array_with_nulls a -code { showrow a } -debug $debug
+	$xtable perform request -array_with_nulls a -code { showrow a } -debug $debug
 
 	rowfooter $total
 
@@ -1399,11 +1408,11 @@ if 0 {
 	## reason to check it.
         set adding [expr {$response(DIODfromMode) == "Add"}]
 	if {$adding} {
-	    set key [::sttp_display::makekey $uri response]
-	    ::sttp_display::fetch $uri $key a
+	    set key [$xtable makekey response]
+	    $xtable fetch $key a
 	} else {
 	    set key $response(DIODkey)
-	    set newkey [::sttp_display::makekey $uri response]
+	    set newkey [$xtable makekey response]
 
 	    ## If we have a new key, and the newkey doesn't exist in the
 	    ## database, we are moving this record to a new key, so we
