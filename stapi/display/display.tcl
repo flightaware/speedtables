@@ -23,7 +23,7 @@
 
 package require Itcl
 package require form
-package require sttp_display_util
+package require sttpx
 
 #
 # Only load ::csv:: if it's actually wanted.
