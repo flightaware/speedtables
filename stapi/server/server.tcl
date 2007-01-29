@@ -741,7 +741,7 @@ namespace eval ::sttp {
 	  return -code error "Key '$key' not found in $table_name"
         }
       }
-      lappend columns [list _key "" [join $sql_keys "||"]]
+      lappend columns [list _key "" [join $sql_keys "||':'||"]]
     }
 
     # If we don't have "-with", then use "-with all"
