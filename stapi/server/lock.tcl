@@ -111,7 +111,7 @@ namespace eval ::sttp {
     }
     # dump the tempfile
     catch {file delete $tempfile}
-    set err $final_error
+    set err $final_err
     debug "NOT LOCKED $name $err"
     # And note that we're out
     if !$recursing {
