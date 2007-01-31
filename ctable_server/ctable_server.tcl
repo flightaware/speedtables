@@ -282,26 +282,30 @@ proc remote_invoke {sock ctable line port} {
 
     set myCtable $registeredCtables($ctable)
 
-    switch -glob -- $command {
-	search* {
-	    set cmd [linsert $remoteArgs 0 $myCtable $command -write_tabsep $sock]
-#puts "search command '$cmd'"
-#puts "start multiline response"
-	    remote_send $sock "m"
-#puts "evaling '$cmd'"
-	    set code [catch {eval $cmd} result]
-	    remote_send $sock "\\." 0
-	    ### puts "start sent multiline terminal response"
-	    return -code $code $result
-	}
-
-	default {
-	    set cmd [linsert $remoteArgs 0 $myCtable $command]
-#puts "standard command '$cmd'"
-	    ### puts '$cmd'
-	    return [eval $cmd]
+    set simpleCommand 1
+    if [string match "search*" $command] {
+	if {[lsearch -exact $remoteArgs "-countOnly"] == -1} {
+	    set simpleCommand 0
 	}
     }
+
+    if $simpleCommand {
+	set cmd [linsert $remoteArgs 0 $myCtable $command]
+#puts "simple command '$cmd'"
+	### puts '$cmd'
+	return [eval $cmd]
+    }
+
+    # else it's a complex search command:
+    set cmd [linsert $remoteArgs 0 $myCtable $command -write_tabsep $sock]
+#puts "search command '$cmd'"
+#puts "start multiline response"
+    remote_send $sock "m"
+#puts "evaling '$cmd'"
+    set code [catch {eval $cmd} result]
+    remote_send $sock "\\." 0
+    ### puts "start sent multiline terminal response"
+    return -code $code $result
 }
 
 proc serverlog {args} {
