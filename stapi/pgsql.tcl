@@ -45,19 +45,18 @@ namespace eval ::sttp {
   }
 
   proc exec_sql {request {_err ""}} {
+    if [string length $_err] { upvar 1 $_err err }
+
     set pg_res [pg_exec [conn] $request]
-    if {[pg_result $pg_res -status] != "PGRES_COMMAND_OK"} {
-      set pg_err [pg_result $pg_res -error]
+    if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
+      set err [pg_result $pg_res -error]
+      set errinf "$err\nIn $request"
     }
     pg_result $pg_res -clear
 
-    if [info exists pg_err] {
-      if [string length $_err] {
-	upvar 1 $_err err
-	set err $pg_err
-	return 0
-      }
-      return -code error -errorinfo "In $request" $pg_err
+    if !$ok {
+      if [string length $_err] { return 0 }
+      return -code error -errorinfo $errinf $err
     }
     return 1
   }
@@ -80,28 +79,22 @@ namespace eval ::sttp {
   }
 
   proc read_ctable_from_sql {ctable sql {_err ""}} { debug
-    if ![catch {set pg_res [pg_exec [conn] $sql]} pg_err] {
-      unset -nocomplain pg_err
-      set pg_stat [pg_result $pg_res -status]
-      if {![string match "PGRES_*_OK" $pg_stat]} {
-        set pg_err [pg_result $pg_res -error]
-        pg_result $pg_res -clear
-      }
+    if [string length $_err] { upvar 1 $_err err }
+
+    set pg_res [pg_exec [conn] $sql]
+    if ![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]] {
+      set err [pg_result $pg_res -error]
+      set errinf "$err\nIn \"sql\""
+    } elseif {[catch {$ctable import_postgres_result $pg_res} err]} {
+      set ok 0
+      set errinf $::errorInfo
     }
-
-    if [info exists pg_err] {
-      if [string length $_err] {
-        upvar 1 $_err err
-	set err $pg_err
-        return 0
-      }
-      return -code error -errorinfo "$pg_err\nIn \"$sql\"" $pg_err
-    }
-
-    debug "$ctable import_postgres_result $pg_res"
-    $ctable import_postgres_result $pg_res
-
     pg_result $pg_res -clear
+
+    if !$ok {
+      if [string length $_err] { return 0 }
+      return -code error -errorinfo $errinf $err
+    }
 
     return 1
   }

@@ -269,14 +269,19 @@ namespace eval ::sttp {
     append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     append sql " LIMIT 1;"
     # debug "\[pg_exec \[conn] \"$sql\"]"
+
     set pg_res [pg_exec [conn] $sql]
-    if {![string match "PGRES_*_OK" [pg_result $pg_res -status]]} {
-      set pg_err [pg_result $pg_res -error]
-      pg_result $pg_res -clear
-      return -code error -errorinfo "$pg_err\nIn $sql" $pg_err
+    if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
+      set err [pg_result $pg_res -error]
+      set errinf "$err\nIn $sql"
+    } else {
+      set result [pg_result $pg_res -numTuples]
     }
-    set result [pg_result $pg_res -numTuples]
     pg_result $pg_res -clear
+
+    if !$ok {
+      return -code error -errorinfo $errinf $err
+    }
     return $result
   }
 
@@ -489,21 +494,23 @@ namespace eval ::sttp {
 
   proc sql_get_one_tuple {request} {
     # debug "\[pg_exec \[conn] \"$request\"]"
+
     set pg_res [pg_exec [conn] $request]
-    if {![string match "PGRES_*_OK" [pg_result $pg_res -status]]} {
-      set pg_err [pg_result $pg_res -error]
-      if {"$pg_err" == ""} {
-	set pg_err [pg_result $pg_res -status]
-      }
+    if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
+      set err [pg_result $pg_res -error]
     } elseif {[pg_result $pg_res -numTuples] == 0} {
-      set pg_err "No match"
+      set ok 0
+      set err "No match"
     } else {
       set result [pg_result $pg_res -getTuple 0]
     }
     pg_result $pg_res -clear
-    if [info exists pg_err] {
-      return -code error -errorinfo "$pg_err\nIn $request" $pg_err
-    }	
+
+    if !$ok {
+      set errinf "$err\nIn $request"
+      return -code error -errorinfo $errinf $err
+    }
+
     return $result
   }
 
