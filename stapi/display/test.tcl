@@ -2,6 +2,7 @@ package require sttp_display
 package require sttpx
 package require sttp_debug
 package require sttp_client_postgres
+package require sttpx_postgres
 
 namespace eval ::sttp_display {
   proc dumper {args} {
@@ -14,10 +15,7 @@ namespace eval ::sttp_display {
   ::sttp::debug_handler dumper
 
   proc display_test {table keys {cols {}}} {
-    set uri [::sttp::make_sql_uri $table -cols $cols -keys $keys]
-    dumper [list ::sttpx::connect $uri $keys]
-    set ctable [::sttpx::connect $uri $keys]
-    dumper [list STTPDisplay test -ctable $ctable -mode List]
+    set ctable [::sttpx::connect_sql $table $keys -cols $cols]
     STTPDisplay test -ctable $ctable -mode List
   
     foreach field [$ctable fields] {
