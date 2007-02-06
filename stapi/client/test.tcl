@@ -3,7 +3,6 @@
 lappend auto_path [exec pwd]
 
 package require sttp_server
-package require sc_postgres
 package require sttp_client
 package require sttp_client_postgres
 

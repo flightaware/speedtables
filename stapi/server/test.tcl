@@ -3,7 +3,7 @@
 lappend auto_path [exec pwd]
 
 package require sttp_server
-package require sc_postgres
+package require sttp_postgres
 package require ctable
 set ::ctable::genCompilerDebug 1
 set quick 1
@@ -26,7 +26,7 @@ puts "\[$nr count] = [$nr count]"
 puts "Most recent 3 values"
 $nr search -sort {-time} -array_get _a -limit 3 -code {
   array set a $_a
-  set last_time [::sc_pg::sql_time_to_clock $a(time)]
+  set last_time [::sttp::sql2clock $a(time)]
   puts "$a(device_id)\t$a(time)"
 }
 

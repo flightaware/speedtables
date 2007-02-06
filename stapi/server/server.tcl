@@ -6,7 +6,6 @@ package require sttp_locks
 package require sttp_postgres
 package require sttp_debug
 package require Pgtcl
-package require sc_postgres
 
 namespace eval ::sttp {
   # Generated file version - change any time there's an incompatible change
@@ -616,9 +615,7 @@ namespace eval ::sttp {
     }
 
     if $last_read {
-      set time_val [
-	::sc_pg::clock_to_precise_sql_time_without_timezone $last_read
-      ]
+      set time_val [clock2sql $last_read]
       set time_sql "$time_col > '$time_val'"
       debug "Will add new entries since $time_val"
       if [regexp -nocase { where } $sql] {

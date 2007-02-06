@@ -98,6 +98,25 @@ namespace eval ::sttp {
 
     return 1
   }
+
+  #
+  # generate a SQL time from an integer clock time (seconds since 1970),
+  # accurate to the second, without timezone info (using local timezone)
+  #
+  proc clock2sql {clock} {
+    return [clock format $clock -format "%b %d %H:%M:%S %Y"]
+  }
+  
+  #
+  # convert a SQL time without timezone to a clock value (integer
+  # seconds since 1970)
+  #
+  proc sql2clock {time} {
+    if {$time == ""} {
+      return 0
+    }
+    return [clock scan [lindex [split $time "."] 0]]
+  }
 }
 
 package provide sttp_postgres 1.0
