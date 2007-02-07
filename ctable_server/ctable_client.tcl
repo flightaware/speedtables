@@ -158,6 +158,10 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 		set line [read $sock [lindex $line 1]]
 	    }
 
+	    "" { # Empty line
+		set line [read $sock [lindex $line 1]]
+	    }
+
 	    "r" {
 		if !$redirect {
 		    error "Redirected to [lindex $line 1]"
