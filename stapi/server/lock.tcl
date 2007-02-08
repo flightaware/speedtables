@@ -7,7 +7,7 @@ namespace eval ::sttp {
   variable locking 0
   variable lock_level
   proc lockfile {name _err {timeout 120} {recursing 0}} {
-    debug [info level 0]
+    # debug [info level 0]
     variable lock_level
     if ![info exists lock_level($name)] {
       set lock_level($name) 0
@@ -70,7 +70,7 @@ namespace eval ::sttp {
       # If OK, tempfile should have been removed in the rename
       if $ok {
         if ![file exists $tempfile] {
-	  debug "LOCKED $name"
+	  # debug "LOCKED $name"
 	  incr lock_level($name)
           if !$recursing {
             set locking 0
@@ -135,7 +135,7 @@ namespace eval ::sttp {
     if ![info exists lock_level($name)] {
       set lock_level($name) 0
     }
-    debug "UNLOCK $name (level $lock_level($name))"
+    # debug "UNLOCK $name (level $lock_level($name))"
     if {$lock_level($name) <= 0} {
       set lock_level($name) 0
       return -code error "Unlocking when not locked!"
