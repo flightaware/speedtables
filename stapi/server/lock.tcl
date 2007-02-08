@@ -5,11 +5,15 @@ package require Tclx
 
 namespace eval ::sttp {
   variable locking 0
-  variable lock_level 0
+  variable lock_level
   proc lockfile {name _err {timeout 120} {recursing 0}} {
+    debug [info level 0]
     variable lock_level
-    if $lock_level {
-      incr lock_level
+    if ![info exists lock_level($name)] {
+      set lock_level($name) 0
+    }
+    if {$lock_level($name) > 0} {
+      incr lock_level($name)
       return 1
     }
     upvar 1 $_err err
@@ -66,8 +70,8 @@ namespace eval ::sttp {
       # If OK, tempfile should have been removed in the rename
       if $ok {
         if ![file exists $tempfile] {
-	  # debug "LOCKED $name"
-	  incr lock_level
+	  debug "LOCKED $name"
+	  incr lock_level($name)
           if !$recursing {
             set locking 0
           }
@@ -80,7 +84,9 @@ namespace eval ::sttp {
       if {!$recursing} {
 	# We're not locking the lockfile, so lock the lockfile...
 	if ![lockfile $lockfile err 20 1] {
-	  debug "Can't lock lockfile to check stale lock: $err"
+	  debug "Locks held: [array get lock_level]"
+	  debug "This call: [info level 0]"
+	  return -code error "PANIC! Can't lock lockfile to check stale lock: $err"
 	} else {
 	  # It shouldn't be possible for this to break out, but be paranoid
 	  set lockfile_locked 1
@@ -122,15 +128,19 @@ namespace eval ::sttp {
 
   proc unlockfile {name} {
     variable lock_level
-    # debug "UNLOCK $name (level $lock_level)"
-    if {$lock_level <= 0} {
-      set lock_level 0
+    if ![info exists lock_level($name)] {
+      set lock_level($name) 0
+    }
+    debug "UNLOCK $name (level $lock_level($name))"
+    if {$lock_level($name) <= 0} {
+      set lock_level($name) 0
       return -code error "Unlocking when not locked!"
     }
-    incr lock_level -1
-    if $lock_level {
+    incr lock_level($name) -1
+    if {$lock_level($name) > 0} {
       return
     }
+    set lock_level($name) 0
     file delete $name.lock
   }
 
