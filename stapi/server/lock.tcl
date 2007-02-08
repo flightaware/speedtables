@@ -91,7 +91,11 @@ namespace eval ::sttp {
 	  # It shouldn't be possible for this to break out, but be paranoid
 	  set lockfile_locked 1
 	  # If the file's older than the sleep time, check if the proc is dead
-          if {[file mtime $lockfile] + $sleep_time / 500 < [clock seconds]} {
+	  if [catch {set lock_time [file mtime $lockfile]} err] {
+	    # File probably been deleted behind our back, we'll check that
+	    # next time around
+	    debug $err
+	  } elseif {$lock_time + $sleep_time / 500 < [clock seconds]} {
 	    unset -nocomplain pid
             set fp [open $lockfile r]
             gets $fp pid
