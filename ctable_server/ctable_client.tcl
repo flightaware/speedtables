@@ -164,7 +164,10 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 
 	    "r" {
 		if !$redirect {
-		    error "Redirected to [lindex $line 1]"
+		    if {"$command" == "redirect"} {
+		        error "Redirected for redirect to [lindex $line 1]"
+		    }
+		    return ""
 		}
 # puts "[clock format [clock seconds]] redirect '$line'"
 # parray ctableLocalTableUrls
