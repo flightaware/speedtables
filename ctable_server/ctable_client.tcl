@@ -223,7 +223,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 			}
 
 			if {$actions(action) == "-array" || $actions(action) == "-array_with_nulls"} {
-			    set dataCmd [linsert $dataList 0 array set $actions(bodyVar)]
+			    set dataCmd [list array set $actions(bodyVar) $dataList]
 			} else {
 			    set dataCmd [list set $actions(bodyVar) $dataList]
 			}
