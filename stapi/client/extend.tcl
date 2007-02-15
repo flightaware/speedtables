@@ -228,9 +228,13 @@ namespace eval ::sttpx {
     }
 
     if ![info exists options(-code)] {
-      foreach opt {-key -array -array_with_nulls -array_get -array_get_with_nulls} {
-	set options(-limit) 1
-	set options(-code) break
+      foreach opt {
+	-key -array -array_with_nulls -array_get -array_get_with_nulls
+      } {
+	if [info exists options($opt)] {
+	  set options(-limit) 1
+	  set options(-code) break
+	}
       }
     }
 
