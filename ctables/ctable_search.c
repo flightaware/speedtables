@@ -1524,6 +1524,8 @@ Tcl_DecrRefCount (utilityObj);
 
 inline int
 ctable_RemoveNullFromIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
+    return TCL_OK; /* PDS 20070215 NULL kludge FIXME? */
+#if 0 /* PDS 20070215 NULL kludge FIXME? */
     jsw_skip_t *skip = ctable->skipLists[field];
 
     if (skip == NULL) {
@@ -1532,10 +1534,13 @@ ctable_RemoveNullFromIndex (Tcl_Interp *interp, CTable *ctable, void *row, int f
 
     Tcl_AppendResult (interp, "remove null from index unimplemented", (char *) NULL);
     return TCL_ERROR;
+#endif /* PDS 20070215 NULL kludge FIXME? */
 }
 
 inline int
 ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
+    return TCL_OK; /* PDS 20070215 NULL kludge FIXME? */
+#if 0 /* PDS 20070215 NULL kludge FIXME? */
     jsw_skip_t *skip = ctable->skipLists[field];
 
     if (skip == NULL) {
@@ -1544,6 +1549,7 @@ ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int f
 
     Tcl_AppendResult (interp, "insert null into index unimplemented", (char *) NULL);
     return TCL_OK;
+#endif /* PDS 20070215 NULL kludge FIXME? */
 }
 
 //
