@@ -122,7 +122,7 @@ proc remote_sock_send {sock cttpUrl command} {
 #
 # remote_ctable_send - send a command to a remote ctable server
 #
-proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redirect 1}} {
+proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_redirect 0}} {
     variable ctableSockets
     variable ctableLocalTableUrls
 
@@ -163,7 +163,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {redir
 	    }
 
 	    "r" {
-		if !$redirect {
+		if $no_redirect {
 		    if {"$command" == "redirect"} {
 		        error "Redirected for redirect to [lindex $line 1]"
 		    }
@@ -279,7 +279,7 @@ proc remote_ctable_invoke {localTableName level command} {
     }
 
     # If the comand is "redirect" or "shutdown", don't follow redirects
-    set redirect [expr {"$cmd" == "redirect" || "$cmd" == "shutdown"}]
+    set no_redirect [expr {"$cmd" == "redirect" || "$cmd" == "shutdown"}]
 
     # if it's search, take out args that will freak out the remote side
     if {$cmd == "search" || $cmd == "search+"} {
@@ -314,7 +314,7 @@ proc remote_ctable_invoke {localTableName level command} {
 #puts "new actions is [array get actions]"
     }
 
-    return [remote_ctable_send $cttpUrl [linsert $body 0 $cmd] [array get actions] $level $redirect]
+    return [remote_ctable_send $cttpUrl [linsert $body 0 $cmd] [array get actions] $level $no_redirect]
 }
 
 package provide ctable_client 1.0
