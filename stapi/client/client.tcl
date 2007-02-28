@@ -13,13 +13,34 @@ namespace eval ::sttp {
 
   proc connect {uri args} {
     variable transport_handlers
-    if [regexp {^([^:]+)://([^/]*)/*(.*)} $uri _ method address path] {
+    array set opts $args
+
+    # If "-keys" defined, save them to create a wrapper
+    if [info exists opts(-keys)] {
+      # Check here so if this errors out we haven't done the heavy lifting
+      if ![namespace exists ::sttpx] {
+	uplevel #0 "package require sttpx"
+      }
+      # Save "-keys" option but don't pass it on downstream
+      set keys $opts(-keys)
+      unset opts(-keys)
+      set args [array get opts]
+    }
+
+    if ![regexp {^([^:]+)://([^/]*)/*(.*)} $uri _ method address path] {
+      set handle $uri
+    } else {
       if ![info exists transport_handlers($method)] {
 	return -code error "No transport registered for method $method"
       }
-      return [$transport_handlers($method) $path $address $args]
+      set handle [$transport_handlers($method) $path $address $args]
     }
-    return $uri
+
+    # Wrap handle if required
+    if [info exists keys] {
+      set handle [eval [list ::sttpx::connect $handle $keys] $args]
+    }
+    return $handle
   }
 
   # ctable://[host:port]/[dir/]table[/stuff][?stuff]

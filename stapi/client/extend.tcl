@@ -123,7 +123,7 @@ namespace eval ::sttpx {
     }
 
     $ctable($handle) destroy
-    rename $stable($handle)
+    rename $stable($handle) ""
 
     unset ctable($handle)
     unset stable($handle)

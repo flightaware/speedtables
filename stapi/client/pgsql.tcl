@@ -76,7 +76,7 @@ namespace eval ::sttp {
   }
 
   variable sqltable_seq 0
-  proc connect_sql {table {address "-"} args} {
+  proc connect_pgsql {table {address "-"} args} {
     variable sqltable_seq
 
     set params ""
@@ -180,7 +180,7 @@ namespace eval ::sttp {
 
     return ${ns}::ctable
   }
-  register sql connect_sql
+  register sql connect_pgsql
 
   variable ctable_commands
   array set ctable_commands {
@@ -525,6 +525,18 @@ namespace eval ::sttp {
     regsub -all {@_} $pattern {?} pattern
     regsub -all {@%} $pattern {@} pattern
     return [pg_quote $pattern]
+  }
+
+  # Helper routine to shortcut the business of creating a URI and connecting
+  # with the same keys. Using this implicitly pulls in sttpx inside connect
+  # if it hasn't already been pulled in.
+  #
+  # Eg: ::sttp::connect_sql my_table {index} -cols {index name value}
+  #
+  proc connect_sql {table keys args} {
+    lappend make make_sql_uri $table -keys $keys
+    set uri [eval $make $args]
+    return [connect $uri -keys $keys]
   }
 }
 

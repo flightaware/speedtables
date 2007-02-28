@@ -1,8 +1,6 @@
 package require sttp_display
-package require sttpx
 package require sttp_debug
 package require sttp_client_postgres
-package require sttpx_postgres
 
 namespace eval ::sttp_display {
   proc dumper {args} {
@@ -15,7 +13,7 @@ namespace eval ::sttp_display {
   ::sttp::debug_handler dumper
 
   proc display_test {table keys {cols {}}} {
-    set ctable [::sttpx::connect_sql $table $keys -cols $cols]
+    set ctable [::sttp::connect_sql $table $keys -cols $cols]
     STTPDisplay test -ctable $ctable -mode List
   
     foreach field [$ctable fields] {
