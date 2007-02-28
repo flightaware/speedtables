@@ -23,7 +23,7 @@
 
 package require Itcl
 package require form
-package require sttpx
+package require sttp_client
 
 #
 # Only load ::csv:: if it's actually wanted.
@@ -47,7 +47,7 @@ catch { ::itcl::delete class STTPDisplay }
 	load_response
 
         # If it's not already an extended table, treat it like a URI
-        if {[info exists ctable] && ![::sttpx::extended $ctable]} {
+        if {[info exists ctable] && ![::sttp::extended $ctable]} {
 	  set uri $ctable
 	  unset ctable
         }
@@ -62,13 +62,13 @@ catch { ::itcl::delete class STTPDisplay }
 	    set uri "cache://[join $hosts ":"]/$ctable"
 	  }
 	  if ![info exists keyfields] {
-	    if ![::sttpx::connected $uri] {
+	    if ![::sttp::connected $uri] {
 	      return -code error "No keyfields"
 	    } else {
 	      set keyfields {}
 	    }
 	  }
-	  set ctable [::sttpx::connect $uri $keyfields]
+	  set ctable [::sttp::connect $uri -keys $keyfields]
 	}
 
 	if {[lempty $form]} {
@@ -100,7 +100,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    set args [lrange $args 1 end]
 	}
 	if {$show} {
-	    eval ::sttpx::debug $args
+	    eval ::sttp::debug $args
 	}
     }
 

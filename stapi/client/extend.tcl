@@ -86,6 +86,7 @@ namespace eval ::sttpx {
   proc extended {handle} {
     return [string match ::sttpx::_table* $handle]
   }
+  namespace export extended
 
   proc keys {handle} {
     variable keyfields
@@ -94,6 +95,7 @@ namespace eval ::sttpx {
     }
     return $keyfields($handle)
   }
+  namespace export keys
 
   proc stapi {cmd handle} {
     variable stapi_cmds
@@ -146,6 +148,7 @@ namespace eval ::sttpx {
     variable keyfields
     return [expr {[info exists keyfields($handle)] || [extended $handle]}]
   }
+  namespace export connected
 
   proc makekey {handle _k} {
     variable keyfields
@@ -319,6 +322,10 @@ namespace eval ::sttpx {
     }
     uplevel 1 $cmd
   }
+}
+
+namespace eval ::sttp {
+  namespace import ::sttpx::*
 }
 
 package provide sttpx 1.0

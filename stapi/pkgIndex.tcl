@@ -21,4 +21,3 @@ package ifneeded sttp_optimizer 1.0 [list source [file join $dir client/optimize
 package ifneeded sttp_postgres 1.0 [list source [file join $dir pgsql.tcl]]
 package ifneeded sttp_server 1.0 [list source [file join $dir server/server.tcl]]
 package ifneeded sttpx 1.0 [list source [file join $dir client/sttpx.tcl]]
-package ifneeded sttpx_postgres 1.0 [list source [file join $dir client/pgsqlx.tcl]]
