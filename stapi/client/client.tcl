@@ -23,7 +23,12 @@ namespace eval ::sttp {
       }
       # Save "-keys" option but don't pass it on downstream
       set keys $opts(-keys)
+      set keyargs {}
       unset opts(-keys)
+      if [info exists opts(-keysep)] {
+        lappend keyargs -keysep $opts(-keysep)
+        unset opts(-keysep)
+      }
       set args [array get opts]
     }
 
@@ -38,7 +43,7 @@ namespace eval ::sttp {
 
     # Wrap handle if required
     if [info exists keys] {
-      set handle [eval [list ::sttpx::connect $handle $keys] $args]
+      set handle [eval [list ::sttpx::connect $handle $keys] $args $keyargs]
     }
     return $handle
   }

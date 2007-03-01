@@ -128,6 +128,16 @@
 
   Return an open ctable.
 
+  Options:
+
+    -keys {col col ...}
+
+ 	Define the columns used to generate the key.
+
+    -keysep "string"
+
+	Define the separator used to build the key.
+
   Methods intially defined:
 
     package require sttp_client

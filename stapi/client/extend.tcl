@@ -54,6 +54,7 @@ namespace eval ::sttpx {
   variable seq -1
   proc connect {handle keys args} {
     variable keyfields
+    variable separator
     variable ctable
     variable seq
     variable stable
@@ -65,6 +66,13 @@ namespace eval ::sttpx {
     if [info exists stable($handle)] {
       return $stable($handle)
     }
+    set keysep ":"
+    array set opts $args
+    if [info exists opts(-keysep)] {
+      set keysep $opts(-keysep)
+      unset opts(-keysep)
+      set args [array get opts]
+    }
 
     # debug "[list ::sttp::connect $handle] $args"
     # If URI format, connect, otherwise assume it's already an open ctable
@@ -74,6 +82,7 @@ namespace eval ::sttpx {
       set ctable($handle) [uplevel 1 [list namespace which $handle]]
     }
     set keyfields($handle) $keys
+    set separator($handle) $keysep
 
     incr seq
     set stable($handle) ::sttpx::_table$seq
@@ -160,7 +169,7 @@ namespace eval ::sttpx {
     foreach n $keyfields($handle) {
       lappend key $k($n)
     }
-    return [join $key :]
+    return [join $key $separator($handle)]
   }
 
   proc fetch {handle key _a} {
