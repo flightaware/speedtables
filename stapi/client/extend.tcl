@@ -169,7 +169,11 @@ namespace eval ::sttpx {
     foreach n $keyfields($handle) {
       lappend key $k($n)
     }
-    return [join $key $separator($handle)]
+    if {"$separator($handle)" == "list"} {
+      return $key
+    } else {
+      return [join $key $separator($handle)]
+    }
   }
 
   proc fetch {handle key _a} {
