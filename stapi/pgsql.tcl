@@ -78,7 +78,7 @@ namespace eval ::sttp {
     return $result
   }
 
-  proc read_ctable_from_sql {ctable sql {_err ""}} { debug
+  proc read_ctable_from_sql {ctable sql {_err ""}} {
     if [string length $_err] { upvar 1 $_err err }
 
     set pg_res [pg_exec [conn] $sql]
