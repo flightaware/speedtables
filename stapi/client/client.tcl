@@ -38,7 +38,7 @@ namespace eval ::sttp {
       if ![info exists transport_handlers($method)] {
 	return -code error "No transport registered for method $method"
       }
-      set handle [$transport_handlers($method) $path $address $args]
+      set handle [eval [list $transport_handlers($method) $path $address] $args]
     }
 
     # Wrap handle if required

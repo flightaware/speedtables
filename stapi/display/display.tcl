@@ -1023,7 +1023,7 @@ if 0 {
 
 	set_order request
 	set_page request
-	$ctable perform request -array_with_nulls a -code { showrow a } -debug $debug
+	$ctable perform request -array_with_nulls a -code { showrow a }
 
 	rowfooter $total
 
