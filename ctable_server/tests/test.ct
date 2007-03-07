@@ -1,0 +1,14 @@
+#
+# $Id$
+#
+
+package require ctable
+
+CExtension c_test 1.0 {
+
+CTable c_test {
+    varstring name
+    varstring value
+}
+
+}

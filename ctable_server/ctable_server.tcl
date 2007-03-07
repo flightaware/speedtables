@@ -10,6 +10,49 @@ package require ctable_net
 namespace eval ::ctable_server {
   variable registeredCtables
   variable evalEnabled 1
+  variable serverVersion 1.0
+  variable serverCommands {
+    shutdown		""
+    redirect		{remoteURL [-shutdown]}
+    quit		""
+    info		{[-verbose]}
+    create		ctableName
+    sequence		{{field *} {initial 0} {format %d}}
+    sequenced		""
+    tablemakers		""
+    tables		""
+    help		""
+  }
+
+#
+# serverInfo - list of information about this ctable server
+#
+# returns the version followed by a list of extended commands
+#
+proc serverInfo {verbose} {
+    variable serverVersion
+    variable serverCommands
+    variable evalEnabled
+
+    lappend result $serverVersion
+    foreach {command args} $serverCommands {
+	if {$verbose && [llength $args]} {
+	    lappend result [list $command $args]
+	} else {
+	    lappend result $command
+	}
+    }
+
+    if $evalEnabled {
+	if $verbose {
+	    lappend result [list eval code]
+	} else {
+	    lappend result eval
+	}
+    }
+    return $result
+}
+
 
 #
 # Variables for "shutdown" command
@@ -32,6 +75,29 @@ proc register {ctableUrl localTableName {type ""}} {
 }
 
 #
+# sequence - specify a sequence key for a ctable
+#
+proc sequence {localTableName {initial 0} {format %d}} {
+    sequenceField $localTableName * $initial $format
+}
+
+#
+# sequence - specify a sequence field for a ctable
+#
+proc sequenceField {localTableName {field *} {initial 0} {format %d}} {
+    variable seqFld
+    variable seqVal
+    variable seqFmt
+
+    serverlog [info level 0]
+    if {"$field" != "*"} {
+	set seqFld($localTableName) $field
+    }
+    set seqVal($localTableName) $initial
+    set seqFmt($localTableName) $format
+}
+
+#
 # register_instantiator - register a ctable creator
 #
 proc register_instantiator {cTable} {
@@ -51,7 +117,7 @@ proc register_redirect_ctable {table port redirectedToCtableUrl} {
     variable ctableUrlCache
     start_server $port
 
-    #serverlog "register_redirect_ctable $table:$port $redirectedToCtableUrl"
+    serverlog "register_redirect_ctable $table:$port $redirectedToCtableUrl"
     set registeredCtableRedirects($table:$port) $redirectedToCtableUrl
 
     # Uncache all URLs that refer to the table we're redirecting - this
@@ -148,7 +214,7 @@ proc remote_receive {sock myPort} {
 	    if [catch {
 	      lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
 	    } err] {
-	      serverlog "$ctableUrl: $err";# $::errorInfo
+	      serverlog "$ctableUrl: $err" $::errorInfo
 	      remote_send $sock [list e $err "" $::errorCode]
 	      return
 	    }
@@ -166,7 +232,7 @@ proc remote_receive {sock myPort} {
 
 	if {[catch {remote_invoke $sock $table $line $myPort} result] == 1} {
 	    serverlog "$table: $result" \
-		"In ($sock) $ctableUrl $line";# $::errorInfo
+		"In ($sock) $ctableUrl $line" $::errorInfo
 	    # look at errorInfo if you want to know more, don't send it
 	    # back to them -- it exposes stuff about us they don't care
 	    # about
@@ -216,6 +282,7 @@ proc remote_invoke {sock ctable line port} {
     variable registeredCtables
     variable registeredCtableCreators
     variable evalEnabled
+    variable seqVal
 
     ### puts "remote_invoke '$sock' '$line'"
 
@@ -255,6 +322,36 @@ proc remote_invoke {sock ctable line port} {
 	    return [instantiate $ctable [lindex $remoteArgs 0]]
 	}
 
+	"info" {
+	    return [serverInfo [string match "-v*" [lindex $remoteArgs 0]]]
+	}
+
+	"sequence" {
+            if {![info exists registeredCtables($ctable)]} {
+		return 0
+	    }
+	    eval [
+		linsert $remoteArgs 0 sequenceField $registeredCtables($ctable)
+	    ]
+	    return 1
+	}
+	"sequenced" {
+            if {![info exists registeredCtables($ctable)]} {
+		return 0
+	    }
+	    set myCtable $registeredCtables($ctable)
+    	    if {[info exists seqVal($myCtable)]} {
+		variable seqFld
+		variable seqFmt
+		lappend result 1 [format $seqFmt($myCtable) $seqVal($myCtable)]
+		if [info exists seqFld($myCtable)] {
+		    lappend result $seqFld($myCtable)
+		}
+		return $result
+	    }
+	    return 0
+	}
+
 	"tablemakers" {
 	    return [lsort [array names registeredCtableCreators]]
 	}
@@ -286,6 +383,35 @@ proc remote_invoke {sock ctable line port} {
     if [string match "search*" $command] {
 	if {[lsearch -exact $remoteArgs "-countOnly"] == -1} {
 	    set simpleCommand 0
+	}
+    }
+
+    if {[info exists seqVal($myCtable)] && "$command" == "set"} {
+	variable seqFld
+	variable seqFmt
+
+	set pairs [lassign $remoteArgs key]
+
+	if {[info exists seqFld($myCtable)]} {
+	    # Only sequence new rows
+	    if ![$myCtable exists $key] {
+		array set tmp $pairs
+		if ![info exists tmp($seqFld($myCtable))] {
+		    lappend remoteArgs [
+			list $seqFld($myCtable) [
+			    format $seqFmt($myCtable) [incr seqVal($myCtable)]
+			]
+		    ]
+		}
+	    }
+	} else {
+	    if {"[lindex $remoteArgs 0]" == "*"} {
+		set remoteArgs [
+		    linsert $pairs 0 [
+			format $seqFmt($myCtable) [incr seqVal($myCtable)]
+		    ]
+		]
+	    }
 	}
     }
 
