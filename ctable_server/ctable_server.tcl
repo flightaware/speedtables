@@ -77,24 +77,24 @@ proc register {ctableUrl localTableName {type ""}} {
 #
 # sequence - specify a sequence key for a ctable
 #
-proc sequence {localTableName {initial 0} {format %d}} {
-    sequenceField $localTableName * $initial $format
+proc sequence {ctableURL {initial 0} {format %d}} {
+    sequenceField $ctableURL * $initial $format
 }
 
 #
 # sequence - specify a sequence field for a ctable
 #
-proc sequenceField {localTableName {field *} {initial 0} {format %d}} {
+proc sequenceField {ctableURL {field *} {initial 0} {format %d}} {
     variable seqFld
     variable seqVal
     variable seqFmt
 
     serverlog [info level 0]
     if {"$field" != "*"} {
-	set seqFld($localTableName) $field
+	set seqFld($ctableURL) $field
     }
-    set seqVal($localTableName) $initial
-    set seqFmt($localTableName) $format
+    set seqVal($ctableURL) $initial
+    set seqFmt($ctableURL) $format
 }
 
 #
@@ -327,25 +327,18 @@ proc remote_invoke {sock ctable line port} {
 	}
 
 	"sequence" {
-            if {![info exists registeredCtables($ctable)]} {
-		return 0
-	    }
 	    eval [
-		linsert $remoteArgs 0 sequenceField $registeredCtables($ctable)
+		linsert $remoteArgs 0 sequenceField $ctable
 	    ]
 	    return 1
 	}
 	"sequenced" {
-            if {![info exists registeredCtables($ctable)]} {
-		return 0
-	    }
-	    set myCtable $registeredCtables($ctable)
-    	    if {[info exists seqVal($myCtable)]} {
+    	    if {[info exists seqVal($ctable)]} {
 		variable seqFld
 		variable seqFmt
-		lappend result 1 [format $seqFmt($myCtable) $seqVal($myCtable)]
-		if [info exists seqFld($myCtable)] {
-		    lappend result $seqFld($myCtable)
+		lappend result 1 [format $seqFmt($ctable) $seqVal($ctable)]
+		if [info exists seqFld($ctable)] {
+		    lappend result $seqFld($ctable)
 		}
 		return $result
 	    }
@@ -386,19 +379,19 @@ proc remote_invoke {sock ctable line port} {
 	}
     }
 
-    if {[info exists seqVal($myCtable)] && "$command" == "set"} {
+    if {[info exists seqVal($ctable)] && "$command" == "set"} {
 	variable seqFld
 	variable seqFmt
 
 	set pairs [lassign $remoteArgs key]
 
-	if {[info exists seqFld($myCtable)]} {
+	if {[info exists seqFld($ctable)]} {
 	    # Only sequence new rows
 	    if ![$myCtable exists $key] {
 		array set tmp $pairs
-		if ![info exists tmp($seqFld($myCtable))] {
-		    lappend remoteArgs $seqFld($myCtable) [
-			format $seqFmt($myCtable) [incr seqVal($myCtable)]
+		if ![info exists tmp($seqFld($ctable))] {
+		    lappend remoteArgs $seqFld($ctable) [
+			format $seqFmt($ctable) [incr seqVal($ctable)]
 		    ]
 		}
 	    }
@@ -406,7 +399,7 @@ proc remote_invoke {sock ctable line port} {
 	    if {"[lindex $remoteArgs 0]" == "*"} {
 		set remoteArgs [
 		    linsert $pairs 0 [
-			format $seqFmt($myCtable) [incr seqVal($myCtable)]
+			format $seqFmt($ctable) [incr seqVal($ctable)]
 		    ]
 		]
 	    }
