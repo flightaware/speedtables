@@ -397,10 +397,8 @@ proc remote_invoke {sock ctable line port} {
 	    if ![$myCtable exists $key] {
 		array set tmp $pairs
 		if ![info exists tmp($seqFld($myCtable))] {
-		    lappend remoteArgs [
-			list $seqFld($myCtable) [
-			    format $seqFmt($myCtable) [incr seqVal($myCtable)]
-			]
+		    lappend remoteArgs $seqFld($myCtable) [
+			format $seqFmt($myCtable) [incr seqVal($myCtable)]
 		    ]
 		}
 	    }
@@ -417,8 +415,7 @@ proc remote_invoke {sock ctable line port} {
 
     if $simpleCommand {
 	set cmd [linsert $remoteArgs 0 $myCtable $command]
-#puts "simple command '$cmd'"
-	### puts '$cmd'
+#serverlog "simple command '$cmd'"
 	return [eval $cmd]
     }
 

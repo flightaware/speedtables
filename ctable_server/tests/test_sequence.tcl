@@ -9,6 +9,9 @@ set status 0
 if [catch {
     puts "version=[c_test info]"
 
+    # Set sequence on key
+    c_test sequence
+
     puts "sequence=[c_test sequenced]"
 
     c_test set * name pizza value pepperoni
@@ -16,9 +19,41 @@ if [catch {
 
     puts "sequence=[c_test sequenced]"
 
-    c_test search -key k -array_get a -code {
-	puts "$k: $a"
+    c_test search -key k -array_get _a -code {
+	puts "$k: $_a"
     }
+
+    c_test sequence id 100
+
+    puts "sequence=[c_test sequenced]"
+
+    c_test search -key k -array a -code {
+	set key($a(name)) $k
+    }
+
+    foreach {name id} [array get key] {
+	c_test set $id id $id
+    }
+    
+    puts "sequence=[c_test sequenced]"
+
+    c_test set -1 name fish value trout
+    c_test set -2 name fish value mutton
+
+    puts "sequence=[c_test sequenced]"
+
+    c_test set $key(pizza) value hawaiian
+
+    puts "sequence=[c_test sequenced]"
+
+    c_test set -3 name fish value surreal id -3
+
+    puts "sequence=[c_test sequenced]"
+
+    c_test search -key k -array_get _a -code {
+	puts "$k: $_a"
+    }
+
 } err] {
    puts "Test failed - $err"
    set status 1

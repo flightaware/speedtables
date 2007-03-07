@@ -7,6 +7,7 @@ package require ctable
 CExtension c_test 1.0 {
 
 CTable c_test {
+    int id
     varstring name
     varstring value
 }
