@@ -11,17 +11,20 @@ namespace eval ::ctable_server {
   variable registeredCtables
   variable evalEnabled 1
   variable serverVersion 1.0
+  # eval? command	args
   variable serverCommands {
-    shutdown		""
-    redirect		{remoteURL [-shutdown]}
-    quit		""
-    info		{[-verbose]}
-    create		ctableName
-    sequence		{{field *} {initial 0} {format %d}}
-    sequenced		""
-    tablemakers		""
-    tables		""
-    help		""
+    0 shutdown		""
+    0 redirect		{remoteURL [-shutdown]}
+    0 quit		""
+    0 info		{[-verbose]}
+    0 create		ctableName
+    0 sequence		{{field *} {initial 0} {format %d}}
+    0 sequenced		""
+    0 tablemakers		""
+    0 tables		""
+    0 help		""
+    1 eval		{code}
+    1 trigger		{?command? ?proc?}
   }
 
 #
@@ -35,7 +38,10 @@ proc serverInfo {verbose} {
     variable evalEnabled
 
     lappend result $serverVersion
-    foreach {command args} $serverCommands {
+    foreach {eval command args} $serverCommands {
+	if {$eval && !$evalEnabled} {
+	    continue
+	}
 	if {$verbose && [llength $args]} {
 	    lappend result [list $command $args]
 	} else {
@@ -43,13 +49,6 @@ proc serverInfo {verbose} {
 	}
     }
 
-    if $evalEnabled {
-	if $verbose {
-	    lappend result [list eval code]
-	} else {
-	    lappend result eval
-	}
-    }
     return $result
 }
 
@@ -95,6 +94,23 @@ proc sequenceField {ctableURL {field *} {initial 0} {format %d}} {
     }
     set seqVal($ctableURL) $initial
     set seqFmt($ctableURL) $format
+}
+
+#
+# setTrigger - specify trigger code for a ctable
+#
+# code is assumed to be a single list (or proc) and is called
+# as "eval $code [list $ctableURL $registeredCtable $command] $arguments"
+#
+# eg:
+#   myHandler ctable://*:9999/foo ctable0 set key fieldname value...
+#
+proc setTrigger {ctableURL command code} {
+    variable triggerCommands
+    variable triggerCode
+
+    lappend triggerCommands($ctableURL) $command
+    set triggerCode($command:$ctableURL) $code
 }
 
 #
@@ -204,6 +220,10 @@ proc remote_receive {sock myPort} {
     }
 
     if {[gets $sock line] >= 0} {
+	if {"$line" == ""} {
+	    serverlog "blank line"
+	    return
+	}
 	# "# NNNN" means a multi-line request NNNN bytes long
 	if {"[lindex $line 0]" == "#"} {
 	    set line [read $sock [lindex $line 1]]
@@ -283,6 +303,8 @@ proc remote_invoke {sock ctable line port} {
     variable registeredCtableCreators
     variable evalEnabled
     variable seqVal
+    variable triggerCommands
+    variable triggerCode
 
     ### puts "remote_invoke '$sock' '$line'"
 
@@ -345,6 +367,30 @@ proc remote_invoke {sock ctable line port} {
 	    return 0
 	}
 
+	"trigger" {
+	    if {!$evalEnabled} {
+		error "not permitted"
+	    }
+
+	    unset -nocomplain cmd
+	    set code [lassign $remoteArgs cmd]
+	    if ![info exists cmd] {
+		if [info exists triggerCommands($ctable)] {
+		    return $triggerCommands($ctable)
+		} else {
+		    return ""
+		}
+	    }
+	    if ![llength $code] {
+		if [info exists triggerCode($cmd:$ctable)] {
+		    return $triggerCode($cmd:$ctable)
+		} else {
+		    return ""
+		}
+	    }
+	    return [setTrigger $ctable $cmd $code]
+        }
+
 	"tablemakers" {
 	    return [lsort [array names registeredCtableCreators]]
 	}
@@ -358,11 +404,22 @@ proc remote_invoke {sock ctable line port} {
 		error "not permitted"
 	    }
 
-	    return [uplevel #0 [linsert $remoteArgs 0 $ctable]]
+	    if [catch {uplevel #0 [lindex $remoteArgs 0]} result] {
+	        serverlog $result [list uplevel #0 [lindex $remoteArgs 0]]
+		error $result $::errorInfo
+	    }
+	    return $result
 	}
 
 	"help" {
-	    return "shutdown; redirect new_url ?-shutdown?; quit; create tableCreator tableName; tablemakers; tables; or a ctable command"
+	    set commands [lassign [serverInfo -verbose] version]
+	    set text "Server version $version: "
+	    foreach c $commands {
+		lassign $c cmd args
+		append text "$cmd $args; "
+	    }
+	    append text "or a ctable command"
+	    return $text
 	}
     }
 
@@ -371,6 +428,15 @@ proc remote_invoke {sock ctable line port} {
     }
 
     set myCtable $registeredCtables($ctable)
+
+    if [info exists triggerCode($command:$ctable)] {
+	set cmd $triggerCode($command:$ctable)
+	lappend cmd $ctable $myCtable $command
+	switch [catch [concat $cmd $remoteArgs] result] {
+	    1 { error $result $::errorInfo }
+	    2 { return $result }
+	}
+    }
 
     set simpleCommand 1
     if [string match "search*" $command] {
