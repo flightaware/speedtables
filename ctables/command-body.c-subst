@@ -35,9 +35,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     Tcl_HashEntry *registeredProcHashEntry;
     int indexCtl;
 
-    static CONST char *options[] = {"get", "set", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "new", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH};
+    enum options {OPT_GET, OPT_SET, OPT_NEW, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH};
 
     if (objc == 1) {
         Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
@@ -309,20 +309,42 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	return TCL_OK;
       }
 
+      case OPT_NEW:
       case OPT_SET: {
         int       i;
 	int       listObjc;
 	Tcl_Obj **listObjv;
+	int	  listIndex;
+	char	 *generatedKey;
 
-	if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key pairList or key field value ?field value...?");
-	    return TCL_ERROR;
+	if (optIndex == OPT_SET) {
+	    if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
+	        Tcl_WrongNumArgs (interp, 2, objv, "key pairList or key field value ?field value...?");
+	        return TCL_ERROR;
+	    }
+
+            row = ${table}_find_or_create (ctable, Tcl_GetString (objv[2]), &indexCtl);
+	    listIndex = 3;
+	    generatedKey = NULL;
+	} else {
+	    if ((objc < 2) || ((objc != 3) && (objc % 2) == 1)) {
+	        Tcl_WrongNumArgs (interp, 2, objv, "pairList or field value ?field value...?");
+	        return TCL_ERROR;
+	    }
+
+	    {
+	        static char buffer[22]; // longest 64-bit decimal is 21 chars
+
+	        sprintf(buffer,"%u",ctable->autoRowNumber++);
+	        generatedKey = buffer;
+	    }
+
+            row = ${table}_find_or_create (ctable, generatedKey, &indexCtl);
+	    listIndex = 2;
 	}
 
-        row = ${table}_find_or_create (ctable, Tcl_GetString (objv[2]), &indexCtl);
-
-	if (objc == 4) {
-	    if (Tcl_ListObjGetElements (interp, objv[3], &listObjc, &listObjv) == TCL_ERROR) {
+	if (objc == listIndex + 1) {
+	    if (Tcl_ListObjGetElements (interp, objv[listIndex], &listObjc, &listObjv) == TCL_ERROR) {
 		Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
 		return TCL_ERROR;
 	    }
@@ -338,15 +360,21 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		    return TCL_ERROR;
 		}
 	    }
+	    if(generatedKey)
+                Tcl_SetObjResult (interp, Tcl_NewStringObj (generatedKey, -1));
+
 	    break;
 	}
 
-	for (i = 3; i < objc; i += 2) {
+	for (i = listIndex; i < objc; i += 2) {
 	    // printf ("i = %d\n", i);
 	    if (${table}_set_fieldobj (interp, ctable, objv[i+1], row, objv[i], indexCtl) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 	}
+
+	if(generatedKey)
+            Tcl_SetObjResult (interp, Tcl_NewStringObj (generatedKey, -1));
         break;
       }
 
