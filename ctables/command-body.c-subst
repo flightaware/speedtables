@@ -316,6 +316,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	Tcl_Obj **listObjv;
 	int	  listIndex;
 	char	 *generatedKey;
+	char      keyNumberString[32];
 
 	if (optIndex == OPT_SET) {
 	    if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
@@ -332,12 +333,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	        return TCL_ERROR;
 	    }
 
-	    {
-	        static char buffer[22]; // longest 64-bit decimal is 21 chars
-
-	        sprintf(buffer,"%u",ctable->autoRowNumber++);
-	        generatedKey = buffer;
-	    }
+	    sprintf(keyNumberString,"%u",ctable->autoRowNumber++);
+	    generatedKey = keyNumberString;
 
             row = ${table}_find_or_create (ctable, generatedKey, &indexCtl);
 	    listIndex = 2;
