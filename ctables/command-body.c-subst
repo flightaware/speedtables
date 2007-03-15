@@ -538,6 +538,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 	  }
 
+	  if(noKeys)
+	  {
+	     sprintf (keyNumberString, "%d", ctable->autoRowNumber - 1);
+	     Tcl_SetObjResult (interp, Tcl_NewStringObj (keyNumberString, -1));
+	  }
+
 	  return TCL_OK;
 #else
         Tcl_SetStringObj (Tcl_GetObjResult (interp), "this version of ctables was built without postgresql support", -1);

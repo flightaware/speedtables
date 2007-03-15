@@ -1283,6 +1283,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     Tcl_Obj         *lineObj = Tcl_NewObj();
     char            *string;
     int              recordNumber = 0;
+    char      keyNumberString[32];
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -1324,6 +1325,12 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     }
 
     Tcl_DecrRefCount (lineObj);
+
+    if(noKeys)
+    {
+       sprintf (keyNumberString, "%d", ctable->autoRowNumber - 1);
+       Tcl_SetObjResult (interp, Tcl_NewStringObj (keyNumberString, -1));
+    }
     return TCL_OK;
 }
 }
