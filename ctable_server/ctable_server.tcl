@@ -18,8 +18,6 @@ namespace eval ::ctable_server {
     0 quit		""
     0 info		{[-verbose]}
     0 create		ctableName
-    0 sequence		{{field *} {initial 0} {format %d}}
-    0 sequenced		""
     0 tablemakers		""
     0 tables		""
     0 help		""
@@ -71,29 +69,6 @@ proc register {ctableUrl localTableName {type ""}} {
     set registeredCtables($exportedTableName) $localTableName
 
     start_server $port
-}
-
-#
-# sequence - specify a sequence key for a ctable
-#
-proc sequence {ctableURL {initial 0} {format %d}} {
-    sequenceField $ctableURL * $initial $format
-}
-
-#
-# sequence - specify a sequence field for a ctable
-#
-proc sequenceField {ctableURL {field *} {initial 0} {format %d}} {
-    variable seqFld
-    variable seqVal
-    variable seqFmt
-
-    serverlog [info level 0]
-    if {"$field" != "*"} {
-	set seqFld($ctableURL) $field
-    }
-    set seqVal($ctableURL) $initial
-    set seqFmt($ctableURL) $format
 }
 
 #
@@ -302,7 +277,6 @@ proc remote_invoke {sock ctable line port} {
     variable registeredCtables
     variable registeredCtableCreators
     variable evalEnabled
-    variable seqVal
     variable triggerCommands
     variable triggerCode
 
@@ -346,25 +320,6 @@ proc remote_invoke {sock ctable line port} {
 
 	"info" {
 	    return [serverInfo [string match "-v*" [lindex $remoteArgs 0]]]
-	}
-
-	"sequence" {
-	    eval [
-		linsert $remoteArgs 0 sequenceField $ctable
-	    ]
-	    return 1
-	}
-	"sequenced" {
-    	    if {[info exists seqVal($ctable)]} {
-		variable seqFld
-		variable seqFmt
-		lappend result 1 [format $seqFmt($ctable) $seqVal($ctable)]
-		if [info exists seqFld($ctable)] {
-		    lappend result $seqFld($ctable)
-		}
-		return $result
-	    }
-	    return 0
 	}
 
 	"trigger" {
@@ -442,33 +397,6 @@ proc remote_invoke {sock ctable line port} {
     if [string match "search*" $command] {
 	if {[lsearch -exact $remoteArgs "-countOnly"] == -1} {
 	    set simpleCommand 0
-	}
-    }
-
-    if {[info exists seqVal($ctable)] && "$command" == "set"} {
-	variable seqFld
-	variable seqFmt
-
-	set pairs [lassign $remoteArgs key]
-
-	if {[info exists seqFld($ctable)]} {
-	    # Only sequence new rows
-	    if ![$myCtable exists $key] {
-		array set tmp $pairs
-		if ![info exists tmp($seqFld($ctable))] {
-		    lappend remoteArgs $seqFld($ctable) [
-			format $seqFmt($ctable) [incr seqVal($ctable)]
-		    ]
-		}
-	    }
-	} else {
-	    if {"[lindex $remoteArgs 0]" == "*"} {
-		set remoteArgs [
-		    linsert $pairs 0 [
-			format $seqFmt($ctable) [incr seqVal($ctable)]
-		    ]
-		]
-	    }
 	}
     }
 
