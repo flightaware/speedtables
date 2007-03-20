@@ -1,6 +1,36 @@
 
 $Id$
 
+3/20/2007 peter
+    * Implemented key generation for import_postgres_result. Have not
+      done it for read_tabsep yet.
+
+3/19/2007 peter
+    * Made a number of cosmetic changes to make the variable names more
+      consistent
+
+    * Implemented "key" flag for field, and code to generate a key from
+      the arguments on "store". Karl will probably want to change this
+      to use the objects directly, but my ctable-fu is not good enough.
+
+    * Implemented "$ctable keys". Returns the list of key fields.
+
+    * Implemented "$ctable make_key $list". Returns the key for the list, for
+      use with "$ctable set".
+
+    * ctable store, ctable import_postgres_result -nokeys, and ctable
+      read_tabsep -nokeys all return the (last) key generated. In the
+      case of import/read_tabsep this is really only useful for sequence
+      keys.
+
+3/15/2007 peter
+    * Moving functionality from ctable_server and sttp into the main ctable
+      code so they're universally available without creating so many layers
+      of sttp wrappers.
+
+    * Implemented "$ctable store", using the same sequence numbers as
+      read_tabsep and import_postgres_result.
+
 1/24/2007 karl
     * Fixed compiler error from fixedstring comparison routine generation.
 

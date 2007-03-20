@@ -1,4 +1,5 @@
-    // $Id$
+// $Id$
+
 int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
     ctable_BaseRow           *row;
     ctable_BaseRow           *nextRow;
@@ -507,7 +508,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #ifdef WITH_PGTCL
           const PGresult   *res;
 	  char             *fieldName = NULL;
-	  char             *key;
+	  char             *key = NULL;
 	  char             *value;
 	  int              *fieldList;
 	  int               firstField;
@@ -519,7 +520,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int               pgRow;
 	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
 	  Tcl_Obj          *valueObj = Tcl_NewObj();
+#if ${nKeys}
+	  int		    keyColumn[${nKeys}];
+	  int		    i;
+#else
 	  char              keyNumberString[32];
+#endif
 
 	  extern PGresult *PgGetResultId (Tcl_Interp *interp, CONST char *id, void **resultidPtr);
 
@@ -548,12 +554,20 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  fieldList = (int *) ckalloc ( nFields * sizeof (int));
 
 	  if (noKeys) {
+#if ${nKeys}
+	      for(i = 0; i < ${nKeys}; i++) {
+	          keyColumn[i] = -1;
+	      }
+#endif
+	      // if called with "-nokeys", the first field in the query
+	      // result is just another column
 	      firstField = 0;
 	  } else {
+	      // if not called with "-nokeys", the first field in the query
+	      // result must be the key
 	      firstField = 1;
 	  }
 
-	  // the first field in the query result must be the key
 	  for (field = firstField; field < nFields; field++) {
 	      fieldName = PQfname (res, field);
 
@@ -565,14 +579,54 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 
 	      fieldList[field] = fieldIndex;
+#if ${nKeys}
+	      if(noKeys) {
+	          for(i = 0; i < ${nKeys}; i++) {
+		      if(${table}_KeyIndex[i] == fieldIndex)
+		          keyColumn[i] = field;
+		  }
+	      }
+#endif
 	  }
+
+#if ${nKeys}
+	  if(noKeys) {
+	      for(i = 0; i < ${nKeys}; i++) {
+	          if(keyColumn[i] == -1) {
+	              Tcl_AppendResult(interp, "Can't extract key from result", (char *)NULL);
+		      return TCL_ERROR;
+		  }
+	      }
+	  }
+#endif
 
 	  nTuples = PQntuples (res);
 
 	  for (pgRow = 0; pgRow < nTuples; pgRow++) {
 	      if (noKeys) {
+#if ${nKeys}
+		  Tcl_Obj *keyList = Tcl_NewObj();
+		  char    *col;
+		  Tcl_Obj *colObj;
+
+		  for(i = 0; i < ${nKeys}; i++) {
+		      col = PQgetvalue(res, pgRow, keyColumn[0]);
+		      if(col == NULL) {
+			  col = "";
+		      }
+		      colObj = Tcl_NewStringObj(col, -1);
+		      if (Tcl_ListObjAppendElement (interp, keyList, colObj) == TCL_ERROR) {
+		          return TCL_ERROR;
+		      }
+		  }
+
+		  // simple and fast and stupid.
+		  // FIXME needs to be effectively [join keyList :] ????
+		  key = Tcl_GetString(keyList);
+#else
 	          sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
 		  key = keyNumberString;
+#endif
 	      } else {
 		  key = PQgetvalue (res, pgRow, 0);
 		  if (key == NULL) {
@@ -587,10 +641,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 		  if (value == NULL) {
 		      if (PQgetisnull (res, pgRow, field)) {
-			 if (${table}_set_null (interp, ctable, row, fieldList[field], indexCtl) == TCL_ERROR) {
-			    Tcl_AppendResult (interp, " while setting null value for field \"", fieldName, "\" in table \"${table}\"", (char *)NULL);
-		            return TCL_ERROR;
-			 }
+			  if (${table}_set_null (interp, ctable, row, fieldList[field], indexCtl) == TCL_ERROR) {
+			      Tcl_AppendResult (interp, " while setting null value for field \"", fieldName, "\" in table \"${table}\"", (char *)NULL);
+		              return TCL_ERROR;
+			  }
 		          continue;
 		      } else {
 		          valueObj = ${table}_DefaultEmptyStringObj;
@@ -601,10 +655,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 	  }
 
-	  if(noKeys)
-	  {
-	     sprintf (keyNumberString, "%d", ctable->autoRowNumber - 1);
-	     Tcl_SetObjResult (interp, Tcl_NewStringObj (keyNumberString, -1));
+	  if (noKeys && key != NULL) {
+	      Tcl_SetObjResult (interp, Tcl_NewStringObj (key, -1));
 	  }
 
 	  return TCL_OK;

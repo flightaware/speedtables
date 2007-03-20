@@ -1253,13 +1253,19 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
     int            indexCtl;
     int            i;
     Tcl_Obj       *utilityObj = Tcl_NewObj ();
+//#if !${nKeys}
     char           keyNumberString[32];
+//#endif
 
     if (!noKeys) {
 	key = strsep (&string, "\t");
     } else {
+//#if ${nKeys}
+// TODO implement generating the key FIXME
+//#else
         sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
 	key = keyNumberString;
+//#endif
     }
     row = ${table}_find_or_create (ctable, key, &indexCtl);
 
@@ -2403,6 +2409,8 @@ proc gen_get_function {table} {
     variable fieldGetStringSource
     variable leftCurly
     variable rightCurly
+
+    set nKeys [string toupper $table]_NKEYS
 
     emit [string range [subst -nobackslashes -nocommands $fieldGetSource] 1 end-1]
     gen_gets_cases
