@@ -124,10 +124,10 @@ proc cquote {string} {
 #  for example, creating table fa_position and field longitude, this
 #   routine will return FIELD_FA_POSITION_LONGITUDE
 #
-proc field_to_enum {field} {
+proc field_to_enum {fieldName} {
     variable table
 
-    return "FIELD_[string toupper $table]_[string toupper $field]"
+    return "FIELD_[string toupper $table]_[string toupper $fieldName]"
 }
 
 #
@@ -154,10 +154,10 @@ set nullIndexDuringSetSource {
 #
 set nullCheckDuringSetSource {
 	if (${table}_obj_is_null (obj)) {
-	    if (!row->_${field}IsNull) {
+	    if (!row->_${fieldName}IsNull) {
 $handleNullIndex
 	        // field wasn't null but now is
-		row->_${field}IsNull = 1;
+		row->_${fieldName}IsNull = 1;
 		// row->_dirty = 1;
 	    }
 	    break;
@@ -168,20 +168,20 @@ $handleNullIndex
 # gen_null_check_during_set_source - generate standard null checking
 #  for a set
 #
-proc gen_null_check_during_set_source {table field} {
+proc gen_null_check_during_set_source {table fieldName} {
     variable nullCheckDuringSetSource
     variable nullIndexDuringSetSource
     variable fields
 
-    upvar ::ctable::fields::$field fieldInfo
+    upvar ::ctable::fields::$fieldName field
 
-    if {[info exists fieldInfo(indexed)] && $fieldInfo(indexed)} {
+    if {[info exists field(indexed)] && $field(indexed)} {
         set handleNullIndex $nullIndexDuringSetSource
     } else {
         set handleNullIndex ""
     }
 
-    if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
+    if {[info exists field(notnull)] && $field(notnull)} {
         return ""
     } else {
 	return [string range [subst -nobackslashes -nocommands $nullCheckDuringSetSource] 1 end-1]
@@ -189,8 +189,8 @@ proc gen_null_check_during_set_source {table field} {
 }
 
 set unsetNullDuringSetSource {
-	if (row->_${field}IsNull) {
-	    row->_${field}IsNull = 0;
+	if (row->_${fieldName}IsNull) {
+	    row->_${fieldName}IsNull = 0;
 
 	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
 	        indexCtl = CTABLE_INDEX_NEW; // inhibit a second removal
@@ -202,8 +202,8 @@ set unsetNullDuringSetSource {
 }
 
 set unsetNullDuringSetSource_unindexed {
-	if (row->_${field}IsNull) {
-	    row->_${field}IsNull = 0;
+	if (row->_${fieldName}IsNull) {
+	    row->_${fieldName}IsNull = 0;
 	}
 }
 
@@ -211,17 +211,17 @@ set unsetNullDuringSetSource_unindexed {
 # gen_unset_null_during_set_source - generate standard null unsetting
 #  for a set
 #
-proc gen_unset_null_during_set_source {table field} {
+proc gen_unset_null_during_set_source {table fieldName} {
     variable unsetNullDuringSetSource
     variable unsetNullDuringSetSource_unindexed
     variable fields
 
-    upvar ::ctable::fields::$field fieldInfo
+    upvar ::ctable::fields::$fieldName field
 
-    if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
+    if {[info exists field(notnull)] && $field(notnull)} {
         return ""
     } else {
-	if {[info exists fieldInfo(indexed)] && $fieldInfo(indexed)} {
+	if {[info exists field(indexed)] && $field(indexed)} {
 	    return [string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource] 1 end-1]
 	} else {
 	    return [string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource_unindexed] 1 end-1]
@@ -293,13 +293,13 @@ set boolSetSource {
       case $optname: {
         int boolean;
 
-[gen_null_check_during_set_source $table $field]
+[gen_null_check_during_set_source $table $fieldName]
         if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
-            Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
+            Tcl_AppendResult (interp, " while converting $fieldName", (char *)NULL);
             return TCL_ERROR;
         }
-[gen_unset_null_during_set_source $table $field]
-        row->$field = boolean;
+[gen_unset_null_during_set_source $table $fieldName]
+        row->$fieldName = boolean;
       }
 }
 
@@ -311,17 +311,17 @@ set boolSetSource {
 set numberSetSource {
       case $optname: {
         $typeText value;
-[gen_null_check_during_set_source $table $field]
+[gen_null_check_during_set_source $table $fieldName]
 	if ($getObjCmd (interp, obj, &value) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $field", (char *)NULL);
+	    Tcl_AppendResult (interp, " while converting $fieldName", (char *)NULL);
 	    return TCL_ERROR;
 	}
-[gen_unset_null_during_set_source $table $field] else if (row->$field == value) {
+[gen_unset_null_during_set_source $table $fieldName] else if (row->$fieldName == value) {
 	    return TCL_OK;
 	}
-[gen_ctable_remove_from_index $field]
-	row->$field = value;
-[gen_ctable_insert_into_index $field]
+[gen_ctable_remove_from_index $fieldName]
+	row->$fieldName = value;
+[gen_ctable_insert_into_index $fieldName]
 	break;
       }
 }
@@ -343,14 +343,14 @@ set varstringSetSource {
       case $optname: {
 	char *string = NULL;
 	int   length;
-[gen_null_check_during_set_source $table $field]
-[gen_unset_null_during_set_source $table $field]
+[gen_null_check_during_set_source $table $fieldName]
+[gen_unset_null_during_set_source $table $fieldName]
 	string = Tcl_GetStringFromObj (obj, &length);
 	if ((length == $defaultLength) && (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0))) {
-	    if (row->$field != (char *) NULL) {
+	    if (row->$fieldName != (char *) NULL) {
 		// string was something but now matches the empty string
-[gen_ctable_remove_from_index $field]
-		ckfree ((void *)row->$field);
+[gen_ctable_remove_from_index $fieldName]
+		ckfree ((void *)row->$fieldName);
 
 		// It's a change to the be default string. If we're
 		// indexed, force the default string in there so the 
@@ -358,14 +358,14 @@ set varstringSetSource {
 		// can't use our proc here yet because of the
 		// default empty string obj fanciness
 		if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] == NULL)) {
-		    row->$field = Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &row->_${field}Length);
+		    row->$fieldName = Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &row->_${fieldName}Length);
 		    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 			return TCL_ERROR;
 		    }
 		}
-		row->$field = NULL;
-		row->_${field}AllocatedLength = 0;
-		row->_${field}Length = 0;
+		row->$fieldName = NULL;
+		row->_${fieldName}AllocatedLength = 0;
+		row->_${fieldName}Length = 0;
 	    }
 	    break;
 	}
@@ -374,29 +374,29 @@ set varstringSetSource {
 	// isn't the default string
 
 	// are they feeding us what we already have, we're outta here
-	if ((length == row->_${field}Length) && (*row->$field == *string) && (strncmp (row->$field, string, length) == 0)) break;
+	if ((length == row->_${fieldName}Length) && (*row->$fieldName == *string) && (strncmp (row->$fieldName, string, length) == 0)) break;
 
 	// previous field isn't null, new field isn't null, isn't
 	// the default string, and isn't the same as the previous field
-[gen_ctable_remove_from_index $field]
+[gen_ctable_remove_from_index $fieldName]
 
 	// new string value
 	// if the allocated length is less than what we need, get more,
 	// else reuse the previously allocagted space
-	if (row->_${field}AllocatedLength <= length) {
-	    if (row->$field != NULL) {
-		ckfree ((void *)row->$field);
+	if (row->_${fieldName}AllocatedLength <= length) {
+	    if (row->$fieldName != NULL) {
+		ckfree ((void *)row->$fieldName);
 	    }
-	    row->$field = ckalloc (length + 1);
-	    row->_${field}AllocatedLength = length + 1;
+	    row->$fieldName = ckalloc (length + 1);
+	    row->_${fieldName}AllocatedLength = length + 1;
 	}
-	strncpy (row->$field, string, length + 1);
-	row->_${field}Length = length;
+	strncpy (row->$fieldName, string, length + 1);
+	row->_${fieldName}Length = length;
 
 	// if we got here and this field has an index, we've removed
 	// the old index either by removing a null index or by
 	// removing the prior index, now insert the new index
-[gen_ctable_insert_into_index $field]
+[gen_ctable_insert_into_index $fieldName]
 	break;
       }
 }
@@ -407,10 +407,10 @@ set varstringSetSource {
 set charSetSource {
       case $optname: {
 	char *string;
-[gen_null_check_during_set_source $table $field]
+[gen_null_check_during_set_source $table $fieldName]
 	string = Tcl_GetString (obj);
-	row->$field = string\[0\];
-[gen_unset_null_during_set_source $table $field]
+	row->$fieldName = string\[0\];
+[gen_unset_null_during_set_source $table $fieldName]
 	break;
       }
 }
@@ -422,14 +422,14 @@ set charSetSource {
 set fixedstringSetSource {
       case $optname: {
 	char *string;
-[gen_null_check_during_set_source $table $field]
+[gen_null_check_during_set_source $table $fieldName]
 	string = Tcl_GetString (obj);
-[gen_unset_null_during_set_source $table $field] else if (strncmp(row->$field, string, $length) == 0) {
+[gen_unset_null_during_set_source $table $fieldName] else if (strncmp(row->$fieldName, string, $length) == 0) {
 	    return TCL_OK;
 	}
-[gen_ctable_remove_from_index $field]
-	strncpy (row->$field, string, $length);
-[gen_ctable_insert_into_index $field]
+[gen_ctable_remove_from_index $fieldName]
+	strncpy (row->$fieldName, string, $length);
+[gen_ctable_insert_into_index $fieldName]
 	break;
       }
 }
@@ -441,18 +441,18 @@ set fixedstringSetSource {
 set inetSetSource {
       case $optname: {
         struct in_addr value;
-[gen_null_check_during_set_source $table $field]
+[gen_null_check_during_set_source $table $fieldName]
 	if (!inet_aton (Tcl_GetString (obj), &value)) {
-	    Tcl_AppendResult (interp, "expected IP address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$field\\"", (char *)NULL);
+	    Tcl_AppendResult (interp, "expected IP address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$fieldName\\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
-[gen_unset_null_during_set_source $table $field] else if (memcmp (&row->$field, &value, sizeof (struct in_addr)) == 0) {
+[gen_unset_null_during_set_source $table $fieldName] else if (memcmp (&row->$fieldName, &value, sizeof (struct in_addr)) == 0) {
             return TCL_OK;
 	}
 
-[gen_ctable_remove_from_index $field]
-	row->$field = value;
-[gen_ctable_insert_into_index $field]
+[gen_ctable_remove_from_index $fieldName]
+	row->$fieldName = value;
+[gen_ctable_insert_into_index $fieldName]
 	break;
       }
 }
@@ -464,19 +464,19 @@ set inetSetSource {
 set macSetSource {
       case $optname: {
         struct ether_addr *mac;
-[gen_null_check_during_set_source $table $field]
+[gen_null_check_during_set_source $table $fieldName]
 	mac = ether_aton (Tcl_GetString (obj));
 	if (mac == (struct ether_addr *) NULL) {
-	    Tcl_AppendResult (interp, "expected MAC address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$field\\"", (char *)NULL);
+	    Tcl_AppendResult (interp, "expected MAC address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$fieldName\\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
 
-[gen_unset_null_during_set_source $table $field] else if (memcmp (&row->$field, mac, sizeof (struct ether_addr)) == 0) {
+[gen_unset_null_during_set_source $table $fieldName] else if (memcmp (&row->$fieldName, mac, sizeof (struct ether_addr)) == 0) {
             return TCL_OK;
         }
-[gen_ctable_remove_from_index $field]
-	row->$field = *mac;
-[gen_ctable_insert_into_index $field]
+[gen_ctable_remove_from_index $fieldName]
+	row->$fieldName = *mac;
+[gen_ctable_insert_into_index $fieldName]
 	break;
       }
 }
@@ -489,14 +489,14 @@ set macSetSource {
 set tclobjSetSource {
       case $optname: {
 
-	if (row->$field != (Tcl_Obj *) NULL) {
-	    Tcl_DecrRefCount (row->$field);
-	    row->$field = NULL;
+	if (row->$fieldName != (Tcl_Obj *) NULL) {
+	    Tcl_DecrRefCount (row->$fieldName);
+	    row->$fieldName = NULL;
 	}
-[gen_null_check_during_set_source $table $field]
-	row->$field = obj;
+[gen_null_check_during_set_source $table $fieldName]
+	row->$fieldName = obj;
 	Tcl_IncrRefCount (obj);
-[gen_unset_null_during_set_source $table $field]
+[gen_unset_null_during_set_source $table $fieldName]
 	break;
       }
 }
@@ -512,13 +512,13 @@ set tclobjSetSource {
 #  field
 #
 set nullSortSource {
-        if (row1->_${field}IsNull) {
-	    if (row2->_${field}IsNull) {
+        if (row1->_${fieldName}IsNull) {
+	    if (row2->_${fieldName}IsNull) {
 	        return 0;
 	    }
 
 	    return direction;
-	} else if (row2->_${field}IsNull) {
+	} else if (row2->_${fieldName}IsNull) {
 	    return -direction;
 	}
 }
@@ -527,12 +527,12 @@ set nullSortSource {
 # gen_null_check_during_sort_comp - emit null checking as part of field
 #  comparing in a sort
 #
-proc gen_null_check_during_sort_comp {table field} {
+proc gen_null_check_during_sort_comp {table fieldName} {
     variable nullSortSource
 
-    upvar ::ctable::fields::$field fieldInfo
+    upvar ::ctable::fields::$fieldName field
 
-    if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
+    if {[info exists field(notnull)] && $field(notnull)} {
         return ""
     } else {
 	return [string range [subst -nobackslashes -nocommands $nullSortSource] 1 end-1]
@@ -540,18 +540,18 @@ proc gen_null_check_during_sort_comp {table field} {
 }
 
 set nullExcludeSource {
-	      if (row->_${field}IsNull) {
+	      if (row->_${fieldName}IsNull) {
 		  exclude = 1;
 		  break;
 	      }
 }
 
-proc gen_null_exclude_during_sort_comp {table field} {
+proc gen_null_exclude_during_sort_comp {table fieldName} {
     variable nullExcludeSource
 
-    upvar ::ctable::fields::$field fieldInfo
+    upvar ::ctable::fields::$fieldName field
 
-    if {[info exists fieldInfo(notnull)] && $fieldInfo(notnull)} {
+    if {[info exists field(notnull)] && $field(notnull)} {
         return ""
     } else {
 	return [string range [subst -nobackslashes -nocommands $nullExcludeSource] 1 end-1]
@@ -564,13 +564,13 @@ proc gen_null_exclude_during_sort_comp {table field} {
 #
 set boolSortSource {
 	case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $field]
-          if (row1->$field && !row2->$field) {
+[gen_null_check_during_sort_comp $table $fieldName]
+          if (row1->$fieldName && !row2->$fieldName) {
 	      result = -direction;
 	      break;
 	  }
 
-	  if (!row1->$field && row2->$field) {
+	  if (!row1->$fieldName && row2->$fieldName) {
 	      result = direction;
 	  }
 
@@ -585,13 +585,13 @@ set boolSortSource {
 #
 set numberSortSource {
       case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $field]
-        if (row1->$field < row2->$field) {
+[gen_null_check_during_sort_comp $table $fieldName]
+        if (row1->$fieldName < row2->$fieldName) {
 	    result = -direction;
 	    break;
 	}
 
-	if (row1->$field > row2->$field) {
+	if (row1->$fieldName > row2->$fieldName) {
 	    result = direction;
 	    break;
 	}
@@ -607,8 +607,8 @@ set numberSortSource {
 #
 set varstringSortSource {
       case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $field]
-        result = direction * strcmp (row1->$field, row2->$field);
+[gen_null_check_during_sort_comp $table $fieldName]
+        result = direction * strcmp (row1->$fieldName, row2->$fieldName);
 	break;
       }
 }
@@ -619,8 +619,8 @@ set varstringSortSource {
 #
 set fixedstringSortSource {
       case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $field]
-        result = direction * strncmp (row1->$field, row2->$field, $length);
+[gen_null_check_during_sort_comp $table $fieldName]
+        result = direction * strncmp (row1->$fieldName, row2->$fieldName, $length);
 	break;
       }
 }
@@ -631,8 +631,8 @@ set fixedstringSortSource {
 #
 set binaryDataSortSource {
       case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $field]
-        result = direction * memcmp (&row1->$field, &row2->$field, $length);
+[gen_null_check_during_sort_comp $table $fieldName]
+        result = direction * memcmp (&row1->$fieldName, &row2->$fieldName, $length);
 	break;
       }
 }
@@ -643,7 +643,7 @@ set binaryDataSortSource {
 #
 set tclobjSortSource {
       case $fieldEnum: {
-        result = direction * strcmp (Tcl_GetString (row1->$field), Tcl_GetString (row2->$field));
+        result = direction * strcmp (Tcl_GetString (row1->$fieldName), Tcl_GetString (row2->$fieldName));
 	break;
       }
 }
@@ -737,7 +737,7 @@ set standardCompSwitchSource {
 		break;
 
 	    default:
-	        panic ("compare type %d not implemented for field \"${field}\"", compType);
+	        panic ("compare type %d not implemented for field \"${fieldName}\"", compType);
 	  }
 	  break;
 }
@@ -745,7 +745,7 @@ set standardCompSwitchSource {
 #
 # gen_standard_comp_switch_source - emit the standard compare source
 #
-proc gen_standard_comp_switch_source {field} {
+proc gen_standard_comp_switch_source {fieldName} {
     variable standardCompSwitchSource
 
     return [string range [subst -nobackslashes -nocommands $standardCompSwitchSource] 1 end-1]
@@ -757,14 +757,14 @@ proc gen_standard_comp_switch_source {field} {
 #
 set boolCompSource {
       case $fieldEnum: {
-[gen_standard_comp_null_check_source $table $field]
+[gen_standard_comp_null_check_source $table $fieldName]
 	switch (compType) {
 	  case CTABLE_COMP_TRUE:
-	     exclude = (!row->$field);
+	     exclude = (!row->$fieldName);
 	     break;
 
 	  case CTABLE_COMP_FALSE:
-	    exclude = row->$field;
+	    exclude = row->$fieldName;
 	    break;
 	}
 	break;
@@ -778,42 +778,42 @@ set boolCompSource {
 #
 set numberCompSource {
         case $fieldEnum: {
-[gen_standard_comp_null_check_source $table $field]
+[gen_standard_comp_null_check_source $table $fieldName]
           switch (compType) {
 	    case CTABLE_COMP_LT:
-	        exclude = !(row->$field < row1->$field);
+	        exclude = !(row->$fieldName < row1->$fieldName);
 		break;
 
 	    case CTABLE_COMP_LE:
-	        exclude = !(row->$field <= row1->$field);
+	        exclude = !(row->$fieldName <= row1->$fieldName);
 		break;
 
 	    case CTABLE_COMP_EQ:
-	        exclude = !(row->$field == row1->$field);
+	        exclude = !(row->$fieldName == row1->$fieldName);
 		break;
 
 	    case CTABLE_COMP_NE:
-	        exclude = !(row->$field != row1->$field);
+	        exclude = !(row->$fieldName != row1->$fieldName);
 		break;
 
 	    case CTABLE_COMP_GE:
-	        exclude = !(row->$field >= row1->$field);
+	        exclude = !(row->$fieldName >= row1->$fieldName);
 		break;
 
 	    case CTABLE_COMP_GT:
-	        exclude = !(row->$field > row1->$field);
+	        exclude = !(row->$fieldName > row1->$fieldName);
 		break;
 
 	    case CTABLE_COMP_TRUE:
-	        exclude = (!row->$field);
+	        exclude = (!row->$fieldName);
 		break;
 
 	    case CTABLE_COMP_FALSE:
-	        exclude = row->$field;
+	        exclude = row->$fieldName;
 		break;
 
 	    default:
-	        panic ("compare type %d not implemented for field \"${field}\"", compType);
+	        panic ("compare type %d not implemented for field \"${fieldName}\"", compType);
 	  }
 	  break;
         }
@@ -827,9 +827,9 @@ set varstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
 
-[gen_standard_comp_null_check_source $table $field]
+[gen_standard_comp_null_check_source $table $fieldName]
 	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH) || (compType == CTABLE_COMP_MATCH_CASE) || (compType == CTABLE_COMP_NOTMATCH_CASE)) {
-[gen_null_exclude_during_sort_comp $table $field]
+[gen_null_exclude_during_sort_comp $table $fieldName]
 	      // matchMeansKeep will be 1 if matching means keep,
 	      // 0 if it means discard
 	      int matchMeansKeep = ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE));
@@ -840,7 +840,7 @@ set varstringCompSource {
 		  char *match;
 
 		  exclude = !matchMeansKeep;
-		  for (field = row->$field, match = row1->$field; *match != '*' && *match != '\0'; match++, field++) {
+		  for (field = row->$fieldName, match = row1->$fieldName; *match != '*' && *match != '\0'; match++, field++) {
 		      // printf("comparing '%c' and '%c'\n", *field, *match);
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
@@ -857,11 +857,11 @@ set varstringCompSource {
 		  // if we got here it was anchored and we now know the score
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
-	          exclude = (boyer_moore_search (sm, (unsigned char *)row->$field, row->_${field}Length, sm->nocase) == NULL);
+	          exclude = (boyer_moore_search (sm, (unsigned char *)row->$fieldName, row->_${fieldName}Length, sm->nocase) == NULL);
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
-	          exclude = !(Tcl_StringCaseMatch (row->$field, row1->$field, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
+	          exclude = !(Tcl_StringCaseMatch (row->$fieldName, row1->$fieldName, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
               } else {
@@ -869,8 +869,8 @@ set varstringCompSource {
 	      }
 	  }
 
-          strcmpResult = strcmp (row->$field, row1->$field);
-[gen_standard_comp_switch_source $field]
+          strcmpResult = strcmp (row->$fieldName, row1->$fieldName);
+[gen_standard_comp_switch_source $fieldName]
         }
 }
 
@@ -882,9 +882,9 @@ set fixedstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
 
-[gen_standard_comp_null_check_source $table $field]
-          strcmpResult = strncmp (row->$field, row1->$field, $length);
-[gen_standard_comp_switch_source $field]
+[gen_standard_comp_null_check_source $table $fieldName]
+          strcmpResult = strncmp (row->$fieldName, row1->$fieldName, $length);
+[gen_standard_comp_switch_source $fieldName]
         }
 }
 
@@ -896,9 +896,9 @@ set binaryDataCompSource {
         case $fieldEnum: {
           int              strcmpResult;
 
-[gen_standard_comp_null_check_source $table $field]
-          strcmpResult = memcmp ((void *)&row->$field, (void *)&row1->$field, $length);
-[gen_standard_comp_switch_source $field]
+[gen_standard_comp_null_check_source $table $fieldName]
+          strcmpResult = memcmp ((void *)&row->$fieldName, (void *)&row1->$fieldName, $length);
+[gen_standard_comp_switch_source $fieldName]
         }
 }
 
@@ -915,9 +915,9 @@ set tclobjCompSource {
         case $fieldEnum: {
           int      strcmpResult;
 
-[gen_standard_comp_null_check_source $table $field]
-          strcmpResult = strcmp (Tcl_GetString (row->$field), Tcl_GetString (row1->$field));
-[gen_standard_comp_switch_source $field]
+[gen_standard_comp_null_check_source $table $fieldName]
+          strcmpResult = strcmp (Tcl_GetString (row->$fieldName), Tcl_GetString (row1->$fieldName));
+[gen_standard_comp_switch_source $fieldName]
         }
 }
 
@@ -1172,19 +1172,19 @@ ${table}_get_string (const void *vPointer, int field, int *lengthPtr, Tcl_Obj *u
 
 set tabSepFunctionsSource {
 void
-${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey) {
+${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys) {
     int              i;
     CONST char      *string;
     int              nChars;
     Tcl_Obj         *utilityObj = Tcl_NewObj();
     struct $table *row = vPointer;
 
-    if (!noKey) {
+    if (!noKeys) {
 	Tcl_DStringAppend (dsPtr, key, -1);
     }
 
     for (i = 0; i < nFields; i++) {
-	if (!noKey || (i > 0)) {
+	if (!noKeys || (i > 0)) {
 	    Tcl_DStringAppend (dsPtr, "\t", 1);
 	    // Tcl_DStringAppend (dsPtr, "|", 1);
 	}
@@ -1246,7 +1246,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int noKey) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int noKeys) {
     struct $table *row;
     char          *key;
     char          *field;
@@ -1255,7 +1255,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
     Tcl_Obj       *utilityObj = Tcl_NewObj ();
     char           keyNumberString[32];
 
-    if (!noKey) {
+    if (!noKeys) {
 	key = strsep (&string, "\t");
     } else {
         sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
@@ -1368,157 +1368,157 @@ proc end_table {} {
 #
 #  NB do we really?  i don't know
 #
-proc deffield {name argList} {
+proc deffield {fieldName argList} {
     variable fields
     variable fieldList
     variable nonBooleans
     variable ctableTypes
     variable reservedWords
 
-    if {[lsearch -exact $reservedWords $name] >= 0} {
-        error "illegal field name \"$name\" -- it's a reserved word"
+    if {[lsearch -exact $reservedWords $fieldName] >= 0} {
+        error "illegal field name \"$fieldName\" -- it's a reserved word"
     }
 
-    if {![regexp {^[a-zA-Z][_a-zA-Z0-9]*$} $name]} {
-        error "field name \"$name\" must start with a letter and can only contain letters, numbers, and underscores"
+    if {![regexp {^[a-zA-Z][_a-zA-Z0-9]*$} $fieldName]} {
+        error "field name \"$fieldName\" must start with a letter and can only contain letters, numbers, and underscores"
     }
 
     if {[llength $argList] % 2 != 0} {
-        error "number of values in field '$name' definition arguments ('$argList') must be even"
+        error "number of values in field '$fieldName' definition arguments ('$argList') must be even"
     }
 
-    set fields($name) [linsert $argList 0 name $name]
-    array set ::ctable::fields::$name $fields($name)
+    set fields($fieldName) [linsert $argList 0 name $fieldName]
+    array set ::ctable::fields::$fieldName $fields($fieldName)
 
-    lappend fieldList $name
-    lappend nonBooleans $name
+    lappend fieldList $fieldName
+    lappend nonBooleans $fieldName
 }
 
 #
 # boolean - define a boolean field -- same contents as deffield except it
 #  appends to the booleans list instead of the nonBooleans list NB kludge
 #
-proc boolean {name args} {
+proc boolean {fieldName args} {
     variable booleans
     variable fields
     variable fieldList
 
-    if {![regexp {^[_a-zA-Z][_a-zA-Z0-9]*$} $name]} {
-        error "field name \"$name\" must start with a letter and can only contain letters, numbers, and underscores"
+    if {![regexp {^[_a-zA-Z][_a-zA-Z0-9]*$} $fieldName]} {
+        error "field name \"$fieldName\" must start with a letter and can only contain letters, numbers, and underscores"
     }
 
-    set fields($name) [linsert $args 0 name $name type boolean]
-    array set ::ctable::fields::$name $fields($name)
+    set fields($fieldName) [linsert $args 0 name $fieldName type boolean]
+    array set ::ctable::fields::$fieldName $fields($fieldName)
 
-    lappend fieldList $name
-    lappend booleans $name
+    lappend fieldList $fieldName
+    lappend booleans $fieldName
 }
 
 #
 # fixedstring - define a fixed-length string field
 #
-proc fixedstring {name length args} {
-    array set fieldInfo $args
+proc fixedstring {fieldName length args} {
+    array set field $args
 
-    if {[info exists fieldInfo(default)]} {
-        if {[string length $fieldInfo(default)] != $length} {
-	    error "fixedstring \"$name\" default string \"$fieldInfo(default)\" must match length \"$length\""
+    if {[info exists field(default)]} {
+        if {[string length $field(default)] != $length} {
+	    error "fixedstring \"$fieldName\" default string \"$field(default)\" must match length \"$length\""
 	}
     }
 
-    deffield $name [linsert $args 0 type fixedstring length $length needsQuoting 1]
+    deffield $fieldName [linsert $args 0 type fixedstring length $length needsQuoting 1]
 }
 
 #
 # varstring - define a variable-length string field
 #
-proc varstring {name args} {
-    deffield $name [linsert $args 0 type varstring needsQuoting 1]
+proc varstring {fieldName args} {
+    deffield $fieldName [linsert $args 0 type varstring needsQuoting 1]
 }
 
 #
 # char - define a single character field -- this should probably just be
 #  fixedstring[1] but it's simpler.  shrug.
 #
-proc char {name args} {
-    deffield $name [linsert $args 0 type char needsQuoting 1]
+proc char {fieldName args} {
+    deffield $fieldName [linsert $args 0 type char needsQuoting 1]
 }
 
 #
 # mac - define a mac address field
 #
-proc mac {name args} {
-    deffield $name [linsert $args 0 type mac]
+proc mac {fieldName args} {
+    deffield $fieldName [linsert $args 0 type mac]
 }
 
 #
 # short - define a short integer field
 #
-proc short {name args} {
-    deffield $name [linsert $args 0 type short]
+proc short {fieldName args} {
+    deffield $fieldName [linsert $args 0 type short]
 }
 
 #
 # int - define an integer field
 #
-proc int {name args} {
-    deffield $name [linsert $args 0 type int]
+proc int {fieldName args} {
+    deffield $fieldName [linsert $args 0 type int]
 }
 
 #
 # long - define a long integer field
 #
-proc long {name args} {
-    deffield $name [linsert $args 0 type long]
+proc long {fieldName args} {
+    deffield $fieldName [linsert $args 0 type long]
 }
 
 #
 # wide - define a wide integer field -- should always be at least 64 bits
 #
-proc wide {name args} {
-    deffield $name [linsert $args 0 type wide]
+proc wide {fieldName args} {
+    deffield $fieldName [linsert $args 0 type wide]
 }
 
 #
 # float - define a floating point field
 #
-proc float {name args} {
-    deffield $name [linsert $args 0 type float]
+proc float {fieldName args} {
+    deffield $fieldName [linsert $args 0 type float]
 }
 
 #
 # double - define a double-precision floating point field
 #
-proc double {name args} {
-    deffield $name [linsert $args 0 type double]
+proc double {fieldName args} {
+    deffield $fieldName [linsert $args 0 type double]
 }
 
 #
 # inet - define an IPv4 address field
 #
-proc inet {name args} {
-    deffield $name [linsert $args 0 type inet]
+proc inet {fieldName args} {
+    deffield $fieldName [linsert $args 0 type inet]
 }
 
 #
 # tclobj - define an straight-through Tcl_Obj
 #
-proc tclobj {name args} {
-    deffield $name [linsert $args 0 type tclobj needsQuoting 1]
+proc tclobj {fieldName args} {
+    deffield $fieldName [linsert $args 0 type tclobj needsQuoting 1]
 }
 
 #
 # putfield - write out a field definition when emitting a C struct
 #
-proc putfield {type name {comment ""}} {
-    if {[string index $name 0] != "*"} {
-        set name " $name"
+proc putfield {type fieldName {comment ""}} {
+    if {[string index $fieldName 0] != "*"} {
+        set fieldName " $fieldName"
     }
 
     if {$comment != ""} {
         set comment " /* $comment */"
     }
-    emit [format "    %-20s %s;%s" $type $name $comment]
+    emit [format "    %-20s %s;%s" $type $fieldName $comment]
 }
 
 #
@@ -1571,92 +1571,92 @@ proc gen_defaults_subr {subr struct} {
     emit "        // $baseCopy._dirty = 1;"
     emit "       $baseCopy.hashEntry.key = NULL;"
 
-    foreach myfield $fieldList {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
 	switch $field(type) {
 	    varstring {
-	        emit "        $baseCopy.$myfield = (char *) NULL;"
-		emit "        $baseCopy._${myfield}Length = 0;"
-		emit "        $baseCopy._${myfield}AllocatedLength = 0;"
+	        emit "        $baseCopy.$fieldName = (char *) NULL;"
+		emit "        $baseCopy._${fieldName}Length = 0;"
+		emit "        $baseCopy._${fieldName}AllocatedLength = 0;"
 
 		if {![info exists field(notnull)] || !$field(notnull)} {
 		    if {[info exists field(default)]} {
-			emit "        $baseCopy._${myfield}IsNull = 0;"
+			emit "        $baseCopy._${fieldName}IsNull = 0;"
 		    } else {
-			emit "        $baseCopy._${myfield}IsNull = 1;"
+			emit "        $baseCopy._${fieldName}IsNull = 1;"
 		    }
 		}
 	    }
 
 	    fixedstring {
 	        if {[info exists field(default)]} {
-		    emit "        strncpy ($baseCopy.$myfield, \"$field(default)\", $field(length));"
+		    emit "        strncpy ($baseCopy.$fieldName, \"$field(default)\", $field(length));"
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 0;"
+			emit "        $baseCopy._${fieldName}IsNull = 0;"
 		    }
 		} else {
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 1;"
+			emit "        $baseCopy._${fieldName}IsNull = 1;"
 		    }
 		}
 	    }
 
 	    mac {
 		if {[info exists field(default)]} {
-		    emit "        $baseCopy.$myfield = *ether_aton (\"$field(default)\");"
+		    emit "        $baseCopy.$fieldName = *ether_aton (\"$field(default)\");"
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 0;"
+			emit "        $baseCopy._${fieldName}IsNull = 0;"
 		    }
 		} else {
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 1;"
+			emit "        $baseCopy._${fieldName}IsNull = 1;"
 		    }
 		}
 	    }
 
 	    inet {
 		if {[info exists field(default)]} {
-		    emit "        inet_aton (\"$field(default)\", &$baseCopy.$myfield);"
+		    emit "        inet_aton (\"$field(default)\", &$baseCopy.$fieldName);"
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 0;"
+			emit "        $baseCopy._${fieldName}IsNull = 0;"
 		    }
 		} else {
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 1;"
+			emit "        $baseCopy._${fieldName}IsNull = 1;"
 		    }
 		}
 	    }
 
 	    char {
 	        if {[info exists field(default)]} {
-		    emit "        $baseCopy.$myfield = '[string index $field(default) 0]';"
+		    emit "        $baseCopy.$fieldName = '[string index $field(default) 0]';"
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 0;"
+			emit "        $baseCopy._${fieldName}IsNull = 0;"
 		    }
 		} else {
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 1;"
+			emit "        $baseCopy._${fieldName}IsNull = 1;"
 		    }
 		}
 	    }
 
 	    tclobj {
-	        emit "        $baseCopy.$myfield = (Tcl_Obj *) NULL;"
+	        emit "        $baseCopy.$fieldName = (Tcl_Obj *) NULL;"
 		if {![info exists field(notnull)] || !$field(notnull)} {
-		    emit "        $baseCopy._${myfield}IsNull = 1;"
+		    emit "        $baseCopy._${fieldName}IsNull = 1;"
 		}
 	    }
 
 	    default {
 	        if {[info exists field(default)]} {
-	            emit "        $baseCopy.$myfield = $field(default);"
+	            emit "        $baseCopy.$fieldName = $field(default);"
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 0;"
+			emit "        $baseCopy._${fieldName}IsNull = 0;"
 		    }
 		} else {
 		    if {![info exists field(notnull)] || !$field(notnull)} {
-			emit "        $baseCopy._${myfield}IsNull = 1;"
+			emit "        $baseCopy._${fieldName}IsNull = 1;"
 		    }
 		}
 	    }
@@ -1690,12 +1690,12 @@ proc gen_delete_subr {subr struct} {
     emit "    }"
     emit ""
 
-    foreach myfield $fieldList {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
 	switch $field(type) {
 	    varstring {
-	        emit "    if (row->$myfield != (char *) NULL) ckfree ((void *)row->$myfield);"
+	        emit "    if (row->$fieldName != (char *) NULL) ckfree ((void *)row->$fieldName);"
 	    }
 	}
     }
@@ -1776,8 +1776,8 @@ proc determine_how_many_linked_lists_and_gen_field_index_table {} {
 
     set result "int ${table}_index_numbers\[\] = $leftCurly"
     set nLinkedLists 1
-    foreach myfield $fieldList {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
         # if the "indexed" field doesn't exist or is 0, skip it
         if {![info exists field(indexed)] || !$field(indexed)} {
@@ -1830,8 +1830,8 @@ proc gen_struct {} {
     putfield "ctable_HashEntry" "hashEntry"
     putfield "ctable_LinkedListNode"  "_ll_nodes\[$NLINKED_LISTS\]"
 
-    foreach myfield $nonBooleans {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $nonBooleans {
+	upvar ::ctable::fields::$fieldName field
 
 	switch $field(type) {
 	    varstring {
@@ -1866,15 +1866,15 @@ proc gen_struct {} {
 	}
     }
 
-    foreach myfield $booleans {
-	putfield "unsigned int" "$myfield:1"
+    foreach fieldName $booleans {
+	putfield "unsigned int" "$fieldName:1"
     }
 
-    foreach myfield $fieldList {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
 	if {![info exists field(notnull)] || !$field(notnull)} {
-	    putfield "unsigned int" _${myfield}IsNull:1
+	    putfield "unsigned int" _${fieldName}IsNull:1
 	}
     }
 
@@ -1885,7 +1885,7 @@ proc gen_struct {} {
 #
 # emit_set_num_field - emit code to set a numeric field
 #
-proc emit_set_num_field {field type} {
+proc emit_set_num_field {fieldName type} {
     variable numberSetSource
     variable table
 
@@ -1932,7 +1932,7 @@ proc emit_set_num_field {field type} {
 	}
     }
 
-    set optname [field_to_enum $field]
+    set optname [field_to_enum $fieldName]
 
     emit [string range [subst $numberSetSource] 1 end-1]
 }
@@ -1942,23 +1942,23 @@ proc emit_set_num_field {field type} {
 # "set source" string to go with it and gets managed in a standard
 #  way
 #
-proc emit_set_standard_field {field setSourceVarName} {
+proc emit_set_standard_field {fieldName setSourceVarName} {
     variable $setSourceVarName
     variable table
 
-    set optname [field_to_enum $field]
+    set optname [field_to_enum $fieldName]
     emit [string range [subst [set $setSourceVarName]] 1 end-1]
 }
 
 #
 # emit_set_varstring_field - emit code to set a varstring field
 #
-proc emit_set_varstring_field {table field default defaultLength} {
+proc emit_set_varstring_field {table fieldName default defaultLength} {
     variable varstringSetSource
 
     set default [cquote $default]
 
-    set optname [field_to_enum $field]
+    set optname [field_to_enum $fieldName]
 
     emit [string range [subst $varstringSetSource] 1 end-1]
 }
@@ -1966,12 +1966,12 @@ proc emit_set_varstring_field {table field default defaultLength} {
 #           
 # emit_set_fixedstring_field - emit code to set a fixedstring field
 #
-proc emit_set_fixedstring_field {field length} {
+proc emit_set_fixedstring_field {fieldName length} {
     variable fixedstringSetSource
     variable table
     variable nullCheckDuringSetSource
       
-    set optname [field_to_enum $field]
+    set optname [field_to_enum $fieldName]
 
     emit [string range [subst $fixedstringSetSource] 1 end-1]
 } 
@@ -2043,17 +2043,17 @@ set numberIncrSource {
 	int incrAmount;
 
 	if (Tcl_GetIntFromObj (interp, obj, &incrAmount) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $field increment amount", (char *)NULL);
+	    Tcl_AppendResult (interp, " while converting $fieldName increment amount", (char *)NULL);
 	    return TCL_ERROR;
 	}
-[gen_number_incr_null_check_code $table $field]
+[gen_number_incr_null_check_code $table $fieldName]
 
 	if ((indexCtl == CTABLE_INDEX_NORMAL) && ctable->skipLists\[field] != NULL) {
 	    ctable_RemoveFromIndex (ctable, row, field);
 	}
 
-	row->$field += incrAmount;
-[gen_set_notnull_if_notnull $table $field]
+	row->$fieldName += incrAmount;
+[gen_set_notnull_if_notnull $table $fieldName]
 	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
 	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 		return TCL_ERROR;
@@ -2066,7 +2066,7 @@ set numberIncrSource {
 set illegalIncrSource {
       case $optname: {
 	Tcl_ResetResult (interp);
-	Tcl_AppendResult (interp, "can't incr non-numeric field '$field'", (char *)NULL);
+	Tcl_AppendResult (interp, "can't incr non-numeric field '$fieldName'", (char *)NULL);
 	    return TCL_ERROR;
 	}
 }
@@ -2088,11 +2088,11 @@ ${table}_incr_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct
 #
 # emit_incr_num_field - emit code to incr a numeric field
 #
-proc emit_incr_num_field {field} {
+proc emit_incr_num_field {fieldName} {
     variable numberIncrSource
     variable table
 
-    set optname [field_to_enum $field]
+    set optname [field_to_enum $fieldName]
 
     emit [string range [subst $numberIncrSource] 1 end-1]
 }
@@ -2102,10 +2102,10 @@ proc emit_incr_num_field {field} {
 #  an error on attempts to incr the field that's being processed -- for
 #  when incr is not a reasonable thing
 #
-proc emit_incr_illegal_field {field} {
+proc emit_incr_illegal_field {fieldName} {
     variable illegalIncrSource
 
-    set optname [field_to_enum $field]
+    set optname [field_to_enum $fieldName]
     emit [string range [subst -nobackslashes -nocommands $illegalIncrSource] 1 end-1]
 }
 
@@ -2121,36 +2121,36 @@ proc gen_incrs {} {
     variable leftCurly
     variable rightCurly
 
-    foreach myfield $fieldList {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
 	switch $field(type) {
 	    int {
-		emit_incr_num_field $myfield
+		emit_incr_num_field $fieldName
 	    }
 
 	    long {
-		emit_incr_num_field $myfield
+		emit_incr_num_field $fieldName
 	    }
 
 	    wide {
-		emit_incr_num_field $myfield
+		emit_incr_num_field $fieldName
 	    }
 
 	    double {
-		emit_incr_num_field $myfield
+		emit_incr_num_field $fieldName
 	    }
 
 	    short {
-		emit_incr_num_field $myfield
+		emit_incr_num_field $fieldName
 	    }
 
 	    float {
-	        emit_incr_num_field $myfield
+	        emit_incr_num_field $fieldName
 	    }
 
 	    default {
-	        emit_incr_illegal_field $myfield
+	        emit_incr_illegal_field $fieldName
 	    }
 	}
     }
@@ -2189,36 +2189,36 @@ proc gen_sets {} {
     variable leftCurly
     variable rightCurly
 
-    foreach myfield $fieldList {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
 	switch $field(type) {
 	    int {
-		emit_set_num_field $myfield int
+		emit_set_num_field $fieldName int
 	    }
 
 	    long {
-		emit_set_num_field $myfield long
+		emit_set_num_field $fieldName long
 	    }
 
 	    wide {
-		emit_set_num_field $myfield wide
+		emit_set_num_field $fieldName wide
 	    }
 
 	    double {
-		emit_set_num_field $myfield double
+		emit_set_num_field $fieldName double
 	    }
 
 	    short {
-		emit_set_num_field $myfield int
+		emit_set_num_field $fieldName int
 	    }
 
 	    float {
-		emit_set_num_field $myfield float
+		emit_set_num_field $fieldName float
 	    }
 
 	    fixedstring {
-		emit_set_fixedstring_field $myfield $field(length)
+		emit_set_fixedstring_field $fieldName $field(length)
 	    }
 
 	    varstring {
@@ -2229,27 +2229,27 @@ proc gen_sets {} {
 		    set default ""
 		    set defaultLength 0
 		}
-		emit_set_varstring_field $table $myfield $default $defaultLength
+		emit_set_varstring_field $table $fieldName $default $defaultLength
 	    }
 
 	    boolean {
-		emit_set_standard_field $myfield boolSetSource
+		emit_set_standard_field $fieldName boolSetSource
 	    }
 
 	    char {
-		emit_set_standard_field $myfield charSetSource
+		emit_set_standard_field $fieldName charSetSource
 	    }
 
 	    inet {
-	        emit_set_standard_field $myfield inetSetSource
+	        emit_set_standard_field $fieldName inetSetSource
 	    }
 
 	    mac {
-	        emit_set_standard_field $myfield macSetSource
+	        emit_set_standard_field $fieldName macSetSource
 	    }
 
 	    tclobj {
-	        emit_set_standard_field $myfield tclobjSetSource
+	        emit_set_standard_field $fieldName tclobjSetSource
 	    }
 
 	    default {
@@ -2444,15 +2444,28 @@ proc gen_setup_routine {table} {
     # (hopefully, heh) they'll never be deleted.
     #
     # also populate the *_NameObjList table
+    # and the *_KeyObjList table
+    # and the *_KeyIndex table
     #
     set position 0
+    set keyPosition 0
     foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
+
+        if {[info exists field(key)] && $field(key)} {
+	    emit "    ${table}_KeyIndex\[$keyPosition\] = $position;"
+	    emit "    ${table}_KeyObjList\[$keyPosition\] ="
+	    incr keyPosition
+        }
+
 	set nameObj ${table}_${fieldName}NameObj
         emit "    ${table}_NameObjList\[$position\] = $nameObj = Tcl_NewStringObj (\"$fieldName\", -1);"
 	emit "    Tcl_IncrRefCount ($nameObj);"
 	emit ""
 	incr position
     }
+    emit "    ${table}_KeyIndex\[$keyPosition\] = -1;"
+    emit "    ${table}_KeyObjList\[$keyPosition\] ="
     emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
     emit ""
 
@@ -2507,6 +2520,7 @@ proc gen_code {} {
     set Id {CTable template Id}
 
     set nFields [string toupper $table]_NFIELDS
+    set nKeys [string toupper $table]_NKEYS
 
     set rowStruct $table
 
@@ -2523,6 +2537,8 @@ proc gen_code {} {
     gen_sort_compare_function
 
     gen_search_compare_function
+
+    gen_make_key_functions
 
     emit [subst -nobackslashes -nocommands $cmdBodySource]
 }
@@ -2735,16 +2751,16 @@ proc gen_get_set_obj {obj type fieldName} {
 # set_list_obj - generate C code to emit a Tcl obj containing the named
 #  field into a list that's being cons'ed up
 #
-proc set_list_obj {position type field} {
-    emit "    listObjv\[$position] = [gen_new_obj $type $field];"
+proc set_list_obj {position type fieldName} {
+    emit "    listObjv\[$position] = [gen_new_obj $type $fieldName];"
 }
 
 #
 # append_list_element - generate C code to append a list element to the
 #  output object.  used by code that lets you get one or more named fields.
 #
-proc append_list_element {type field} {
-    return "Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), [gen_new_obj $type $field])"
+proc append_list_element {type fieldName} {
+    return "Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), [gen_new_obj $type $fieldName])"
 }
 
 #
@@ -2859,6 +2875,121 @@ proc gen_nonnull_keyvalue_list {} {
 }
 
 #
+# key_names - Return the list of keyfield names
+#
+proc key_names {} {
+    variable fields
+    variable fieldList
+    variable keyNames
+    if ![info exists keyNames] {
+        set keyNames {}
+        foreach fieldName $fieldList {
+	    upvar ::ctable::fields::$fieldName field
+
+            if {[info exists field(key)] && $field(key)} {
+	        lappend keyNames $fieldName
+            }
+        }
+    }
+    return $keyNames
+}
+
+#
+# gen_make_key_functions - Generate C code to return the key fields as a list
+#
+proc gen_make_key_functions {} {
+    gen_make_key_from_keylist
+    gen_make_key_from_list
+}
+
+proc gen_make_key_from_keylist {} {
+    variable table
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    set keyNames [key_names]
+    set lengthKey [string toupper $table]_NKEYS
+
+    emit "Tcl_Obj *${table}_key_from_keylist (Tcl_Interp *interp, Tcl_Obj **objv, int objc) $leftCurly"
+
+    if ![llength $keyNames] {
+        emit "    return (Tcl_Obj *)NULL;"
+    } else {
+	emit "    int      i;"
+        emit "    Tcl_Obj *listObjv\[$lengthKey];"
+        emit ""
+
+        emit "    for(i = 0; i < $lengthKey; i++)"
+	emit "        listObjv\[i] = NULL;"
+	emit ""
+
+        emit "    for(i = 0; i < objc; i+=2) $leftCurly"
+	set position 0
+        foreach fieldName $keyNames {
+	    emit "        if(strcmp(Tcl_GetString(objv\[i]), \"$fieldName\") == 0)"
+	    emit "            listObjv\[$position] = objv\[i+1];"
+	    incr position
+        }
+	emit "$rightCurly"
+	emit ""
+
+        emit "    for(i = 0; i < $lengthKey; i++)"
+	emit "        if(listObjv\[i] == NULL)"
+	emit "            return NULL;"
+	emit ""
+
+        emit "    return Tcl_NewListObj ($lengthKey, listObjv);"
+    }
+
+    emit "$rightCurly"
+    emit ""
+}
+
+proc gen_make_key_from_list {} {
+    variable table
+    variable fields
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    set keyNames [key_names]
+    set lengthKey [string toupper $table]_NKEYS
+
+    emit "Tcl_Obj *${table}_key_from_list (Tcl_Interp *interp, Tcl_Obj **objv, int objc) $leftCurly"
+
+    if ![llength $keyNames] {
+        emit "    return (Tcl_Obj *)NULL;"
+    } else {
+        emit "    Tcl_Obj *listObjv\[$lengthKey];"
+        emit ""
+        set maxIndex -1
+        foreach fieldName $keyNames {
+	    set index [lsearch $fieldList $fieldName]
+	    if {$index > $maxIndex} {
+		set maxIndex $index
+	    }
+        }
+	emit "    if(objc <= $index) return NULL;"
+
+	set position 0
+        foreach fieldName $keyNames {
+	    set index [lsearch $fieldList $fieldName]
+	    emit "    listObjv\[$position] = objv\[$index];"
+	    incr position
+        }
+	emit "    listObjv\[$lengthKey-1] = NULL;"
+	emit ""
+
+        emit "    return Tcl_NewListObj ($lengthKey, listObjv);"
+    }
+
+    emit "$rightCurly"
+    emit ""
+}
+
+#
 # gen_field_names - generate C code containing an array of pointers to strings
 #  comprising the names of all of the fields in a row of the table being
 #  defined.  Also generate an enumerated type of all of the field names
@@ -2876,9 +3007,12 @@ proc gen_field_names {} {
     emit "#define [string toupper $table]_NFIELDS [llength $fieldList]"
     emit ""
 
+    emit "#define [string toupper $table]_NKEYS [llength [key_names]]"
+    emit ""
+
     emit "static CONST char *${table}_fields\[] = $leftCurly"
-    foreach myfield $fieldList {
-	emit "    \"$myfield\","
+    foreach fieldName $fieldList {
+	emit "    \"$fieldName\","
     
     }
     emit "    (char *) NULL"
@@ -2928,18 +3062,18 @@ proc gen_field_names {} {
     emit "[string range $unique 0 end-1]\n$rightCurly;\n"
 
     emit "// define objects that will be filled with the corresponding field names"
-    foreach myfield $fieldList {
-        emit "Tcl_Obj *${table}_${myfield}NameObj;"
+    foreach fieldName $fieldList {
+        emit "Tcl_Obj *${table}_${fieldName}NameObj;"
     }
     emit ""
 
     emit "// define field property list keys and values to allow introspection"
 
     # do keys
-    foreach myfield $fieldList {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
-	set propstring "char *${table}_${myfield}_propkeys\[] = $leftCurly"
+	set propstring "char *${table}_${fieldName}_propkeys\[] = $leftCurly"
     
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$fieldName\", "
@@ -2949,18 +3083,18 @@ proc gen_field_names {} {
     emit ""
 
     set propstring "static char **${table}_propKeys\[] = $leftCurly"
-    foreach myfield $fieldList {
-        append propstring "${table}_${myfield}_propkeys,"
+    foreach fieldName $fieldList {
+        append propstring "${table}_${fieldName}_propkeys,"
     }
     emit "[string range $propstring 0 end-1]$rightCurly;"
     emit ""
     # end of keys
 
     # do values, replica of keys, needs to be collapsed
-    foreach myfield $fieldList {
-	upvar ::ctable::fields::$myfield field
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
-	set propstring "char *${table}_${myfield}_propvalues\[] = $leftCurly"
+	set propstring "char *${table}_${fieldName}_propvalues\[] = $leftCurly"
     
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$field($fieldName)\", "
@@ -2970,14 +3104,18 @@ proc gen_field_names {} {
     emit ""
 
     set propstring "static char **${table}_propValues\[] = $leftCurly"
-    foreach myfield $fieldList {
-        append propstring "${table}_${myfield}_propvalues,"
+    foreach fieldName $fieldList {
+        append propstring "${table}_${fieldName}_propvalues,"
     }
     emit "[string range $propstring 0 end-1]$rightCurly;"
     emit ""
     # end of values
 
     emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
+    emit ""
+
+    emit "int      ${table}_KeyIndex\[[string toupper $table]_NKEYS + 1\];"
+    emit "Tcl_Obj *${table}_KeyObjList\[[string toupper $table]_NKEYS + 1\];"
     emit ""
 
     emit "Tcl_Obj *${table}_DefaultEmptyStringObj;"
@@ -3146,13 +3284,13 @@ proc gen_field_compare_null_check_source {table fieldName} {
 # fieldCompareHeaderSource - code for defining a field compare function
 #
 set fieldCompareHeaderSource {
-// field compare function for field '$field' of the '$table' table...
-int ${table}_field_${field}_compare(const ctable_BaseRow *vPointer1, const ctable_BaseRow *vPointer2) $leftCurly
+// field compare function for field '$fieldName' of the '$table' table...
+int ${table}_field_${fieldName}_compare(const ctable_BaseRow *vPointer1, const ctable_BaseRow *vPointer2) $leftCurly
     struct ${table} *row1, *row2;
 
     row1 = (struct $table *) vPointer1;
     row2 = (struct $table *) vPointer2;
-[gen_field_compare_null_check_source $table $field]
+[gen_field_compare_null_check_source $table $fieldName]
 }
 
 set fieldCompareTrailerSource {
@@ -3164,11 +3302,11 @@ $rightCurly
 # boolean (bit) for use in a field comparison routine.
 #
 set boolFieldCompSource {
-    if (row1->$field && !row2->$field) {
+    if (row1->$fieldName && !row2->$fieldName) {
 	return -1;
     }
 
-    if (!row1->$field && row2->$field) {
+    if (!row1->$fieldName && row2->$fieldName) {
 	return 1;
     }
 
@@ -3181,11 +3319,11 @@ set boolFieldCompSource {
 #  compares.
 #
 set numberFieldCompSource {
-    if (row1->$field < row2->$field) {
+    if (row1->$fieldName < row2->$fieldName) {
         return -1;
     }
 
-    if (row1->$field > row2->$field) {
+    if (row1->$fieldName > row2->$fieldName) {
 	return 1;
     }
 
@@ -3197,14 +3335,14 @@ set numberFieldCompSource {
 # a string for use in searching, sorting, etc.
 #
 set varstringFieldCompSource {
-    if (*row1->$field != *row2->$field) {
-        if (*row1->$field < *row2->$field) {
+    if (*row1->$fieldName != *row2->$fieldName) {
+        if (*row1->$fieldName < *row2->$fieldName) {
 	    return -1;
 	} else {
 	    return 1;
 	}
     }
-    return strcmp (row1->$field, row2->$field);
+    return strcmp (row1->$fieldName, row2->$fieldName);
 }
 
 #
@@ -3212,14 +3350,14 @@ set varstringFieldCompSource {
 # fixed-length string for use in a searching, sorting, etc.
 #
 set fixedstringFieldCompSource {
-    if (*row1->$field != *row2->$field) {
-        if (*row1->$field < *row2->$field) {
+    if (*row1->$fieldName != *row2->$fieldName) {
+        if (*row1->$fieldName < *row2->$fieldName) {
 	    return -1;
 	} else {
 	    return 1;
 	}
     }
-    return strncmp (row1->$field, row2->$field, $length);
+    return strncmp (row1->$fieldName, row2->$fieldName, $length);
 }
 
 #
@@ -3227,7 +3365,7 @@ set fixedstringFieldCompSource {
 # inline binary arrays (inets and mac addrs) for use in searching and sorting.
 #
 set binaryDataFieldCompSource {
-    return memcmp (&row1->$field, &row2->$field, $length);
+    return memcmp (&row1->$fieldName, &row2->$fieldName, $length);
 }
 
 #
@@ -3235,13 +3373,13 @@ set binaryDataFieldCompSource {
 # a tclobj for use in searching and sorting.
 #
 set tclobjFieldCompSource {
-    return strcmp (Tcl_GetString (row1->$field), Tcl_GetString (row2->$field));
+    return strcmp (Tcl_GetString (row1->$fieldName), Tcl_GetString (row2->$fieldName));
 }
 
 #
 # gen_field_comp - emit code to compare a field for a field comparison routine
 #
-proc gen_field_comp {field} {
+proc gen_field_comp {fieldName} {
     variable table
     variable booleans
     variable fields
@@ -3256,9 +3394,9 @@ proc gen_field_comp {field} {
     variable boolFieldCompSource
     variable tclobjFieldCompSource
 
-    upvar ::ctable::fields::$field fieldData
+    upvar ::ctable::fields::$fieldName field
 
-    switch $fieldData(type) {
+    switch $field(type) {
 	int {
 	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
 	}
@@ -3288,7 +3426,7 @@ proc gen_field_comp {field} {
 	}
 
 	fixedstring {
-	    set length $fieldData(length)
+	    set length $field(length)
 	    emit [string range [subst -nobackslashes -nocommands $fixedstringFieldCompSource] 1 end-1]
 	}
 
@@ -3315,7 +3453,7 @@ proc gen_field_comp {field} {
 	}
 
 	default {
-	    error "attempt to emit sort compare source for field of unknown type $fieldData(type)"
+	    error "attempt to emit sort compare source for field of unknown type $field(type)"
 	}
     }
 }
@@ -3332,9 +3470,9 @@ proc gen_field_compare_functions {} {
     variable fieldList
 
     # generate all of the field compare functions
-    foreach field $fieldList {
+    foreach fieldName $fieldList {
 	emit [string range [subst -nobackslashes $fieldCompareHeaderSource] 1 end-1]
-	gen_field_comp $field
+	gen_field_comp $fieldName
 	emit [string range [subst -nobackslashes -nocommands $fieldCompareTrailerSource] 1 end-1]
     }
 
@@ -3342,8 +3480,8 @@ proc gen_field_compare_functions {} {
     emit "// array of table's field compare routines indexed by field number"
     emit "fieldCompareFunction_t ${table}_compare_functions\[] = $leftCurly"
     set typeList ""
-    foreach field $fieldList {
-	 append typeList "\n    ${table}_field_${field}_compare,"
+    foreach fieldName $fieldList {
+	 append typeList "\n    ${table}_field_${fieldName}_compare,"
     }
     emit "[string range $typeList 0 end-1]\n$rightCurly;\n"
 }
@@ -3425,12 +3563,12 @@ proc gen_sort_comp {} {
     variable boolSortSource
     variable tclobjSortSource
 
-    foreach field $fieldList {
-	upvar ::ctable::fields::$field fieldData
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
-	set fieldEnum [field_to_enum $field]
+	set fieldEnum [field_to_enum $fieldName]
 
-	switch $fieldData(type) {
+	switch $field(type) {
 	    int {
 		emit [string range [subst -nobackslashes $numberSortSource] 1 end-1]
 	    }
@@ -3460,7 +3598,7 @@ proc gen_sort_comp {} {
 	    }
 
 	    fixedstring {
-	        set length $fieldData(length)
+	        set length $field(length)
 		emit [string range [subst -nobackslashes $fixedstringSortSource] 1 end-1]
 	    }
 
@@ -3487,7 +3625,7 @@ proc gen_sort_comp {} {
 	    }
 
 	    default {
-	        error "attempt to emit sort compare source for field of unknown type $fieldData(type)"
+	        error "attempt to emit sort compare source for field of unknown type $field(type)"
 	    }
 	}
     }
@@ -3626,12 +3764,12 @@ proc gen_search_comp {} {
 
     set value sandbag
 
-    foreach field $fieldList {
-	upvar ::ctable::fields::$field fieldData
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
 
-	set fieldEnum [field_to_enum $field]
-	set type $fieldData(type)
-        set typeText $fieldData(type)
+	set fieldEnum [field_to_enum $fieldName]
+	set type $field(type)
+        set typeText $field(type)
 
 	switch $type {
 	    int {
@@ -3676,7 +3814,7 @@ proc gen_search_comp {} {
 
 	    fixedstring {
 		set getObjCmd Tcl_GetString
-	        set length $fieldData(length)
+	        set length $field(length)
 		emit [string range [subst -nobackslashes $fixedstringCompSource] 1 end-1]
 	    }
 
@@ -3708,7 +3846,7 @@ proc gen_search_comp {} {
 	    }
 
 	    default {
-	        error "attempt to emit search compare source for field of unknown type $fieldData(type)"
+	        error "attempt to emit search compare source for field of unknown type $field(type)"
 	    }
 	}
     }

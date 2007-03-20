@@ -226,6 +226,7 @@ typedef struct ctableCreatorTable {
 
     CONST char          **fieldNames;
     Tcl_Obj             **nameObjList;
+    Tcl_Obj		**keyObjList;
     int                  *fieldList;
     enum ctable_types    *fieldTypes;
     int                  *fieldsThatNeedQuoting;
