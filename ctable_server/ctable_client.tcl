@@ -145,6 +145,17 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
     set line [gets $sock]
 
     while 1 {
+	# Ignore blank lines
+	if {[string length $line] < 1} {
+	    set line [gets $sock]
+	    continue
+	}
+
+	# Handle "# NNNN" - multi-line request NNNN bytes long
+	if {"[string index $line 0]" == "#"} {
+	    set line [read $sock [string trim [string range $line 1 end]]]
+	}
+
 	switch [lindex $line 0] {
 	    "e" {
 		error [lindex $line 1] [lindex $line 2] [lindex $line 3]
@@ -152,14 +163,6 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 
 	    "k" {
 		return [lindex $line 1]
-	    }
-
-	    "#" { # Multi-line response: "# NNNN", read NNNN bytes & try again
-		set line [read $sock [lindex $line 1]]
-	    }
-
-	    "" { # Empty line
-		set line [read $sock [lindex $line 1]]
 	    }
 
 	    "r" {

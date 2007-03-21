@@ -60,13 +60,13 @@ proc serverInfo {verbose} {
 #
 # register - register a table for remote access
 #
-proc register {ctableUrl localTableName {type ""}} {
+proc register {ctableUrl ctable {type ""}} {
     variable registeredCtables
 
-    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir exportedTableName options
+    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
 
-    serverlog "register $ctableUrl $exportedTableName $type"
-    set registeredCtables($exportedTableName) $localTableName
+    serverlog "register $ctableUrl $table $type"
+    set registeredCtables($table) $ctable
 
     start_server $port
 }
@@ -75,7 +75,7 @@ proc register {ctableUrl localTableName {type ""}} {
 # setTrigger - specify trigger code for a ctable
 #
 # code is assumed to be a single list (or proc) and is called
-# as "eval $code [list $ctableURL $registeredCtable $command] $arguments"
+# as "eval $code [list $ctableURL $ctable $command] $arguments"
 #
 # eg:
 #   myHandler ctable://*:9999/foo ctable0 set key fieldname value...
@@ -91,10 +91,13 @@ proc setTrigger {ctableURL command code} {
 #
 # register_instantiator - register a ctable creator
 #
-proc register_instantiator {cTable} {
+proc register_instantiator {creatorName {creator ""}} {
     variable registeredCtableCreators
 
-    set registeredCtableCreators($cTable) ""
+    if {"$creator" == ""} {
+	set creator $creatorName
+    }
+    set registeredCtableCreators($creatorName) $creator
 }
 
 proc register_redirect {ctableUrl redirectedToCtableUrl} {
@@ -199,9 +202,9 @@ proc remote_receive {sock myPort} {
 	    serverlog "blank line"
 	    return
 	}
-	# "# NNNN" means a multi-line request NNNN bytes long
-	if {"[lindex $line 0]" == "#"} {
-	    set line [read $sock [lindex $line 1]]
+	# "#NNNN" means a multi-line request NNNN bytes long
+	if {"[string index $line 0]" == "#"} {
+	    set line [read $sock [string trim [string range $line 1 end]]]
 	}
 	lassign $line ctableUrl line 
 
@@ -256,24 +259,26 @@ proc remote_send {sock line {multi 1}} {
 #
 # instantiate - create an instance of a ctable and register it
 #
-proc instantiate {ctableCreator ctable} {
+proc instantiate {creatorName ctableUrl} {
     variable registeredCtables
     variable registeredCtableCreators
 
-    if {![info exists registeredCtableCreators($ctableCreator)]} {
-	error "unregistered ctable creator: $ctableCreator" "" CTABLE
+    if {![info exists registeredCtableCreators($creatorName)]} {
+	error "unregistered ctable creator: $creatorName" "" CTABLE
     }
+    set ctableCreator $registeredCtableCreators($creatorName)
 
-    if {[info exists registeredCtables($ctable)]} {
-	#error "ctable '$ctable' of creator '$ctableCreator' already exists" "" CTABLE
+    if {[info exists registeredCtables($ctableUrl)]} {
+	#error "ctable '$ctableUrl' of creator '$ctableCreator' already exists" "" CTABLE
 	return ""
     }
 
-    register $ctable
-    return [$ctableCreator create $ctable]
+    set ctable [$ctableCreator create $ctableUrl]
+    register $ctableUrl $ctable
+    return $ctable
 }
 
-proc remote_invoke {sock ctable line port} {
+proc remote_invoke {sock table line port} {
     variable registeredCtables
     variable registeredCtableCreators
     variable evalEnabled
@@ -284,7 +289,7 @@ proc remote_invoke {sock ctable line port} {
 
     set remoteArgs [lassign $line command]
 
-    ### puts "command '$command' ctable '$ctable' args '$remoteArgs'"
+    ### puts "command '$command' ctable '$table' args '$remoteArgs'"
 
     switch $command {
 	"shutdown" {
@@ -292,10 +297,10 @@ proc remote_invoke {sock ctable line port} {
 	}
 
 	"redirect" {
-	    register_redirect_ctable $ctable $port [lindex $remoteArgs 0]
-            if {[info exists registeredCtables($ctable)]} {
-		set old_ctable $registeredCtables($ctable)
-		unset registeredCtables($ctable)
+	    register_redirect_ctable $table $port [lindex $remoteArgs 0]
+            if {[info exists registeredCtables($table)]} {
+		set old_ctable $registeredCtables($table)
+		unset registeredCtables($table)
 	    }
 	    # If shutting down, don't bother to destroy the old ctable, it
 	    # will go away soon anyway when we exit.
@@ -315,7 +320,7 @@ proc remote_invoke {sock ctable line port} {
 	}
 
 	"create" {
-	    return [instantiate $ctable [lindex $remoteArgs 0]]
+	    return [instantiate $table [lindex $remoteArgs 0]]
 	}
 
 	"info" {
@@ -330,20 +335,20 @@ proc remote_invoke {sock ctable line port} {
 	    unset -nocomplain cmd
 	    set code [lassign $remoteArgs cmd]
 	    if ![info exists cmd] {
-		if [info exists triggerCommands($ctable)] {
-		    return $triggerCommands($ctable)
+		if [info exists triggerCommands($table)] {
+		    return $triggerCommands($table)
 		} else {
 		    return ""
 		}
 	    }
 	    if ![llength $code] {
-		if [info exists triggerCode($cmd:$ctable)] {
-		    return $triggerCode($cmd:$ctable)
+		if [info exists triggerCode($cmd:$table)] {
+		    return $triggerCode($cmd:$table)
 		} else {
 		    return ""
 		}
 	    }
-	    return [setTrigger $ctable $cmd $code]
+	    return [setTrigger $table $cmd $code]
         }
 
 	"tablemakers" {
@@ -378,15 +383,15 @@ proc remote_invoke {sock ctable line port} {
 	}
     }
 
-    if {![info exists registeredCtables($ctable)]} {
-	error "ctable $ctable not registered on this server" "" CTABLE
+    if {![info exists registeredCtables($table)]} {
+	error "ctable $table not registered on this server" "" CTABLE
     }
 
-    set myCtable $registeredCtables($ctable)
+    set ctable $registeredCtables($table)
 
-    if [info exists triggerCode($command:$ctable)] {
-	set cmd $triggerCode($command:$ctable)
-	lappend cmd $ctable $myCtable $command
+    if [info exists triggerCode($command:$table)] {
+	set cmd $triggerCode($command:$table)
+	lappend cmd $table $ctable $command
 	switch [catch [concat $cmd $remoteArgs] result] {
 	    1 { error $result $::errorInfo }
 	    2 { return $result }
@@ -401,13 +406,13 @@ proc remote_invoke {sock ctable line port} {
     }
 
     if $simpleCommand {
-	set cmd [linsert $remoteArgs 0 $myCtable $command]
+	set cmd [linsert $remoteArgs 0 $ctable $command]
 #serverlog "simple command '$cmd'"
 	return [eval $cmd]
     }
 
     # else it's a complex search command:
-    set cmd [linsert $remoteArgs 0 $myCtable $command -write_tabsep $sock]
+    set cmd [linsert $remoteArgs 0 $ctable $command -write_tabsep $sock]
 #puts "search command '$cmd'"
 #puts "start multiline response"
     remote_send $sock "m"
