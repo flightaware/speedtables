@@ -20,6 +20,17 @@ if {[t count] != 1} {
 }
 
 if {"[lindex [t get $first_key id] 0]" != "1"} {
-    error "row 0 should have had id 1"
+    error "row '$first_key' should have had id 1"
 }
 
+if {"[lindex [t get $first_key rank] 0]" != "1"} {
+    error "row '$first_key' should have had rank 1"
+}
+
+if {"[t store id 1 rank 3 name first]" != "$first_key"} {
+    error "Key should have been '$first_key'"
+}
+
+if {"[lindex [t get $first_key rank] 0]" != "3"} {
+    error "row '$first_key' should have had rank 3"
+}
