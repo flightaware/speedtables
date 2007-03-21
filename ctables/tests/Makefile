@@ -13,3 +13,4 @@ all:
 	tclsh8.4 tsv-nokey-tests.tcl
 	tclsh8.4 tsv-tests.tcl
 	tclsh8.4 new-tests.tcl
+	tclsh8.4 key-tests.tcl
