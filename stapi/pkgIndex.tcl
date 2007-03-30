@@ -18,6 +18,6 @@ package ifneeded sttp_display 1.0 [list source [file join $dir display/display.t
 package ifneeded sttp_display_test 1.0 [list source [file join $dir display/test.tcl]]
 package ifneeded sttp_locks 1.0 [list source [file join $dir server/lock.tcl]]
 package ifneeded sttp_optimizer 1.0 [list source [file join $dir client/optimizer.tcl]]
-package ifneeded sttp_postgres 1.0 [list source [file join $dir pgsql.tcl]]
+package ifneeded sttp_postgres 1.0 [list source [file join $dir pgsql.tcl]]\n[list source [file join $dir copy.tcl]]
 package ifneeded sttp_server 1.0 [list source [file join $dir server/server.tcl]]
 package ifneeded sttpx 1.0 [list source [file join $dir client/sttpx.tcl]]

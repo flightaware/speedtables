@@ -5,7 +5,7 @@ V=-verbose
 CLIENT=client/client.tcl client/pgsql.tcl client/optimizer.tcl client/sttpx.tcl
 SERVER=server/server.tcl server/lock.tcl
 DISPLAY=display/display.tcl display/test.tcl
-COMMON=debug.tcl pgsql.tcl sttp.tcl
+COMMON=debug.tcl pgsql.tcl sttp.tcl copy.tcl
 CA=sc-ca/client_glue.tcl sc-ca/server_glue.tcl
 TEST=server/test.tcl client/test.tcl
 

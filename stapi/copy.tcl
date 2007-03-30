@@ -120,6 +120,7 @@ namespace eval ::sttp {
     if [info exists keycol] {
       set args [concat [list $keycol] $args]]
     }
+
     set sql "COPY $table ([join $args ","]) FROM STDIN WITH NULL AS '';"
     # debug $sql
     set res [pg_exec $dp $sql]
@@ -139,7 +140,9 @@ namespace eval ::sttp {
       pg_result $res -clear
       return -code error "copyin_ctable: $err"
     }
+    set n [pg_result $res -cmdTuples]
     pg_result $res -clear
+    return $n
   }
 }
 
