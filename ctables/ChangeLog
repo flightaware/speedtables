@@ -31,6 +31,12 @@ $Id$
     * Implemented "$ctable store", using the same sequence numbers as
       read_tabsep and import_postgres_result.
 
+2/15/2007 karl
+    * Make ctable_RemoveNullFromIndex and ctable_InsertNullIntoIndex
+      silently do nothing.  This really needs to be revisited at
+      some point, the issue being how to represent our out-of-band
+      null values safely when they occur in an index.
+
 1/24/2007 karl
     * Fixed compiler error from fixedstring comparison routine generation.
 

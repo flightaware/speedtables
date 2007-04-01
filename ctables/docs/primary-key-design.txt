@@ -8,16 +8,18 @@ that's being worked on in late January 2007.
 As of 1/22/07, speed tables has always had an implicit key that is always
 a string and is always hashed and must be unique.
 
-In many respects much of that's reasonable.  It's nice to have a unique handle
-for each row.  Some databases have an OID, for example.
+In some respects, that's reasonable -- It's nice to have a unique handle
+for each row.  Many databases make use of an OID, for example.
 
 However, it's inconvenient that the key is out-of-band.  That is, the key
-does not appear as a field in the row and isn't accessible in the standard way 
-for searching, sorting, and the like.
+does not appear as a normal field in the row and thus isn't accessible in 
+the standard way for searching, sorting, and the like.
 
-When we've come across this, we've often duplicated the key into a field
-in the table and even created a skip list index on the field, making two
-different types of indexes on the same field.
+When we've run across the need to be able to use this key in a standard way
+within our stuff, we've duplicated the key into a field
+in the table, and even created a skip list index on the field, resulting in 
+two different types of indexes on the same field.  (There could be 
+circumstances where you'd want that, but not routinely.)
 
 Also since our hashed indexes are limited to strings, they're inefficient
 if we're using numbers, etc, and can be prone to number/string collating
@@ -26,8 +28,8 @@ problems and the like, i.e. sorts returning 1, 10, 11, 12, etc.
 We currently have two kinds of indexes, hash tables and skip lists.
 
 Skip lists are better when you need to do partial matches or in some way
-exploit the locality of stuff close to the key you're looking for, as with
-skip lists, traversing the key results in a sorted order.
+exploit the locality of stuff "close" to the key you're looking for, 
+for example, after locating a key, traversing through keys in sorted order.
 
 Hash tables are faster for straight lookups, however.  Our hash table code
 will find any item while typically requiring less than two comparisons.
@@ -41,33 +43,46 @@ present.
 
 It might be nice when defining an index to be able to specify whether it
 is to be a hash table or a skip list, and support a row appearing in multiple
-hashtables, as with skip lists.
+hashtables, as with skip lists.  This would not be super-easy to do as we
+currently define things, because our ctable_baseRow structure's last field
+is an array of linked list node structures of an unknown number (as they
+vary from table to table) and you can only have one of those things defined
+as the last thing in a structure, so you couldn't also have an unknown number
+of hash table entries.  (There are ways around this, of course.)
 
 Currently our hash tables do not support duplicates, although this can easily
 be added by supporting the same linked list routines for duplicates that we
 use with skip lists.
 
 We may not even want to do that, however, if we don't generalize the hash
-stuff.
+stuff.  We would only have a single hash table per table and it would be
+for a primary, unique key.
 
 We also need to support backwards compatibility to how things work now, for
 the time being at least, as we have a lot of code, including generated code,
-that uses ctables how they current work.
+that uses ctables with the implicit primary key.
 
 I'm thinking of possibly having an option to define a field "primary 1" and,
 if that's defined, that'll be the primary (unique) key for the table, but
-will appear in-band.
+it will appear in-band.
 
 We'll have to generate or reference a hash function for each data type that
 can be a primary index -- we'll reasonably exclude booleans, for example,
-from consideration as a primary key.
+from consideration as a primary key.  It doesn't seem useful to hash index a
+table based on a floating point number, either, as it could be difficult to
+find matching entries.  With skip lists, floating point numbers are useful
+as it really supports non-equality comparisons.  Range checks can be very 
+efficient, for instance.
 
 We'll be able to use existing field compare functions in the hash code that we 
 already generate for use with sorting and searching.  We have already, in fact,
 modified the hash table functions to use a compare function that returns -1, 0, 1 instead of 0, 1 for this very purpose.
 
-If a field is defined as primary and is a string, we simply use that char *
-instead of the char *key we normally put out there in the ctable_HashEntry
-structure that we include in the row structures we define.
+If a field is defined as primary and is a string, we could simply use that 
+char * instead of the char *key we normally put out there in the 
+ctable_HashEntry structure that we include in the row structures we define.
 
-
+But it would be a pretty big win to have a table indexed by various widths
+of integers, MAC addresses, and IP addresses as well as strings -- the 
+comparisons execute more quickly and there is no mallocing and freeing of
+memory as such fields are created and updated.
