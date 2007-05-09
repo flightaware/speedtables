@@ -470,21 +470,24 @@ catch { ::itcl::delete class STTPDisplay }
 	}
 
 	set first [expr $response(page) - 3]
-	if {$first > $pages - 7} {
-	  set first [expr $pages - 7]
+	if {$first > $pages - 5} {
+	  set first [expr $pages - 5]
 	}
         if {$first > 1} {
 	  lappend pagelist 1 1
 	  if {$first > 10} {
 	    lappend pagelist ".." 0
 	    set mid [expr $first / 2]
-	    if {$mid > 20} {
+	    if {$mid > 20 && $response(page) > $pages - 20} {
 	      set quarter [expr $mid / 2]
 	      lappend pagelist $quarter $quarter
 	      lappend pagelist ".." 0
 	    }
+	    if {$first < $pages - 4} {
+	      set first [expr $response(page) - 1]
+	    }
 	    lappend pagelist $mid $mid
-	    if {$first - $mid > 10} {
+	    if {$first - $mid > 10 && $response(page) > $pages - 20} {
 	      lappend pagelist ".." 0
 	      set quarter [expr ( $first + $mid ) / 2]
 	      lappend pagelist $quarter $quarter
@@ -499,8 +502,11 @@ catch { ::itcl::delete class STTPDisplay }
 	  set first 1
 	}
 	set last [expr $response(page) + 3]
-	if {$last < 7} {
-	  set last 7
+	if {$last < $pages - 10 && $last > 3} {
+	  set last [expr $response(page) + 1]
+	}
+	if {$last < 5} {
+	  set last 5
 	}
 	if {$last > $pages} {
 	  set last $pages
@@ -517,14 +523,14 @@ catch { ::itcl::delete class STTPDisplay }
 	  }
 	  if {$last < $pages - 10} {
 	    set mid [expr ( $pages + $last ) / 2]
-	    if {$last < $mid - 10} {
+	    if {$last < $mid - 10 && $response(page) < 20} {
 	      set quarter [expr ( $mid + $last ) / 2]
 	      lappend pagelist $quarter $quarter
 	      lappend pagelist ".." 0
 	    }
 	    lappend pagelist $mid $mid
 	    lappend pagelist ".." 0
-	    if {$mid < $pages - 20} {
+	    if {$mid < $pages - 20 && $response(page) < 20} {
 	      set quarter [expr ( $mid + $pages ) / 2]
 	      lappend pagelist $quarter $quarter
 	      lappend pagelist ".." 0
