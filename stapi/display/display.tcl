@@ -775,6 +775,7 @@ if 0 {
 	]
 	lappend fields $field
 	lappend allfields $field
+	lappend allnames $name
  	
 	set FieldNameMap($name) $field
 	set NameTextMap([$field text]) $name
@@ -1239,9 +1240,10 @@ if 0 {
 	puts "</TD></TR>"
 	foreach search $selection {
 	    foreach {how col what} $search { break }
-	    if {[lsearch $allfields $col] == -1} {
+	    if ![info exists FieldNameMap($col)] {
 		continue
 	    }
+	    set fld $FieldNameMap($col)
 	    puts "<TR CLASS=DIOSelect>"
 	    set f [::form #auto]
 	    puts "<DIV STYLE='display:none'>"
@@ -1260,7 +1262,7 @@ if 0 {
 		puts "<TD CLASS=DIOSelect WIDTH=1%>$cell</TD>"
 	    }
 	    foreach \
-		cell [list [$col text] $how $what] \
+		cell [list [$fld text] $how $what] \
 		align {right middle left} \
 	    {
 		puts "<TD CLASS=DIOSelect ALIGN=$align WIDTH=1%>$cell</TD>"
@@ -1313,6 +1315,10 @@ if 0 {
 	set new_list $search_list
 
 	if [info exists response(by)] {
+	    if {[info exists NameTextMap($response(by))]} {
+                set response(by) $NameTextMap($response(by))
+            }
+
 	    set name $response(by)
 
 	    set what $response(query)
@@ -1786,7 +1792,8 @@ if 0 {
     public variable response
     public variable cssArray
     public variable document	 ""
-    protected variable allfields    ""
+    protected variable allfields	{}
+    protected variable allnames		{}
     protected variable NameTextMap
     protected variable FieldNameMap
     public variable allfunctions {
