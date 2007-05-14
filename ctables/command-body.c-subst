@@ -10,7 +10,15 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
 	// to not be deleted, drop all indexes later will do a
 	// much faster job
 
+	// explicitly delete the hash entry - since we are fast-deleting
+	// the hash table buckets and not updating all the links, we
+	// gotta free key strings here or they don't get freed.  slight kludge.
+	// gotta do it before ${table}_delete because afterwards, the row
+	// is already deleted.
+        ckfree (row->hashEntry.key);
+
 	${table}_delete(ctable, (struct ${table} *)row, CTABLE_INDEX_PRIVATE);
+
     }
 
     // reset the linked list of all rows

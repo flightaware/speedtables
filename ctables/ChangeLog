@@ -1,6 +1,10 @@
 
 $Id$
 
+5/14/2007 karl
+    * Fixed bug in "reset" method (${table}_delete_all_rows) where none
+      of the hashtable string keys would be deleted.
+
 3/20/2007 peter
     * Implemented key generation for import_postgres_result. Have not
       done it for read_tabsep yet.
