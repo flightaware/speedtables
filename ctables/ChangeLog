@@ -1,6 +1,11 @@
 
 $Id$
 
+6/2/2007 karl
+    * Further parameterize the calls to compile stuff so that you can
+      separately control where Tcl gets picked up from, where PostgreSQL
+      gets picked up from, and whether you want Tcl memory debugging.
+
 5/14/2007 karl
     * Fixed bug in "reset" method (${table}_delete_all_rows) where none
       of the hashtable string keys would be deleted.

@@ -21,12 +21,19 @@ namespace eval ctable {
 
     variable genCompilerDebug
     variable showCompilerCommands
+    variable memDebug
+    variable targetDir
+    variable pgTargetDir
 
     set ctablePackageVersion 1.3
 
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
     set showCompilerCommands 0
+    set memDebug 0
+
+    set targetDir /usr/local
+    set pgTargetDir /usr/local
 
     variable pgtcl_ver 1.5
 
@@ -424,7 +431,7 @@ set fixedstringSetSource {
 	char *string;
 [gen_null_check_during_set_source $table $fieldName]
 	string = Tcl_GetString (obj);
-[gen_unset_null_during_set_source $table $fieldName] else if (strncmp(row->$fieldName, string, $length) == 0) {
+[gen_unset_null_during_set_source $table $fieldName] if (strncmp(row->$fieldName, string, $length) == 0) {
 	    return TCL_OK;
 	}
 [gen_ctable_remove_from_index $fieldName]
@@ -3876,6 +3883,9 @@ proc compile {fileFragName version} {
     variable buildPath
     variable pgtcl_ver
     variable genCompilerDebug
+    variable memDebug
+    variable targetDir
+    variable pgTargetDir
 
     set buildFragName $buildPath/$fileFragName-$version
     set sourceFile $buildFragName.c
@@ -3886,9 +3896,9 @@ proc compile {fileFragName version} {
     switch $tcl_platform(os) {
 	"FreeBSD" {
 	    if {$genCompilerDebug} {
-		set optflag "-O"
+		set optflag "-O0"
 		set dbgflag "-g"
-		set stub "-ltclstub84g"
+		set stub "-ltclstub8.4g"
 		set lib "-ltcl84g"
 	    } else {
 		set optflag "-O3"
@@ -3899,11 +3909,16 @@ proc compile {fileFragName version} {
 
 	    # put -DTCL_MEM_DEBUG in there if you're building with
 	    # memory debugging (see Tcl docs)
+	    if {$memDebug} {
+		set memDebugString "-DTCL_MEM_DEBUG=1"
+	    } else {
+		set memDebugString ""
+	    }
 
-	    myexec "gcc -pipe $optflag $dbgflag -fPIC -I/usr/local/include -I/usr/local/include/tcl8.4 -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
+	    myexec "gcc -pipe $optflag $dbgflag -fPIC -I$targetDir/include -I$targetDir/include/tcl8.4 -I$pgTargetDir/include -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
 
-	    myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R/usr/local/lib/pgtcl$pgtcl_ver -L/usr/local/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq -L/usr/local/lib $stub"
-	    #myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -L/usr/local/lib $stub"
+	    myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R$pgTargetDir/lib/pgtcl$pgtcl_ver -L$pgTargetDir/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgTargetDir/lib -lpq -L$targetDir/lib $stub"
+	    #myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -L$targetDir/lib $stub"
 	}
 
 # -finstrument-functions / -lSaturn
@@ -3922,7 +3937,7 @@ proc compile {fileFragName version} {
 		set lib "-ltcl8.4"
 	    }
 
-	    myexec "gcc -pipe -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/usr/local/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
+	    myexec "gcc -pipe -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$targetDir/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
 
 	    myexec "gcc -pipe $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub"
 
