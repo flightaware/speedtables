@@ -59,7 +59,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    if ![info exists hosts] {
 	      set hosts {}
 	    }
-	    set uri "cache://[join $hosts ":"]/$ctable"
+	    set uri "cache://[join $hosts ":"]/$table"
 	  }
 	  if ![info exists keyfields] {
 	    if ![::sttp::connected $uri] {
