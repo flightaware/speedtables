@@ -78,7 +78,7 @@ Methods for $display
 		Set hovertext for title
 
 	$display blankval name $blank
-		Value to display when field is null
+		Value to treat as null
 
 	$display limit $limit
 		Set search terms to limit the displayed portion of the ctable
