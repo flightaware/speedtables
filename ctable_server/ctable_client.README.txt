@@ -1,18 +1,16 @@
-#
-#
-#
-#
-#
-#
-#
+
+$Id$
 
 package require ctable_client
 
-remote_ctable_create localhost cable_info foo
+    remote_ctable ctable://localhost:1999/flightPlans flightPlans
 
-remote_ctable localhost foo
+This creates a new command, flightPlans, that is mostly a mirror of the ctable 
+foo on the remote machine (or on the same machine but in a different process.)
 
-    This creates a new command, foo, that is mostly a mirror of the ctable foo on the remote machine.
+    remote_ctable_create localhost cable_info foo
+
+Don't know if this even works anymore.
 
 
 
