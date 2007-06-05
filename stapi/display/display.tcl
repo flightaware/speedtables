@@ -862,16 +862,11 @@ if 0 {
 	upvar 1 $arrayName array
 
 	foreach field $allfields {
-
-            # for some reason the method for getting the value doesn't
-	    # work for boolean values, which inherit STTPDisplayField,
-	    # something to do with configvar
-	    #set array($field) [$field value]
 	    set t [$field type]
 	    set v [$field value]
 	    set n [$field name]
-	    if {"$v" == "" && [info exists blankval($name)]} {
-		if {"$blankval($name)" != "$v"} continue
+	    if {"$v" == "" && [info exists blankval($n)]} {
+		if {"$blankval($n)" != "$v"} continue
 	    }
 	    set array($n) $v
 	}

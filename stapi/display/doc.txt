@@ -71,7 +71,8 @@ Methods for $display
 		[insert explanation here]
 
 	$display case name $case
-		Set case of column title
+		Set whether the column can be matched uppercase or lowercase
+		when doing a case-independent match.
 
 	$display hovertext name $text
 		Set hovertext for title
