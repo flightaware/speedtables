@@ -155,9 +155,17 @@ catch { ::itcl::delete class STTPDisplay }
     #
     # handle_error - emit an error message
     #
-    method handle_error {error} {
+    method handle_error {error args} {
 	puts "<B>An error has occurred processing your request</B>"
 	puts "<PRE>"
+	if {$debug > 1} {
+	    puts ""
+	    if [llength $args] {
+		puts [join $args "\n\n"]
+	    } else {
+		puts "$::errorInfo"
+	    }
+	}
 	puts "$error"
 	puts "</PRE>"
     }
@@ -321,16 +329,14 @@ catch { ::itcl::delete class STTPDisplay }
 	}
 
 	if {[catch [list $this $mode] error]} {
-	    global errorInfo
+	    puts "</TD>"
+	    puts "</TR>"
+	    puts "</TABLE>"
 	    if !$trap_errors {
-		puts "</TD>"
-		puts "</TR>"
-		puts "</TABLE>"
 		if {$cleanup} { destroy }
-		error $error $errorInfo
+		error $error $::errorInfo
 	    }
 	    puts "<H2>Internal Error</H2>"
-	    puts "<pre>$errorInfo</pre>"
 	    handle_error "$this $mode => $error"
 	}
 
@@ -374,23 +380,23 @@ catch { ::itcl::delete class STTPDisplay }
     }
 
     protected method hide_cgi_vars {f args} {
-	foreach cgi_var {mode query by how sort rev num} {
-	    if {[lsearch $args $cgi_var] == -1} {
-	        if [info exists response($cgi_var)] {
-		    set val $response($cgi_var)
-		    if {"$cgi_var" == "mode"} {
-			if {"$val" == "+" || "$val" == "-"} {
-			    if [info exists response(query)] {
-				set val Search
-			    } else {
-				set val List
-			    }
-			}
-		    }
-	            $f hidden $cgi_var -value $val
-	        }
+	# Special cases first
+	if [info exists response(mode)] {
+ 	    set val $response(mode)
+	    if [string match {*[+ -]*} $val] {
+		set val [lindex {List Search} [info exists response(query)]]
 	    }
+ 	    $f hidden mode -value $val
 	}
+
+	# Just copy the rest
+ 	foreach cgi_var {query by how sort rev num} {
+  	    if {[lsearch $args $cgi_var] == -1} {
+  	        if [info exists response($cgi_var)] {
+		    $f hidden $cgi_var -value $response($cgi_var)
+  	        }
+  	    }
+  	}
     }
 
     #
@@ -566,7 +572,7 @@ catch { ::itcl::delete class STTPDisplay }
         puts "<TD CLASS=\"$class\">"
 	puts "<FONT SIZE=-1>"
 	if {"$end" == "Top"} {
-	  puts "$count rows, go to page"
+	  puts "$count records; page:"
 	} else {
 	  puts "Go to page"
 	}
@@ -583,7 +589,7 @@ catch { ::itcl::delete class STTPDisplay }
 	  hide_cgi_vars $f
 	  puts "<TD ALIGN=RIGHT>"
 	  puts "<FONT SIZE=-1>"
-	  puts "Jump directly to"
+	  puts "Jump to"
 	  $f text page -size 4 -value $response(page)
 	  $f submit submit -value "Go"
           puts "</FONT>"
@@ -614,34 +620,16 @@ catch { ::itcl::delete class STTPDisplay }
 	foreach field $fieldList {
 	    set name [$field name]
 	    set text [$field text]
-	    set sorting $allowsort
-	    ## If sorting is turned off, or this field is not in the
-	    ## sortfields, we don't display the sort option.
-	    if {$sorting && ![lempty $sortfields]} {
-		if {[lsearch $sortfields $field] < 0} {
-		    set sorting 0
-	        }
-	    }
-if 0 {
-	    if {$sorting && [info exists response(sort)]} {
-		if {"$response(sort)" == "$name"} {
-		    set sorting 0
-	        }
-	    }
-}
-	    if {$sorting && [info exists alias($name)]} {
-		set sorting 0
-	    }
 
 	    regsub -all $labelsplit $text "<BR>" text
-	    set ttl ""
-	    set ttl_text $text
+	    set col_title ""
+	    set col_title_text $text
 	    if [info exists hovertext($name)] {
-		set ttl " title=\"$hovertext($name)\""
-		set ttl_text "<span$ttl>$text</span>"
+		set col_title " title=\"$hovertext($name)\""
+		set col_title_text "<span$col_title>$text</span>"
 	    }
-	    if {!$sorting} {
-		set html $ttl_text
+	    if {![sortable $name]} {
+		set html $col_title_text
 	    } else {
 	        set html ""
 	        set list {}
@@ -659,7 +647,7 @@ if 0 {
 			set rev [expr 1 - $response(rev)]
 		    }
 		    lappend list rev $rev
-		    append html "$ttl_text&nbsp;"
+		    append html "$col_title_text&nbsp;"
 
 		    set desc $rev
 		    if [info exists order($name)] {
@@ -674,7 +662,7 @@ if 0 {
 		}
 		append html {<A HREF="}
 		append html [document $list]
-		append html "\"$a_attr$ttl>$text</A>"
+		append html "\"$a_attr$col_title>$text</A>"
 	    }
 	    set class [get_css_class TH DIORowHeader DIORowHeader-$name]
 	    puts "<TH CLASS=\"$class\" WIDTH=$W%>$html</TH>"
@@ -686,12 +674,17 @@ if 0 {
 	puts "</TR>"
     }
 
+    private method altrow {} {
+	incr rowcount
+	if !$alternaterows { return "" }
+	if {$rowcount % 2} { return "" }
+	return Alt
+    }
+
     method showrow {arrayName} {
 	upvar 1 $arrayName a
 
-	incr rowcount
-	set alt ""
-	if {$alternaterows && ![expr $rowcount % 2]} { set alt Alt }
+	set alt [altrow]
 
 	set fieldList $fields
 	if {![lempty $rowfields]} { set fieldList $rowfields }
@@ -704,18 +697,9 @@ if 0 {
 		set column $alias($name)
 	    }
 	    set class [get_css_class TD DIORowField$alt DIORowField$alt-$name]
-	    set text ""
-	    if {[info exists a($column)]} {
-	        set text $a($column)
-	    }
-	    if [info exists filters($name)] {
-		if {[info exists filtercol($name)]
-		 && [info exists a($filtercol($name))]} {
-		    set text [$filters($name) $text $a($filtercol($name))]
-		} else {
-		    set text [$filters($name) $text]
-		}
-	    }
+
+	    set text [column_value $name a]
+
 	    if ![string length $text] {
 		set text "&nbsp;"
 	    }
@@ -753,9 +737,75 @@ if 0 {
     }
 
     method rowfooter {{total 0}} {
+	if [array exists lastrow] {
+	    set rowclass "DIORowField[altrow]"
+
+	    set fieldList $fields
+	    if {![lempty $rowfields]} { set fieldList $rowfields }
+
+	    set skip 0
+	    set row {}
+	    foreach field $fieldList {
+	        set name [$field name]
+	        if [info exists lastrow($name)] {
+		    if {$skip > 0} {
+			lappend row "<TD CLASS=\"$rowclass\" span=$skip>&nbsp;</TD>"
+		    }
+		    set skip 0
+		    lappend row "<TD CLASS=\"$rowclass\">$lastrow($name)</TD>"
+		} else {
+		    incr skip
+		}
+	    }
+	    if [llength $row] {
+		if {![lempty $rowfunctions] && "$rowfunctions" != "-"} {
+		    incr skip
+		}
+		if {$skip > 0} {
+		    lappend row "<TD CLASS=\"$rowclass\" span=$skip>&nbsp;</TD>"
+		}
+		puts "<TR CLASS=\"rowclass\">"
+		puts [join $row " "]
+		puts "</TR>"
+	    }
+	}
 	puts "</TABLE>"
 
 	if {$bottomnav} { page_buttons Bottom $total }
+    }
+
+    ## Check field's "sortability"
+    protected method sortable {name} {
+        ## If allowsort is false, nothing is sortable.
+	if !$allowsort {
+	    return 0
+	}
+        ## If there's a list of sortfields, it's only sortable if it's in that
+	if {![lempty $sortfields]} {
+	    if {[lsearch $sortfields $name] < 0} {
+		return 0
+	    }
+	}
+	## Otherwise if it's searchable, it's sortable
+	return [searchable $name]
+     }
+
+     ## Check field's "searchability"
+     protected method searchable {name} {
+	## If it's filtered and the filter isn't reversible one way or another
+	if {
+	    [info exists filters($name)] &&
+	    ![info exists unfilters($name)] &&
+	    ![string match "*_ok" $filters($name)]
+	} {
+	    return 0
+	}
+	## If it's an alias field
+	if [info exists alias($name)] {
+	    return 0
+	}
+	# Otherwise it's searchable
+	return 1
     }
 
     ## Define a new function.
@@ -795,8 +845,8 @@ if 0 {
 	    upvar 1 $_array array
 	}
 	
-        foreach val $values field [$ctable keys] {
-	    lappend selector [list = $field $val]
+        foreach val $values name [$ctable keys] {
+	    lappend selector [list = $name $val]
         }
 	foreach {key val} $limit {
 	    regsub {^-} $key "" key
@@ -838,11 +888,11 @@ if 0 {
     }
 
     method pretty_fields {list} {
-	set fieldList {}
+	set labels {}
 	foreach field $list {
-	    lappend fieldList [$field text]
+	    lappend labels [$field text]
 	}
-	return $fieldList
+	return $labels
     }
 
     method set_field_values {arrayName} {
@@ -862,7 +912,6 @@ if 0 {
 	upvar 1 $arrayName array
 
 	foreach field $allfields {
-	    set t [$field type]
 	    set v [$field value]
 	    set n [$field name]
 	    if {"$v" == "" && [info exists blankval($n)]} {
@@ -929,9 +978,16 @@ if 0 {
 
 	set columns {}
 
-	foreach name $fields {
+	foreach field $fields {
+	    set name [$field name]
+	    # Don't put alias fields in unless there's a csv filter for them
+	    if [info exists alias($name)] {
+		if ![info exists csvfilters($name)] {
+		    continue
+		}
+	    }
 	    lappend columns $name
-	    set label [$name text]
+	    set label [$field text]
 	    regsub -all { *<[^>]*> *} $label " " label
 	    lappend textlist $label
 	}
@@ -940,21 +996,15 @@ if 0 {
 	}
 
 	$ctable perform request -array_with_nulls a -key k -code {
+	    # If there's no fields defined, then use the columns we got from
+	    # the query and put their names out as the first line
 	    if {![llength $columns]} {
 		set columns [array names a]
 		puts $fp [::csv::join $columns]
 	    }
 	    set list {}
-	    foreach n $columns {
-		if [info exists a($n)] {
-		    set col $a($n)
-		    if [info exists csvfilters($n)] {
-			set col [$csvfilters($n) $col]
-		    }
-		    lappend list $col
-		} else {
-		    lappend list ""
-	        }
+	    foreach name $columns {
+		lappend list [column_value $name a csv]
 	    }
 	    puts $fp [::csv::join $list]
 	}
@@ -1092,34 +1142,24 @@ if 0 {
 	  puts "Select:"
 	}
 
-	set useFields $fields
-	if {![lempty $searchfields]} { set useFields $searchfields }
+	set fieldList $fields
+	if {![lempty $searchfields]} { set fieldList $searchfields }
 
-	if {![info exists response(mode)] ||
-	     "$response(mode)" == "List" ||
-	     "$response(mode)" == "Search"} {
-	    # filtered fields aren't searchable, because the displayed
-	    # value doesn't match the db value
-	    # alias fields aren't searchable
-	    set searchable {}
-	    foreach field $useFields {
-	        set name [$field name]
-	        if {
-		  ![info exists filters($name)] ||
-		  [info exists unfilters($name)] ||
-		  [string match *_ok $filters($name)]
-		} {
-	            if ![info exists alias($name)] {
-			lappend searchable $field
-		    }
-		}
-            }
-        } else {
-	    set searchable $useFields
+	set first "-column-"
+	if [info exists response(by)] {
+	    set first $response(by)
 	}
-	set field_names [pretty_fields $searchable]
-	set field_names [concat "-column-" $field_names]
-	$form select by -values $field_names -class DIOMainSearchBy
+
+	set labels [list $first]
+	foreach field $fieldList {
+	    if ![searchable [$field name]] { continue }
+	    set label [$field text]
+	    if {"$label" != "$first"} {
+		lappend labels $label
+	    }
+	}
+
+	$form select by -values $labels -class DIOMainSearchBy
 
 	puts "</TD>"
 	puts "<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>"
@@ -1451,14 +1491,19 @@ if 0 {
         }
 
 	# Because an empty string is not EXACTLY a null value and not always
-	# a legal value, if adding a new row and the array element is empty,
+	# a legal value, if the array element is empty and we're adding a
+	# new row or there is no legal null value for the type
 	# remove it from the array -- PdS Jul 2006
-	if $adding {
-	  foreach {n v} [array get storeArray] {
+	foreach {n v} [array get storeArray] {
 	    if {"$v" == ""} {
-	      unset storeArray($n)
+		if $adding {
+	            unset storeArray($n)
+		} elseif {![info exists FieldNameMap($n)]} {
+	            unset storeArray($n)
+		} elseif {![$FieldNameMap($n) null_ok]} {
+		    unset storeArray($n)
+		}
 	    }
-	  }
 	}
 
 	store storeArray
@@ -1553,23 +1598,23 @@ if 0 {
     ## Define variable functions for each variable.
     ###
 
-    private method names2fields {names} {
-	set fields {}
-	foreach name $names {
+    private method names2fields {nameList} {
+	set fieldList {}
+	foreach name $nameList {
 	    if ![info exists FieldNameMap($name)] {
 		return -code error "Field $name does not exist."
 	    }
-	    lappend fields $FieldNameMap($name)
+	    lappend fieldList $FieldNameMap($name)
 	}
-	return $fields
+	return $fieldList
     }
 
-    protected method fields2names {fields} {
-	set names {}
-	foreach field $fields {
-	    lappend names [$field name]
+    protected method fields2names {fieldList} {
+	set nameList {}
+	foreach field $fieldList {
+	    lappend nameList [$field name]
 	}
-	return $fields
+	return $nameList
     }
 
     method fields {{list ""}} {
@@ -1586,68 +1631,136 @@ if 0 {
 	if {[lempty $list]} { return [fields2names $rowfields] }
 	set rowfields [names2fields $list]
     }
+  
+    method lastrow {name {value ""}} {
+	if [string length $value] {
+	    set lastrow($name) $value
+	} elseif {[info exists lastrow($name)]} {
+	    set value $lastrow($name)
+	}
+	return $value
+    }
 
     method alias {name {value ""}} {
 	if [string length $value] {
 	    set alias($name) $value
+	} elseif {[info exists alias($name)]} {
+	    set value $alias($name)
 	} else {
-	    if [info exists alias($name)] {
-		set value $alias($name)
-	    }
+	    set value $name
 	}
 	return $value
     }
 
-    method filter {name {value ""}} {
-	if [string length $value] {
+    protected method column_value {name _row {type ""}} {
+	upvar 1 $_row row
+
+        set val ""
+
+	set column $name
+	if [info exists alias($name)] {
+	    set column $alias($name)
+	}
+
+	if [info exists row($column)] {
+	    set val [apply_filter $name $row($column) row $type]
+	}
+
+	return $val
+    }
+
+    method apply_filter {name val {_row ""} {which ""}} {
+	if [info exists ${which}filters($name)] {
+	    set cmd [list [set ${which}filters($name)] $val]
+
+	    if {"$_row" != "" && [info exists ${which}filtercols($name)]} {
+		upvar 1 $_row row
+		foreach n [set ${which}filtercols($name)] {
+		    if [info exists row($n)] {
+			lappend cmd $row($n)
+		    }
+		}
+	    }
+
+	    set val [eval $cmd]
+	}
+	return $val
+    }
+
+    method filter {name {value ""} args} {
+  	if [string length $value] {
 	    set f [uplevel 1 [list namespace which $value]]
-	    if {"$f" == ""} {   
+	    if {"$f" == ""} {
 		return -code error "Unknown filter $value"
 	    }
+	    set value $f
 	    set filters($name) $f
-	} else {
-	    if [info exists filters($name)] {
-		set value $filters($name)
+	    if [llength $args] {
+		set filtercols($name) $args
 	    }
+	} elseif {[info exists filters($name)]} {
+	    set value $filters($name)
 	}
 	return $value
     }
 
-    method smartfilter {name filter column} {
-	set f [uplevel 1 [list namespace which $filter]]
-	if {"$f" == ""} {
-	    return -code error "Unknown filter $filter"
-	}
-	set filters($name) $f
-	set filtercol($name) $column
+    method smartfilter {args} {
+	uplevel 1 [concat $this filter $args]
     }
-
-    method csvfilter {name {value ""}} {
+  
+    method csvfilter {name {value ""} args} {
 	if [string length $value] {
 	    set f [uplevel 1 [list namespace which $value]]
 	    if {"$f" == ""} {
 		return -code error "Unknown filter $value"
 	    }
+	    set value $f
 	    set csvfilters($name) $f
-	} else {
-	    if [info exists csvfilters($name)] {
-		set value $csvfilters($name)
+	    if [llength $args] {
+		set csvfiltercols($name) $args
 	    }
+	} elseif {[info exists csvfilters($name)]} {
+	    set value $csvfilters($name)
 	}
 	return $value
     }
-
+  
     method order {name {value ""}} {
 	if [string length $value] {
 	    set order($name) $value
-	} else {
-	    if [info exists order($name)] {
-		set value $order($name)
-	    }
+	} elseif {[info exists order($name)]} {
+	    set value $order($name)
 	}
 	return $value
     }
 
+    method hovertext {name {value ""}} {
+	if [string length $value] {
+	    set hovertext($name) $value
+	} elseif {[info exists hovertext($name)]} {
+	    set value $hovertext($name)
+	}
+	return $value
+    }
+  
+    method blankval {name {value ""}} {
+	if [string length $value] {
+	    set blankval($name) $value
+	} elseif {[info exists blankval($name)]} {
+	    set value $blankval($name)
+	}
+	return $value
+    }
+  
+    method limit {args} {
+	if [string length $args] {
+	    set limit $args
+	} elseif {[info exists limit]} {
+	    set args $limit
+	}
+	return $args
+    }
+  
     method case {name {value ""}} {
 	if [string length $value] {
 	    set case($name) $value
@@ -1659,77 +1772,38 @@ if 0 {
 	return $value
     }
 
-    method hovertext {name {value ""}} {
-	if [string length $value] {
-	    set hovertext($name) $value
-	} else {
-	    if [info exists hovertext($name)] {
-		set value $hovertext($name)
-	    }
-	}
-	return $value
-    }
-
-    method blankval {name {value ""}} {
-	if [string length $value] {
-	    set blankval($name) $value
-	} else {
-	    if [info exists blankval($name)] {
-		set value $blankval($name)
-	    }
-	}
-	return $value
-    }
-
-    method limit {args} {
-	if [string length $args] {
-	    set limit $args
-	} else {
-	    if [info exists limit] {
-		return $limit
-	    } else {
-		return ""
-	    }
-	}
-    }
-
     method unfilter {name {value ""}} {
 	if [string length $value] {
 	    set f [uplevel 1 [list namespace which $value]]
 	    if {"$f" == ""} {
 		return -code error "Unknown filter $value"
 	    }
+	    set value $f
 	    set unfilters($name) $f
-	} else {
-	    if [info exists unfilters($name)] {
-		set value $unfilters($name)
-	    }
-	}
+	} elseif {[info exists unfilters($name)]} {
+	    set value $unfilters($name)
+  	}
 	return $value
     }
-
+  
     method attributes {name {value ""}} {
-	if [string length $value] {
-	    set attributes($name) $value
-	} else {
-	    if [info exists attributes($name)] {
-		set value $attributes($name)
-	    }
-	}
+  	if [string length $value] {
+  	    set attributes($name) $value
+	} elseif {[info exists attributes($name)]} {
+	    set value $attributes($name)
+  	}
 	return $value
     }
-
+  
     method hidden {name {value ""}} {
-	if [string length $value] {
-	    set hidden($name) $value
-	} else {
-	    if [info exists hidden($name)] {
-		set value $hidden($name)
-	    }
-	}
+  	if [string length $value] {
+  	    set hidden($name) $value
+	} elseif {[info exists hidden($name)]} {
+	    set value $hidden($name)
+  	}
 	return $value
     }
-
+  
     method mode {{string ""}} { configvar mode $string }
     method csvfile {{string ""}} { configvar csvfile $string }
 
@@ -1835,9 +1909,11 @@ if 0 {
     private variable rowcount
     private variable filters
     private variable alias
-    private variable filtercol
+    private variable lastrow
+    private variable filtercols
     private variable hovertext
     private variable csvfilters
+    private variable csvfiltercols
     private variable order
     private variable unfilters
     private variable attributes
@@ -1980,6 +2056,10 @@ catch { ::itcl::delete class ::STTPDisplayField }
 	puts "</TR>"
     }
 
+    method null_ok {} {
+	return [expr {"$type" == "text"}]
+    }
+
     # methods that give us method-based access to get and set the
     # object's variables...
     method display  {{string ""}} { configvar display $string }
@@ -2106,6 +2186,10 @@ catch { ::itcl::delete class ::STTPDisplayField_boolean }
 	} else {
 	    set value $false
 	}
+    }
+
+    method null_ok {} {
+	return 0
     }
 
 } ; ## ::itcl::class ::STTPDisplayField_boolean
