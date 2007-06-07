@@ -415,7 +415,7 @@ namespace eval ::sttp {
   
     set where {}
     if [info exists request(-glob)] {
-      lappend where "$key LIKE [quote_glob $request(-glob)"
+      lappend where "$key LIKE [quote_glob $request(-glob)]"
     }
   
     if [info exists request(-compare)] {
@@ -441,10 +441,40 @@ namespace eval ::sttp {
 	  <= { lappend where "$col <= $q1" }
 	  = { lappend where "$col = $q1" }
 	  != { lappend where "$col <> $q1" }
+	  <> { lappend where "$col <> $q1" }
 	  >= { lappend where "$col >= $q1" }
 	  > { lappend where "$col > $q1" }
+
+	  imatch { lappend where "$col ILIKE [::sttp::quote_glob $v1]" }
+	  -imatch { lappend where "NOT $col ILIKE [::sttp::quote_glob $v1]" }
+
 	  match { lappend where "$col ILIKE [::sttp::quote_glob $v1]" }
+	  notmatch { lappend where "NOT $col ILIKE [::sttp::quote_glob $v1]" }
+
+	  xmatch { lappend where "$col LIKE [::sttp::quote_glob $v1]" }
+	  -xmatch { lappend where "NOT $col LIKE [::sttp::quote_glob $v1]" }
+
 	  match_case { lappend where "$col LIKE [::sttp::quote_glob $v1]" }
+	  notmatch_case {
+	    lappend where "NOT $col LIKE [::sttp::quote_glob $v1]"
+	  }
+
+	  umatch {
+	    lappend where "$col LIKE [::sttp::quote_glob [string toupper $v1]]"
+	  }
+	  -umatch {
+	    lappend where "NOT $col LIKE [
+				::sttp::quote_glob [string toupper $v1]]"
+	  }
+
+	  lmatch {
+	    lappend where "$col LIKE [::sttp::quote_glob [string tolower $v1]]"
+	  }
+	  -lmatch {
+	    lappend where "NOT $col LIKE [
+				::sttp::quote_glob [string tolower $v1]]"
+	  }
+
 	  range {
 	    lappend where "$col >= $q1"
 	    lappend where "$col < [pg_quote $v2]"

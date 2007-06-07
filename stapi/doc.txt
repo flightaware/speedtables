@@ -79,12 +79,15 @@
      pattern
      -pat pattern
         Only read lines matching the pattern from the cache, if the cache is
-        good.
+        good. This is an optimization to avoid reading the entire table into
+	memory when only a part of the table will be used. If the cache is old
+	or missing, then the entire table will still be read into memory.
      -time cache_timeout
         Override the default cache timeout.
      -col name
-        Name of column in the SQL file that contains the last_changed time of
-        each entry, if any.
+        Name of column in the table that contains the last_changed time of
+        each entry, if any. This is used as an optimization to only load
+	modified lines when the schema supports that.
      -index field_name
         Name of a field to create an index on. Multiple -index are allowed.
 
@@ -95,8 +98,13 @@
    If last_read is non-zero use that rather than last modify time
    of the cache file.
 
-   If err is provided, return success or failure and put reason for failure
-   in $err, otherwise abort.
+   If err is provided, it will return success or failure of the SQL request
+   and put the error in $err, otherwise it will generate a Tcl error for
+   SQL errors.
+
+   This uses the parameters set up in "open_cached", and if there is no
+   column in the table that can be used to determine the last change time,
+   then the whole table will be re-read.
 
 ::sttp::save_ctable ctable ?tsv_file?
 
@@ -106,10 +114,15 @@
 ::sttp::remove_tsv_file table_name
 ::sttp::remove_tcl_file table_name
 
+  Remove the cached tcl or tsv files, which will force the cache to be
+  reread (if the tsv file is missing) or reconstructed using SQL queries (if
+  the tcl file is missing).
+
 ::sttp::open_raw_ctable name
 
-  Open an initialized ctable but don't fetch anything from SQL, used
-  internally, and useful for temporary tables, copies, etcetera...
+  Open an initialized ctable (as in open_cached) but don't fetch anything
+  from SQL. This is used internally, and is also useful for setting up
+  temporary tables, copies, etcetera...
 
 ==== sttp_client ====
 
@@ -138,7 +151,10 @@
 
 	Define the separator used to build the key.
 
-  Methods intially defined:
+    If you provide these options, additional ctable methods are made
+    available. These are documented below under "sttpx".
+
+  Methods intially defined, and the packages they're defined in:
 
     package require sttp_client
     ctable://[host:port]/[dir/]table[/stuff][?stuff]
@@ -153,6 +169,7 @@
 	connection:
 		Not implemented yet, will be something like:
 			[user[:password]]@[host:]database
+
 	cols:
 		If no keys defined, first column is assumed to be the key.
 
@@ -164,10 +181,19 @@
 		_keys=column:column:...
 			Define the key in terms of a list of columns.
 
+	This uses the methods defined in sttp_server.
+
+	The "search" method implements the extensions described in in the
+	last part of this file.
+
     package require sttp_client
     ctable (no method)
 
-	Pass-through interface, just returns whatever ctable specified
+	If the URI is not URI fromat, it assumes it's an object that provides
+	the same semantics as a ctable... typically either a ctable, an
+	already-opened ctable_client connection, or the result of a previous
+	call to ::sttp::connect. If necessary it creates a wrapper around the
+	ctable to implement the extra methods that STTP provides.
 
   With CableAware:
 
@@ -179,5 +205,86 @@
 
 ::sttp::register method transport_handler
 
-  register a transport method for ::scache::connect
+  register a transport method for ::sttp::connect
+
+== STTPX - the STTP API extensions to CTABLES
+
+These are required for display, but may not be required by other users of the
+package, so the wrapper object is only created when needed.
+
+::sttpx::connect object key-list ?-keysep string?
+
+  This is also called by ::sttp::connect if the "-keys" option is provided.
+
+  If the _object_ was created by ::sttpx::connect, then it is returned
+  immediately. This can not be used to change the keysep or keys of an
+  existing ctable.
+
+  Otherwise, this behaves identically to calling ::sttp::connect with the
+  -keys argument, and creates a wrapper object that understands the
+  additional methods:
+
+    $ctable makekey array_name
+
+      Returns the string that corresponds to the key for the $ctable, based on
+      the contents of the existing strings in the ctable.
+
+    $ctable fetch key array
+
+      Fetch array from the ctable.
+
+      Comparable to:
+
+        array set array [$ctable array_get_with_nulls [$ctable makekey array]]]
+
+    $ctable store array
+
+      Store array in the ctable
+
+      Comparable to:
+
+        $ctable set [$ctable makekey array] [array get array]
+
+    $ctable perform array ?-name value?...
+    ::sttpx::perform array ?-name value?...
+
+      Perform a canned search, comparable to
+
+        eval $ctable search [array get array] ?-name value?...
+
+      The ?-name value? arguments override any values in the array.
+
+      In the second form, the ctable is expected to be in a "-handle"
+      argument, either in the array or the additional arguments.
+
+      The search is extended as described below.
+
+  In addition, the following methods are modified:
+
+    $ctable search ?-name value?
+
+      -compare list
+
+        The list is passed through an optimizer that rearranges the
+	comparisons for more efficiency.
+
+	Also, the additional comparisons are recognised:
+
+	  <> is a synonym for !=
+
+	  imatch is a synonym for match
+	  xmatch is a synonym for match_case
+
+	  umatch field string
+
+	    Equivalent to match_case field [toupper string]
+
+	  lmatch field string
+
+	    Equivalent to match_case field [tolower string]
+
+	These extensions are used by STTPDisplay to allow fast indexed
+	ctable searches ignoring case when the underlying ctable is known
+	to have a field that is always upper or lower case, in a way that
+	hides the differences between ctables and SQL tables.
 
