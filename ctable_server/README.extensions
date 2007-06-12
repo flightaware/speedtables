@@ -32,3 +32,17 @@ Server commands:
 		tracing rather than replacing the command and it completes
 		as normal.
 
+Typical usage for redirection would be to reload a long-running ctable with
+an updated copy of an SQL table. It's more efficient to load a new ctable
+than to update one in place, if incremental updates aren't possible.
+
+  Load the new ctable in a new copy of the server.
+  Start up the server on a new port (storing the new port # in an SQL table)
+  Open the old ctable.
+  Send "$ctable redirect ctable://*:$new_port/$ctable_name -shutdown"
+  Start the ctable listener.
+
+Existing clients will be redirected the next time they make a request.
+
+Once all existing clients have switched over, the old server shuts down.
+
