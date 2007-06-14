@@ -21,6 +21,7 @@ namespace eval ::ctable_server {
     0 tablemakers		""
     0 tables		""
     0 help		""
+    0 methods		""
     1 eval		{code}
     1 trigger		{?command? ?proc?}
   }
@@ -327,6 +328,16 @@ proc remote_invoke {sock table line port} {
 	    return [serverInfo [string match "-v*" [lindex $remoteArgs 0]]]
 	}
 
+	"methods" {
+    	    variable serverCommands
+	    set additional_result {}
+	    foreach {evalRequired method _} $serverCommands {
+		if {!$evalRequired || $evalEnabled} {
+	            lappend additional_result $method
+		}
+	    }
+	}
+
 	"trigger" {
 	    if {!$evalEnabled} {
 		error "not permitted"
@@ -408,7 +419,11 @@ proc remote_invoke {sock table line port} {
     if $simpleCommand {
 	set cmd [linsert $remoteArgs 0 $ctable $command]
 #serverlog "simple command '$cmd'"
-	return [eval $cmd]
+	set result [eval $cmd]
+	if [info exists additional_result] {
+	    set result [concat $result $additional_result]
+	}
+	return $result
     }
 
     # else it's a complex search command:
