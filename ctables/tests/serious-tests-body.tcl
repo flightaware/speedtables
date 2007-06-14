@@ -90,7 +90,7 @@ puts "ok"
 
 puts -nonewline "testing 'methods'..."
 set methlab [
-  list get set store incr array_get array_get_with_nulls exists delete count batch search search+  type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach keys make_key methods
+  list get set store incr array_get array_get_with_nulls exists delete count batch search search+  type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach methods
 ]
 set methods [t methods]
 if {"$methods" != "$methlab"} {
