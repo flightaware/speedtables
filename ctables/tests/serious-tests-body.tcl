@@ -88,6 +88,20 @@ if {[t fields] != {id name home show dad alive gender age coolness}} {
 }
 puts "ok"
 
+puts -nonewline "testing 'methods'..."
+set methlab [
+  list get set store incr array_get array_get_with_nulls exists delete count batch search search+  type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach keys make_key methods
+]
+set methods [t methods]
+if {"$methods" != "$methlab"} {
+    error "t methods expected to return [list $methlab]\n\treturned [list $methods]"
+}
+
+if {[t fields] != {id name home show dad alive gender age coolness}} {
+    error "t fields expected to return {t fields id name home show dad alive gender age coolness}"
+}
+puts "ok"
+
 puts -nonewline "testing 'fields' with wrong # args..."
 if {[catch {t fields bork} result] == 1} {
     if {$result == "wrong # args: should be \"t fields\""} {

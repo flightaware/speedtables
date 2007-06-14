@@ -44,9 +44,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     Tcl_HashEntry *registeredProcHashEntry;
     int indexCtl;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "keys", "make_key", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "keys", "make_key", "methods", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEYS, OPT_MAKE_KEY};
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEYS, OPT_MAKE_KEY, OPT_METHODS};
 
     if (objc == 1) {
         Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
@@ -122,6 +122,32 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  for (i = 0; (obj = ${table}_KeyObjList[i]) != NULL; i++) {
 	      if (Tcl_ListObjAppendElement (interp, resultObj, obj) == TCL_ERROR) {
+	          return TCL_ERROR;
+	      }
+	  }
+
+	  return TCL_OK;
+      }
+
+      case OPT_METHODS: {
+          int i;
+
+	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
+	  Tcl_HashSearch hashSearch;
+
+	  if (objc != 2) {
+	      Tcl_WrongNumArgs (interp, 1, objv, "keys");
+	      return TCL_ERROR;
+	  }
+
+	  for (i = 0; options[i] != NULL; i++) {
+	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (options[i], -1)) == TCL_ERROR) {
+	          return TCL_ERROR;
+	      }
+	  }
+
+	  for (registeredProcHashEntry = Tcl_FirstHashEntry (ctable->creator->registeredProcTablePtr, &hashSearch); registeredProcHashEntry != (Tcl_HashEntry *) NULL; registeredProcHashEntry = Tcl_NextHashEntry (&hashSearch)) {
+	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry), -1)) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
 	  }
