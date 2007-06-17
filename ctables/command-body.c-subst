@@ -425,7 +425,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	sprintf(key = keyString,"%u",ctable->autoRowNumber++);
 #endif
 
+#if ${nKeys}
 	if(optIndex == OPT_STORE) {
+#endif
             row = ${table}_find_or_create (ctable, key, &indexCtl);
 
 	    for (i = 0; i < listObjc; i+= 2) {
@@ -434,7 +436,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		    return TCL_ERROR;
 	        }
 	    }
+#if ${nKeys}
 	}
+#endif
 
         Tcl_SetObjResult (interp, Tcl_NewStringObj (key, -1));
 

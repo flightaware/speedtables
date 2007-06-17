@@ -161,6 +161,13 @@ typedef struct {
 #define CTABLE_SEARCH_ACTION_WRITE_TABSEP 6
 #define CTABLE_SEARCH_ACTION_COUNT_ONLY 7
 
+// transactions are run after the operation is complete, so they don't modify
+// a field that's being searched on
+
+#define CTABLE_SEARCH_TRAN_NONE 0
+#define CTABLE_SEARCH_TRAN_DELETE 1
+#define CTABLE_SEARCH_TRAN_UPDATE 2
+
 // ctable search struct - this controls everything about a search
 typedef struct {
     struct ctableTable                  *ctable;
@@ -171,6 +178,9 @@ typedef struct {
     Tcl_Obj                             *codeBody;
     Tcl_Obj                             *varNameObj;
     Tcl_Obj                             *keyVarNameObj;
+
+    int					 tranType;
+    Tcl_Obj				*tranData;
 
     // setting up these for the field_comp routines to go after the
     // rows we want in skiplists
@@ -202,9 +212,9 @@ typedef struct {
     // offsetLimit is calculated from offset and limit
     int                                  offsetLimit;
 
-    // we use sort table to accumulate matching rows for sorting when
-    // searching with sorting
-    ctable_BaseRow                     **sortTable;
+    // we use tran table to accumulate matching rows for sorting when
+    // searching with sorting, and for completing a transaction after searching
+    ctable_BaseRow                     **tranTable;
 } CTableSearch;
 
 typedef struct {

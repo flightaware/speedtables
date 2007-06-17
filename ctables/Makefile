@@ -10,6 +10,9 @@
 
 INSTDIR=/usr/local/lib/ctable
 
+test:
+	cd tests; make
+
 install:
 	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c $(INSTDIR)
