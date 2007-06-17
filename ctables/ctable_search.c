@@ -555,9 +555,13 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
 
     if(search->tranType == CTABLE_SEARCH_TRAN_DELETE) {
 
+//printf("Performing delete on %d .. %d\n", search->offset, search->offsetLimit);
       // walk the result and delete the matched rows
-      for (rowIndex = search->offset; rowIndex < search->offsetLimit; rowIndex++)
+      for (rowIndex = search->offset; rowIndex < search->offsetLimit; rowIndex++) {
+//printf("Deleting result #%d\n", rowIndex);
 	  (*creator->delete) (ctable, search->tranTable[rowIndex], CTABLE_INDEX_NORMAL);
+	  ctable->count--;
+      }
 
       return TCL_OK;
 
@@ -643,17 +647,16 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 	return TCL_OK;
     }
 
+    // figure out the last row they could want, if it's more than what's
+    // there, set it down to what came back
+    if ((search->offsetLimit == 0) || (search->offsetLimit > search->matchCount)) {
+        search->offsetLimit = search->matchCount;
+    }
+
     if(search->sortControl.nFields) {	// sorting
       qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, creator->sort_compare);
 
       // it's sorted
-      // now let's see what we've got within the offset and limit
-
-      // figure out the last row they could want, if it's more than what's
-      // there, set it down to what came back
-      if ((search->offsetLimit == 0) || (search->offsetLimit > search->matchCount)) {
-        search->offsetLimit = search->matchCount;
-      }
 
       // walk the result
       for (sortIndex = search->offset; sortIndex < search->offsetLimit; sortIndex++) {
@@ -728,11 +731,12 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	search->tranTable[search->matchCount++] = row;
 	if(search->sortControl.nFields)
 	    return TCL_CONTINUE;
-    }
+    } else
+	++search->matchCount;
 
     // We're not sorting, let's figure out what to do as we match.
     // If we haven't met the start point, blow it off.
-    if (++search->matchCount <= search->offset) {
+    if (search->matchCount <= search->offset) {
 	return TCL_CONTINUE;
     }
 
@@ -1348,7 +1352,12 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     }
 
     if (search->endAction == CTABLE_SEARCH_ACTION_NONE &&
-	search->tranType == CTABLE_SEARCH_TRAN_NONE) goto endActionOverload;
+	search->tranType != CTABLE_SEARCH_TRAN_NONE) {
+	search->endAction = CTABLE_SEARCH_ACTION_TRANSACTION_ONLY;
+    }
+
+    if (search->endAction == CTABLE_SEARCH_ACTION_NONE)
+	goto endActionOverload;
 
     if (search->endAction == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
         if (search->codeBody != NULL || search->keyVarNameObj != NULL || search->varNameObj != NULL) {
@@ -1365,9 +1374,9 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	return TCL_ERROR;
     }
 
-    if ((search->endAction != CTABLE_SEARCH_ACTION_WRITE_TABSEP) && (search->endAction != CTABLE_SEARCH_ACTION_COUNT_ONLY)) {
+    if ((search->endAction != CTABLE_SEARCH_ACTION_WRITE_TABSEP) && (search->endAction != CTABLE_SEARCH_ACTION_COUNT_ONLY) && (search->endAction != CTABLE_SEARCH_ACTION_TRANSACTION_ONLY)) {
         if (!search->codeBody) {
-	    Tcl_AppendResult (interp, "-code must be set if -array, -array_with_nulls, -array_get, -array_get_with_nulls or -get is used", (char *)NULL);
+	    Tcl_AppendResult (interp, "one of -code, -write-tabsep, -delete, or -update must be specified", (char *)NULL);
 	    return TCL_ERROR;
 	}
     }

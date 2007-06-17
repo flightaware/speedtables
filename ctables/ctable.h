@@ -160,6 +160,7 @@ typedef struct {
 #define CTABLE_SEARCH_ACTION_ARRAY_WITH_NULLS 5
 #define CTABLE_SEARCH_ACTION_WRITE_TABSEP 6
 #define CTABLE_SEARCH_ACTION_COUNT_ONLY 7
+#define CTABLE_SEARCH_ACTION_TRANSACTION_ONLY 8
 
 // transactions are run after the operation is complete, so they don't modify
 // a field that's being searched on
