@@ -28,3 +28,11 @@ if {[t count] != 16} {
   error "search -delete failed, expecting 19 times got [t count]"
 }
 
+t search -compare {{= rank 6}} -update {name XXXXXX}
+t search -compare {{= name Abadite}} -update {name Xxxxxxx}
+t search -array a -code {
+  lappend list([string match "X*" $a(name)]) $a(name)
+}
+if {"[lsort $list(1)]" != "XXXXXX Xxxxxxx"} {
+  error "search -update failed, expecting {XXXXXX Xxxxxxx} got {[lsort $list(1)]}"
+}
