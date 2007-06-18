@@ -455,7 +455,9 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	  }
 
 	  default: {
-	      panic ("software failure - unhandled search action");
+	      if (search->keyVarNameObj == NULL) {
+	          panic ("software failure - unhandled search action");
+	      }
 	  }
 	}
 
@@ -1356,8 +1358,10 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	search->endAction = CTABLE_SEARCH_ACTION_TRANSACTION_ONLY;
     }
 
-    if (search->endAction == CTABLE_SEARCH_ACTION_NONE)
+    if (search->endAction == CTABLE_SEARCH_ACTION_NONE &&
+	search->keyVarNameObj == NULL) {
 	goto endActionOverload;
+    }
 
     if (search->endAction == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
         if (search->codeBody != NULL || search->keyVarNameObj != NULL || search->varNameObj != NULL) {
