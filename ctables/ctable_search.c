@@ -178,10 +178,11 @@ ctable_searchMatchPatternCheck (char *s) {
 	return CTABLE_STRING_MATCH_ANCHORED;
     }
 
-    // first char is not star, last char is not star, this is
-    // bad because they should be using "=" not "match" but we'll
-    // use pattern because that will actually do the right thing.
-    // alternatively we could add another string match pattern type
+    // first char is not star, last char is not star, and there are
+    // no other metacharacters in the string. This is bad because they
+    // should be using "=" not "match" but we'll use pattern because
+    // that will actually do the right thing.  alternatively we could
+    // add another string match pattern type
     return CTABLE_STRING_MATCH_PATTERN;
 }
 
