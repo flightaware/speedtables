@@ -9,9 +9,17 @@
 #
 
 INSTDIR=/usr/local/lib/ctable
+WORKDIR=`pwd`
+
+default: test
+
+alltest: bigtest test
+
+bigtest:
+	cd bigtests; env TCLLIBPATH=${WORKDIR} make
 
 test:
-	cd tests; make
+	cd tests; env TCLLIBPATH=${WORKDIR} make
 
 install:
 	-mkdir -p $(INSTDIR)
