@@ -207,6 +207,9 @@ typedef struct {
     // count of matches during a search
     int                                  matchCount;
 
+    // true if a tailored walk was *requested*.
+    int					 useIndex;
+
     // 0 if brute force search, 1 if we're skipping via skip list and range
     int                                  tailoredWalk;
 

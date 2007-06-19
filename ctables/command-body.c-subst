@@ -293,9 +293,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	return ctable_RunBatch (interp, ctable, objv[0], objv[2]);
       }
 
-      case OPT_SEARCH:
+      case OPT_SEARCH: {
+	return ctable_SetupAndPerformSearch (interp, objv, objc, ctable);
+      }
+
       case OPT_SEARCHPLUS: {
-	return ctable_SetupAndPerformSkipSearch (interp, objv, objc, ctable, optIndex == OPT_SEARCHPLUS);
+	return ctable_SetupAndPerformSkipSearch (interp, objv, objc, ctable);
       }
 
       case OPT_NAMES: {

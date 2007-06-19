@@ -29,7 +29,9 @@ proc search+_test {name searchFields expect} {
 
     if {$result != $expect} {
 	puts "error in test: $name"
-	puts "got '$result', expected '$expect'"
+	puts "got '$result'"
+	puts "expected '$expect'"
+	puts "command $cmd"
 	puts ""
     } else {
 	puts "ok"
