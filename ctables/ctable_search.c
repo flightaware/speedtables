@@ -558,10 +558,8 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
 
     if(search->tranType == CTABLE_SEARCH_TRAN_DELETE) {
 
-//printf("Performing delete on %d .. %d\n", search->offset, search->offsetLimit);
       // walk the result and delete the matched rows
       for (rowIndex = search->offset; rowIndex < search->offsetLimit; rowIndex++) {
-//printf("Deleting result #%d\n", rowIndex);
 	  (*creator->delete) (ctable, search->tranTable[rowIndex], CTABLE_INDEX_NORMAL);
 	  ctable->count--;
       }
@@ -725,8 +723,12 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 
     // It's a Match 
     // Are we sorting? Plop the match in the sort table and return
+    // Increment count in this block to make sure it's incremented in all
+    // paths.
 
-    if (search->tranTable != NULL) {
+    if (search->tranTable == NULL) {
+	++search->matchCount;
+    } else {
 	/* We are sorting or doing a transaction, grab it. If we're sorting,
 	 * return because we gotta sort before we can compare
 	 * against start and limit and stuff */
@@ -734,8 +736,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	search->tranTable[search->matchCount++] = row;
 	if(search->sortControl.nFields)
 	    return TCL_CONTINUE;
-    } else
-	++search->matchCount;
+    }
 
     // We're not sorting, let's figure out what to do as we match.
     // If we haven't met the start point, blow it off.
@@ -796,78 +797,6 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 //
 static int
 ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
-    int                    compareResult;
-    int                    actionResult = TCL_OK;
-    ctable_BaseRow        *row;
-
-    search->matchCount = 0;
-    search->tailoredWalk = 0;
-    search->tranTable = NULL;
-    search->offsetLimit = search->offset + search->limit;
-
-    if (search->writingTabsepIncludeFieldNames) {
-	ctable_WriteFieldNames (interp, ctable, search);
-    }
-
-    if (ctable->count == 0) {
-        return TCL_OK;
-    }
-
-    // if we're sorting or running a transaction, allocate a space for the
-    // search results that we'll then sort from
-    if (
-      (
-	(search->sortControl.nFields > 0) ||
-	search->tranType != CTABLE_SEARCH_TRAN_NONE
-      ) &&
-      (search->endAction != CTABLE_SEARCH_ACTION_COUNT_ONLY)
-    ) {
-	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
-    }
-
-    // walk the table 
-    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
-
-	compareResult = ctable_SearchCompareRow (interp, ctable, search, row);
-	if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
-
-	if (compareResult == TCL_BREAK) break;
-
-	if (compareResult == TCL_ERROR) {
-	    actionResult = TCL_ERROR;
-	    goto clean_and_return;
-	}
-    }
-
-    actionResult = ctable_PostSearchCommonActions (interp, ctable, search);
-  clean_and_return:
-    if (search->tranTable != NULL) {
-	ckfree ((void *)search->tranTable);
-    }
-
-    if (actionResult == TCL_OK && (search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY)) {
-	Tcl_SetIntObj (Tcl_GetObjResult (interp), search->matchCount);
-    }
-
-    return actionResult;
-}
-
-//
-// ctable_PerformSkipSearch - perform the search
-//
-// write field names if we need to
-//
-// for each row in the table, apply search compare test in turn
-//    the first one that comes up that the row should be excluded ends
-//    looking at that one
-//
-//    if nothing excluded it, we pick it -- this can mean taking the action
-//    immediately or, if sorting, picking the object for sorting and then
-//    taking the action
-//
-//
-static int
-ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
     int              compareResult;
     int              actionResult = TCL_OK;
 
@@ -884,10 +813,14 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
     fieldCompareFunction_t compareFunction;
     int                    indexNumber;
     int                    tailoredTerm = 0;
+    enum {SKIP_START_ROW1, SKIP_START_RESET} skipStart = 0;
+    enum {SKIP_END_SPECIAL, SKIP_END_NE_ROW1, SKIP_END_GE_ROW2} skipEnd = 0;
+    enum {SKIP_NEXT_ROW, SKIP_NEXT_IN_LIST} skipNext = 0;
+    int			   count;
 
-    int                    inIndex = 0; // used when handling {in ...}
-    int                    normal = 1;
-
+    int			   inIndex = 0;
+    Tcl_Obj		 **inListObj = NULL;
+    int			   inCount = 0;
 
     search->matchCount = 0;
     search->tailoredWalk = 0;
@@ -914,191 +847,193 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
 	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
     }
 
-    // if the first compare thing is something we understand how to do
+    // If they're not asking for nan indexed search, but the first
+    // component is "in", force an indexed search.
+
+    // The match code really needs to handle "in".
+
+    if (search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
+	if(search->components[0].comparisonType == CTABLE_COMP_IN) {
+	    search->reqIndexField = search->components[0].fieldID;
+	}
+    }
+
+    // if they're asking for an index search, and first compare thing is
+    // something we understand how to do
     // with indexed fields and the field they're asking for us to do it
     // on happens to be indexed, we need to do special walking magic
 
-    // else find any index column
+    // else we fall back to the hash table because it's faster
 
-    // if there's no index column, we need to fail or revert to brute force
-    // at least for now
+    if (search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
+	int index = 0;
+	int try;
 
-    if (search->nComponents > 0) {
-	CTableSearchComponent *component = &search->components[0];
+	if(search->reqIndexField != CTABLE_SEARCH_INDEX_ANY) {
+	    for(index = 0; index < search->nComponents; index++)
+	        if(search->components[index].fieldID == search->reqIndexField)
+		    break;
+	}
 
-	field = component->fieldID;
-	tailoredTerm = component->comparisonType;
-        if (ctable->skipLists[field] != NULL) {
-	    if ((tailoredTerm == CTABLE_COMP_RANGE) || (tailoredTerm == CTABLE_COMP_EQ) || (tailoredTerm = CTABLE_COMP_IN)) {
-		// ding ding ding - we have a winner, time for an accelerated
-		// search
-		search->tailoredWalk = 1;
-		skip = ctable->skipLists[field];
+	// Look for the first usable search field starting with the requested
+	// one (or the first, if it's not in the list)
+	for(try = 0; try < search->nComponents; try++, index++) {
+	    if(index >= search->nComponents)
+	        index = 0;
+	    CTableSearchComponent *component = &search->components[index];
 
-		if (tailoredTerm == CTABLE_COMP_IN) {
-		    normal = 0;
-		} else {
-		    row1 = component->row1;
-		    row2 = component->row2;
-		}
+	    field = component->fieldID;
+	    tailoredTerm = component->comparisonType;
+            if (ctable->skipLists[field] != NULL) {
+	        switch (tailoredTerm) {
+		    // case CTABLE_COMP_GE: /* for later */
+		    case CTABLE_COMP_EQ:
+		    case CTABLE_COMP_RANGE: {
+		        // ding ding ding - we have a winner, time for an
+		        // accelerated search
+		        search->tailoredWalk = 1;
+		        skip = ctable->skipLists[field];
+
+		        skipStart = SKIP_START_ROW1;
+			skipNext = SKIP_NEXT_ROW;
+			if(tailoredTerm == CTABLE_COMP_EQ)
+				skipEnd = SKIP_END_NE_ROW1;
+			else
+				skipEnd = SKIP_END_GE_ROW2;
+		        row1 = component->row1;
+		        row2 = component->row2;
+		        break;
+		    }
+		    case CTABLE_COMP_IN: {
+		        // Still doing a skiplist search, but only part accelerated
+		        search->tailoredWalk = 1;
+		        skip = ctable->skipLists[field];
+    
+		        row1 = component->row1;
+			skipStart = SKIP_START_RESET;
+		        skipNext = SKIP_NEXT_IN_LIST;
+			skipEnd = SKIP_END_SPECIAL;
+		        inListObj = component->inListObj;
+		        inCount = component->inCount;
+		        break;
+		    }
+	        }
 	    }
         }
     }
 
-    // right here if we don't have a tailored walk we can see if there is
-    // a sort and if there is and it's only one field (no subfield for
-    // sorting) and that field exists as an index we can do a skip list
-    // walk and not save up and do the sort
-    //
-    // if we don't have that and we don't have a range or something else
-    // that's going to help the search be fast, switch to brute force
-    //
+    if (skip == NULL) {
+	// walk the hash table 
+	CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
 
-    // if we don't have a tailored walk, see if we have any skip list
-    // we can use
-    if (!search->tailoredWalk) {
-        int i;
+	    compareResult = ctable_SearchCompareRow (interp, ctable, search, row);
+	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
 
-	// find the first index used in any search expression from left to right
-	for (i = 0; i < search->nComponents; i++) {
-	    CTableSearchComponent *component = &search->components[i];
+	    if (compareResult == TCL_BREAK) break;
 
-	    if ((skip = ctable->skipLists[component->fieldID]) != NULL) {
-	        // printf("not tailored walk, found index on field %d\n", component->fieldID);
-	        break;
+	    if (compareResult == TCL_ERROR) {
+		actionResult = TCL_ERROR;
+		goto clean_and_return;
+	    }
+        }
+    } else {
+        compareFunction = creator->fields[field]->compareFunction;
+        indexNumber = creator->fields[field]->indexNumber;
+
+        //
+        // walk the skip list
+        //
+        // all walks are "tailored", meaning the first search term is of an
+        // indexed row and it's of a type where we can cut off the search
+        // past a point, see if we're past the cutoff point and if we are
+        // terminate the search.
+        //
+
+	// If at start of skiplist, find first row, else find next row
+	switch(skipStart) {
+	    case SKIP_START_ROW1: {
+		jsw_sfind_equal_or_greater (skip, row1);
+		break;
+	    }
+	    case SKIP_START_RESET: {
+		jsw_sreset(skip);
+		break;
 	    }
 	}
+	// Blow up on infinite loops.
+	for(count = 0; count < ctable->count; count++) {
+	    if(skipNext == SKIP_NEXT_IN_LIST) {
+		// We're looking at a list of entries rather than a range,
+		// so we have to loop here searching for each in turn instead
+		// of just following the skiplist
+		while(1) {
+		  // If we're at the end, game over.
+		  if(inIndex >= inCount)
+		      goto search_complete;
 
-        // no relevant skip list?  see if we can find any 
-	if (skip == NULL) {
-	    for (field= 0; field < creator->nFields; field++) {
-		if ((skip = ctable->skipLists[field]) != NULL) {
-		    // printf("not tailored walk, found arbitrary index on field %d\n", field);
+		  // make a row matching the next value in the list
+                  if ((*ctable->creator->set) (interp, ctable, inListObj[inIndex++], row1, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+                      Tcl_AppendResult (interp, " while processing \"in\" compare function", (char *) NULL);
+                      actionResult = TCL_ERROR;
+                      goto clean_and_return;
+                  }
+
+		  // If there's a match for this row, break out of the loop
+                  if (jsw_sfind (skip, row1) != NULL)
+		      break;
+	        }
+	    }
+
+	    // Now we can fetch whatever we found.
+            if ((row = jsw_srow (skip)) == NULL)
+		goto search_complete;
+
+	    // if at end or past any terminating condition, break
+	    switch(skipEnd) {
+	        case SKIP_END_GE_ROW2: {
+		    if (compareFunction (row, row2) >= 0)
+			goto search_complete;
 		    break;
 		}
+	        case SKIP_END_NE_ROW1: {
+		    if (compareFunction (row, row1) != 0)
+			goto search_complete;
+		}
+		default: {
+		    // may not be a terminating condition, or it may
+		    // have been taken care of above
+	        }
 	    }
-	}
-    }
 
-    if (skip == NULL) {
-	Tcl_AppendResult (interp, "no field has an index, can't perform tailored search, sorry", (char *) NULL);
+            // walk walkRow through the linked list of rows off this skip list
+	    // node. if you ever change this to make deletion possible while
+	    // searching, switch this to use the safe foreach routine instead
+
+            CTABLE_LIST_FOREACH (row, walkRow, indexNumber) {
+	        compareResult = ctable_SearchCompareRow (interp, ctable, search, walkRow);
+	        if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
+
+	        if (compareResult == TCL_BREAK) {
+	            actionResult = TCL_OK;
+	            goto clean_and_return;
+	        }
+
+	        if (compareResult == TCL_ERROR) {
+	            actionResult = TCL_ERROR;
+	            goto clean_and_return;
+	        }
+	    }
+
+	    if(skipNext == SKIP_NEXT_ROW)
+		jsw_snext(skip);
+	}
+	// Should never just fall out of the loop...
+	Tcl_AppendResult (interp, "infinite search loop", (char *) NULL);
 	actionResult = TCL_ERROR;
 	goto clean_and_return;
     }
 
-    if (search->tailoredWalk && normal) {
-       // yay get the huge win by zooming past hopefully a zillion records
-       // right here
-       //
-       jsw_sfind_equal_or_greater (skip, row1);
-    } else {
-        // not tailored, we're looking at all rows
-	jsw_sreset (skip);
-    }
-
-    //
-    // walk the skip list, whether we searched and found something or if
-    // we're walking the whole thing
-    //
-    // if the walk is "tailored", meaning the first search term is of an
-    // indexed row and it's of a type where we can cut off the search
-    // past a point, see if we're past the cutoff point and if we are
-    // terminate the search.
-    //
-    //
-    // here are a couple of interesting ways to also play this
-    //
-    // for (; ((struct jsw_skip *)skip)->curl != NULL && (row = ((struct jsw_skip *)skip)->curl->item); ((struct jsw_skip *)skip)->curl = ((struct jsw_skip *)skip)->curl->next[0])
-    //
-    // CTABLE_LIST_FOREACH (ctable->ll_head, row, 0)
-    //
-    //  for (; curl != NULL && (row = curl->item); curl = curl->next[0])
-    // curl = ((struct jsw_skip *)skip)->curl;
-
-    compareFunction = creator->fields[field]->compareFunction;
-    indexNumber = creator->fields[field]->indexNumber;
-
-    // for (; ((row = jsw_srow (skip)) != NULL); jsw_snext(skip)) {
-
-    // DO NOT use continue to continue, you have to "goto contin" because
-    // we have multiple ways we want to do for loops and we can't pull
-    // it off that way -- we have the loops set out into an explicit
-    // before assignment, a comparison to see if we're done, and a
-    // move-to-the-next piece, and the move-to-the-next piece has to
-    // be explicitly called out as there are different possible pathways.
-
-    while (1) {
-
-      if (normal) {
-          if ((row = jsw_srow (skip)) == NULL) break;
-
-	  if (search->tailoredWalk) {
-	      if (tailoredTerm == CTABLE_COMP_RANGE) {
-		  if (compareFunction (row, row2) >= 0) {
-		     // it was a tailored walk and we're past the end of the
-		     // range of stuff so we can blow off the rest, hopefully
-		     // a huge number
-		    break;
-		}
-	      } else if (tailoredTerm == CTABLE_COMP_EQ) {
-		  if (compareFunction (row, row1) != 0) {
-		      break;
-		  }
-	      } else {
-		  // it may not be an error to not have a terminating condition 
-		  // on a tailored walk
-		  // panic("software failure - no terminating condition for tailored walk");
-	      }
-	  }
-      } else {
-	  if ((tailoredTerm == CTABLE_COMP_IN) && (search->tailoredWalk)) {
-	      CTableSearchComponent *component = &search->components[0];
-
-	      if (inIndex >= component->inCount) break;
-
-	      if ((*ctable->creator->set) (interp, ctable, component->inListObj[inIndex], component->row1, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
-	          Tcl_AppendResult (interp, " while processing \"in\" compare function", (char *) NULL);
-		  actionResult = TCL_ERROR;
-		  goto clean_and_return;
-	      }
-
-	      if (jsw_sfind (skip, component->row1) == NULL) goto contin;
-	      row = jsw_srow (skip);
-	  } else {
-	      panic ("unexpected code path in ctable_PerformSkipSearch");
-	  }
-      }
-
-      // walk walkRow through the linked list of rows off this skip list node
-      // if you ever change this to make deletion possible while searching,
-      // switch this to use the safe foreach routine instead
-
-      CTABLE_LIST_FOREACH (row, walkRow, indexNumber) {
-	compareResult = ctable_SearchCompareRow (interp, ctable, search, walkRow);
-	if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
-
-	if (compareResult == TCL_BREAK) {
-	    actionResult = TCL_OK;
-	    goto clean_and_return;
-	}
-
-	if (compareResult == TCL_ERROR) {
-	    actionResult = TCL_ERROR;
-	    goto clean_and_return;
-	}
-      }
-
-    contin:
-
-      if (normal) {
-	  jsw_snext(skip);
-      } else {
-          if ((tailoredTerm == CTABLE_COMP_IN) && (search->tailoredWalk)) {
-	      inIndex++;
-	  }
-      }
-    }
-
+  search_complete:
     actionResult = ctable_PostSearchCommonActions (interp, ctable, search);
   clean_and_return:
     if (search->tranTable != NULL) {
@@ -1118,14 +1053,14 @@ ctable_PerformSkipSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *sear
 //
 //
 static int
-ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search) {
+ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search, int indexField) {
     int             i;
     int             searchTerm = 0;
     CONST char                 **fieldNames = ctable->creator->fieldNames;
 
-    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-delete", "-update", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-delete", "-update", "-index", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY, SEARCH_OPT_ARRAY_WITH_NULLS, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE};
+    enum searchOptions {SEARCH_OPT_ARRAY, SEARCH_OPT_ARRAY_WITH_NULLS, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_INDEX};
 
     if (objc < 2) {
       wrong_args:
@@ -1153,6 +1088,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->codeBody = NULL;
     search->writingTabsepIncludeFieldNames = 0;
     search->tranType = CTABLE_SEARCH_TRAN_NONE;
+    search->reqIndexField = indexField;
 
     for (i = 2; i < objc; ) {
 	if (Tcl_GetIndexFromObj (interp, objv[i++], searchOptions, "search option", TCL_EXACT, &searchTerm) != TCL_OK) {
@@ -1188,6 +1124,14 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    if (Tcl_GetBooleanFromObj (interp, objv[i++], &search->noKeys) == TCL_ERROR) {
 	        Tcl_AppendResult (interp, " while processing search noKeys", (char *) NULL);
 	        return TCL_ERROR;
+	    }
+	    break;
+	  }
+
+	  case SEARCH_OPT_INDEX: {
+	    if (Tcl_GetIndexFromObj (interp, objv[i++], fieldNames, "field", TCL_EXACT, &search->reqIndexField) != TCL_OK) {
+		Tcl_AppendResult (interp, " while processing search index", (char *) NULL);
+		return TCL_ERROR;
 	    }
 	    break;
 	  }
@@ -1435,29 +1379,7 @@ ctable_TeardownSearch (CTableSearch *search) {
 }
 
 //
-// ctable_SetupAndPerformSearch - setup and perform a search on a table
-//
-// uses the key-value hash table as the outer loop and requires a full
-// brute force search of the entire table.
-//
-int
-ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable) {
-    CTableSearch    search;
-
-    if (ctable_SetupSearch (interp, ctable, objv, objc, &search) == TCL_ERROR) {
-        return TCL_ERROR;
-    }
-
-    if (ctable_PerformSearch (interp, ctable, &search) == TCL_ERROR) {
-        return TCL_ERROR;
-    }
-
-    ctable_TeardownSearch (&search);
-    return TCL_OK;
-}
-
-//
-// ctable_SetupAndPerformSkipSearch - setup and perform a skiplist search
+// ctable_SetupAndPerformSearch - setup and perform a (possibly) skiplist search
 //   on a table.
 //
 // Uses a skip list index as the outer loop.  Still brute force unless the
@@ -1466,14 +1388,14 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 //
 //
 int
-ctable_SetupAndPerformSkipSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable) {
+ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable, int indexField) {
     CTableSearch    search;
 
-    if (ctable_SetupSearch (interp, ctable, objv, objc, &search) == TCL_ERROR) {
+    if (ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
-    if (ctable_PerformSkipSearch (interp, ctable, &search) == TCL_ERROR) {
+    if (ctable_PerformSearch (interp, ctable, &search) == TCL_ERROR) {
         return TCL_ERROR;
     }
 

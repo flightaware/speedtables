@@ -13,7 +13,9 @@ proc search_test {name searchFields expect} {
 
     if {$result != $expect} {
 	puts "error in test: $name"
-	puts "got '$result', expected '$expect'"
+	puts "got '$result'"
+	puts "expected '$expect'"
+	puts "command '$cmd'"
 	puts ""
     } else {
 	puts "ok"
@@ -27,11 +29,11 @@ proc search+_test {name searchFields expect} {
     #puts $cmd
     eval $cmd
 
-    if {$result != $expect} {
+    if {[lsort $result] != [lsort $expect]} {
 	puts "error in test: $name"
 	puts "got '$result'"
 	puts "expected '$expect'"
-	puts "command $cmd"
+	puts "command '$cmd'"
 	puts ""
     } else {
 	puts "ok"
@@ -71,7 +73,9 @@ search_test "search where alive is false" {-compare {{false alive}}} {jonas}
 t index create name
 search+_test "indexed search 1" {} {angel baron brak brock carr carl clarence rick dad dean doctor_girlfriend jonas jonas_jr orpheus frylock hank hoop inignot stroker shake meatwad mom 21 28 phantom_limb rusty the_monarch thundercleese triana ur zorak}
 
+if 0 { # the order depends on too many variables
 search+_test "indexed search with offset and limit" {-offset 5 -limit 5} {carl clarence rick dad dean}
+}
 
 t index drop name
 t index create show
@@ -79,10 +83,13 @@ t index create show
 search+_test "indexed search 2" {} {meatwad shake frylock carl inignot ur stroker hoop angel carr rick dad brak zorak mom thundercleese clarence brock hank dean jonas orpheus triana rusty jonas_jr doctor_girlfriend the_monarch 21 28 phantom_limb baron}
 
 search+_test "indexed range" {-compare {{range show A M}}} {meatwad shake frylock carl inignot ur}
+t index create show
 
 search+_test "sorted search+ with offset 0 and limit 10" {-sort name -offset 0 -limit 10} {angel baron brak brock carr carl clarence rick dad dean}
 
 search+_test "using 'in'" {-compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
+
+search_test "using index and 'in'" {-index show -compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
 puts -nonewline "testing 'fields'..."
 if {[t fields] != {id name home show dad alive gender age coolness}} {
@@ -98,7 +105,9 @@ set methods [t methods]
 if {"$methods" != "$methlab"} {
     error "t methods expected to return [list $methlab]\n\treturned [list $methods]"
 }
+puts "ok"
 
+puts -nonewline "testing 'fields'..."
 if {[t fields] != {id name home show dad alive gender age coolness}} {
     error "t fields expected to return {t fields id name home show dad alive gender age coolness}"
 }

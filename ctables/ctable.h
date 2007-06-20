@@ -169,6 +169,10 @@ typedef struct {
 #define CTABLE_SEARCH_TRAN_DELETE 1
 #define CTABLE_SEARCH_TRAN_UPDATE 2
 
+// Special "field" values for Search with skiplists
+#define CTABLE_SEARCH_INDEX_NONE -1
+#define CTABLE_SEARCH_INDEX_ANY -2
+
 // ctable search struct - this controls everything about a search
 typedef struct {
     struct ctableTable                  *ctable;
@@ -207,8 +211,8 @@ typedef struct {
     // count of matches during a search
     int                                  matchCount;
 
-    // true if a tailored walk was *requested*.
-    int					 useIndex;
+    // field that the search was requested to be indexed on.
+    int					 reqIndexField;
 
     // 0 if brute force search, 1 if we're skipping via skip list and range
     int                                  tailoredWalk;

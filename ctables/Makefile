@@ -16,10 +16,10 @@ default: test
 alltest: bigtest test
 
 bigtest:
-	cd bigtests; env TCLLIBPATH=${WORKDIR} make
+	env TCLLIBPATH=${WORKDIR} sh -c "cd bigtests; make"
 
 test:
-	cd tests; env TCLLIBPATH=${WORKDIR} make
+	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make"
 
 install:
 	-mkdir -p $(INSTDIR)
