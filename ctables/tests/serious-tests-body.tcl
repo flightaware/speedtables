@@ -5,7 +5,7 @@
 #
 
 proc search_test {name searchFields expect} {
-    puts -nonewline "running $name..."
+    puts -nonewline "running $name..."; flush stdout
     set result ""
     set cmd [linsert $searchFields 0 t search -key key -get data -fields "" -code {lappend result $key}]
     #puts $cmd
@@ -23,7 +23,7 @@ proc search_test {name searchFields expect} {
 }
 
 proc search+_test {name searchFields expect} {
-    puts -nonewline "running search+ test $name..."
+    puts -nonewline "running search+ test $name..."; flush stdout
     set result ""
     set cmd [linsert $searchFields 0 t search+ -get data -fields id -code {lappend result $data}]
     #puts $cmd
@@ -71,6 +71,7 @@ search_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {cl
 search_test "search where alive is false" {-compare {{false alive}}} {jonas}
 
 t index create name
+# Note, this one won't actually use skiplists.
 search+_test "indexed search 1" {} {angel baron brak brock carr carl clarence rick dad dean doctor_girlfriend jonas jonas_jr orpheus frylock hank hoop inignot stroker shake meatwad mom 21 28 phantom_limb rusty the_monarch thundercleese triana ur zorak}
 
 if 0 { # the order depends on too many variables
@@ -80,12 +81,22 @@ search+_test "indexed search with offset and limit" {-offset 5 -limit 5} {carl c
 t index drop name
 t index create show
 
+# Note, this one won't actually use skiplists.
 search+_test "indexed search 2" {} {meatwad shake frylock carl inignot ur stroker hoop angel carr rick dad brak zorak mom thundercleese clarence brock hank dean jonas orpheus triana rusty jonas_jr doctor_girlfriend the_monarch 21 28 phantom_limb baron}
 
 search+_test "indexed range" {-compare {{range show A M}}} {meatwad shake frylock carl inignot ur}
 t index create show
 
+# not accelerated
 search+_test "sorted search+ with offset 0 and limit 10" {-sort name -offset 0 -limit 10} {angel baron brak brock carr carl clarence rick dad dean}
+
+search_test "search >=" {-compare {{>= show M}}} {rick carr angel hoop stroker clarence thundercleese mom zorak brak dad baron phantom_limb 28 21 the_monarch doctor_girlfriend jonas_jr rusty triana orpheus jonas dean hank brock}
+
+search+_test "search+ >=" {-compare {{>= show M}}} {rick carr angel hoop stroker clarence thundercleese mom zorak brak dad baron phantom_limb 28 21 the_monarch doctor_girlfriend jonas_jr rusty triana orpheus jonas dean hank brock}
+
+search_test "search <" {-compare {{< show M}}} {ur inignot carl frylock shake meatwad}
+
+search+_test "search+ <" {-compare {{< show M}}} {ur inignot carl frylock shake meatwad}
 
 search+_test "using 'in'" {-compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 

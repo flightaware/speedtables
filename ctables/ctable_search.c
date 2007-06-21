@@ -781,6 +781,39 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
      return TCL_ERROR;
 }
 
+enum skipStart_e {
+    SKIP_START_NONE, SKIP_START_GE_ROW1, SKIP_START_EQ_ROW1, SKIP_START_RESET
+};
+enum skipEnd_e {
+    SKIP_END_NONE, SKIP_END_NE_ROW1, SKIP_END_GE_ROW1, SKIP_END_GE_ROW2
+};
+enum skipNext_e {
+    SKIP_NEXT_NONE, SKIP_NEXT_ROW, SKIP_NEXT_IN_LIST
+};
+
+static struct {
+    enum skipStart_e	skipStart;
+    enum skipEnd_e	skipEnd;
+    enum skipNext_e	skipNext;
+} skipTable[] = {
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // FALSE
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // TRUE
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NULL
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NOTNULL
+  {SKIP_START_RESET,	SKIP_END_GE_ROW1, SKIP_NEXT_ROW    }, // LT
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // LE
+  {SKIP_START_EQ_ROW1,	SKIP_END_NE_ROW1, SKIP_NEXT_ROW    }, // EQ
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NE
+  {SKIP_START_GE_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_ROW    }, // GE
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // GT
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // MATCH
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NOTMATCH
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // MATCH_CASE
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NOTMATCH_CASE
+  {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_ROW    }, // RANGE
+  {SKIP_START_RESET,	SKIP_END_NONE,    SKIP_NEXT_IN_LIST}  // IN
+};
+
 //
 // ctable_PerformSearch - perform the search
 //
@@ -813,9 +846,11 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     fieldCompareFunction_t compareFunction;
     int                    indexNumber;
     int                    tailoredTerm = 0;
-    enum {SKIP_START_ROW1, SKIP_START_RESET} skipStart = 0;
-    enum {SKIP_END_SPECIAL, SKIP_END_NE_ROW1, SKIP_END_GE_ROW2} skipEnd = 0;
-    enum {SKIP_NEXT_ROW, SKIP_NEXT_IN_LIST} skipNext = 0;
+
+    enum skipStart_e	   skipStart = 0;
+    enum skipEnd_e	   skipEnd = 0;
+    enum skipNext_e	   skipNext = 0;
+
     int			   count;
 
     int			   inIndex = 0;
@@ -847,7 +882,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
     }
 
-    // If they're not asking for nan indexed search, but the first
+    // If they're not asking for an indexed search, but the first
     // component is "in", force an indexed search.
 
     // The match code really needs to handle "in".
@@ -877,47 +912,40 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 	// Look for the first usable search field starting with the requested
 	// one (or the first, if it's not in the list)
-	for(try = 0; try < search->nComponents; try++, index++) {
+	for(try = 0; !skip && try < search->nComponents; try++, index++) {
 	    if(index >= search->nComponents)
 	        index = 0;
 	    CTableSearchComponent *component = &search->components[index];
 
 	    field = component->fieldID;
-	    tailoredTerm = component->comparisonType;
-            if (ctable->skipLists[field] != NULL) {
-	        switch (tailoredTerm) {
-		    // case CTABLE_COMP_GE: /* for later */
-		    case CTABLE_COMP_EQ:
-		    case CTABLE_COMP_RANGE: {
-		        // ding ding ding - we have a winner, time for an
-		        // accelerated search
-		        search->tailoredWalk = 1;
-		        skip = ctable->skipLists[field];
 
-		        skipStart = SKIP_START_ROW1;
-			skipNext = SKIP_NEXT_ROW;
-			if(tailoredTerm == CTABLE_COMP_EQ)
-				skipEnd = SKIP_END_NE_ROW1;
-			else
-				skipEnd = SKIP_END_GE_ROW2;
-		        row1 = component->row1;
-		        row2 = component->row2;
-		        break;
-		    }
-		    case CTABLE_COMP_IN: {
-		        // Still doing a skiplist search, but only part accelerated
-		        search->tailoredWalk = 1;
-		        skip = ctable->skipLists[field];
-    
-		        row1 = component->row1;
-			skipStart = SKIP_START_RESET;
-		        skipNext = SKIP_NEXT_IN_LIST;
-			skipEnd = SKIP_END_SPECIAL;
-		        inListObj = component->inListObj;
-		        inCount = component->inCount;
-		        break;
-		    }
-	        }
+	    tailoredTerm = component->comparisonType;
+
+	    skipNext  = skipTable[tailoredTerm].skipNext;
+	    skipStart = skipTable[tailoredTerm].skipStart;
+	    skipEnd   = skipTable[tailoredTerm].skipEnd;
+
+	    if(skipNext == SKIP_NEXT_NONE) continue;
+
+	    search->tailoredWalk = 1;
+	    skip = ctable->skipLists[field];
+
+//DEBUG printf("Searching on %d using {%d, %d, %d}\n", field, skipStart, skipEnd, skipNext);
+	    switch(skipNext) {
+		case SKIP_NEXT_ROW: {
+		    row1 = component->row1;
+		    row2 = component->row2;
+		    break;
+		}
+		case SKIP_NEXT_IN_LIST: {
+		    inListObj = component->inListObj;
+		    inCount = component->inCount;
+		    row1 = component->row1;
+		    break;
+		}
+		default: { // Can't happen
+		    panic("skipNext has unexpected value %d", skipNext);
+		}
 	    }
         }
     }
@@ -951,7 +979,11 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 	// If at start of skiplist, find first row, else find next row
 	switch(skipStart) {
-	    case SKIP_START_ROW1: {
+	    case SKIP_START_EQ_ROW1: {
+		jsw_sfind (skip, row1);
+		break;
+	    }
+	    case SKIP_START_GE_ROW1: {
 		jsw_sfind_equal_or_greater (skip, row1);
 		break;
 	    }
@@ -959,8 +991,12 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 		jsw_sreset(skip);
 		break;
 	    }
+	    default: { // can't happen
+		panic("skipStart has unexpected value %d", skipStart);
+	    }
 	}
-	// Blow up on infinite loops.
+
+	// Count is only to make sure we blow up on infinite loops
 	for(count = 0; count < ctable->count; count++) {
 	    if(skipNext == SKIP_NEXT_IN_LIST) {
 		// We're looking at a list of entries rather than a range,
@@ -990,6 +1026,11 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 	    // if at end or past any terminating condition, break
 	    switch(skipEnd) {
+	        case SKIP_END_GE_ROW1: {
+		    if (compareFunction (row, row1) >= 0)
+			goto search_complete;
+		    break;
+		}
 	        case SKIP_END_GE_ROW2: {
 		    if (compareFunction (row, row2) >= 0)
 			goto search_complete;
@@ -998,6 +1039,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	        case SKIP_END_NE_ROW1: {
 		    if (compareFunction (row, row1) != 0)
 			goto search_complete;
+		    break;
 		}
 		default: {
 		    // may not be a terminating condition, or it may

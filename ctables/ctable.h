@@ -79,7 +79,9 @@ typedef struct ctable_baseRowStruct {
 
 // define ctable search comparison types
 // these terms must line up with the definition of searchTerms
-//  in function ctable_ParseSearch in file ctable_search.c
+//  in function ctable_ParseSearch
+//  and the skip table in file ctable_search.c
+// 
 #define CTABLE_COMP_FALSE 0
 #define CTABLE_COMP_TRUE 1
 #define CTABLE_COMP_NULL 2
