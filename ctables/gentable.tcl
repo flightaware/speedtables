@@ -1388,34 +1388,52 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int noKeys) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int keyColumn) {
     struct $table *row;
     char          *key;
     char          *field;
     int            indexCtl;
     int            i;
+    int		   col;
     Tcl_Obj       *utilityObj = Tcl_NewObj ();
     char           keyNumberString[32];
+    char	  *keyCopy = NULL;
 
-    if (!noKeys) {
-	key = strsep (&string, "\t");
-// TODO: ADD_KEYCODE_HERE
-    } else {
+    if (keyColumn == -1) {
         sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
 	key = keyNumberString;
+    } else {
+        // find the beginning of the "keyColumn"th column in the string.
+        for (key = string, i = 0; key && i < keyColumn; i++) {
+	    key = strchr(key, '\t');
+	    if(key) key++;
+        }
+        if (key) {
+	    char *keyEnd = strchr(key, '\t');
+	    if(keyEnd) *keyEnd = 0;
+	    keyCopy = key = strdup(key);
+	    if(keyEnd) *keyEnd = '\t';
+        }
+	if(!key)
+	    key = "";
     }
+
     row = ${table}_find_or_create (ctable, key, &indexCtl);
 
-    for (i = 0; i < nFields; i++) {
+    for (col = i = 0; col < nFields; i++) {
         field = strsep (&string, "\t");
+	if(i == keyColumn) {
+	    continue;
+	}
 	Tcl_SetStringObj (utilityObj, field, -1);
-	if (${table}_set (interp, ctable, utilityObj, row, fieldIds[i], indexCtl) == TCL_ERROR) {
+	if (${table}_set (interp, ctable, utilityObj, row, fieldIds[col++], indexCtl) == TCL_ERROR) {
 	    Tcl_DecrRefCount (utilityObj);
 	    return TCL_ERROR;
 	}
     }
 
     Tcl_DecrRefCount (utilityObj);
+    if(keyCopy) free(keyCopy);
     return TCL_OK;
 }
 
@@ -1426,10 +1444,24 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     Tcl_Obj         *lineObj = Tcl_NewObj();
     char            *string;
     int              recordNumber = 0;
-    char      keyNumberString[32];
+    char             keyNumberString[32];
+    int		     keyColumn;
+    int		     i;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
+    }
+
+    if(noKeys) {
+	keyColumn = -1;
+    } else {
+	keyColumn = 0;
+    }
+
+    for(i = 0; i < nFields; i++) {
+	if(fieldNums[i] == ${table}_keyField) {
+	    keyColumn = i;
+	}
     }
 
     if ((mode & TCL_READABLE) == 0) {
@@ -1438,25 +1470,28 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     }
 
     while (1) {
-	char             c;
-	char            *strPtr;
+	char            *key;
 
         Tcl_SetStringObj (lineObj, "", 0);
         if (Tcl_GetsObj (channel, lineObj) <= 0) break;
 
 	string = Tcl_GetString (lineObj);
-// TODO check for key
 
 	// if pattern exists, see if it does not match key and if so, skip
 	if (pattern != NULL) {
-	    for (strPtr = string; *strPtr != '\t' && *strPtr != '\0'; strPtr++) continue;
-	    c = *strPtr;
-	    *strPtr = '\0';
-	    if ((pattern != NULL) && (!Tcl_StringCaseMatch (string, pattern, 1))) continue;
-	    *strPtr = c;
+	    for (key = string, i = 0; key && i < keyColumn; i++) {
+		key = strchr(key, '\t');
+		if(key) key++;
+	    }
+	    if (key) {
+		char *keyEnd = strchr(key, '\t');
+	        if(keyEnd) *keyEnd = 0;
+	        if (!Tcl_StringCaseMatch (string, pattern, 1)) continue;
+		if(keyEnd) *keyEnd = '\t';
+	    }
 	}
 
-	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, noKeys) == TCL_ERROR) {
+	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn) == TCL_ERROR) {
 	    char lineNumberString[32];
 
 	    Tcl_DecrRefCount (lineObj);
@@ -2627,19 +2662,10 @@ proc gen_setup_routine {table} {
     # (hopefully, heh) they'll never be deleted.
     #
     # also populate the *_NameObjList table
-    # and the *_KeyObjList table
-    # and the *_KeyIndex table
     #
     set position 0
-    set keyPosition 0
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
-
-        if {[info exists field(key)] && $field(key)} {
-	    emit "    ${table}_KeyIndex\[$keyPosition\] = $position;"
-	    emit "    ${table}_KeyObjList\[$keyPosition\] ="
-	    incr keyPosition
-        }
 
 	set nameObj [field_to_nameObj $table $fieldName]
         emit "    ${table}_NameObjList\[$position\] = $nameObj = Tcl_NewStringObj (\"$fieldName\", -1);"
@@ -2647,8 +2673,6 @@ proc gen_setup_routine {table} {
 	emit ""
 	incr position
     }
-    emit "    ${table}_KeyIndex\[$keyPosition\] = -1;"
-    emit "    ${table}_KeyObjList\[$keyPosition\] ="
     emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
     emit ""
 
@@ -2703,7 +2727,6 @@ proc gen_code {} {
     set Id {CTable template Id}
 
     set nFields [string toupper $table]_NFIELDS
-    set nKeys [string toupper $table]_NKEYS
 
     set rowStruct $table
 
@@ -3075,23 +3098,31 @@ proc gen_nonnull_keyvalue_list {} {
 }
 
 #
-# key_names - Return the list of keyfield names
+# key_name - Return the name of the key field
 #
-proc key_names {} {
-    variable fields
+proc key_name {} {
     variable fieldList
-    variable keyNames
-    if ![info exists keyNames] {
-        set keyNames {}
-        foreach fieldName $fieldList {
-	    upvar ::ctable::fields::$fieldName field
-
-            if {[info exists field(key)] && $field(key)} {
-	        lappend keyNames $fieldName
-            }
-        }
+    foreach keyField $fieldList {
+	if [is_key $keyField] {
+	    return $keyField
+	}
     }
-    return $keyNames
+    return ""
+}
+
+#
+# key_field - return the index of the key field
+#
+proc key_field {} {
+    variable fieldList
+    set i 0
+    foreach keyField $fieldList {
+	if [is_key $keyField] {
+	    return $i
+	}
+	incr i
+    }
+    return -1
 }
 
 #
@@ -3099,7 +3130,6 @@ proc key_names {} {
 #
 proc gen_make_key_functions {} {
     gen_make_key_from_keylist
-    gen_make_key_from_list
 }
 
 proc gen_make_key_from_keylist {} {
@@ -3109,81 +3139,20 @@ proc gen_make_key_from_keylist {} {
     variable leftCurly
     variable rightCurly
 
-    set keyNames [key_names]
-    set lengthKey [string toupper $table]_NKEYS
+    set keyName [key_name]
 
     emit "Tcl_Obj *${table}_key_from_keylist (Tcl_Interp *interp, Tcl_Obj **objv, int objc) $leftCurly"
 
-    if ![llength $keyNames] {
-        emit "    return (Tcl_Obj *)NULL;"
-    } else {
+    if {"$keyName" != ""} {
 	emit "    int      i;"
-        emit "    Tcl_Obj *listObjv\[$lengthKey];"
         emit ""
 
-        emit "    for(i = 0; i < $lengthKey; i++)"
-	emit "        listObjv\[i] = NULL;"
-	emit ""
-
-        emit "    for(i = 0; i < objc; i+=2) $leftCurly"
-	set position 0
-        foreach fieldName $keyNames {
-	    emit "        if(strcmp(Tcl_GetString(objv\[i]), \"$fieldName\") == 0)"
-	    emit "            listObjv\[$position] = objv\[i+1];"
-	    incr position
-        }
-	emit "    $rightCurly"
-	emit ""
-
-        emit "    for(i = 0; i < $lengthKey; i++)"
-	emit "        if(listObjv\[i] == NULL)"
-	emit "            return NULL;"
-	emit ""
-
-        emit "    return Tcl_NewListObj ($lengthKey, listObjv);"
-    }
-
-    emit "$rightCurly"
-    emit ""
-}
-
-proc gen_make_key_from_list {} {
-    variable table
-    variable fields
-    variable fieldList
-    variable leftCurly
-    variable rightCurly
-
-    set keyNames [key_names]
-    set lengthKey [string toupper $table]_NKEYS
-
-    emit "Tcl_Obj *${table}_key_from_list (Tcl_Interp *interp, Tcl_Obj **objv, int objc) $leftCurly"
-
-    if ![llength $keyNames] {
-        emit "    return (Tcl_Obj *)NULL;"
-    } else {
-        emit "    Tcl_Obj *listObjv\[$lengthKey];"
+        emit "    for(i = 0; i < objc; i+=2)"
+	emit "        if(strcmp(Tcl_GetString(objv\[i]), \"$keyName\") == 0)"
+	emit "            return objv\[i+1];"
         emit ""
-        set maxIndex -1
-        foreach fieldName $keyNames {
-	    set index [lsearch $fieldList $fieldName]
-	    if {$index > $maxIndex} {
-		set maxIndex $index
-	    }
-        }
-	emit "    if(objc <= $index) return NULL;"
-
-	set position 0
-        foreach fieldName $keyNames {
-	    set index [lsearch $fieldList $fieldName]
-	    emit "    listObjv\[$position] = objv\[$index];"
-	    incr position
-        }
-	emit "    listObjv\[$lengthKey-1] = NULL;"
-	emit ""
-
-        emit "    return Tcl_NewListObj ($lengthKey, listObjv);"
     }
+    emit "    return (Tcl_Obj *)NULL;"
 
     emit "$rightCurly"
     emit ""
@@ -3207,8 +3176,7 @@ proc gen_field_names {} {
     emit "#define [string toupper $table]_NFIELDS [llength $fieldList]"
     emit ""
 
-    emit "#define [string toupper $table]_NKEYS [llength [key_names]]"
-    emit ""
+    emit "int      ${table}_keyField = [key_field];"
 
     emit "static CONST char *${table}_fields\[] = $leftCurly"
     foreach fieldName $fieldList {
@@ -3311,10 +3279,6 @@ proc gen_field_names {} {
     # end of values
 
     emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
-    emit ""
-
-    emit "int      ${table}_KeyIndex\[[string toupper $table]_NKEYS + 1\];"
-    emit "Tcl_Obj *${table}_KeyObjList\[[string toupper $table]_NKEYS + 1\];"
     emit ""
 
     emit "Tcl_Obj *${table}_DefaultEmptyStringObj;"

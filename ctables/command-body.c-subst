@@ -44,17 +44,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     Tcl_HashEntry *registeredProcHashEntry;
     int indexCtl;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach",
-#if ${nKeys}
-	"keys", "make_key",
-#endif
-	"methods", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "capabilities", "methods", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH,
-#if ${nKeys}
-	OPT_KEYS, OPT_MAKE_KEY,
-#endif
-	OPT_METHODS};
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_CAPS, OPT_METHODS};
 
     if (objc == 1) {
         Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
@@ -117,27 +109,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  return TCL_OK;
       }
 
-#if ${nKeys}
-      case OPT_KEYS: {
-          int i;
-
-	  Tcl_Obj *obj;
-	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
-
-	  if (objc != 2) {
-	    Tcl_WrongNumArgs (interp, 1, objv, "keys");
-	    return TCL_ERROR;
-	  }
-
-	  for (i = 0; (obj = ${table}_KeyObjList[i]) != NULL; i++) {
-	      if (!is_hidden_obj(obj) && Tcl_ListObjAppendElement (interp, resultObj, obj) == TCL_ERROR) {
-	          return TCL_ERROR;
-	      }
-	  }
-
+      // return a capabilities list (stub)
+      case OPT_CAPS: {
 	  return TCL_OK;
       }
-#endif
 
       case OPT_METHODS: {
           int i;
@@ -374,19 +349,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	return TCL_OK;
       }
 
-#if ${nKeys}
-      case OPT_MAKE_KEY:
-#endif
       case OPT_STORE: {
         int         i;
 	int         listObjc;
 	Tcl_Obj   **listObjv;
 	char	   *key;
-#if ${nKeys}
-	Tcl_Obj	   *keyList;
-#else
+        Tcl_Obj    *keyObj;
 	static char keyString[32];
-#endif
 
 	if ((objc < 2) || ((objc != 3) && (objc % 2) == 1)) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "pairList or field value ?field value...?");
@@ -411,34 +380,21 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
-#if ${nKeys}
-	keyList = ${table}_key_from_keylist(interp, listObjv, listObjc);
-	if(!keyList) {
-	    Tcl_AppendResult (interp, "Incomplete key provided for ${table}", (char *)NULL);
-	    return TCL_ERROR;
+	keyObj = ${table}_key_from_keylist(interp, listObjv, listObjc);
+	if(keyObj) {
+	    key = Tcl_GetString(keyObj);
+	} else {
+	    sprintf(key = keyString, "%u", ctable->autoRowNumber++);
         }
 
-	// simple and fast and stupid.
-	// FIXME needs to be effectively [join keyList :]
-	key = Tcl_GetString(keyList);
-#else
-	sprintf(key = keyString,"%u",ctable->autoRowNumber++);
-#endif
+        row = ${table}_find_or_create (ctable, key, &indexCtl);
 
-#if ${nKeys}
-	if(optIndex == OPT_STORE) {
-#endif
-            row = ${table}_find_or_create (ctable, key, &indexCtl);
-
-	    for (i = 0; i < listObjc; i+= 2) {
-	        if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], indexCtl) == TCL_ERROR) {
-		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
-		    return TCL_ERROR;
-	        }
+	for (i = 0; i < listObjc; i+= 2) {
+	    if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], indexCtl) == TCL_ERROR) {
+		Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		return TCL_ERROR;
 	    }
-#if ${nKeys}
 	}
-#endif
 
         Tcl_SetObjResult (interp, Tcl_NewStringObj (key, -1));
 
@@ -557,7 +513,6 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  char             *key = NULL;
 	  char             *value;
 	  int              *fieldList;
-	  int               firstField;
 	  int               fieldIndex;
 	  int               nFields;
 	  int               nTuples;
@@ -566,12 +521,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int               pgRow;
 	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
 	  Tcl_Obj          *valueObj = Tcl_NewObj();
-#if ${nKeys}
-	  int		    keyColumn[${nKeys}];
-	  int		    i;
-#else
 	  char              keyNumberString[32];
-#endif
+	  int		    keyColumn;
+	  int		    firstColumn;
 
 	  extern PGresult *PgGetResultId (Tcl_Interp *interp, CONST char *id, void **resultidPtr);
 
@@ -600,21 +552,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  fieldList = (int *) ckalloc ( nFields * sizeof (int));
 
 	  if (noKeys) {
-#if ${nKeys}
-	      for(i = 0; i < ${nKeys}; i++) {
-	          keyColumn[i] = -1;
-	      }
-#endif
-	      // if called with "-nokeys", the first field in the query
-	      // result is just another column
-	      firstField = 0;
+	      // if called with "-nokeys", there is no default key column
+	      keyColumn = -1;
+	      firstColumn = 0;
 	  } else {
 	      // if not called with "-nokeys", the first field in the query
-	      // result must be the key
-	      firstField = 1;
+	      // result is the default key column
+	      keyColumn = 0;
+	      firstColumn = 1;
 	  }
 
-	  for (field = firstField; field < nFields; field++) {
+	  for (field = firstColumn; field < nFields; field++) {
 	      fieldName = PQfname (res, field);
 
 	      Tcl_SetStringObj (fieldNameObj, fieldName, -1);
@@ -625,64 +573,31 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 
 	      fieldList[field] = fieldIndex;
-#if ${nKeys}
-	      if(noKeys) {
-	          for(i = 0; i < ${nKeys}; i++) {
-		      if(${table}_KeyIndex[i] == fieldIndex)
-		          keyColumn[i] = field;
-		  }
-	      }
-#endif
-	  }
 
-#if ${nKeys}
-	  if(noKeys) {
-	      for(i = 0; i < ${nKeys}; i++) {
-	          if(keyColumn[i] == -1) {
-	              Tcl_AppendResult(interp, "Can't extract key from result", (char *)NULL);
-		      return TCL_ERROR;
-		  }
+	      // If any column matches the key, then use it. This means
+	      // ignoring the first column if noKeys wasn't set.
+	      if(${table}_keyField == fieldIndex) {
+	          keyColumn = field;
 	      }
 	  }
-#endif
 
 	  nTuples = PQntuples (res);
 
-	  for (pgRow = 0; pgRow < nTuples; pgRow++) {
-	      if (noKeys) {
-#if ${nKeys}
-		  Tcl_Obj *keyList = Tcl_NewObj();
-		  char    *col;
-		  Tcl_Obj *colObj;
-
-		  for(i = 0; i < ${nKeys}; i++) {
-		      col = PQgetvalue(res, pgRow, keyColumn[0]);
-		      if(col == NULL) {
-			  col = "";
-		      }
-		      colObj = Tcl_NewStringObj(col, -1);
-		      if (Tcl_ListObjAppendElement (interp, keyList, colObj) == TCL_ERROR) {
-		          return TCL_ERROR;
-		      }
-		  }
-
-		  // simple and fast and stupid.
-		  // FIXME needs to be effectively [join keyList :] ????
-		  key = Tcl_GetString(keyList);
-#else
+	  for (pgRow = firstColumn; pgRow < nTuples; pgRow++) {
+	      if(keyColumn == -1) {
 	          sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
-		  key = keyNumberString;
-#endif
+	          key = keyNumberString;
 	      } else {
-		  key = PQgetvalue (res, pgRow, 0);
-		  if (key == NULL) {
-		      key = "";
-		  }
+	          key = PQgetvalue(res, pgRow, keyColumn);
 	      }
 
 	      row = ${table}_find_or_create (ctable, key, &indexCtl);
 
-	      for (field = firstField; field < nFields; field++) {
+	      for (field = firstColumn; field < nFields; field++) {
+		  if(field == keyColumn) {
+		      continue;
+		  }
+
 	          value = PQgetvalue (res, pgRow, field);
 
 		  if (value == NULL) {
@@ -775,6 +690,29 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	channel = Tcl_GetString (objv[2]);
+
+#ifdef MANIACDEBUGGER
+{
+  char buffer[9999];
+  char *s=buffer;
+  
+  for(i = 0; i < nFields; i++) {
+    sprintf(s, "%d, ", fieldIds[i]);
+    s += strlen(s);
+  }
+  if(s > buffer) {
+    --s;
+    --s;
+    *s = 0;
+  }
+
+  fprintf(stderr,
+	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d);\n",
+	optIndex == OPT_WRITE_TABSEP ? "export" : "import",
+	channel, buffer, nFields, pattern, noKeys
+  );
+}
+#endif
 
 	if (optIndex == OPT_WRITE_TABSEP) {
 	    return ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys);
