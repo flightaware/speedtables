@@ -157,7 +157,7 @@ proc is_key {fieldName} {
 # is_hidden - hidden fields are not returned in arrays or lists by default
 #
 proc is_hidden {fieldName} {
-    return [string match ".*" $fieldName]
+    return [string match {[._]*} $fieldName]
 }
 
 #
@@ -724,7 +724,12 @@ set tclobjSortSource {
 #
 set keySortSource {
       case $fieldEnum: {
-        result = direction * strcmp (row1->hashEntry.key, row2->hashEntry.key);
+	if(*row1->hashEntry.key > *row2->hashEntry.key)
+	    result = direction;
+	else if(*row1->hashEntry.key < *row2->hashEntry.key)
+	    result = -direction;
+	else
+            result = direction * strcmp (row1->hashEntry.key, row2->hashEntry.key);
 	break;
       }
 }
@@ -1394,6 +1399,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 
     if (!noKeys) {
 	key = strsep (&string, "\t");
+// TODO: ADD_KEYCODE_HERE
     } else {
         sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
 	key = keyNumberString;
@@ -1439,6 +1445,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
         if (Tcl_GetsObj (channel, lineObj) <= 0) break;
 
 	string = Tcl_GetString (lineObj);
+// TODO check for key
 
 	// if pattern exists, see if it does not match key and if so, skip
 	if (pattern != NULL) {
@@ -1733,12 +1740,16 @@ proc gen_defaults_subr {subr struct} {
     emit ""
     emit "        // $baseCopy.__dirtyIsNull = 0;"
     emit "        // $baseCopy._dirty = 1;"
-    emit "       $baseCopy.hashEntry.key = NULL;"
+    emit "        $baseCopy.hashEntry.key = NULL;"
 
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
 	switch $field(type) {
+	    key {
+		# No work to do
+	    }
+
 	    varstring {
 	        emit "        $baseCopy.$fieldName = (char *) NULL;"
 		emit "        $baseCopy._${fieldName}Length = 0;"
