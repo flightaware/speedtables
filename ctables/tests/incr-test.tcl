@@ -46,7 +46,8 @@ puts "ok"
 
 puts -nonewline "incr test 5..."
 if {[catch {t incr frammistan foo 1} result] == 1} {
-    if {$result == {bad field "foo": must be id, name, home, show, dad, alive, gender, age, or coolness}} {
+    if {$result == {bad field "foo": must be id, name, home, show, dad, alive, gender, age, or coolness} ||
+        $result == {bad field "foo": must be id, name, home, show, dad, alive, gender, age, coolness, or _key}} {
     } else {
 	error "got '$result' doing t incr frammistan foo 1"
     }

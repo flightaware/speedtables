@@ -43,7 +43,8 @@ enum ctable_types {
     CTABLE_TYPE_FLOAT,
     CTABLE_TYPE_DOUBLE,
     CTABLE_TYPE_INET,
-    CTABLE_TYPE_TCLOBJ
+    CTABLE_TYPE_TCLOBJ,
+    CTABLE_TYPE_KEY
 };
 
 // define ctable linked lists structures et al
@@ -295,5 +296,10 @@ typedef struct ctableTable {
 
 extern int
 ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth);
+
+// Helpers
+#define is_hidden_obj(obj) (Tcl_GetString(obj)[0] == '_')
+#define is_hidden_name(fieldNames,field) ((fieldNames)[field][0] == '_')
+#define is_hidden_field(table,field) is_hidden_name((table)->fieldNames,field)
 
 #endif

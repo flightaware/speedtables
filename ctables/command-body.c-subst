@@ -109,7 +109,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 
 	  for (i = 0; (obj = ${table}_NameObjList[i]) != NULL; i++) {
-	      if (Tcl_ListObjAppendElement (interp, resultObj, obj) == TCL_ERROR) {
+	      if (!is_hidden_obj(obj) && Tcl_ListObjAppendElement (interp, resultObj, obj) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
 	  }
@@ -130,7 +130,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 
 	  for (i = 0; (obj = ${table}_KeyObjList[i]) != NULL; i++) {
-	      if (Tcl_ListObjAppendElement (interp, resultObj, obj) == TCL_ERROR) {
+	      if (!is_hidden_obj(obj) && Tcl_ListObjAppendElement (interp, resultObj, obj) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
 	  }
@@ -760,9 +760,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	if (objc == 0) {
-	    nFields = $nFields;
-	    for (i = 0; i < $nFields; i++) {
-	        fieldIds[i] = i;
+	    for (nFields = i = 0; i < $nFields; i++) {
+		if(!is_hidden_name(${table}_fields,i)) {
+	            fieldIds[nFields++] = i;
+		}
 	    }
 	} else {
 	    nFields = objc;

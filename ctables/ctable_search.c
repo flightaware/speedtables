@@ -132,6 +132,7 @@ ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char
 int
 ctable_searchMatchPatternCheck (char *s) {
     char c;
+if(!s) panic("ctable_searchMatchPatternCheck called with null");
 
     int firstCharIsStar = 0;
     int lastCharIsStar = 0;
@@ -337,7 +338,6 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 static int
 ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, ctable_BaseRow *row) {
     char           *key;
-    int             i;
     ctable_CreatorTable *creator = ctable->creator;
 
     key = row->hashEntry.key;
@@ -380,7 +380,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	  case CTABLE_SEARCH_ACTION_GET: {
 	    if (search->nRetrieveFields < 0) {
-		listObj = (*creator->gen_list) (interp, row);
+		listObj = creator->gen_list (interp, row);
 	    } else {
 	       int i;
 
@@ -400,6 +400,9 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	       int i;
 
 	       for (i = 0; i < creator->nFields; i++) {
+		   if (is_hidden_field(creator,i)) {
+		       continue;
+		   }
 	           if (search->endAction == CTABLE_SEARCH_ACTION_ARRAY) {
 		       result = creator->array_set (interp, search->varNameObj, row, i);
 		   } else {
@@ -411,6 +414,9 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
 	           if (search->endAction == CTABLE_SEARCH_ACTION_ARRAY) {
+		       if (is_hidden_field(creator,i)) {
+		           continue;
+		       }
 		       result = creator->array_set (interp, search->varNameObj, row, search->retrieveFields[i]);
 		   } else {
 		       result = creator->array_set_with_nulls (interp, search->varNameObj, row, search->retrieveFields[i]);
@@ -425,27 +431,35 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	  }
 
 	  case CTABLE_SEARCH_ACTION_ARRAY_GET: {
+	    int i;
+
+	    listObj = Tcl_NewObj ();
 	    if (search->nRetrieveFields < 0) {
-	       int i;
-
-	       listObj = Tcl_NewObj ();
-	       for (i = 0; i < creator->nFields; i++) {
-		   creator->lappend_nonnull_field_and_name (interp, listObj, row, i);
-	       }
+		for (i = 0; i < creator->nFields; i++) {
+		    if (is_hidden_field(creator,i)) {
+			continue;
+		    }
+		    creator->lappend_nonnull_field_and_name (interp, listObj, row, i);
+		 }
 	    } else {
-	       int i;
-
-	       listObj = Tcl_NewObj ();
-	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   creator->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
-	       }
+		for (i = 0; i < search->nRetrieveFields; i++) {
+		    creator->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
+		}
 	    }
 	    break;
 	  }
 
 	  case CTABLE_SEARCH_ACTION_ARRAY_GET_WITH_NULLS: {
+	    int i;
+
+	    listObj = Tcl_NewObj ();
 	    if (search->nRetrieveFields < 0) {
-		listObj = (*creator->gen_keyvalue_list) (interp, row);
+		for (i = 0; i < creator->nFields; i++) {
+		    if (is_hidden_field(creator,i)) {
+			continue;
+		    }
+		    creator->lappend_field_and_name (interp, listObj, row, i);
+		}
 	    } else {
 		listObj = Tcl_NewObj ();
 		for (i = 0; i < search->nRetrieveFields; i++) {

@@ -104,7 +104,7 @@ search_test "using index and 'in'" {-index show -compare {{in show {"The Brak Sh
 
 puts -nonewline "testing 'fields'..."
 if {[t fields] != {id name home show dad alive gender age coolness}} {
-    error "t fields expected to return {t fields id name home show dad alive gender age coolness}"
+   error "t fields expected to return {id name home show dad alive gender age coolness}\nbut got {[t fields]}"
 }
 puts "ok"
 
@@ -120,7 +120,7 @@ puts "ok"
 
 puts -nonewline "testing 'fields'..."
 if {[t fields] != {id name home show dad alive gender age coolness}} {
-    error "t fields expected to return {t fields id name home show dad alive gender age coolness}"
+    error "t fields expected to return {id name home show dad alive gender age coolness}\nbut got {[t fields]}"
 }
 puts "ok"
 

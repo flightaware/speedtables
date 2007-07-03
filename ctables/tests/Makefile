@@ -16,3 +16,6 @@ all:
 	tclsh8.4 key-tests.tcl
 	tclsh8.4 trans-tests.tcl
 
+key:
+	-rm build/*
+	tclsh8.4 key-tests.tcl

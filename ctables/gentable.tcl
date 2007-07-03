@@ -18,6 +18,7 @@ namespace eval ctable {
     variable ctableErrorInfo
     variable withPgtcl
     variable reservedWords
+    variable errorDebug
 
     variable genCompilerDebug
     variable showCompilerCommands
@@ -26,6 +27,9 @@ namespace eval ctable {
     variable pgTargetDir
 
     set ctablePackageVersion 1.3
+
+    # set to 1 to see errorInfo in normal tracebacks
+    set errorDebug 0
 
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
@@ -59,7 +63,7 @@ namespace eval ctable {
 
     ## ctableTypes must line up with the enumerated typedef "ctable_types"
     ## in ctable.h
-    set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
+    set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj key"
 
     set reservedWords "bool char short int long wide float double"
 
@@ -125,6 +129,38 @@ proc cquote {string} {
 }
 
 #
+# Special normally-illegal field names
+#
+variable specialFieldNames {
+    _key
+}
+
+#
+# is_key - is this field a "key" or a normal field
+#
+proc is_key {fieldName} {
+    # If called before special "_key" field is set up.
+    if {"$fieldName" == "_key"} {
+	return 1
+    }
+
+    # Otherwise go by type
+    upvar ::ctable::fields::$fieldName field
+    if {[info exists field(type)] && "$field(type)" == "key"} {
+	return 1
+    }
+
+    return 0
+}
+
+#
+# is_hidden - hidden fields are not returned in arrays or lists by default
+#
+proc is_hidden {fieldName} {
+    return [string match ".*" $fieldName]
+}
+
+#
 # field_to_enum - return a field mapped to the name we'll use when
 #  creating or referencing an enumerated list of field names.
 #
@@ -134,7 +170,27 @@ proc cquote {string} {
 proc field_to_enum {fieldName} {
     variable table
 
+    if {[regexp {^[.](.*)$} $fieldName _ pseudoName]} {
+	return "[string toupper $pseudoName]_[string toupper $table]"
+    }
     return "FIELD_[string toupper $table]_[string toupper $fieldName]"
+}
+
+#
+# field_to_var - generate a unique variable name
+#
+proc field_to_var {table fieldName varName} {
+    if [regexp {^[.](.*)} $fieldName _ pseudoName] {
+	return "_${table}_${pseudoName}_$varName"
+    }
+    return "${table}_${fieldName}_$varName"
+}
+#
+# field_to_nameObj - return a field mapped to the Tcl name object we'll
+# use to expose the name to Tcl
+#
+proc field_to_nameObj {table fieldName} {
+    return [field_to_var $table $fieldName nameObj]
 }
 
 #
@@ -330,6 +386,13 @@ set numberSetSource {
 	row->$fieldName = value;
 [gen_ctable_insert_into_index $fieldName]
 	break;
+      }
+}
+
+set keySetSource {
+      case $optname: {
+	Tcl_AppendResult (interp, "Can not assign to $fieldName", (char *)NULL);
+	return TCL_ERROR;
       }
 }
 
@@ -655,6 +718,17 @@ set tclobjSortSource {
       }
 }
 
+#
+# keySortSource - code we run subst over to generate a compare of 
+# a key for use in a sort.
+#
+set keySortSource {
+      case $fieldEnum: {
+        result = direction * strcmp (row1->hashEntry.key, row2->hashEntry.key);
+	break;
+      }
+}
+
 #####
 #
 # Generating Code For Search Comparisons
@@ -927,6 +1001,62 @@ set tclobjCompSource {
 [gen_standard_comp_switch_source $fieldName]
         }
 }
+
+#
+# keyCompSource - code we run subst over to generate a compare of 
+# a string.
+#
+set keyCompSource {
+        case $fieldEnum: {
+          int     strcmpResult;
+
+[gen_standard_comp_null_check_source $table $fieldName]
+	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH) || (compType == CTABLE_COMP_MATCH_CASE) || (compType == CTABLE_COMP_NOTMATCH_CASE)) {
+[gen_null_exclude_during_sort_comp $table $fieldName]
+	      // matchMeansKeep will be 1 if matching means keep,
+	      // 0 if it means discard
+	      int matchMeansKeep = ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE));
+	      struct ctableSearchMatchStruct *sm = component->clientData;
+
+	      if (sm->type == CTABLE_STRING_MATCH_ANCHORED) {
+		  char *field;
+		  char *match;
+
+		  exclude = !matchMeansKeep;
+		  for (field = row->hashEntry.key, match = row1->hashEntry.key; *match != '*' && *match != '\0'; match++, field++) {
+		      // printf("comparing '%c' and '%c'\n", *field, *match);
+		      if (sm->nocase) {
+			  if (tolower (*field) != tolower (*match)) {
+			      exclude = matchMeansKeep;
+			      break;
+			  }
+		      } else {
+			  if (*field != *match) {
+			      exclude = matchMeansKeep;
+			      break;
+			  }
+		      }
+		  }
+		  // if we got here it was anchored and we now know the score
+		  break;
+	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
+	          exclude = (boyer_moore_search (sm, (unsigned char *)row->hashEntry.key, strlen(row->hashEntry.key), sm->nocase) == NULL);
+		  if (!matchMeansKeep) exclude = !exclude;
+		  break;
+	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
+	          exclude = !(Tcl_StringCaseMatch (row->hashEntry.key, row1->hashEntry.key, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
+		  if (!matchMeansKeep) exclude = !exclude;
+		  break;
+              } else {
+		  panic ("software bug, sm->type unknown match type");
+	      }
+	  }
+
+          strcmpResult = strcmp (row->hashEntry.key, row1->hashEntry.key);
+[gen_standard_comp_switch_source $fieldName]
+        }
+}
+
 
 #####
 #
@@ -1369,6 +1499,19 @@ proc end_table {} {
 }
 
 #
+# Is this a legal field name.
+#
+# Special fields are automatically legal.
+#
+proc is_legal {fieldName} {
+    variable specialFieldNames
+    if {[lsearch $specialFieldNames $fieldName] != -1} {
+	return 1
+    }
+    return [regexp {^[a-zA-Z][_a-zA-Z0-9]*$} $fieldName]
+}
+
+#
 # deffield - helper for defining fields -- all of the field-defining procs
 #  use this except for boolean that subsumes its capabilities, since we
 #  need to keep booleans separately for sanity of the C structures
@@ -1386,7 +1529,7 @@ proc deffield {fieldName argList} {
         error "illegal field name \"$fieldName\" -- it's a reserved word"
     }
 
-    if {![regexp {^[a-zA-Z][_a-zA-Z0-9]*$} $fieldName]} {
+    if {![is_legal $fieldName]} {
         error "field name \"$fieldName\" must start with a letter and can only contain letters, numbers, and underscores"
     }
 
@@ -1515,6 +1658,22 @@ proc tclobj {fieldName args} {
 }
 
 #
+# key - define a pseudofield for the key
+#
+proc key {name args} {
+    variable key_feild
+    # Only allow one key field
+    if [info exists key_field] {
+	# But only complain if it's not an internal "special" field
+	if ![is_special $name] {
+	    error "Duplicate key field"
+	}
+	return
+    }
+    deffield $name [linsert $args 0 type key needsQuoting 1 notnull 1]
+}
+
+#
 # putfield - write out a field definition when emitting a C struct
 #
 proc putfield {type fieldName {comment ""}} {
@@ -1552,8 +1711,6 @@ proc gen_ctable_type_stuff {} {
     emit "$rightCurly;"
     emit ""
 }
-
-set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj"
 
 #
 # gen_defaults_subr - gen code to set a row to default values
@@ -1865,6 +2022,10 @@ proc gen_struct {} {
 
 	    tclobj {
 		putfield "struct Tcl_Obj" "*$field(name)"
+	    }
+
+	    key {
+		# Do nothing, it's in the hashEntry
 	    }
 
 	    default {
@@ -2200,6 +2361,10 @@ proc gen_sets {} {
 	upvar ::ctable::fields::$fieldName field
 
 	switch $field(type) {
+	    key {
+		emit_set_standard_field $fieldName keySetSource
+	    }
+
 	    int {
 		emit_set_num_field $fieldName int
 	    }
@@ -2465,7 +2630,7 @@ proc gen_setup_routine {table} {
 	    incr keyPosition
         }
 
-	set nameObj ${table}_${fieldName}NameObj
+	set nameObj [field_to_nameObj $table $fieldName]
         emit "    ${table}_NameObjList\[$position\] = $nameObj = Tcl_NewStringObj (\"$fieldName\", -1);"
 	emit "    Tcl_IncrRefCount ($nameObj);"
 	emit ""
@@ -2560,6 +2725,10 @@ proc gen_new_obj {type fieldName} {
     upvar ::ctable::fields::$fieldName field
 
     switch $type {
+	key {
+	    return "Tcl_NewStringObj (row->hashEntry.key, -1)"
+	}
+
 	short {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
 		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj (row->$fieldName)"
@@ -2791,6 +2960,10 @@ proc gen_list {} {
 
     set position 0
     foreach fieldName $fieldList {
+	if {[is_hidden $fieldName]} {
+	    continue
+	}
+
 	upvar ::ctable::fields::$fieldName field
 
 	set_list_obj $position $field(type) $fieldName
@@ -2798,7 +2971,7 @@ proc gen_list {} {
 	incr position
     }
 
-    emit "    return Tcl_NewListObj ($lengthDef, listObjv);"
+    emit "    return Tcl_NewListObj ($position, listObjv);"
     emit "$rightCurly"
     emit ""
 }
@@ -2825,9 +2998,13 @@ proc gen_keyvalue_list {} {
 
     set position 0
     foreach fieldName $fieldList {
+	if {[is_hidden $fieldName]} {
+	    continue
+	}
+
 	upvar ::ctable::fields::$fieldName field
 
-	emit "    listObjv\[$position] = ${table}_${fieldName}NameObj;"
+	emit "    listObjv\[$position] = [field_to_nameObj $table $fieldName];"
 	incr position
 
 	set_list_obj $position $field(type) $fieldName
@@ -2836,9 +3013,7 @@ proc gen_keyvalue_list {} {
 	emit ""
     }
 
-    #emit "    Tcl_SetObjResult (interp, Tcl_NewListObj ($lengthDef * 2, listObjv));"
-    #emit "    return TCL_OK;"
-    emit "    return Tcl_NewListObj ($lengthDef * 2, listObjv);"
+    emit "    return Tcl_NewListObj ($position, listObjv);"
     emit "$rightCurly"
     emit ""
 }
@@ -2865,17 +3040,24 @@ proc gen_nonnull_keyvalue_list {} {
     emit ""
 
     foreach fieldName $fieldList {
+	if {[is_hidden $fieldName]} {
+	    continue
+	}
+
 	upvar ::ctable::fields::$fieldName field
 
-	emit "    obj = [gen_new_obj $field(type) $fieldName];"
-	emit "    if (obj != ${table}_NullValueObj) $leftCurly"
-	emit "        listObjv\[position++] = ${table}_${fieldName}NameObj;"
-	emit "        listObjv\[position++] = obj;"
-	emit "    $rightCurly"
+	if {[is_key $fieldName]} {
+	    emit "    listObjv\[position++] = [field_to_nameObj $table $fieldName];"
+	    emit "    listObjv\[position++] = [gen_new_obj $field(type) $fieldName];"
+	} else {
+	    emit "    obj = [gen_new_obj $field(type) $fieldName];"
+	    emit "    if (obj != ${table}_NullValueObj) $leftCurly"
+	    emit "        listObjv\[position++] = [field_to_nameObj $table $fieldName];"
+	    emit "        listObjv\[position++] = obj;"
+	    emit "    $rightCurly"
+	}
     }
 
-    #emit "    Tcl_SetObjResult (interp, Tcl_NewListObj (position, listObjv));"
-    #emit "    return TCL_OK;"
     emit "    return Tcl_NewListObj (position, listObjv);"
     emit "$rightCurly"
     emit ""
@@ -2939,7 +3121,7 @@ proc gen_make_key_from_keylist {} {
 	    emit "            listObjv\[$position] = objv\[i+1];"
 	    incr position
         }
-	emit "$rightCurly"
+	emit "    $rightCurly"
 	emit ""
 
         emit "    for(i = 0; i < $lengthKey; i++)"
@@ -3020,7 +3202,6 @@ proc gen_field_names {} {
     emit "static CONST char *${table}_fields\[] = $leftCurly"
     foreach fieldName $fieldList {
 	emit "    \"$fieldName\","
-    
     }
     emit "    (char *) NULL"
     emit "$rightCurly;\n"
@@ -3070,7 +3251,7 @@ proc gen_field_names {} {
 
     emit "// define objects that will be filled with the corresponding field names"
     foreach fieldName $fieldList {
-        emit "Tcl_Obj *${table}_${fieldName}NameObj;"
+        emit "Tcl_Obj *[field_to_nameObj $table $fieldName];"
     }
     emit ""
 
@@ -3080,7 +3261,7 @@ proc gen_field_names {} {
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
-	set propstring "char *${table}_${fieldName}_propkeys\[] = $leftCurly"
+	set propstring "char *[field_to_var $table $fieldName propkeys]\[] = $leftCurly"
     
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$fieldName\", "
@@ -3091,7 +3272,7 @@ proc gen_field_names {} {
 
     set propstring "static char **${table}_propKeys\[] = $leftCurly"
     foreach fieldName $fieldList {
-        append propstring "${table}_${fieldName}_propkeys,"
+        append propstring "[field_to_var $table $fieldName propkeys],"
     }
     emit "[string range $propstring 0 end-1]$rightCurly;"
     emit ""
@@ -3101,7 +3282,7 @@ proc gen_field_names {} {
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
-	set propstring "char *${table}_${fieldName}_propvalues\[] = $leftCurly"
+	set propstring "char *[field_to_var $table $fieldName propvalues]\[] = $leftCurly"
     
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$field($fieldName)\", "
@@ -3112,7 +3293,7 @@ proc gen_field_names {} {
 
     set propstring "static char **${table}_propValues\[] = $leftCurly"
     foreach fieldName $fieldList {
-        append propstring "${table}_${fieldName}_propvalues,"
+        append propstring "[field_to_var $table $fieldName propvalues],"
     }
     emit "[string range $propstring 0 end-1]$rightCurly;"
     emit ""
@@ -3191,6 +3372,11 @@ proc gen_gets_string_cases {} {
 	}
 
 	switch $field(type) {
+	  "key" {
+	    emit "        *lengthPtr = strlen(row->hashEntry.key);"
+	    emit "        return row->hashEntry.key;"
+	  }
+
 	  "varstring" {
 	    emit "        if (row->${myField} == NULL) $leftCurly"
 
@@ -3305,6 +3491,27 @@ $rightCurly
 }
 
 #
+# keyCompareSource - code for defining a key compare function
+#
+set keyCompareSource {
+// field compare function for key of the '$table' table...
+int ${table}_key_compare(const ctable_BaseRow *vPointer1, const ctable_BaseRow *vPointer2) $leftCurly
+    struct ${table} *row1, *row2;
+
+    row1 = (struct $table *) vPointer1;
+    row2 = (struct $table *) vPointer2;
+    if (*row1->hashEntry.key != *row2->hashEntry.key) {
+        if (*row1->hashEntry.key < *row2->hashEntry.key) {
+	    return -1;
+	} else {
+	    return 1;
+	}
+    }
+    return strcmp(row1->hashEntry.key, row2->hashEntry.key);
+$rightCurly
+}
+
+#
 # boolFieldCompSource - code we run subst over to generate a compare of a 
 # boolean (bit) for use in a field comparison routine.
 #
@@ -3399,11 +3606,16 @@ proc gen_field_comp {fieldName} {
     variable binaryDataFieldCompSource
     variable varstringFieldCompSource
     variable boolFieldCompSource
+    variable keyCompSource
     variable tclobjFieldCompSource
 
     upvar ::ctable::fields::$fieldName field
 
     switch $field(type) {
+	key {
+	    emit [string range [subst -nobackslashes -nocommands $keyCompSource] 1 end-1]
+	}
+
 	int {
 	    emit [string range [subst -nobackslashes -nocommands $numberFieldCompSource] 1 end-1]
 	}
@@ -3474,10 +3686,15 @@ proc gen_field_compare_functions {} {
     variable rightCurly
     variable fieldCompareHeaderSource
     variable fieldCompareTrailerSource
+    variable keyCompareSource
     variable fieldList
 
     # generate all of the field compare functions
     foreach fieldName $fieldList {
+	if [is_key $fieldName] {
+	    emit [subst -nobackslashes $keyCompareSource]
+	    continue
+	}
 	emit [string range [subst -nobackslashes $fieldCompareHeaderSource] 1 end-1]
 	gen_field_comp $fieldName
 	emit [string range [subst -nobackslashes -nocommands $fieldCompareTrailerSource] 1 end-1]
@@ -3488,7 +3705,11 @@ proc gen_field_compare_functions {} {
     emit "fieldCompareFunction_t ${table}_compare_functions\[] = $leftCurly"
     set typeList ""
     foreach fieldName $fieldList {
-	 append typeList "\n    ${table}_field_${fieldName}_compare,"
+	if [is_key $fieldName] {
+	    append typeList "\n    ${table}_key_compare,"
+	} else {
+	    append typeList "\n    ${table}_field_${fieldName}_compare,"
+	}
     }
     emit "[string range $typeList 0 end-1]\n$rightCurly;\n"
 }
@@ -3568,6 +3789,7 @@ proc gen_sort_comp {} {
     variable binaryDataSortSource
     variable varstringSortSource
     variable boolSortSource
+    variable keySortSource
     variable tclobjSortSource
 
     foreach fieldName $fieldList {
@@ -3576,6 +3798,10 @@ proc gen_sort_comp {} {
 	set fieldEnum [field_to_enum $fieldName]
 
 	switch $field(type) {
+	    key {
+		emit [string range [subst -nobackslashes $keySortSource] 1 end-1]
+	    }
+
 	    int {
 		emit [string range [subst -nobackslashes $numberSortSource] 1 end-1]
 	    }
@@ -3632,7 +3858,7 @@ proc gen_sort_comp {} {
 	    }
 
 	    default {
-	        error "attempt to emit sort compare source for field of unknown type $field(type)"
+	        error "attempt to emit sort compare source for field $fieldName of unknown type $field(type)"
 	    }
 	}
     }
@@ -3764,6 +3990,7 @@ proc gen_search_comp {} {
     variable binaryDataCompSource
     variable varstringCompSource
     variable boolCompSource
+    variable keyCompSource
     variable tclobjCompSource
 
     variable standardCompSwitchSource
@@ -3850,6 +4077,12 @@ proc gen_search_comp {} {
 	    tclobj {
 		set getObjCmd Tcl_GetStringFromObj
 		emit [string range [subst -nobackslashes $tclobjCompSource] 1 end-1]
+	    }
+
+	    key {
+		set getObjCmd Tcl_GetString
+	        set length "strlen(row->hashEntry.key)"
+		emit [string range [subst -nobackslashes $keyCompSource] 1 end-1]
 	    }
 
 	    default {
@@ -4138,7 +4371,11 @@ proc CExtension {name version code} {
     if {[catch {namespace eval ::ctable $code} result] == 1} {
         set ::ctable::ctableErrorInfo $errorInfo
 
-        return -code error -errorcode $errorCode "$result\n(run ::ctable::get_error_info to see ctable's internal errorInfo)"
+	if $::ctable::errorDebug {
+	    return -code error -errorcode $errorCode -errorinfo $errorInfo
+	} else {
+            return -code error -errorcode $errorCode "$result\n(run ::ctable::get_error_info to see ctable's internal errorInfo)"
+	}
     }
 
     ::ctable::EndExtension
@@ -4160,6 +4397,9 @@ proc CTable {name data} {
     namespace eval ::ctable $data
 
     ::ctable::sanity_check
+
+    # Create a key field if there isn't already one
+    ::ctable::key _key
 
     ::ctable::gen_struct
 
