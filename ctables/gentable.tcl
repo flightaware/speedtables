@@ -391,8 +391,29 @@ set numberSetSource {
 
 set keySetSource {
       case $optname: {
-	Tcl_AppendResult (interp, "Can not assign to $fieldName", (char *)NULL);
-	return TCL_ERROR;
+        char *value = Tcl_GetString(obj);
+
+	if(
+	    row->hashEntry.key == NULL ||
+	    *value != *row->hashEntry.key ||
+	    strcmp(value, row->hashEntry.key)
+	) {
+	    switch (indexCtl) {
+	        case CTABLE_INDEX_PRIVATE: {
+		    // fake hash entry for search
+		    if(row->hashEntry.key) ckfree(row->hashEntry.key);
+		    row->hashEntry.key = ckalloc(strlen(value)+1);
+		    strcpy(row->hashEntry.key, value);
+		    break;
+		}
+		case CTABLE_INDEX_NORMAL:
+		case CTABLE_INDEX_NEW: {
+		    Tcl_AppendResult (interp, "Key field '$fieldName' can not be modified", (char *)NULL);
+		    return TCL_ERROR;
+		}
+	    }
+	}
+	break;
       }
 }
 
@@ -1897,6 +1918,9 @@ proc gen_delete_subr {subr struct} {
     emit "    if (indexCtl == CTABLE_INDEX_NORMAL) {"
     emit "        ctable_RemoveFromAllIndexes (ctable, (void *)row);"
     emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);"
+    emit "    } else if(row->hashEntry.key) {"
+    emit "        ckfree(row->hashEntry.key);"
+    emit "        row->hashEntry.key = NULL;"
     emit "    }"
     emit ""
 
