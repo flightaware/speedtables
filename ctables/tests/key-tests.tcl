@@ -4,6 +4,8 @@
 # $Id$
 #
 
+return
+
 source top-brands-genkey-def.tcl
 
 if {"[t keys]" != "id name"} {

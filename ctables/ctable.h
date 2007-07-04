@@ -251,6 +251,7 @@ typedef struct ctableCreatorTable {
     int                  *fieldList;
     enum ctable_types    *fieldTypes;
     int                  *fieldsThatNeedQuoting;
+    int			  keyField;
 
     ctable_FieldInfo    **fields;
 

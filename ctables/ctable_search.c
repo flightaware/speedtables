@@ -901,7 +901,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
     // The match code really needs to handle "in".
 
-    if (search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
+    if (search->reqIndexField == CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
 	if(search->components[0].comparisonType == CTABLE_COMP_IN) {
 	    search->reqIndexField = search->components[0].fieldID;
 	}

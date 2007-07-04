@@ -170,7 +170,7 @@ proc is_hidden {fieldName} {
 proc field_to_enum {fieldName} {
     variable table
 
-    if {[regexp {^[.](.*)$} $fieldName _ pseudoName]} {
+    if {[regexp {^[._](.*)$} $fieldName _ pseudoName]} {
 	return "[string toupper $pseudoName]_[string toupper $table]"
     }
     return "FIELD_[string toupper $table]_[string toupper $fieldName]"
@@ -180,7 +180,7 @@ proc field_to_enum {fieldName} {
 # field_to_var - generate a unique variable name
 #
 proc field_to_var {table fieldName varName} {
-    if [regexp {^[.](.*)} $fieldName _ pseudoName] {
+    if [regexp {^[._](.*)} $fieldName _ pseudoName] {
 	return "_${table}_${pseudoName}_$varName"
     }
     return "${table}_${fieldName}_$varName"

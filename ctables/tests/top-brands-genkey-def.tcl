@@ -11,7 +11,7 @@ package require ctable
 CExtension topbrandsgenkey 1.0 {
 
 CTable top_brands_genkey {
-    varstring id indexed 1 key 1
+    key id
     int rank indexed 1
     varstring name indexed 1 key 1
     int value indexed 1
