@@ -217,8 +217,9 @@ typedef struct {
     // field that the search was requested to be indexed on.
     int					 reqIndexField;
 
-    // 0 if brute force search, 1 if we're skipping via skip list and range
-    int                                  tailoredWalk;
+    // -1 if brute force search, otherwise the component index that has
+    // already been taken care of
+    int                                  skipComponent;
 
     // offsetLimit is calculated from offset and limit
     int                                  offsetLimit;
@@ -276,7 +277,7 @@ typedef struct ctableCreatorTable {
     int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
     int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
 
-    int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer, int tailoredWalk);
+    int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer);
     int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
     void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
 

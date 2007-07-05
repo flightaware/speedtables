@@ -726,7 +726,8 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     //
     // run the supplied compare routine
     //
-    compareResult = (*ctable->creator->search_compare) (interp, search, (void *)row, search->tailoredWalk);
+    compareResult = (*ctable->creator->search_compare) (interp, search, (void *)row);
+
     if (compareResult == TCL_CONTINUE) {
 	return TCL_CONTINUE;
     }
@@ -859,7 +860,11 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
     fieldCompareFunction_t compareFunction;
     int                    indexNumber;
-    int                    tailoredTerm = 0;
+    int                    comparisonType = 0;
+
+#if 0
+    int			   hashWalkType	= -1;
+#endif
 
     enum skipStart_e	   skipStart = 0;
     enum skipEnd_e	   skipEnd = 0;
@@ -872,7 +877,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     int			   inCount = 0;
 
     search->matchCount = 0;
-    search->tailoredWalk = 0;
+    search->skipComponent = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
 
@@ -896,11 +901,13 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
     }
 
+    // If there's no components in the search, make sure the index is NONE
+    if(!search->nComponents) {
+	search->reqIndexField = CTABLE_SEARCH_INDEX_NONE;
+    }
+
     // If they're not asking for an indexed search, but the first
-    // component is "in", force an indexed search.
-
-    // The match code really needs to handle "in".
-
+    // component is "in", request an indexed search.
     if (search->reqIndexField == CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
 	if(search->components[0].comparisonType == CTABLE_COMP_IN) {
 	    search->reqIndexField = search->components[0].fieldID;
@@ -933,15 +940,27 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 	    field = component->fieldID;
 
-	    tailoredTerm = component->comparisonType;
+	    comparisonType = component->comparisonType;
 
-	    skipNext  = skipTable[tailoredTerm].skipNext;
-	    skipStart = skipTable[tailoredTerm].skipStart;
-	    skipEnd   = skipTable[tailoredTerm].skipEnd;
+#if 0
+	    // If it's the key, then see if it's something we can walk
+	    // using a hash.
+	    if(field == creator->keyField) {
+		if(comparisonType == CTABLE_COMP_EQ || comparison_type == CTABLE_COMP_IN) {
+		    search->skipComponent = index;
+		    hashWalkType = comparisonType;
+		    break;
+		}
+	    }
+#endif
+
+	    skipNext  = skipTable[comparisonType].skipNext;
+	    skipStart = skipTable[comparisonType].skipStart;
+	    skipEnd   = skipTable[comparisonType].skipEnd;
 
 	    if(skipNext == SKIP_NEXT_NONE) continue;
 
-	    search->tailoredWalk = 1;
+	    search->skipComponent = index;
 	    skip = ctable->skipLists[field];
 
 //DEBUG printf("Searching on %d using {%d, %d, %d}\n", field, skipStart, skipEnd, skipNext);
@@ -967,7 +986,6 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     if (skip == NULL) {
 	// walk the hash table 
 	CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
-
 	    compareResult = ctable_SearchCompareRow (interp, ctable, search, row);
 	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
 
