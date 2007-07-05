@@ -4,17 +4,15 @@
 # $Id$
 #
 
-return
-
 source top-brands-genkey-def.tcl
 
-if {"[t keys]" != "id name"} {
-    error "Key should be 'id name'"
+if {"[t key]" != "id"} {
+    error "Key should be 'id'"
 }
 
 set first_key [t store id 1 rank 1 name first]
-if {"$first_key" != "1 first"} {
-    error "First 'store' key should have been '1 first'"
+if {"$first_key" != "1"} {
+    error "First 'store' key should have been '1'"
 }
 
 if {[t count] != 1} {

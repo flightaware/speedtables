@@ -14,6 +14,8 @@ namespace eval ctable {
     variable nonBooleans
     variable fields
     variable fieldList
+    variable keyField
+    variable keyFieldName
     variable ctableTypes
     variable ctableErrorInfo
     variable withPgtcl
@@ -29,7 +31,7 @@ namespace eval ctable {
     set ctablePackageVersion 1.3
 
     # set to 1 to see errorInfo in normal tracebacks
-    set errorDebug 0
+    set errorDebug 1
 
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
@@ -1724,16 +1726,21 @@ proc tclobj {fieldName args} {
 # key - define a pseudofield for the key
 #
 proc key {name args} {
-    variable key_feild
     # Only allow one key field
-    if [info exists key_field] {
+    if [info exists ::ctable::keyFieldName] {
 	# But only complain if it's not an internal "special" field
-	if ![is_special $name] {
+        if {[lsearch $::ctable::specialFieldNames $name] == -1} {
 	    error "Duplicate key field"
 	}
 	return
     }
     deffield $name [linsert $args 0 type key needsQuoting 1 notnull 1]
+    set ::ctable::keyField [lsearch $::ctable::fieldList $name]
+    if {$::ctable::keyField == -1} {
+	unset ::ctable::keyField
+    } else {
+	set ::ctable::keyFieldName $name
+    }
 }
 
 #
@@ -3122,34 +3129,6 @@ proc gen_nonnull_keyvalue_list {} {
 }
 
 #
-# key_name - Return the name of the key field
-#
-proc key_name {} {
-    variable fieldList
-    foreach keyField $fieldList {
-	if [is_key $keyField] {
-	    return $keyField
-	}
-    }
-    return ""
-}
-
-#
-# key_field - return the index of the key field
-#
-proc key_field {} {
-    variable fieldList
-    set i 0
-    foreach keyField $fieldList {
-	if [is_key $keyField] {
-	    return $i
-	}
-	incr i
-    }
-    return -1
-}
-
-#
 # gen_make_key_functions - Generate C code to return the key fields as a list
 #
 proc gen_make_key_functions {} {
@@ -3159,20 +3138,19 @@ proc gen_make_key_functions {} {
 proc gen_make_key_from_keylist {} {
     variable table
     variable fields
+    variable keyFieldName
     variable fieldList
     variable leftCurly
     variable rightCurly
 
-    set keyName [key_name]
-
     emit "Tcl_Obj *${table}_key_from_keylist (Tcl_Interp *interp, Tcl_Obj **objv, int objc) $leftCurly"
 
-    if {"$keyName" != ""} {
+    if {"$keyFieldName" != ""} {
 	emit "    int      i;"
         emit ""
 
         emit "    for(i = 0; i < objc; i+=2)"
-	emit "        if(strcmp(Tcl_GetString(objv\[i]), \"$keyName\") == 0)"
+	emit "        if(strcmp(Tcl_GetString(objv\[i]), \"$keyFieldName\") == 0)"
 	emit "            return objv\[i+1];"
         emit ""
     }
@@ -3196,11 +3174,12 @@ proc gen_field_names {} {
     variable fieldList
     variable leftCurly
     variable rightCurly
+    variable keyField
 
     emit "#define [string toupper $table]_NFIELDS [llength $fieldList]"
     emit ""
 
-    emit "int      ${table}_keyField = [key_field];"
+    emit "int      ${table}_keyField = $keyField;"
 
     emit "static CONST char *${table}_fields\[] = $leftCurly"
     foreach fieldName $fieldList {
@@ -4399,6 +4378,9 @@ proc CTable {name data} {
 
     # Create a key field if there isn't already one
     ::ctable::key _key
+if ![info exists ::ctable::keyFieldName] {
+error "WTFOMG no key !?????"
+}
 
     ::ctable::gen_struct
 
