@@ -110,7 +110,7 @@ ctable_InitHashTable(register ctable_HashTable *tablePtr)
  *
  *	Given a hash table with string keys, and a string key, find the entry
  *	with a matching key. If there is no matching entry, then link up
- *      the hashEntry provided into the table.
+ *      the hashEntry provided, or a new one, into the table.
  *
  * Results:
  *	The return value is a pointer to the matching entry. If the entry
@@ -127,11 +127,12 @@ ctable_InitHashTable(register ctable_HashTable *tablePtr)
 static
 inline
 ctable_HashEntry *
-ctable_InitHashEntry(
+ctable_InitOrStoreHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
     CONST char *key,		/* Key to use to find or create matching
 				 * entry. */
-    ctable_HashEntry *(*make_row_func)(),
+    ctable_HashEntry *(*make_row_func)(), /* if not null, allocator */
+    ctable_HashEntry *newEntry,	/* if not null, use this entry */
     int *newPtr)		/* Store info here telling whether a new entry
 				 * was created. */
 {
@@ -163,7 +164,12 @@ ctable_InitHashEntry(
     if (!newPtr)
 	return NULL;
 
-    hPtr = (*make_row_func)();
+    if (newEntry)
+	hPtr = newEntry;
+    else if (make_row_func)
+	hPtr = (*make_row_func)();
+    else
+	return NULL; /* Can't allocate OR re-use */
 
     /*
      * Entry not found. Add a new one to the bucket.
@@ -189,6 +195,43 @@ ctable_InitHashEntry(
     }
     return hPtr;
 }
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ctable_InitHashEntry --
+ *
+ *	Given a hash table with string keys, and a string key, find the entry
+ *	with a matching key. If there is no matching entry, then link up
+ *      a new hashEntry into the table.
+ *
+ * Results:
+ *	The return value is a pointer to the matching entry. If the entry
+ *	is getting inserted, then *newPtr will be set to a non-zero value;
+ *	otherwise *newPtr will be set to 0. If this is a new entry the value
+ *	stored in the entry will initially be 0.
+ *
+ * Side effects:
+ *	A new entry may be added to the hash table.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static
+inline
+ctable_HashEntry *
+ctable_InitHashEntry(
+    ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
+    CONST char *key,		/* Key to use to find or create matching
+				 * entry. */
+    ctable_HashEntry *(*make_row_func)(), /* allocator */
+    int *newPtr)		/* Store info here telling whether a new entry
+				 * was created. */
+{
+    return
+	ctable_InitOrStoreHashEntry(tablePtr, key, make_row_func, NULL, newPtr);
+}
+
 
 /*
  *----------------------------------------------------------------------
