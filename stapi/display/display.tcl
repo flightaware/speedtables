@@ -175,10 +175,23 @@ catch { ::itcl::delete class STTPDisplay }
     #  recognize CSS info and emit it in appropriate places
     #
     method read_css_file {} {
-	if {[lempty $css]} { return }
-	if {[catch {open [virtual_filename $css]} fp]} { return }
-	set contents [read $fp]
-	close $fp
+	if {"$css_file" != ""} {
+	    if {![catch {open [virtual_filename $css_file]} fp]} {
+		set contents [read $fp]
+		close $fp
+	    }
+	} else {
+	    foreach file $css_files {
+	        if {![catch {open [virtual_filename $file]} fp]} {
+		    set css_file $file
+		    set contents [read $fp]
+		    close $fp
+	        }
+	    }
+	}
+	if ![info exists contents] {
+	    return
+	}
 	if {[catch {array set tmpArray $contents}]} { return }
 	foreach class [array names tmpArray] {
 	    set cssArray([string toupper $class]) $tmpArray($class)
@@ -299,8 +312,8 @@ catch { ::itcl::delete class STTPDisplay }
 	}
 
 	# if there is a style sheet defined, emit HTML to reference it
-	if {![lempty $css]} {
-	    puts "<LINK REL=\"stylesheet\" TYPE=\"text/css\" HREF=\"$css\">"
+	if {![lempty $css_file]} {
+	    puts "<LINK REL=\"stylesheet\" TYPE=\"text/css\" HREF=\"$css_file\">"
 	}
 
 	# put out the table header
@@ -1808,7 +1821,7 @@ catch { ::itcl::delete class STTPDisplay }
     method csvfile {{string ""}} { configvar csvfile $string }
 
     method title {{string ""}} { configvar title $string }
-    method functions {{string ""}} { configvar functions $string }
+    method functions {{string "--"}} { configvar functions $string "--" }
     method pagesize {{string ""}} { configvar pagesize $string }
     method form {{string ""}} { configvar form $string }
     method cleanup {{string ""}} { configvar cleanup $string }
@@ -1819,13 +1832,13 @@ catch { ::itcl::delete class STTPDisplay }
     method alternaterows {{string ""}} { configvar alternaterows $string }
     method allowsort {{string ""}} { configvar allowsort $string }
     method sortfields {{string ""}} { configvar sortfields $string }
-    method topnav {{string ""}} { configvar topnav $string }
-    method bottomnav {{string ""}} { configvar bottomnav $string }
+    method topnav {{string "--"}} { configvar topnav $string "--" }
+    method bottomnav {{string "--"}} { configvar bottomnav $string "--" }
     method numresults {{string ""}} { configvar numresults $string }
     method defaultsortfield {{string ""}} { configvar defaultsortfield $string }
     method labelsplit {{string ""}} { configvar labelsplit $string }
 
-    method rowfunctions {{string ""}} { configvar rowfunctions $string }
+    method rowfunctions {{string "--"}} { configvar rowfunctions $string "--" }
     method arrows {{string ""}} { configvar arrows $string }
 
     method rows {{string 0}} { configvar rows $string 0 }
@@ -1844,8 +1857,15 @@ catch { ::itcl::delete class STTPDisplay }
     public variable mode	Main
     public variable trap_errors	0
 
-    public variable css			"diodisplay.css" {
-	if {![lempty $css]} {
+    public variable css_file	""	{
+	if {![lempty $css_file]} {
+	    catch {unset cssArray}
+	    read_css_file
+	}
+    }
+
+    public variable css_files		{"display.css" "diodisplay.css"} {
+	if {![lempty $css_files]} {
 	    catch {unset cssArray}
 	    read_css_file
 	}

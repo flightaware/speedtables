@@ -75,14 +75,14 @@ namespace eval ::sttp {
     return $rows
   }
 
-  # set rows [copyin_ctable $ctable $table ?keyname? ?options? ?columns?]
+  # set rows [copyout_ctable $ctable $table ?keyname? ?options? ?columns?]
   #
   # Copy a named ctable to a table. Options:
   #   -nokeys        -- skip key column
   #   -glob pattern -- limit import to rows with key column matching pattern
   #   column-name   -- limit import to named list of columns
   # Raises error if sql error occurs
-  proc copyin_ctable {ctable table args} {
+  proc copyout_ctable {ctable table args} {
     if ![string match "-*" [lindex $args 0]] {
       set keycol [lindex $args 0]
       set args [lrange $args 1 end]
@@ -97,7 +97,7 @@ namespace eval ::sttp {
 	  set args [lrange $args 2 end]
 	}
 	default {
-	  return -code error "copyin_ctable: Unknown option $opt"
+	  return -code error "copyout_ctable: Unknown option $opt"
 	}
       }
     }
@@ -127,18 +127,18 @@ namespace eval ::sttp {
     if {"[pg_result $res -status]" != "PGRES_COPY_IN"} {
       set err [pg_result $res -error]
       pg_result $res -clear
-      return -code error "copyin_ctable: $err in '$sql'"
+      return -code error "copyout_ctable: $err in '$sql'"
     }
     eval $cmd
     if [catch {puts $dp {\.}} err] {
       append err "; [pg_result $res -error]"
       pg_result $res -clear
-      return -code error "copyin_ctable: $err after '$sql' in $ctable"
+      return -code error "copyout_ctable: $err after '$sql' in $ctable"
     }
     if {"[pg_result $res -status]" != "PGRES_COMMAND_OK"} {
       set err [pg_result $res -error]
       pg_result $res -clear
-      return -code error "copyin_ctable: $err"
+      return -code error "copyout_ctable: $err"
     }
     set n [pg_result $res -cmdTuples]
     pg_result $res -clear

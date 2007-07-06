@@ -92,8 +92,22 @@ namespace eval ::sttpx {
     return $stable($handle)
   }
 
-  proc extended {handle} {
-    return [string match ::sttpx::_table* $handle]
+  # Check if the handle supports minimal sttp extensions:
+  # * If it's wrapped, yes, otherwise...
+  #   * Handles "method" method.
+  #   * Handles "key" command.
+  #   * Handles "make_key" command.
+  #   * Handles "perform" command.
+  #   * If keys required, [$handle keys] matches
+  proc extended {handle {keys {}}} {
+    if {[string match ::sttpx::_table* $handle]} { return 1 }
+    if {[catch {set mlist [$handle methods]}]} { return 0 }
+    if {[lsearch $mlist keys] == -1} { return 0 }
+    if {[lsearch $mlist make_key] == -1} { return 0 }
+    if {[lsearch $mlist perform] == -1} { return 0 }
+    if {![llength $keys]} { return 1 }
+    if {"$keys" == "[$handle keys]"} { return 1 }
+    return 0
   }
   namespace export extended
 
@@ -169,7 +183,9 @@ namespace eval ::sttpx {
     foreach n $keyfields($handle) {
       lappend key $k($n)
     }
-    if {"$separator($handle)" == "list"} {
+    if {[llength $key] == 1} {
+      return [lindex $key 0]
+    } elseif {"$separator($handle)" == "list"} {
       return $key
     } else {
       return [join $key $separator($handle)]

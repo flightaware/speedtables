@@ -209,15 +209,50 @@ namespace eval ::sttp {
     read_tabsep			sql_ctable_read_tabsep
     index			sql_ctable_ignore_null
   }
+  variable ctable_extended_commands
+  array set ctable_extended_commands {
+    methods			sql_ctable_methods
+    keys			sql_ctable_keys
+    make_key			sql_ctable_make_key
+    fetch			sql_ctable_fetch
+    store			sql_ctable_store
+  }
 
   proc sql_ctable {level ns cmd args} {
     variable ctable_commands
-    if ![info exists ctable_commands($cmd)] {
-      set proc sql_ctable_unimplemented
-    } else {
+    variable ctable_extended_commands
+    if {[info exists ctable_commands($cmd)]} {
       set proc $ctable_commands($cmd)
+    } elseif {[info exists ctable_extended_commands($cmd)]} {
+      set proc $ctable_extended_commands($cmd)
+    } else {
+      set proc sql_ctable_unimplemented
     }
     return [eval [list $proc $level $ns $cmd] $args]
+  }
+
+  proc sql_ctable_methods {level ns cmd args} {
+    variable ctable_commands
+    variable ctable_extended_commands
+    return [
+      lsort [
+        concat [array names ctable_commands] \
+	       [array names ctable_extended_commands]
+      ]
+    ]
+  }
+
+  proc sql_ctable_keys {level ns cmd args} {
+    return [set ${ns}::key]
+  }
+
+  # DUMB version, only handles single key
+  proc sql_ctable_make_key {level ns cmd _array} {
+    upvar $level _array array
+    set key [set ${ns}::key]
+    if [info exists array($key)] {
+      return $array($key)
+    }
   }
 
   proc sql_ctable_unimplemented {level ns cmd args} {
@@ -262,6 +297,16 @@ namespace eval ::sttp {
       lappend result $arg $val
     }
     return $result
+  }
+
+  proc sql_ctable_fetch {level ns cmd key _a args} {
+    upvar $level $_a a
+    if [regexp {^@(.*)} $key _ _k] {
+      set key [sql_ctable_make_key $level $ns $cmd $_k]
+    }
+    set list [eval [sql_ctable_get $level $ns $cmd $key] $args]
+    array set a $list
+    return 1
   }
 
   proc sql_ctable_exists {level ns cmd val} {
@@ -370,6 +415,14 @@ namespace eval ::sttp {
     set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
     return [exec_sql $sql]
+  }
+
+  proc sql_ctable_store {level ns cmd _array args} {
+    upvar $level $_array array
+    set key [sql_ctable_make_key $level $ns $cmd $_array]
+    return [
+      eval [list sql_ctable_set $level $ns $cmd $key] [array get array] $args
+    ]
   }
 
   proc sql_ctable_needs_quoting {level ns cmd args} { sql_ctable_unimplemented }

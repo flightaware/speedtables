@@ -41,9 +41,10 @@ namespace eval ::sttp {
       set handle [eval [list $transport_handlers($method) $path $address] $args]
     }
 
-    # Wrap handle if required
     if [info exists keys] {
-      set handle [eval [list ::sttpx::connect $handle $keys] $args $keyargs]
+      if ![::sttpx::extended $handle $keys] {
+        set handle [eval [list ::sttpx::connect $handle $keys] $args $keyargs]
+      }
     }
     return $handle
   }
