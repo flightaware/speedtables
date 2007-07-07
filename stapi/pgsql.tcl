@@ -61,6 +61,35 @@ namespace eval ::sttp {
     return 1
   }
 
+  proc exec_sql_rows {request _rows {_err ""}} {
+    if [string length $_err] { upvar 1 $_err err }
+
+    set pg_res [pg_exec [conn] $request]
+    set status [pg_result $pg_res -status]
+    if {"$status" == "PGRES_COMMAND_OK"} {
+      set ok 1
+      upvar 1 $_rows rows
+      set rows [pg_result $pg_res -cmdTuples]
+    } elseif {"$status" == "PGRES_TUPLES_OK"} {
+      set ok 1
+      upvar 1 $_rows rows
+      set rows [pg_result $pg_res -numTuples]
+    } elseif {[string match "PGRES_*_OK" $status]} {
+      set ok 1
+    } else {
+      set ok 0
+      set err [pg_result $pg_res -error]
+      set errinf "$err\nIn $request"
+    }
+    pg_result $pg_res -clear
+
+    if !$ok {
+      if [string length $_err] { return 0 }
+      return -code error -errorinfo $errinf $err
+    }
+    return 1
+  }
+
   proc get_columns {table} {
     set sql "SELECT a.attnum, a.attname AS col, t.typname AS type
 		FROM pg_class c, pg_attribute a, pg_type t

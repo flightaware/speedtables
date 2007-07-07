@@ -213,9 +213,10 @@ namespace eval ::sttp {
   array set ctable_extended_commands {
     methods			sql_ctable_methods
     keys			sql_ctable_keys
-    make_key			sql_ctable_make_key
+    makekey			sql_ctable_make_key
     fetch			sql_ctable_fetch
     store			sql_ctable_store
+    perform			sql_ctable_perform
   }
 
   proc sql_ctable {level ns cmd args} {
@@ -229,6 +230,23 @@ namespace eval ::sttp {
       set proc sql_ctable_unimplemented
     }
     return [eval [list $proc $level $ns $cmd] $args]
+  }
+
+  proc sql_ctable_perform {level ns cmd _req args} {
+    upvar #$level $_req req
+    array set tmp [array get req]
+    array set tmp $args
+    if [info exists tmp(-count)] {
+      set result_var $tmp(-count)
+      unset tmp(-count)
+    }
+    lappend list sql_ctable_search $level $ns search
+    set list [concat $list [array get tmp]]
+    set result [eval $list]
+    if [info exists result_var] {
+      uplevel #$level [list set $result_var $result]
+    }
+    return $result
   }
 
   proc sql_ctable_methods {level ns cmd args} {
@@ -246,9 +264,11 @@ namespace eval ::sttp {
     return [set ${ns}::key]
   }
 
-  # DUMB version, only handles single key
-  proc sql_ctable_make_key {level ns cmd _array} {
-    upvar $level _array array
+  proc sql_ctable_make_key {level ns cmd args} {
+    if {[llength $args] == 1} {
+      set args [uplevel #$level array get [lindex $args 0]]
+    }
+    array set array $args
     set key [set ${ns}::key]
     if [info exists array($key)] {
       return $array($key)
@@ -300,11 +320,16 @@ namespace eval ::sttp {
   }
 
   proc sql_ctable_fetch {level ns cmd key _a args} {
-    upvar $level $_a a
+    upvar #$level $_a a
     if [regexp {^@(.*)} $key _ _k] {
       set key [sql_ctable_make_key $level $ns $cmd $_k]
     }
-    set list [eval [sql_ctable_get $level $ns $cmd $key] $args]
+    if [catch {
+      set list [eval [list sql_ctable_agwn $level $ns $cmd $key] $args]
+    } err] {
+      return 0
+    }
+    #uplevel #$level array set $_a $list
     array set a $list
     return 1
   }
@@ -355,35 +380,35 @@ namespace eval ::sttp {
   }
 
   proc sql_ctable_search {level ns cmd args} {
-    array set request $args
-    if [info exists request(-array_get)] {
+    array set search $args
+    if [info exists search(-array_get)] {
       return -code error "Unimplemented: search -array_get"
     }
-    if [info exists request(-array)] {
+    if [info exists search(-array)] {
       return -code error "Unimplemented: search -array"
     }
-    if {[info exists request(-countOnly)] && $request(-countOnly) == 0} {
-      unset request(-countOnly)
+    if {[info exists search(-countOnly)] && $search(-countOnly) == 0} {
+      unset search(-countOnly)
     }
-    if {[info exists request(-countOnly)] && ![info exists request(-code)]} {
+    if {[info exists search(-countOnly)] && ![info exists search(-code)]} {
       return -code error "Must provide -code or -countOnly"
     }
-    set sql [${ns}::search_to_sql request]
-    if [info exists request(-countOnly)] {
+    set sql [${ns}::search_to_sql search]
+    if [info exists search(-countOnly)] {
       return [lindex [sql_get_one_tuple $sql] 0]
     }
     set code {}
     set array __array
-    if [info exists request(-array_with_nulls)] {
-      set array $request(-array_with_nulls)
+    if [info exists search(-array_with_nulls)] {
+      set array $search(-array_with_nulls)
     }
-    if [info exists request(-array_get_with_nulls)] {
-      lappend code "set $request(-array_get_with_nulls) \[array get $array]"
+    if [info exists search(-array_get_with_nulls)] {
+      lappend code "set $search(-array_get_with_nulls) \[array get $array]"
     }
-    if [info exists request(-key)] {
-      lappend code "set $request(-key) \$${array}(__key)"
+    if [info exists search(-key)] {
+      lappend code "set $search(-key) \$${array}(__key)"
     }
-    lappend code $request(-code)
+    lappend code $search(-code)
     # debug [list pg_select [conn] $sql $array [join $code "\n"]]
     uplevel #$level [list pg_select [conn] $sql $array [join $code "\n"]]
   }
@@ -399,6 +424,11 @@ namespace eval ::sttp {
     namespace delete $ns
   }
 
+  proc sql_ctable_delete {level ns cmd key args} {
+    set sql "DELETE FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key];"
+    return [exec_sql $sql]
+  }
+
   proc sql_ctable_set {level ns cmd key args} {
     if ![llength $args] {
       return
@@ -411,14 +441,24 @@ namespace eval ::sttp {
 	set col [set ${ns}::sql($col)]
       }
       lappend assigns "$col = [pg_quote $value]"
+      lappend cols $col
+      lappend vals [pg_quote $value]
     }
     set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
+    set rows 0
+    if ![exec_sql_rows $sql rows] {
+      return 0
+    }
+    if {$rows > 0} {
+      return 1
+    }
+    set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
     return [exec_sql $sql]
   }
 
   proc sql_ctable_store {level ns cmd _array args} {
-    upvar $level $_array array
+    upvar #$level $_array array
     set key [sql_ctable_make_key $level $ns $cmd $_array]
     return [
       eval [list sql_ctable_set $level $ns $cmd $key] [array get array] $args
@@ -434,25 +474,25 @@ namespace eval ::sttp {
   # with [info body], so variables are from $ns and anything in ::sttp
   # needs direct quoting
   #
-  proc search_to_sql {_request} {
-    upvar 1 $_request request
+  proc search_to_sql {_req} {
+    upvar 1 $_req req
     variable key
     variable table_name
     variable fields
 
     set select {}
-    if [info exists request(-countOnly)] {
+    if [info exists req(-countOnly)] {
       lappend select "COUNT($key) AS count"
     } else {
-      if [info exists request(-key)] {
+      if [info exists req(-key)] {
 	if [info exists sql($key)] {
 	  lappend select "$sql($key) AS __key"
 	} else {
           lappend select "$key AS __key"
 	}
       }
-      if [info exists request(-fields)] {
-        set cols $request(fields)
+      if [info exists req(-fields)] {
+        set cols $req(fields)
       } else {
         set cols $fields
       }
@@ -467,12 +507,12 @@ namespace eval ::sttp {
     }
   
     set where {}
-    if [info exists request(-glob)] {
-      lappend where "$key LIKE [quote_glob $request(-glob)]"
+    if [info exists req(-glob)] {
+      lappend where "$key LIKE [quote_glob $req(-glob)]"
     }
   
-    if [info exists request(-compare)] {
-      foreach tuple $request(-compare) {
+    if [info exists req(-compare)] {
+      foreach tuple $req(-compare) {
 	foreach {op col v1 v2} $tuple break
 	if [info exists types($col)] {
 	  set type $types($col)
@@ -543,8 +583,8 @@ namespace eval ::sttp {
     }
   
     set order {}
-    if [info exists request(-sort)] {
-      foreach field $request(-sort) {
+    if [info exists req(-sort)] {
+      foreach field $req(-sort) {
 	set desc ""
 	if [regexp {^-(.*)} $field _ field] {
 	  set desc " DESC"
@@ -564,21 +604,19 @@ namespace eval ::sttp {
     if [llength $order] {
       append sql " ORDER BY [join $order ","]"
     }
-    if [info exists request(-limit)] {
-      append sql " LIMIT $request(-limit)"
+    if [info exists req(-limit)] {
+      append sql " LIMIT $req(-limit)"
     }
-    if [info exists request(-offset)] {
-      append sql " OFFSET $request(-offset)"
+    if [info exists req(-offset)] {
+      append sql " OFFSET $req(-offset)"
     }
     append sql ";"
   
     return $sql
   }
 
-  proc sql_get_one_tuple {request} {
-    # debug "\[pg_exec \[conn] \"$request\"]"
-
-    set pg_res [pg_exec [conn] $request]
+  proc sql_get_one_tuple {req} {
+    set pg_res [pg_exec [conn] $req]
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
     } elseif {[pg_result $pg_res -numTuples] == 0} {
@@ -590,7 +628,7 @@ namespace eval ::sttp {
     pg_result $pg_res -clear
 
     if !$ok {
-      set errinf "$err\nIn $request"
+      set errinf "$err\nIn $req"
       return -code error -errorinfo $errinf $err
     }
 

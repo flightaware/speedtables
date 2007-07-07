@@ -96,14 +96,14 @@ namespace eval ::sttpx {
   # * If it's wrapped, yes, otherwise...
   #   * Handles "method" method.
   #   * Handles "key" command.
-  #   * Handles "make_key" command.
+  #   * Handles "makekey" command.
   #   * Handles "perform" command.
   #   * If keys required, [$handle keys] matches
   proc extended {handle {keys {}}} {
     if {[string match ::sttpx::_table* $handle]} { return 1 }
     if {[catch {set mlist [$handle methods]}]} { return 0 }
     if {[lsearch $mlist keys] == -1} { return 0 }
-    if {[lsearch $mlist make_key] == -1} { return 0 }
+    if {[lsearch $mlist makekey] == -1} { return 0 }
     if {[lsearch $mlist perform] == -1} { return 0 }
     if {![llength $keys]} { return 1 }
     if {"$keys" == "[$handle keys]"} { return 1 }
@@ -178,7 +178,7 @@ namespace eval ::sttpx {
     if ![info exists keyfields($handle)] {
       error "No connection for $handle"
     }
-    upvar $_k k
+    upvar 1 $_k k
     set key {}
     foreach n $keyfields($handle) {
       lappend key $k($n)
