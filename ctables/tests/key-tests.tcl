@@ -34,3 +34,9 @@ if {"[t store id 1 rank 3 name first]" != "$first_key"} {
 if {"[lindex [t get $first_key rank] 0]" != "3"} {
     error "row '$first_key' should have had rank 3"
 }
+
+t search+ -compare {{in id {1}}} -key k -array a -code {lappend list "$k: [array get a]" }
+
+if {"[lindex $list 0]" != "1: rank 3 name first id 1"} {
+   error "search+ test on 'in id {1}' returns $list expected {1: rank 3 name first id 1}"
+}
