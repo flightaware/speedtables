@@ -36,6 +36,8 @@
 
     // pointers to functions
     t->make_empty_row = (void *)${table}_make_row_struct;
+    t->find_row = (void *)${table}_find;
+
     t->set = (void *)${table}_set;
     t->set_null = (void *)${table}_set_null;
 

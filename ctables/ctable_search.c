@@ -810,7 +810,7 @@ static struct {
     enum skipStart_e	skipStart;
     enum skipEnd_e	skipEnd;
     enum skipNext_e	skipNext;
-} skipTable[] = {
+} skipTypes[] = {
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // FALSE
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // TRUE
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NULL
@@ -829,6 +829,15 @@ static struct {
   {SKIP_START_RESET,	SKIP_END_NONE,    SKIP_NEXT_IN_LIST}  // IN
 };
 
+enum walkType_e { WALK_DEFAULT, WALK_SKIP, WALK_HASH_EQ, WALK_HASH_IN };
+
+static enum walkType_e hashTypes[] = {
+  WALK_DEFAULT, WALK_DEFAULT, WALK_DEFAULT, WALK_DEFAULT, // FALSE..NOTNULL
+  WALK_DEFAULT, WALK_DEFAULT, WALK_HASH_EQ, WALK_DEFAULT, // LT..NE
+  WALK_DEFAULT, WALK_DEFAULT, WALK_DEFAULT, WALK_DEFAULT, // GT..NOTMATCH
+  WALK_DEFAULT, WALK_DEFAULT, WALK_DEFAULT, WALK_HASH_IN  // MATCH_CASE..IN
+};
+
 //
 // ctable_PerformSearch - perform the search
 //
@@ -845,26 +854,25 @@ static struct {
 //
 static int
 ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
-    int              compareResult;
-    int              actionResult = TCL_OK;
+    int           	  compareResult;
+    int            	  actionResult = TCL_OK;
 
-    ctable_CreatorTable *creator = ctable->creator;
+    ctable_CreatorTable	 *creator = ctable->creator;
 
-    ctable_BaseRow          *row = NULL;
-    ctable_BaseRow          *row1 = NULL;
-    ctable_BaseRow          *walkRow;
-    void                    *row2 = NULL;
+    ctable_BaseRow	  *row = NULL;
+    ctable_BaseRow	  *row1 = NULL;
+    ctable_BaseRow	  *walkRow;
+    void                  *row2 = NULL;
+    char	  	  *key = NULL;
 
-    jsw_skip_t      *skip = NULL;
-    int              field = 0;
+    jsw_skip_t   	  *skipList = NULL;
+    int           	   field = 0;
 
     fieldCompareFunction_t compareFunction;
     int                    indexNumber;
     int                    comparisonType = 0;
 
-#if 0
-    int			   hashWalkType	= -1;
-#endif
+    enum walkType_e	   walkType	= WALK_DEFAULT;
 
     enum skipStart_e	   skipStart = 0;
     enum skipEnd_e	   skipEnd = 0;
@@ -877,7 +885,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     int			   inCount = 0;
 
     search->matchCount = 0;
-    search->skipComponent = -1;
+    search->alreadySearched = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
 
@@ -933,7 +941,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 	// Look for the first usable search field starting with the requested
 	// one (or the first, if it's not in the list)
-	for(try = 0; !skip && try < search->nComponents; try++, index++) {
+	for(try = 0; !skipList && try < search->nComponents; try++, index++) {
 	    if(index >= search->nComponents)
 	        index = 0;
 	    CTableSearchComponent *component = &search->components[index];
@@ -942,26 +950,32 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 	    comparisonType = component->comparisonType;
 
-#if 0
 	    // If it's the key, then see if it's something we can walk
 	    // using a hash.
 	    if(field == creator->keyField) {
-		if(comparisonType == CTABLE_COMP_EQ || comparison_type == CTABLE_COMP_IN) {
-		    search->skipComponent = index;
-		    hashWalkType = comparisonType;
+		walkType = hashTypes[comparisonType];
+		if (walkType != WALK_DEFAULT) {
+		    if(walkType == WALK_HASH_IN) {
+		        inListObj = component->inListObj;
+		        inCount = component->inCount;
+		    } else {
+			row1 = component->row1;
+			key = row1->hashEntry.key;
+		    }
+		    search->alreadySearched = index;
 		    break;
 		}
 	    }
-#endif
 
-	    skipNext  = skipTable[comparisonType].skipNext;
-	    skipStart = skipTable[comparisonType].skipStart;
-	    skipEnd   = skipTable[comparisonType].skipEnd;
+	    skipNext  = skipTypes[comparisonType].skipNext;
+	    skipStart = skipTypes[comparisonType].skipStart;
+	    skipEnd   = skipTypes[comparisonType].skipEnd;
 
 	    if(skipNext == SKIP_NEXT_NONE) continue;
 
-	    search->skipComponent = index;
-	    skip = ctable->skipLists[field];
+	    search->alreadySearched = index;
+	    skipList = ctable->skipLists[field];
+	    walkType = WALK_SKIP;
 
 //DEBUG printf("Searching on %d using {%d, %d, %d}\n", field, skipStart, skipEnd, skipNext);
 	    switch(skipNext) {
@@ -983,10 +997,39 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
         }
     }
 
-    if (skip == NULL) {
+    if (walkType == WALK_DEFAULT) {
 	// walk the hash table 
 	CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
 	    compareResult = ctable_SearchCompareRow (interp, ctable, search, row);
+	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
+
+	    if (compareResult == TCL_BREAK) break;
+
+	    if (compareResult == TCL_ERROR) {
+		actionResult = TCL_ERROR;
+		goto clean_and_return;
+	    }
+        }
+    } else if(walkType == WALK_HASH_EQ || walkType == WALK_HASH_IN) {
+	// if EQ inIndex == inCount == 0 but key != NULL
+	while (inIndex < inCount || key) {
+	    // If we don't have a key, get one.
+	    if (!key)
+		key = Tcl_GetString(inListObj[inIndex++]);
+
+	    // Look it up
+	    row2 = creator->find_row(ctable, key);
+
+	    // Throw away this key
+	    key = NULL;
+
+	    // If we didn't find the prize, try again
+	    if(!row2)
+		continue;
+
+	    row1 = (ctable_BaseRow *)row2;
+
+	    compareResult = ctable_SearchCompareRow (interp, ctable, search, row1);
 	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
 
 	    if (compareResult == TCL_BREAK) break;
@@ -1009,18 +1052,18 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
         // terminate the search.
         //
 
-	// If at start of skiplist, find first row, else find next row
+	// Find the row to start walking on
 	switch(skipStart) {
 	    case SKIP_START_EQ_ROW1: {
-		jsw_sfind (skip, row1);
+		jsw_sfind (skipList, row1);
 		break;
 	    }
 	    case SKIP_START_GE_ROW1: {
-		jsw_sfind_equal_or_greater (skip, row1);
+		jsw_sfind_equal_or_greater (skipList, row1);
 		break;
 	    }
 	    case SKIP_START_RESET: {
-		jsw_sreset(skip);
+		jsw_sreset(skipList);
 		break;
 	    }
 	    default: { // can't happen
@@ -1047,13 +1090,13 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
                   }
 
 		  // If there's a match for this row, break out of the loop
-                  if (jsw_sfind (skip, row1) != NULL)
+                  if (jsw_sfind (skipList, row1) != NULL)
 		      break;
 	        }
 	    }
 
 	    // Now we can fetch whatever we found.
-            if ((row = jsw_srow (skip)) == NULL)
+            if ((row = jsw_srow (skipList)) == NULL)
 		goto search_complete;
 
 	    // if at end or past any terminating condition, break
@@ -1099,7 +1142,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	    }
 
 	    if(skipNext == SKIP_NEXT_ROW)
-		jsw_snext(skip);
+		jsw_snext(skipList);
 	}
 	// Should never just fall out of the loop...
 	Tcl_AppendResult (interp, "infinite search loop", (char *) NULL);

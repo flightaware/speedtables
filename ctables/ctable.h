@@ -219,7 +219,7 @@ typedef struct {
 
     // -1 if brute force search, otherwise the component index that has
     // already been taken care of
-    int                                  skipComponent;
+    int                                  alreadySearched;
 
     // offsetLimit is calculated from offset and limit
     int                                  offsetLimit;
@@ -260,6 +260,8 @@ typedef struct ctableCreatorTable {
     int                nLinkedLists;
 
     void *(*make_empty_row) ();
+    void *(*find_row) (struct ctableTable *ctable, char *key);
+
     int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, void *row, int field, int indexCtl);
     int (*set_null) (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field, int indexCtl);
 
@@ -279,6 +281,7 @@ typedef struct ctableCreatorTable {
 
     int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer);
     int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
+
     void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
 
     int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);

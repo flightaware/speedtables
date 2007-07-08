@@ -3861,7 +3861,7 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
     CTableSearchComponent              *component;
 
     for (i = 0; i < searchControl->nComponents; i++) $leftCurly
-      if (i == searchControl->skipComponent)
+      if (i == searchControl->alreadySearched)
 	continue;
 
       component = &searchControl->components[i];
