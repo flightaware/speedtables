@@ -17,6 +17,8 @@ namespace eval ::sttpx {
     destroy destroy
     ctable  ctable
     makekey makekey
+    keys    keys
+    key     key
     fetch   fetch
     store   store
     clear   clear
@@ -106,6 +108,7 @@ namespace eval ::sttpx {
     if {[lsearch $mlist makekey] == -1} { return 0 }
     if {[lsearch $mlist perform] == -1} { return 0 }
     if {![llength $keys]} { return 1 }
+    if {"[lindex $keys 0]" == "[$handle key]"} { return 1 }
     if {"$keys" == "[$handle keys]"} { return 1 }
     return 0
   }
@@ -117,6 +120,15 @@ namespace eval ::sttpx {
       error "No connection for $handle"
     }
     return $keyfields($handle)
+  }
+  namespace export keys
+
+  proc key {handle} {
+    variable keyfields
+    if ![info exists keyfields($handle)] {
+      error "No connection for $handle"
+    }
+    return [lindex $keyfields($handle) 0]
   }
   namespace export keys
 

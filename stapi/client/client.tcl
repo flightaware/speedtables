@@ -16,18 +16,24 @@ namespace eval ::sttp {
     array set opts $args
 
     # If "-keys" defined, save them to create a wrapper
-    if [info exists opts(-keys)] {
+    if {[info exists opts(-keys)] || [info exists opts(-key)]} {
       # Check here so if this errors out we haven't done the heavy lifting
       if ![namespace exists ::sttpx] {
 	uplevel #0 "package require sttpx"
       }
       # Save "-keys" option but don't pass it on downstream
-      set keys $opts(-keys)
-      set keyargs {}
-      unset opts(-keys)
-      if [info exists opts(-keysep)] {
-        lappend keyargs -keysep $opts(-keysep)
-        unset opts(-keysep)
+      if [info exists opts(-keys)] {
+        set keys $opts(-keys)
+        unset opts(-keys)
+        set keyargs {}
+        if [info exists opts(-keysep)] {
+          lappend keyargs -keysep $opts(-keysep)
+          unset opts(-keysep)
+        }
+      } else {
+        set keys [list $opts(-key)]
+        set keyargs {}
+        unset opts(-key)
       }
       set args [array get opts]
     }

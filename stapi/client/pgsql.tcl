@@ -212,6 +212,7 @@ namespace eval ::sttp {
   variable ctable_extended_commands
   array set ctable_extended_commands {
     methods			sql_ctable_methods
+    key				sql_ctable_keys
     keys			sql_ctable_keys
     makekey			sql_ctable_make_key
     fetch			sql_ctable_fetch
@@ -265,7 +266,9 @@ namespace eval ::sttp {
   }
 
   proc sql_ctable_make_key {level ns cmd args} {
+    set err_name "list"
     if {[llength $args] == 1} {
+      set err_name [lindex $args 0]
       set args [uplevel #$level array get [lindex $args 0]]
     }
     array set array $args
@@ -273,6 +276,7 @@ namespace eval ::sttp {
     if [info exists array($key)] {
       return $array($key)
     }
+    return -code error "No key in $err_name"
   }
 
   proc sql_ctable_unimplemented {level ns cmd args} {
@@ -321,15 +325,11 @@ namespace eval ::sttp {
 
   proc sql_ctable_fetch {level ns cmd key _a args} {
     upvar #$level $_a a
-    if [regexp {^@(.*)} $key _ _k] {
-      set key [sql_ctable_make_key $level $ns $cmd $_k]
-    }
     if [catch {
       set list [eval [list sql_ctable_agwn $level $ns $cmd $key] $args]
     } err] {
       return 0
     }
-    #uplevel #$level array set $_a $list
     array set a $list
     return 1
   }

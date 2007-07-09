@@ -143,23 +143,30 @@
 
   Options:
 
+    -key  col
+
+	Define the column used to generate the key. [compatible]
+
     -keys {col col ...}
 
- 	Define the columns used to generate the key.
+ 	Define the columns used to generate the key. [extension]
 
     -keysep "string"
 
-	Define the separator used to build the key.
+	Define the separator used to build the key. [extension]
 
     If you provide these options, additional ctable methods are made
     available. These are documented below under "sttpx".
+
+    The option "-key" or "-keys" with a single key produces a more
+    compatible interface.
 
   Methods intially defined, and the packages they're defined in:
 
     package require sttp_client
     ctable://[host:port]/[dir/]table[/stuff][?stuff]
 
-	 Use a ctable server via remote_ctable
+	 Use a ctable server via remote_ctable.
 
     package require sttp_client_pgtcl
     sql://connection/table[/col[:type]/col...][?param&param...]
@@ -189,11 +196,17 @@
     package require sttp_client
     ctable (no method)
 
-	If the URI is not URI fromat, it assumes it's an object that provides
+	If the URI is not URI format, it assumes it's an object that provides
 	the same semantics as a ctable... typically either a ctable, an
 	already-opened ctable_client connection, or the result of a previous
 	call to ::sttp::connect. If necessary it creates a wrapper around the
 	ctable to implement the extra methods that STTP provides.
+
+	Required methods to avoid the creation of a wrapper:
+
+	    key
+	    makekey
+	    perform
 
   With CableAware:
 
@@ -214,14 +227,15 @@ package, so the wrapper object is only created when needed.
 
 ::sttpx::connect object key-list ?-keysep string?
 
-  This is also called by ::sttp::connect if the "-keys" option is provided.
+  This is also called by ::sttp::connect if the "-key" or "-keys" option
+  is provided.
 
   If the _object_ was created by ::sttpx::connect, then it is returned
   immediately. This can not be used to change the keysep or keys of an
   existing ctable.
 
   Otherwise, this behaves identically to calling ::sttp::connect with the
-  -keys argument, and creates a wrapper object that understands the
+  -key/-keys argument, and creates a wrapper object that understands the
   additional methods:
 
     $ctable makekey array_name
@@ -235,7 +249,9 @@ package, so the wrapper object is only created when needed.
 
       Comparable to:
 
-        array set array [$ctable array_get_with_nulls [$ctable makekey array]]]
+        array set array [$ctable array_get_with_nulls $key]
+
+      But returns success/failure.
 
     $ctable store array
 
@@ -251,6 +267,10 @@ package, so the wrapper object is only created when needed.
       Perform a canned search, comparable to
 
         eval $ctable search [array get array] ?-name value?...
+
+      Or
+
+        eval $ctable search+ [array get array] ?-name value?...
 
       The ?-name value? arguments override any values in the array.
 

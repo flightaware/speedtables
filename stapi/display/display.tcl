@@ -46,6 +46,10 @@ catch { ::itcl::delete class STTPDisplay }
 	eval configure $args
 	load_response
 
+	if {![info exists ctable] && [info exists stable]} {
+	  set ctable $stable
+	  unset stable
+	}
         # If it's not already an extended table, treat it like a URI
         if {[info exists ctable] && ![::sttp::extended $ctable]} {
 	  set uri $ctable
@@ -62,8 +66,13 @@ catch { ::itcl::delete class STTPDisplay }
 	    set uri "cache://[join $hosts ":"]/$table"
 	  }
 	  if ![info exists keyfields] {
-	    if ![::sttp::connected $uri] {
-	      return -code error "No keyfields"
+	    if [info exists key] {
+	      set keyfields [list $key]
+	    }
+	  }
+	  if ![info exists keyfields] {
+	    if ![::sttp::extended $uri] {
+	      return -code error "No key/keyfields"
 	    } else {
 	      set keyfields {}
 	    }
@@ -110,8 +119,10 @@ catch { ::itcl::delete class STTPDisplay }
 
     ## New exposed configvars for STTPDisplay
     public variable ctable
+    public variable stable	;# Alias
     public variable uri
     public variable keyfields
+    public variable key
     public variable hosts
     public variable debug 0
 
@@ -866,20 +877,20 @@ catch { ::itcl::delete class STTPDisplay }
         foreach val $values name [$ctable keys] {
 	    lappend selector [list = $name $val]
         }
-	foreach {key val} $limit {
-	    regsub {^-} $key "" key
-	    lappend selector [list = $key $val]
-	    set array($key) $val
+	foreach {k v} $limit {
+	    regsub {^-} $k "" k
+	    lappend selector [list = $k $v]
+	    set array($k) $v
 	}
 	return 1
     }
 
-    method fetch {key arrayName} {
+    method fetch {keyVal arrayName} {
 	upvar 1 $arrayName array
-	if [make_limit_selector $key selector] {
+	if [make_limit_selector $keyVal selector] {
 	    set result [$ctable search -compare $selector -array_with_nulls array]
 	} else {
-	    set result [$ctable fetch $key array]
+	    set result [$ctable fetch $keyVal array]
 	}
 	return $result
     }
@@ -894,13 +905,13 @@ catch { ::itcl::delete class STTPDisplay }
 	return [$ctable store array]
     }
 
-    method delete {key} {
-	if [make_limit_selector $key selector] {
-	    if ![$ctable search -compare $selector -getkey key] {
+    method delete {keyVal} {
+	if [make_limit_selector $keyVal selector] {
+	    if ![$ctable search -compare $selector -getkey keyVal] {
 		return 0
 	    }
 	}
-	return [$ctable delete $key]
+	return [$ctable delete $keyVal]
     }
 
     method pretty_fields {list} {
@@ -1472,24 +1483,24 @@ catch { ::itcl::delete class STTPDisplay }
 	## reason to check it.
         set adding [expr {$response(DIODfromMode) == "Add"}]
 	if {$adding} {
-	    set key [$ctable makekey response]
-	    $ctable fetch $key a
+	    set keyVal [$ctable makekey response]
+	    $ctable fetch $keyVal a
 	} else {
-	    set key $response(DIODkey)
+	    set keyVal $response(DIODkey)
 	    set newkey [$ctable makekey response]
 
 	    ## If we have a new key, and the newkey doesn't exist in the
 	    ## database, we are moving this record to a new key, so we
 	    ## need to delete the old key.
-	    if {$key != $newkey} {
+	    if {$keyVal != $newkey} {
 		if {![fetch $newkey a]} {
-		    delete $key
+		    delete $keyVal
 		}
 	    }
 	}
 
 	if {[array exists a]} {
-	    puts "That record ($key) already exists in the database."
+	    puts "That record ($keyVal) already exists in the database."
 	    return
 	}
 
