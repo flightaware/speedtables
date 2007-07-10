@@ -243,16 +243,6 @@ package, so the wrapper object is only created when needed.
       Returns the string that corresponds to the key for the $ctable, based on
       the contents of the existing strings in the ctable.
 
-    $ctable fetch key array
-
-      Fetch array from the ctable.
-
-      Comparable to:
-
-        array set array [$ctable array_get_with_nulls $key]
-
-      But returns success/failure.
-
     $ctable store array
 
       Store array in the ctable

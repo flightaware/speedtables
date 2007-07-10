@@ -19,7 +19,6 @@ namespace eval ::sttpx {
     makekey makekey
     keys    keys
     key     key
-    fetch   fetch
     store   store
     clear   clear
     search  search
@@ -202,27 +201,6 @@ namespace eval ::sttpx {
     } else {
       return [join $key $separator($handle)]
     }
-  }
-
-  proc fetch {handle key _a} {
-    variable keyfields
-    variable ctable
-    if ![info exists keyfields($handle)] {
-      error "No connection for $handle"
-    }
-    upvar 1 $_a a
-    if [regexp {^@(.*)} $key _ _k] {
-      upvar $_k k
-      set key [makekey $handle k]
-    } elseif {![string match "*:*" $key]} {
-      set key [join $key :]
-    }
-    if ![$ctable($handle) exists $key] {
-      return 0
-    }
-    set list [$ctable($handle) array_get_with_nulls $key]
-    array set a $list
-    return 1
   }
 
   proc store {handle _a} {

@@ -215,7 +215,6 @@ namespace eval ::sttp {
     key				sql_ctable_keys
     keys			sql_ctable_keys
     makekey			sql_ctable_make_key
-    fetch			sql_ctable_fetch
     store			sql_ctable_store
     perform			sql_ctable_perform
   }
@@ -321,17 +320,6 @@ namespace eval ::sttp {
       lappend result $arg $val
     }
     return $result
-  }
-
-  proc sql_ctable_fetch {level ns cmd key _a args} {
-    upvar #$level $_a a
-    if [catch {
-      set list [eval [list sql_ctable_agwn $level $ns $cmd $key] $args]
-    } err] {
-      return 0
-    }
-    array set a $list
-    return 1
   }
 
   proc sql_ctable_exists {level ns cmd val} {
