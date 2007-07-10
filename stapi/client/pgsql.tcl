@@ -265,17 +265,15 @@ namespace eval ::sttp {
   }
 
   proc sql_ctable_make_key {level ns cmd args} {
-    set err_name "list"
     if {[llength $args] == 1} {
-      set err_name [lindex $args 0]
-      set args [uplevel #$level array get [lindex $args 0]]
+      set args [lindex $args 0]
     }
     array set array $args
     set key [set ${ns}::key]
     if [info exists array($key)] {
       return $array($key)
     }
-    return -code error "No key in $err_name"
+    return -code error "No key in list"
   }
 
   proc sql_ctable_unimplemented {level ns cmd args} {
@@ -445,11 +443,13 @@ namespace eval ::sttp {
     return [exec_sql $sql]
   }
 
-  proc sql_ctable_store {level ns cmd _array args} {
-    upvar #$level $_array array
-    set key [sql_ctable_make_key $level $ns $cmd $_array]
+  proc sql_ctable_store {level ns cmd args} {
+    if {[llength $args] == 1} {
+      set args [lindex $args 0]
+    }
+    set key [sql_ctable_make_key $level $ns $cmd $args]
     return [
-      eval [list sql_ctable_set $level $ns $cmd $key] [array get array] $args
+      eval [list sql_ctable_set $level $ns $cmd $key] $args
     ]
   }
 

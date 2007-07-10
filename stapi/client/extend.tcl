@@ -20,7 +20,6 @@ namespace eval ::sttpx {
     keys    keys
     key     key
     store   store
-    clear   clear
     search  search
     perform _perform
   }
@@ -96,19 +95,31 @@ namespace eval ::sttpx {
   # Check if the handle supports minimal sttp extensions:
   # * If it's wrapped, yes, otherwise...
   #   * Handles "method" method.
-  #   * Handles "key" command.
   #   * Handles "makekey" command.
-  #   * Handles "perform" command.
-  #   * If keys required, [$handle keys] matches
+  #   * Handles "store" command.
+  #   * Handles "key" or "keys" commands.
+  #   * If keys required, [$handle key/keys] matches
   proc extended {handle {keys {}}} {
     if {[string match ::sttpx::_table* $handle]} { return 1 }
+
     if {[catch {set mlist [$handle methods]}]} { return 0 }
-    if {[lsearch $mlist keys] == -1} { return 0 }
+
     if {[lsearch $mlist makekey] == -1} { return 0 }
-    if {[lsearch $mlist perform] == -1} { return 0 }
+
+    if {[lsearch $mlist store] == -1} { return 0 }
+
+    if {[lsearch $mlist keys] != -1} { set keyCmd "keys" }
+    if {[lsearch $mlist key] != -1} { set keyCmd "key" }
+    if {![info exists keyCmd]} { return -1 }
+
     if {![llength $keys]} { return 1 }
-    if {"[lindex $keys 0]" == "[$handle key]"} { return 1 }
-    if {"$keys" == "[$handle keys]"} { return 1 }
+
+    if {"$keyCmd" == "keys"} {
+      if {"$keys" == "[$handle keys]"} { return 1 }
+    } else {
+      if {[llength $keys] > 1} { return 0 }
+      if {"[lindex $keys 0]" == "[$handle key]"} { return 1 }
+    }
     return 0
   }
   namespace export extended
@@ -184,12 +195,15 @@ namespace eval ::sttpx {
   }
   namespace export connected
 
-  proc makekey {handle _k} {
+  proc makekey {handle args} {
     variable keyfields
     if ![info exists keyfields($handle)] {
       error "No connection for $handle"
     }
-    upvar 1 $_k k
+    if {[llength $args] == 1} {
+      set args [lindex $args 0]
+    }
+    array set k $key
     set key {}
     foreach n $keyfields($handle) {
       lappend key $k($n)
@@ -203,29 +217,16 @@ namespace eval ::sttpx {
     }
   }
 
-  proc store {handle _a} {
+  proc store {handle args} {
     variable keyfields
     variable ctable
     if ![info exists keyfields($handle)] {
       error "No connection for $handle"
     }
-    upvar 1 $_a a
-    $ctable($handle) set [makekey $handle a] [array get a]
-  }
-
-  proc clear {handle key} {
-    variable ctable
-    variable keyfields
-    if ![info exists keyfields($handle)] {
-      error "No connection for $handle"
+    if {[llength $args] == 1} {
+      set args [lindex $args 0]
     }
-    if [regexp {^@(.*)} $key _ _k] {
-      upvar $_k k
-      set key [makekey $handle a]
-    } elseif {![string match "*:*" $key]} {
-      set key [join $key :]
-    }
-    $ctable($handle) delete $key
+    $ctable($handle) set [makekey $handle $args] $args
   }
 
   proc debug {args} {

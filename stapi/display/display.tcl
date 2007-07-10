@@ -80,10 +80,6 @@ catch { ::itcl::delete class STTPDisplay }
 	  set ctable [::sttp::connect $uri -keys $keyfields]
 	}
 
-	set ctable_supports_perform [
-	  expr {[lsearch [$ctable methods] "perform"] != -1}
-	]
-
 	if {[lempty $form]} {
 	    set form [namespace which [::form #auto -defaults response]]
 	}
@@ -133,7 +129,6 @@ catch { ::itcl::delete class STTPDisplay }
     ## Background configvars
     private variable ct_selection
 
-    private variable ctable_supports_perform 0
     private variable case
 
     #
@@ -452,7 +447,7 @@ catch { ::itcl::delete class STTPDisplay }
 	if [info exists response(mode)] {
 	    $form hidden DIODfromMode -value $response(mode)
 	}
-	$form hidden DIODkey -value [$ctable makekey array]
+	$form hidden DIODkey -value [makekey array]
 	puts {<TABLE CLASS="DIOForm">}
 
 	# emit the fields for each field using the showform method
@@ -754,7 +749,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    puts "<TD NOWRAP CLASS=\"DIORowFunctions$alt\">"
 	    hide_hidden_vars $f
 	    hide_selection $f
-	    $f hidden query -value [$ctable makekey a]
+	    $f hidden query -value [makekey a]
 	    if {[llength $rowfunctions] > 2} {
 	      $f select mode -values $rowfunctions -class DIORowFunctionSelect$alt
 	      $f submit submit -value "Go" -class DIORowFunctionButton$alt
@@ -926,20 +921,10 @@ catch { ::itcl::delete class STTPDisplay }
 
     # Perform an extended "search+" request bundled in an array
     method perform {_request args} {
-	lappend command $ctable
-	if {$ctable_supports_perform} {
-	    lappend command perform $_request
-	} else {
-	    lappend command search
-	    upvar 1 $_request request
-	    array set search [array get request]
-	    array set search $args
-	    if [info exists search(-compare)] {
-		simplify_compare search(-compare)
-	    }
-	    set args [array get search]
-	}
-	uplevel 1 $command $args
+	upvar 1 $_request request
+	array set search [array get request]
+	array set search $args
+	uplevel 1 [list $ctable search+] [array get search]
     }
 
     method fetch {keyVal arrayName} {
@@ -956,6 +941,13 @@ catch { ::itcl::delete class STTPDisplay }
 	return $result
     }
 
+    # SHorthand to make a key from ctable
+    method makekey {arrayName} {
+	upvar 1 $arrayName array
+	return [$ctable makekey [array get array]]
+    }
+
+    # SHorthand to store ctable
     method store {arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector {} selector array] {
@@ -963,7 +955,7 @@ catch { ::itcl::delete class STTPDisplay }
 		return 0
 	    }
 	}
-	return [$ctable store array]
+	return [$ctable store [array get array]]
     }
 
     method delete {keyVal} {
@@ -1461,21 +1453,34 @@ catch { ::itcl::delete class STTPDisplay }
 		if {"$how" == "="} {
 		    set how "match"
 	        } elseif {"$how" == "<>"} {
-		    set how "-match"
+		    set how "notmatch"
 		}
 	    }
 	    if {[string match "*like*" $how] || [string match "*match*" $how]} {
 		switch -glob -- $how {
-		    *not* { set how "-" }
-		    -*    { set how "-" }
-		    default { set how "" }
+		    *not* { set how "notmatch" }
+		    -*    { set how "match-" }
+		    default { set how "match" }
 	        }
 	    	if {[info exists case($name)]} {
-		    append how [
-			string tolower [string index $case($name) 0]
-		    ]
+		    switch -glob -- [string tolower $case(name)] {
+			u* {
+			    set what [string toupper $what]
+			    append how "_case"
+		        }
+			l* {
+			    set what [string tolower $what]
+			    append how "_case"
+		        }
+			x* {
+			    append how "_case"
+			}
+		    }
 		}
-		append how match
+	    }
+
+	    if {"$how" == "<>"} {
+		set how "!="
 	    }
 
 	    set search [list $how $name $what]
@@ -1544,14 +1549,14 @@ catch { ::itcl::delete class STTPDisplay }
 	## reason to check it.
         set adding [expr {$response(DIODfromMode) == "Add"}]
 	if {$adding} {
-	    set keyVal [$ctable makekey response]
+	    set keyVal [makekey response]
 	    set list [$ctable array_get_with_nulls $keyVal]
 	    if {[llength $list]} {
 		array set a $list
 	    }
 	} else {
 	    set keyVal $response(DIODkey)
-	    set newkey [$ctable makekey response]
+	    set newkey [makekey response]
 
 	    ## If we have a new key, and the newkey doesn't exist in the
 	    ## database, we are moving this record to a new key, so we
@@ -1597,7 +1602,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    }
 	}
 
-	store storeArray
+	store [array get storeArray]
 	headers redirect [document]
     }
 
