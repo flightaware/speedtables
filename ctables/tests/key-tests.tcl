@@ -10,6 +10,10 @@ if {"[t key]" != "id"} {
     error "Key should be 'id'"
 }
 
+if {"[t makekey {id 1 rank 1 name first}]" != "1"} {
+    error "Key value should be '1'"
+}
+
 set first_key [t store id 1 rank 1 name first]
 if {"$first_key" != "1"} {
     error "First 'store' key should have been '1'"
