@@ -810,24 +810,29 @@ static struct {
     enum skipStart_e	skipStart;
     enum skipEnd_e	skipEnd;
     enum skipNext_e	skipNext;
+    int			score;
 } skipTypes[] = {
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // FALSE
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // TRUE
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NULL
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NOTNULL
-  {SKIP_START_RESET,	SKIP_END_GE_ROW1, SKIP_NEXT_ROW    }, // LT
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // LE
-  {SKIP_START_EQ_ROW1,	SKIP_END_NE_ROW1, SKIP_NEXT_ROW    }, // EQ
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NE
-  {SKIP_START_GE_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_ROW    }, // GE
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // GT
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // MATCH
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NOTMATCH
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // MATCH_CASE
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE   }, // NOTMATCH_CASE
-  {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_ROW    }, // RANGE
-  {SKIP_START_RESET,	SKIP_END_NONE,    SKIP_NEXT_IN_LIST}  // IN
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // FALSE
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // TRUE
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NULL
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTNULL
+  {SKIP_START_RESET,	SKIP_END_GE_ROW1, SKIP_NEXT_ROW,   2 }, // LT
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // LE
+  {SKIP_START_EQ_ROW1,	SKIP_END_NE_ROW1, SKIP_NEXT_ROW,   6 }, // EQ
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NE
+  {SKIP_START_GE_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_ROW,   2 }, // GE
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // GT
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // MATCH
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTMATCH
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // MATCH_CASE
+  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTMATCH_CASE
+  {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_ROW,   4 }, // RANGE
+  {SKIP_START_RESET,	SKIP_END_NONE, SKIP_NEXT_IN_LIST, 100}  // IN
 };
+#define SORT_SCORE 1 // being able to sort is worth 1 point
+		     // TODO: see if this should be somthing like 5
+		     //       if you change this, change the "not implemented"
+		     //       value in the table above to -1 - SORT_SCORE
 
 enum walkType_e { WALK_DEFAULT, WALK_SKIP, WALK_HASH_EQ, WALK_HASH_IN };
 
@@ -865,12 +870,17 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     void                  *row2 = NULL;
     char	  	  *key = NULL;
 
-    jsw_skip_t   	  *skipList = NULL;
-    int           	   field = 0;
+    int			   bestScore = 0;
 
-    fieldCompareFunction_t compareFunction;
-    int                    indexNumber;
+    jsw_skip_t   	  *skipList = NULL;
+    int           	   skipField = 0;
+    int			   inOrderWalk = 0;
+
+    fieldCompareFunction_t compareFunction = NULL;
+    int                    indexNumber = -1;
     int                    comparisonType = 0;
+
+    int			   sortField = -1;
 
     enum walkType_e	   walkType	= WALK_DEFAULT;
 
@@ -897,16 +907,9 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
         return TCL_OK;
     }
 
-    // if we're sorting or running a transaction, allocate a space for the
-    // search results that we'll then sort from
-    if (
-      (
-	(search->sortControl.nFields > 0) ||
-	search->tranType != CTABLE_SEARCH_TRAN_NONE
-      ) &&
-      (search->endAction != CTABLE_SEARCH_ACTION_COUNT_ONLY)
-    ) {
-	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
+    // Check to see if we're sorting on a single field
+    if (search->sortControl.nFields == 1) {
+	sortField = search->sortControl.fields[0];
     }
 
     // If there's no components in the search, make sure the index is NONE
@@ -922,31 +925,35 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	}
     }
 
-    // if they're asking for an index search, and first compare thing is
-    // something we understand how to do
-    // with indexed fields and the field they're asking for us to do it
-    // on happens to be indexed, we need to do special walking magic
-
-    // else we fall back to the hash table because it's faster
+    // if they're asking for an index search, look for the best search
+    // in the list of comparisons
+    //
+    // See the skipTypes table for the scores, but basically the tighter
+    // the constraint, the better.
+    //
+    // If we can use a hash table, we use it, because it's either JUST
+    // a simple hash lookup, or it's "in" which has to be handled here.
 
     if (search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
 	int index = 0;
 	int try;
 
 	if(search->reqIndexField != CTABLE_SEARCH_INDEX_ANY) {
-	    for(index = 0; index < search->nComponents; index++)
+	    while(index < search->nComponents) {
 	        if(search->components[index].fieldID == search->reqIndexField)
 		    break;
+		index++;
+	    }
 	}
 
-	// Look for the first usable search field starting with the requested
-	// one (or the first, if it's not in the list)
-	for(try = 0; !skipList && try < search->nComponents; try++, index++) {
+	// Look for the best usable search field starting with the requested
+	// one
+	for(try = 0; try < search->nComponents; try++, index++) {
 	    if(index >= search->nComponents)
 	        index = 0;
 	    CTableSearchComponent *component = &search->components[index];
-
-	    field = component->fieldID;
+	    int field = component->fieldID;
+	    int score;
 
 	    comparisonType = component->comparisonType;
 
@@ -954,37 +961,60 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	    // using a hash.
 	    if(field == creator->keyField) {
 		walkType = hashTypes[comparisonType];
+
 		if (walkType != WALK_DEFAULT) {
+
 		    if(walkType == WALK_HASH_IN) {
+			inOrderWalk = 0; // TODO: check if list in order
 		        inListObj = component->inListObj;
 		        inCount = component->inCount;
-		    } else {
+		    } else { //    WALK_HASH_EQ
+			inOrderWalk = 1; // degenerate case, only one result.
 			row1 = component->row1;
 			key = row1->hashEntry.key;
 		    }
+
 		    search->alreadySearched = index;
+
+		    // Always use a hash if it's available, because it's
+		    // either '=' (with only one result) or 'in' (which
+		    // has to be walked here).
 		    break;
 		}
 	    }
+
+	    score = skipTypes[comparisonType].score;
+
+	    // Prefer to avoid sort
+	    if(field == sortField) score += SORT_SCORE;
+
+	    // We already found a better option than this one, skip it
+	    if (bestScore > score)
+		continue;
+
+	    // Got a new best candidate, save the world.
+	    skipField = field;
 
 	    skipNext  = skipTypes[comparisonType].skipNext;
 	    skipStart = skipTypes[comparisonType].skipStart;
 	    skipEnd   = skipTypes[comparisonType].skipEnd;
 
-	    if(skipNext == SKIP_NEXT_NONE) continue;
-
 	    search->alreadySearched = index;
 	    skipList = ctable->skipLists[field];
 	    walkType = WALK_SKIP;
 
-//DEBUG printf("Searching on %d using {%d, %d, %d}\n", field, skipStart, skipEnd, skipNext);
+            compareFunction = creator->fields[field]->compareFunction;
+            indexNumber = creator->fields[field]->indexNumber;
+
 	    switch(skipNext) {
 		case SKIP_NEXT_ROW: {
+		    inOrderWalk = 1;
 		    row1 = component->row1;
 		    row2 = component->row2;
 		    break;
 		}
 		case SKIP_NEXT_IN_LIST: {
+		    inOrderWalk = 0; // TODO: check if list in order
 		    inListObj = component->inListObj;
 		    inCount = component->inCount;
 		    row1 = component->row1;
@@ -994,7 +1024,34 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 		    panic("skipNext has unexpected value %d", skipNext);
 		}
 	    }
+
+	    // Score of 100 means it's mandatory
+	    if (bestScore >= 100)
+	        break;
         }
+    }
+
+    // if we're sorting on the field we're searching, AND we can eliminate
+    // the sort because we know we're walking in order, then eliminate the
+    // sort step
+    if (inOrderWalk) {
+        if (search->sortControl.nFields == 1) {
+	    if(sortField == skipField) {
+		search->sortControl.nFields = 0;
+	    }
+	}
+    }
+
+    // if we're (still) sorting or running a transaction, allocate a space
+    // for the search results that we'll then sort from
+    if (
+      (
+	(search->sortControl.nFields > 0) ||
+	search->tranType != CTABLE_SEARCH_TRAN_NONE
+      ) &&
+      (search->endAction != CTABLE_SEARCH_ACTION_COUNT_ONLY)
+    ) {
+	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
     }
 
     if (walkType == WALK_DEFAULT) {
@@ -1011,7 +1068,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	    }
         }
     } else if(walkType == WALK_HASH_EQ || walkType == WALK_HASH_IN) {
-	// if EQ inIndex == inCount == 0 but key != NULL
+	// if it's '=': inIndex == inCount == 0 BUT key != NULL
 	while (inIndex < inCount || key) {
 	    // If we don't have a key, get one.
 	    if (!key)
@@ -1040,8 +1097,6 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	    }
         }
     } else {
-        compareFunction = creator->fields[field]->compareFunction;
-        indexNumber = creator->fields[field]->indexNumber;
 
         //
         // walk the skip list
@@ -1083,7 +1138,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 		      goto search_complete;
 
 		  // make a row matching the next value in the list
-                  if ((*ctable->creator->set) (interp, ctable, inListObj[inIndex++], row1, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+                  if ((*ctable->creator->set) (interp, ctable, inListObj[inIndex++], row1, skipField, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
                       Tcl_AppendResult (interp, " while processing \"in\" compare function", (char *) NULL);
                       actionResult = TCL_ERROR;
                       goto clean_and_return;
