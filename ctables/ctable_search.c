@@ -797,15 +797,28 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 }
 
 enum skipStart_e {
-    SKIP_START_NONE, SKIP_START_GE_ROW1, SKIP_START_EQ_ROW1, SKIP_START_RESET
+    SKIP_START_NONE, SKIP_START_GE_ROW1, SKIP_START_GT_ROW1, SKIP_START_EQ_ROW1, SKIP_START_RESET
 };
 enum skipEnd_e {
-    SKIP_END_NONE, SKIP_END_NE_ROW1, SKIP_END_GE_ROW1, SKIP_END_GE_ROW2
+    SKIP_END_NONE, SKIP_END_NE_ROW1, SKIP_END_GE_ROW1, SKIP_END_GT_ROW1, SKIP_END_GE_ROW2
 };
 enum skipNext_e {
     SKIP_NEXT_NONE, SKIP_NEXT_ROW, SKIP_NEXT_IN_LIST
 };
 
+// skiplist scanning rules table.
+//   scan starts at skipStart, goes to skipEnd, and uses skipNext to traverse.
+//   score is based on an estimate of how much a scan on this field is likely
+//   to limit the search.
+// rationale:
+//   <, <=, or >= are 2 points for being constrained at one end
+//   > is only 1 point because we need to loop over "=" at start
+//   range is 4 points for being constrained at both ends
+//   = is 6 points for being a "minimum range"
+//   in is 100 points (and win) because it HAS to be done over a list
+// plus one point for being the sort field, because that saves creating and
+//   sorting the transaction table.
+//
 static struct {
     enum skipStart_e	skipStart;
     enum skipEnd_e	skipEnd;
@@ -817,11 +830,11 @@ static struct {
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NULL
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTNULL
   {SKIP_START_RESET,	SKIP_END_GE_ROW1, SKIP_NEXT_ROW,   2 }, // LT
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // LE
-  {SKIP_START_EQ_ROW1,	SKIP_END_NE_ROW1, SKIP_NEXT_ROW,   6 }, // EQ
+  {SKIP_START_RESET,	SKIP_END_GT_ROW1, SKIP_NEXT_ROW,   2 }, // LE
+  {SKIP_START_EQ_ROW1,	SKIP_END_GT_ROW1, SKIP_NEXT_ROW,   6 }, // EQ
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NE
   {SKIP_START_GE_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_ROW,   2 }, // GE
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // GT
+  {SKIP_START_GT_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_NONE,  1 }, // GT
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // MATCH
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTMATCH
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // MATCH_CASE
@@ -829,10 +842,11 @@ static struct {
   {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_ROW,   4 }, // RANGE
   {SKIP_START_RESET,	SKIP_END_NONE, SKIP_NEXT_IN_LIST, 100}  // IN
 };
+
 #define SORT_SCORE 1 // being able to sort is worth 1 point
-		     // TODO: see if this should be somthing like 5
-		     //       if you change this, change the "not implemented"
-		     //       value in the table above to -1 - SORT_SCORE
+     // TODO: see if this should be higher
+     //       if you change this, change the "not implemented"
+     //       value in the table above to -1 - SORT_SCORE
 
 enum walkType_e { WALK_DEFAULT, WALK_SKIP, WALK_HASH_EQ, WALK_HASH_IN };
 
@@ -1109,18 +1123,34 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 	// Find the row to start walking on
 	switch(skipStart) {
+
 	    case SKIP_START_EQ_ROW1: {
 		jsw_sfind (skipList, row1);
 		break;
 	    }
+
 	    case SKIP_START_GE_ROW1: {
 		jsw_sfind_equal_or_greater (skipList, row1);
 		break;
 	    }
+
+	    case SKIP_START_GT_ROW1: {
+		jsw_sfind_equal_or_greater (skipList, row1);
+		while (1) {
+                    if ((row = jsw_srow (skipList)) == NULL)
+		        goto search_complete;
+	    	    if (compareFunction (row, row1) > 0)
+			break;
+		    jsw_snext(skipList);
+		}
+		break;
+	    }
+
 	    case SKIP_START_RESET: {
 		jsw_sreset(skipList);
 		break;
 	    }
+
 	    default: { // can't happen
 		panic("skipStart has unexpected value %d", skipStart);
 	    }
@@ -1161,13 +1191,13 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 			goto search_complete;
 		    break;
 		}
-	        case SKIP_END_GE_ROW2: {
-		    if (compareFunction (row, row2) >= 0)
+	        case SKIP_END_GT_ROW1: {
+		    if (compareFunction (row, row1) > 0)
 			goto search_complete;
 		    break;
 		}
-	        case SKIP_END_NE_ROW1: {
-		    if (compareFunction (row, row1) != 0)
+	        case SKIP_END_GE_ROW2: {
+		    if (compareFunction (row, row2) >= 0)
 			goto search_complete;
 		    break;
 		}
