@@ -80,6 +80,10 @@ catch { ::itcl::delete class STTPDisplay }
 	  set ctable [::sttp::connect $uri -keys $keyfields]
 	}
 
+	set ctable_supports_perform [
+	  expr {[lsearch [$ctable methods] "perform"] != -1}
+	]
+
 	if {[lempty $form]} {
 	    set form [namespace which [::form #auto -defaults response]]
 	}
@@ -129,6 +133,7 @@ catch { ::itcl::delete class STTPDisplay }
     ## Background configvars
     private variable ct_selection
 
+    private variable ctable_supports_perform 0
     private variable case
 
     #
@@ -885,6 +890,58 @@ catch { ::itcl::delete class STTPDisplay }
 	return 1
     }
 
+    # Simplify a "compare" operation in a search to make it compatible with 
+    # standard ctables
+    method simplify_compare {_compare} {
+	upvar 1 $_compare compare
+
+	set new_compare {}
+	set changed 0
+	foreach list $compare {
+	    set op [lindex $list 0]
+	    if {"$op" == "<>"} {
+		    set list [concat {!=} [lrange $list 1 end]]
+		    set changed 1
+	    } elseif {[regexp {^(-?)(.)match} $op _ not ch]} {
+		set op [lindex {match notmatch} [string length $not]]
+		unset -nocomplain fn
+		switch -exact -- [string tolower $ch] {
+		    u { append op _case; set fn toupper }
+		    l { append op _case; set fn tolower }
+		    x { append op _case }
+		}
+		set pat [lindex $list 2]
+		if [info exists fn] {
+		    set pat [string $fn $pat]
+		}
+		set list [concat $op [lindex $list 1] [list $pat]] 
+		set changed 1
+	    }
+	    lappend new_compare $list
+	}
+	if {$changed} {
+	    set compare $new_compare
+	}
+    }
+
+    # Perform an extended "search+" request bundled in an array
+    method perform {_request args} {
+	lappend command $ctable
+	if {$ctable_supports_perform} {
+	    lappend command perform $_request
+	} else {
+	    lappend command search
+	    upvar 1 $_request request
+	    array set search [array get request]
+	    array set search $args
+	    if [info exists search(-compare)] {
+		simplify_compare search(-compare)
+	    }
+	    set args [array get search]
+	}
+	uplevel 1 $command $args
+    }
+
     method fetch {keyVal arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector $keyVal selector] {
@@ -1026,7 +1083,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    puts $fp [::csv::join $textlist]
 	}
 
-	$ctable perform request -array_with_nulls a -key k -code {
+	perform request -array_with_nulls a -key k -code {
 	    # If there's no fields defined, then use the columns we got from
 	    # the query and put their names out as the first line
 	    if {![llength $columns]} {
@@ -1094,7 +1151,7 @@ catch { ::itcl::delete class STTPDisplay }
 	        set total [$ctable count]
 	    }
 	} else {
-	    set total [$ctable perform request -countOnly 1]
+	    set total [perform request -countOnly 1]
 	}
 
 	if {$total <= [get_offset]} {
@@ -1106,7 +1163,7 @@ catch { ::itcl::delete class STTPDisplay }
 
 	set_order request
 	set_page request
-	$ctable perform request -array_with_nulls a -code { showrow a }
+	perform request -array_with_nulls a -code { showrow a }
 
 	rowfooter $total
 
