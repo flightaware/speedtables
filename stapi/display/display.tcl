@@ -890,7 +890,11 @@ catch { ::itcl::delete class STTPDisplay }
 	if [make_limit_selector $keyVal selector] {
 	    set result [$ctable search -compare $selector -array_with_nulls array]
 	} else {
-	    set result [$ctable fetch $keyVal array]
+	    set list [$ctable array_get_with_nulls $keyVal]
+	    set result [llength $list]
+	    if {$result} {
+	        array set array $list
+	    }
 	}
 	return $result
     }
@@ -1484,7 +1488,10 @@ catch { ::itcl::delete class STTPDisplay }
         set adding [expr {$response(DIODfromMode) == "Add"}]
 	if {$adding} {
 	    set keyVal [$ctable makekey response]
-	    $ctable fetch $keyVal a
+	    set list [$ctable array_get_with_nulls $keyVal]
+	    if {[llength $list]} {
+		array set a $list
+	    }
 	} else {
 	    set keyVal $response(DIODkey)
 	    set newkey [$ctable makekey response]
