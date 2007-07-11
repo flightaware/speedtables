@@ -73,11 +73,22 @@ catch { ::itcl::delete class STTPDisplay }
 	  if ![info exists keyfields] {
 	    if ![::sttp::extended $uri] {
 	      return -code error "No key/keyfields"
-	    } else {
-	      set keyfields {}
 	    }
 	  }
 	  set ctable [::sttp::connect $uri -keys $keyfields]
+	}
+
+	if ![info exists keyfields] {
+	  if [info exists key] {
+	    set keyfields [list $key]
+	  } else {
+	    set mlist [$ctable methods]
+	    if {[lsearch $mlist "key"]} {
+	      set keyfields [list [$ctable key]]
+	    } else {
+	      set keyfields [$ctable keys]
+	    }
+	  }
 	}
 
 	if {[lempty $form]} {
@@ -944,7 +955,18 @@ catch { ::itcl::delete class STTPDisplay }
     # SHorthand to make a key from ctable
     method makekey {arrayName} {
 	upvar 1 $arrayName array
-	return [$ctable makekey [array get array]]
+	set key {}
+	foreach kf $keyfields {
+	    if [info exists array($kf)] {
+		lappend key $array($kf)
+	    } else {
+		return -code error "No $kf in row"
+	    }
+	}
+	if {[llength $key] == 1} {
+	    return [lindex $key 0]
+	}
+	return $key
     }
 
     # SHorthand to store ctable
