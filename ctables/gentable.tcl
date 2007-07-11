@@ -1577,16 +1577,12 @@ proc is_legal {fieldName} {
 }
 
 #
-# deffield - helper for defining fields -- all of the field-defining procs
-#  use this except for boolean that subsumes its capabilities, since we
-#  need to keep booleans separately for sanity of the C structures
+# deffield - helper for defining fields.
 #
-#  NB do we really?  i don't know
-#
-proc deffield {fieldName argList} {
+proc deffield {fieldName argList {listName nonBooleans}} {
     variable fields
     variable fieldList
-    variable nonBooleans
+    variable $listName
     variable ctableTypes
     variable reservedWords
 
@@ -1602,31 +1598,26 @@ proc deffield {fieldName argList} {
         error "number of values in field '$fieldName' definition arguments ('$argList') must be even"
     }
 
+    # If "key" is still in the option list, then it's not on the right type
+    if {[set i [lsearch -exact "key" $argList]] % 2 == 0} {
+	incr i
+	if {[lindex $argList i]} {
+	    error "field '$fieldName' is the wrong type for a key"
+	}
+    }
+
     set fields($fieldName) [linsert $argList 0 name $fieldName]
     array set ::ctable::fields::$fieldName $fields($fieldName)
 
     lappend fieldList $fieldName
-    lappend nonBooleans $fieldName
+    lappend $listName $fieldName
 }
 
 #
-# boolean - define a boolean field -- same contents as deffield except it
-#  appends to the booleans list instead of the nonBooleans list NB kludge
+# boolean - define a boolean field
 #
 proc boolean {fieldName args} {
-    variable booleans
-    variable fields
-    variable fieldList
-
-    if {![regexp {^[_a-zA-Z][_a-zA-Z0-9]*$} $fieldName]} {
-        error "field name \"$fieldName\" must start with a letter and can only contain letters, numbers, and underscores"
-    }
-
-    set fields($fieldName) [linsert $args 0 name $fieldName type boolean]
-    array set ::ctable::fields::$fieldName $fields($fieldName)
-
-    lappend fieldList $fieldName
-    lappend booleans $fieldName
+    deffield $fieldName [linsert $args 0 type boolean] booleans
 }
 
 #
@@ -1647,7 +1638,15 @@ proc fixedstring {fieldName length args} {
 #
 # varstring - define a variable-length string field
 #
+# If "key 1" is in the argument list, make it a "key" instead
+#
 proc varstring {fieldName args} {
+    if {[set i [lsearch -exact "key" $args]] % 2 == 0} {
+	incr i
+	if {[lindex $args $i]} {
+	    return [eval [list key $fieldName] $args]
+	}
+    }
     deffield $fieldName [linsert $args 0 type varstring needsQuoting 1]
 }
 
@@ -1726,6 +1725,11 @@ proc tclobj {fieldName args} {
 # key - define a pseudofield for the key
 #
 proc key {name args} {
+    # Sanitize arguments
+    if {[set i [lsearch -exact  $args key]] % 2 == 0} {
+	set args [lreplace $args $i [expr $i + 1]]
+    }
+
     # Only allow one key field
     if [info exists ::ctable::keyFieldName] {
 	# But only complain if it's not an internal "special" field
@@ -1734,6 +1738,7 @@ proc key {name args} {
 	}
 	return
     }
+
     deffield $name [linsert $args 0 type key needsQuoting 1 notnull 1]
     set ::ctable::keyField [lsearch $::ctable::fieldList $name]
     if {$::ctable::keyField == -1} {
