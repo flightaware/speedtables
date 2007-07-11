@@ -21,7 +21,6 @@ namespace eval ::sttpx {
     key     key
     store   store
     search  search
-    perform _perform
   }
 
   proc indexed {handle} {
@@ -138,6 +137,9 @@ namespace eval ::sttpx {
     if ![info exists keyfields($handle)] {
       error "No connection for $handle"
     }
+    if [llength $keyfields($handle) != 1] {
+      return "_key"
+    }
     return [lindex $keyfields($handle) 0]
   }
   namespace export keys
@@ -208,7 +210,13 @@ namespace eval ::sttpx {
     foreach n $keyfields($handle) {
       lappend key $k($n)
     }
-    if {[llength $key] == 1} {
+    if {[llength $key] == 0} {
+      if [info exists k(_key)] {
+	return $k($key)
+      } else {
+	return -code error "No key in list"
+      }
+    } elseif {[llength $key] == 1} {
       return [lindex $key 0]
     } elseif {"$separator($handle)" == "list"} {
       return $key
@@ -310,37 +318,6 @@ namespace eval ::sttpx {
       error "No ctable open for $handle"
     }
     return [$ctable($handle) count]
-  }
-
-  proc perform {_request args} {
-    upvar 1 $_request request
-    array set temp [array get request]
-    array set temp $args
-    if ![info exists temp(-handle)] {
-      return -code error "No URI specified in $_request"
-    }
-    return [uplevel 1 [list ::sttpx::_perform $temp(-handle) $_request] $args]
-  }
-
-  proc _perform {handle _request args} {
-    upvar 1 $_request request
-    array set temp [array get request]
-    array set temp $args
-    if [info exists temp(-count)] {
-      set result_var $temp(-count)
-      unset temp(-count)
-    }
-    # Allow overriding
-    if [info exists temp(-handle)] {
-      set handle $temp(-handle)
-      unset temp(-handle)
-    }
-    lappend cmd ::sttpx::search $handle
-    set cmd [concat $cmd [array get temp]]
-    if [info exists result_var] {
-      set cmd "set $result_var \[$cmd]"
-    }
-    uplevel 1 $cmd
   }
 }
 

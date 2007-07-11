@@ -212,11 +212,10 @@ namespace eval ::sttp {
   variable ctable_extended_commands
   array set ctable_extended_commands {
     methods			sql_ctable_methods
-    key				sql_ctable_keys
+    key				sql_ctable_key
     keys			sql_ctable_keys
     makekey			sql_ctable_makekey
     store			sql_ctable_store
-    perform			sql_ctable_perform
   }
 
   proc sql_ctable {level ns cmd args} {
@@ -232,23 +231,6 @@ namespace eval ::sttp {
     return [eval [list $proc $level $ns $cmd] $args]
   }
 
-  proc sql_ctable_perform {level ns cmd _req args} {
-    upvar #$level $_req req
-    array set tmp [array get req]
-    array set tmp $args
-    if [info exists tmp(-count)] {
-      set result_var $tmp(-count)
-      unset tmp(-count)
-    }
-    lappend list sql_ctable_search $level $ns search
-    set list [concat $list [array get tmp]]
-    set result [eval $list]
-    if [info exists result_var] {
-      uplevel #$level [list set $result_var $result]
-    }
-    return $result
-  }
-
   proc sql_ctable_methods {level ns cmd args} {
     variable ctable_commands
     variable ctable_extended_commands
@@ -258,6 +240,15 @@ namespace eval ::sttp {
 	       [array names ctable_extended_commands]
       ]
     ]
+  }
+
+  proc sql_ctable_key {level ns cmd args} {
+    set keys [set ${ns}::key]
+    if {[llength $keys] == 1} {
+      return [lindex $key 0]
+    } else {
+      return "_key"
+    }
   }
 
   proc sql_ctable_keys {level ns cmd args} {
@@ -272,6 +263,9 @@ namespace eval ::sttp {
     set key [set ${ns}::key]
     if [info exists array($key)] {
       return $array($key)
+    }
+    if [info exists array(_key)] {
+      return $array(_key)
     }
     return -code error "No key in list"
   }
@@ -447,9 +441,10 @@ namespace eval ::sttp {
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
-    set key [sql_ctable_makekey $level $ns $cmd $args]
     return [
-      eval [list sql_ctable_set $level $ns $cmd $key] $args
+      eval [list sql_ctable_set $level $ns $cmd [
+	sql_ctable_makekey $level $ns $cmd $args
+      ]] $args
     ]
   }
 
