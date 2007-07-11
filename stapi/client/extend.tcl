@@ -203,7 +203,7 @@ namespace eval ::sttpx {
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
-    array set k $key
+    array set k $args
     set key {}
     foreach n $keyfields($handle) {
       lappend key $k($n)

@@ -214,7 +214,7 @@ namespace eval ::sttp {
     methods			sql_ctable_methods
     key				sql_ctable_keys
     keys			sql_ctable_keys
-    makekey			sql_ctable_make_key
+    makekey			sql_ctable_makekey
     store			sql_ctable_store
     perform			sql_ctable_perform
   }
@@ -264,7 +264,7 @@ namespace eval ::sttp {
     return [set ${ns}::key]
   }
 
-  proc sql_ctable_make_key {level ns cmd args} {
+  proc sql_ctable_makekey {level ns cmd args} {
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
@@ -447,7 +447,7 @@ namespace eval ::sttp {
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
-    set key [sql_ctable_make_key $level $ns $cmd $args]
+    set key [sql_ctable_makekey $level $ns $cmd $args]
     return [
       eval [list sql_ctable_set $level $ns $cmd $key] $args
     ]

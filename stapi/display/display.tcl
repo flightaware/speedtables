@@ -1602,7 +1602,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    }
 	}
 
-	store [array get storeArray]
+	store storeArray
 	headers redirect [document]
     }
 
