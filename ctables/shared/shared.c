@@ -144,13 +144,108 @@ shminitmap(volatile mapinfo *mapinfo)
     shmdealloc(mapinfo, &block[1]);
 }
 
-shmaddpool(mapinfo *map, size_t size, int nentries)
+pool *makepool(char *memory, size_t blocksize, int blocks)
 {
+    pool *pool = ckalloc(sizeof pool);
+    pool->start = memory;
+    pool->blocks = blocks;
+    pool->blocksize = blocksize;
+    pool->avail = blocks;
+    pool->brk = pool->start;
+    pool->freelist = NULL;
+    pool->next = NULL;
+    return pool;
 }
 
-shmalloc(mapinfo *map, size_t size)
+int shmaddpool(mapinfo *map, size_t blocksize, int blocks)
 {
+    char *memory = _shmalloc(map, blocksize*blocks);
+    pool *pool;
+
+    if(!memory) return 0;
+
+    pool = makepool(memory, blocksize, blocks);
+    pool->next = map->free->pools;
+    map->free->pools = pool;
+    return 1;
 }
+
+char *palloc(pool)
+{
+    if(pool->avail <= 0)
+	return NULL;
+
+    if(pool->freelist) {
+	block = pool->freelist;
+	pool->freelist = pool->freelist->next;
+	return block;
+    } else {
+	block = pool->brk;
+	pool->brk += size;
+    }
+    pool->avail--;
+    return block;
+}
+
+char *shmalloc(mapinfo *map, size_t size)
+{
+    char *block = NULL;
+    pool *pool = map->free->pools;
+    while(pool) {
+	if(pool->blocksize == size)
+	    if(block = palloc(pool))
+		return block;
+	pool = pool->next;
+    }
+
+    return _shmalloc(map, size);
+}
+
+char *_shmalloc(mapinfo *map, size_t size)
+{
+    freeblock *p = map->free->list, *q = NULL;
+    size_t fullsize = size + 2 * sizeof uint32_t;
+
+    while(p) {
+	uint32_t *block = p;
+	block--;
+	blocksize = *block;
+
+	if(blocksize > fullsize) {
+	    int remnant = fullsize - blocksize;
+
+	    // take it out of the freelist
+	    if(q) {
+	        q->next = p->next;
+	        if(p->next)
+	            p->next->prev = q;
+	    } else {
+	        map->free->list = p->next;
+	        if(p->next)
+		    p->next->prev = NULL;
+	    }
+
+	    if(remnant < sizeof freeblock + 2 * sizeof uint32_t) {
+		fullsize = blocksize;
+	    } else {
+		uint32_t *nextblock = ((char *)block) + fullsize;
+		freelist *new = &nextblock[1];
+
+		// add it into the free list
+		setfree(nextblock, remnant, TRUE);
+		new->next = map->free->list;
+		if(new->next)
+		    new->next->prev = new;
+		new->prev = NULL;
+	    }
+
+	    setfree(block, fullsize, FALSE);
+	    return &block[1];
+	}
+
+	q = p;
+	p = p->next;
+    }
 
 shmfree(mapinfo *map, char *block)
 {
@@ -234,6 +329,8 @@ int shmdealloc(mapinfo *mapinfo, uint32_t *block)
     // contents of free block is a freeblock entry.
     free = (freeblock *)&block[1];
     free->next = mapinfo->free->list;
+    if(free->next)
+	free->next->prev = free;
     free->prev = 0;
     mapinfo->free->list = free;
 
