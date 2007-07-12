@@ -9,14 +9,7 @@
 #include <sys/stat.h>
 #include <sys/ipc.h>
 
-#define NULBUFSIZE (1024L * 1024L)
-
-typedef struct _mapinfo {
-    struct _mapinfo *next;
-    char	    *map;
-    size_t	     size;
-    int		     fd;
-} mapinfo;
+#include "shared.h"
 
 static mapinfo *mapinfo_list;
 
