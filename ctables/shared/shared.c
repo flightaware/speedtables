@@ -113,3 +113,115 @@ int unmap_file(char *map)
     return 1;
 }
 
+shminitmap(mapheader *map, size_t size)
+{
+    map->magic = MAP_MAGIC;
+    map->size = size;
+    map->pools->next = 0;
+    map->pools->count = 0;
+    map->write_lock = 0;
+    map->cycle = 0;
+    map->readers->next = 0;
+    map->readers->count = 0;
+
+    // Initialise the freelist by making the whole of the map after the
+    // header one big free block...
+    setfree(&map[1], size-sizeof *map, TRUE);
+    // ... and storing the offset in the freelist
+    map->free = sizeof *map;
+}
+
+shmaddpool(mapheader *map, size_t size, int nentries)
+{
+}
+
+shmalloc(mapheader *map, size_t size)
+{
+}
+
+shmfree(char *block)
+{
+}
+
+// Attempt to put a pending freed block back in a pool
+int shmdepool(mapheader *map, uint32_t start)
+{
+    pool_block *pool = &map->pools;
+    uint32_t *block = (uint32_t *)off2ptr(map, start);
+
+    while(pool->count || pool->next) {
+      for(i = 0; i < pool->count; i++) {
+	if(pool->start <= start && pool->end > start) {
+	  if(pool->start % pool->size != 0) // partial free in pool, ignore
+	    return 1;
+
+	  // Thread block into free list. We do not store size in or coalesce
+	  // pool blocks, they're always all the same size, so all we have in
+	  // them is the offset of the next free block.
+	  *block = pool->free;
+	  pool->free = start;
+
+	  pool->avail++;
+
+	  return 1;
+	}
+      }
+    }
+    return 0;
+}
+
+// Marks a block as free or busy, by storing the size of the block at both
+// ends... positive if free, negative if not.
+setfree(uint32_t *block, size_t size, int is_free)
+{
+    *block = is_free ? size : -size;
+    block = (uint32_t *) &((char *)block)[size]; // point to next block;
+    block--; // step back one word;
+    *block = is_free ? size : -size;
+}
+
+// attempt to free a block
+// first, try to free it into a pool as an unstructured block
+// then, thread it on the free list
+// TODO: coalesce the free list
+
+// free block structure:
+//    int32 size;
+//    int32 next;
+//    int32 prev;
+//    ...
+//    int32 size;
+
+// busy block structure:
+//    int32 -size;
+//    ...
+//    int32 -size;
+
+int shmdealloc(mapheader *map, uint32_t start)
+{
+    uint32_t *block;
+    size_t size;
+
+    if(shmdepool(map, start)) return 1;
+
+    // step back over block size.
+    start -= sizeof (uint32_t);
+
+    block = (uint32_t *)off2ptr(start);
+
+    // first word is the size of the block, negative if busy
+    if(*block > 0)
+	panic("freeing freed block");
+
+    size = -*block;
+
+    setfree(block, size, TRUE);
+
+    // TODO add code to coalesce the free list here
+
+    block[1] = map->free;
+    block[2] = 0;
+    free = start;
+
+    return 1;
+}

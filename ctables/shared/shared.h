@@ -37,10 +37,10 @@ typedef struct _pool_block {
 // When a reader subscribes, it's handed the offset of its block
 typedef struct _reader_block {
     uint32_t         next;		// offset of next reader block
+    uint32_t         count;		// number of live readers in block
     struct {
         uint32_t     pid;		// process ID of reader
-        uint32_t     cycle;		// read cycle this one started
-					// reading at
+        uint32_t     cycle;		// write cycle if current read
     } readers[READERS_PER_BLOCK];
 } reader_block;
 
