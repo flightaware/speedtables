@@ -37,7 +37,7 @@ int open_new(char *file, size_t size)
 }
 
 // map_file - map a file at addr. If the file doesn't exist, create it first
-// with size default_size. Return mapped address or NULL on failure. Errno
+// with size default_size. Return map info structure or NULL on failure. Errno
 // WILL be meaningful after a failure.
 char *map_file(char *file, char *addr, size_t default_size)
 {
@@ -78,9 +78,10 @@ char *map_file(char *file, char *addr, size_t default_size)
     mapinfo_buf->size = size;
     mapinfo_buf->fd = fd;
     mapinfo_buf->next = mapinfo_list;
-    mapinfo_list = mapinfo_bust;
+    mapinfo_buf->free = NULL;
+    mapinfo_list = mapinfo_buf;
 
-    return map;
+    return mapinfo_buf;
 }
 
 // unmap_file - Unmap the open and mapped associated with the memory mapped
@@ -113,59 +114,71 @@ int unmap_file(char *map)
     return 1;
 }
 
-shminitmap(mapheader *map, size_t size)
+shminitmap(volatile mapinfo *mapinfo)
 {
+    mapheader *map = mapinfo->map;
+    freelist  *free;
+    uint32_t  *block;
+
     map->magic = MAP_MAGIC;
-    map->size = size;
-    map->pools->next = 0;
-    map->pools->count = 0;
+    map->headersize = sizeof *map;
+    map->mapsize = size;
+    map->addr = map;
     map->write_lock = 0;
     map->cycle = 0;
     map->readers->next = 0;
     map->readers->count = 0;
 
+    mapinfo->unfree = NULL;
+
+    free = mapinfo->free = ckalloc(sizeof *free);
+
+    free->pools = NULL;
+
     // Initialise the freelist by making the whole of the map after the
-    // header one big free block...
-    setfree(&map[1], size-sizeof *map, TRUE);
-    // ... and storing the offset in the freelist
-    map->free = sizeof *map;
+    // header one big *alloacted* block.
+    block = &map[1];
+    setfree(block, size-sizeof *map, FALSE);
+
+    // And freeing it (free the address of the block's data)
+    shmdealloc(mapinfo, &block[1]);
 }
 
-shmaddpool(mapheader *map, size_t size, int nentries)
+shmaddpool(mapinfo *map, size_t size, int nentries)
 {
 }
 
-shmalloc(mapheader *map, size_t size)
+shmalloc(mapinfo *map, size_t size)
 {
 }
 
-shmfree(char *block)
+shmfree(mapinfo *map, char *block)
 {
 }
 
 // Attempt to put a pending freed block back in a pool
-int shmdepool(mapheader *map, uint32_t start)
+int shmdepool(mapinfo *mapinfo, char *block)
 {
-    pool_block *pool = &map->pools;
-    uint32_t *block = (uint32_t *)off2ptr(map, start);
+    pool *pool = mapinfo->free->pools;
 
-    while(pool->count || pool->next) {
-      for(i = 0; i < pool->count; i++) {
-	if(pool->start <= start && pool->end > start) {
-	  if(pool->start % pool->size != 0) // partial free in pool, ignore
+    while(pool) {
+	size_t offset = block - pool->start;
+	if(offset < 0 || offset > (pool->blocks * pool->blocksize)) {
+	    pool = pool->next;
+	    continue;
+	}
+
+	if(offset % pool->blocksize != 0) // partial free, ignore
 	    return 1;
 
-	  // Thread block into free list. We do not store size in or coalesce
-	  // pool blocks, they're always all the same size, so all we have in
-	  // them is the offset of the next free block.
-	  *block = pool->free;
-	  pool->free = start;
+	// Thread block into free list. We do not store size in or coalesce
+	// pool blocks, they're always all the same size, so all we have in
+	// them is the address of the next free block.
+	*((char **)block) = pool->freelist;
+	pool->freelist = block;
+	pool->avail++;
 
-	  pool->avail++;
-
-	  return 1;
-	}
-      }
+	return 1;
     }
     return 0;
 }
@@ -187,41 +200,42 @@ setfree(uint32_t *block, size_t size, int is_free)
 
 // free block structure:
 //    int32 size;
-//    int32 next;
-//    int32 prev;
-//    ...
+//    freeblock;
+//    char unused[size - 8 - sizeof(freeblock);
 //    int32 size;
 
 // busy block structure:
 //    int32 -size;
-//    ...
+//    char data[size-8];
 //    int32 -size;
 
-int shmdealloc(mapheader *map, uint32_t start)
+int shmdealloc(mapinfo *mapinfo, uint32_t *block)
 {
-    uint32_t *block;
     size_t size;
+    freeblock *free;
 
-    if(shmdepool(map, start)) return 1;
+    // Try and free it back into a pool.
+    if(shmdepool(mapinfo, start)) return 1;
 
-    // step back over block size.
-    start -= sizeof (uint32_t);
+    // step back to block header
+    block--;
 
-    block = (uint32_t *)off2ptr(start);
+    size = *block;
 
-    // first word is the size of the block, negative if busy
-    if(*block > 0)
+    // negative size means it's allocated, positive it's free
+    if(size > 0)
 	panic("freeing freed block");
 
-    size = -*block;
-
+    size = -size;
     setfree(block, size, TRUE);
 
     // TODO add code to coalesce the free list here
 
-    block[1] = map->free;
-    block[2] = 0;
-    free = start;
+    // contents of free block is a freeblock entry.
+    free = (freeblock *)&block[1];
+    free->next = mapinfo->free->list;
+    free->prev = 0;
+    mapinfo->free->list = free;
 
     return 1;
 }
