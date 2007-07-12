@@ -247,8 +247,29 @@ char *_shmalloc(mapinfo *map, size_t size)
 	p = p->next;
     }
 
+    return NULL;
+}
+
 shmfree(mapinfo *map, char *block)
 {
+    unfreelist *entry = NULL;
+    pool *pool = map->unfreepool;
+
+    while(pool) {
+	entry = palloc(pool);
+	if(entry) break;
+	pool = pool->next;
+    }
+
+    if(!entry) {
+	pool = makepool(ckalloc(UN_POOL_SIZE * sizeof *entry), sizeof *entry, UN_POOL_SIZE);
+	entry = palloc(pool);
+    }
+
+    entry->cycle = map->cycle;
+    entry->block = block;
+    entry->next = map->unfree;
+    map->unfree = entry;
 }
 
 // Attempt to put a pending freed block back in a pool

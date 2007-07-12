@@ -8,10 +8,8 @@
 // last reader that was "live" when it was in use has released it
 typedef struct _unfreelist {
     struct _unfreelist	*next;
-    struct {
-	uint32_t	 cycle;		// read cycle it's waiting on
-	char		*block;		// address of block in shared mem
-    } blocks[UNFREE_CHUNK_SIZE];
+    uint32_t	         cycle;		// read cycle it's waiting on
+    char		*block;		// address of block in shared mem
 } unfreelist;
 
 // Pool control block
@@ -43,6 +41,7 @@ typedef struct _mapinfo {
     int			 fd;
     freelist		*free;
     unfreelist		*unfree;
+    pool		*unfreepool;
 } mapinfo;
 
 // Reader control block, containing READERS_PER_BLOCK reader records
