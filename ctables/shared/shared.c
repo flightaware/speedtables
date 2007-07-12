@@ -20,6 +20,8 @@ typedef struct _mapinfo {
 
 static mapinfo *mapinfo_list;
 
+// open_new - open a new large, empty, mappable file. Return open file
+// descriptor or -1. Errno WILL be set on failure.
 int open_new(char *file, size_t size)
 {
     char *buffer;
@@ -41,13 +43,16 @@ int open_new(char *file, size_t size)
     return fd;
 }
 
+// map_file - map a file at addr. If the file doesn't exist, create it first
+// with size default_size. Return mapped address or NULL on failure. Errno
+// WILL be meaningful after a failure.
 char *map_file(char *file, char *addr, size_t default_size)
 {
     char    *map;
-    int     flags = MAP_SHARED|MAP_NOSYNC;
-    size_t     size;
-    int     fd;
-    mapinfo    *mapinfo_buf;
+    int      flags = MAP_SHARED|MAP_NOSYNC;
+    size_t   size;
+    int      fd;
+    mapinfo *mapinfo_buf;
 
     fd = open(file, O_RDWR, 0);
 
@@ -85,6 +90,9 @@ char *map_file(char *file, char *addr, size_t default_size)
     return map;
 }
 
+// unmap_file - Unmap the open and mapped associated with the memory mapped
+// at address "map", return 0 if there is no memory we know about mapped
+// there. Errno is not meaningful after failure.
 int unmap_file(char *map)
 {
     mapinfo *p, *q;
