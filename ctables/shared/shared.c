@@ -17,22 +17,31 @@ static mapinfo *mapinfo_list;
 // descriptor or -1. Errno WILL be set on failure.
 int open_new(char *file, size_t size)
 {
-    char *buffer;
-    size_t nulbufsize = NULBUFSIZE;
-    size_t nbytes;
-    int fd = open(file, O_RDWR|O_CREAT, 0666);
+    char 	*buffer;
+    size_t	 nulbufsize = NULBUFSIZE;
+    size_t	 nbytes;
+    int		 fd = open(file, O_RDWR|O_CREAT, 0666);
+
     if(fd == -1) return -1;
+
     if(nulbufsize > size)
 	nulbufsize = (size + 1023) & ~1023;
     buffer = calloc(nulbufsize/1024, 1024);
+
     if(!buffer) { close(fd); unlink(file); return -1; }
+
     while(size > 0) {
 	if(nulbufsize > size) nulbufsize = size;
+
 	nbytes = write(fd, buffer, nulbufsize);
+
 	if(nbytes < 0) { close(fd); unlink(file); return -1; }
+
 	size -= nbytes;
     }
+
     free(buffer);
+
     return fd;
 }
 
@@ -383,7 +392,7 @@ int write_lock(mapinfo *mapinfo)
 {
     volatile mapheader *map = mapinfo->map;
 
-    while(!++map->cycle)
+    while(++map->cycle != LOST_HORIZON)
 	continue;
 }
 

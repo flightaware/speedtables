@@ -27,12 +27,20 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 
     static CONST char *options[] = {
-        "create", "info", "null_value", "method", "cextension", (char *)NULL
+        "create", "info", "null_value", "method", "cextension",
+#ifdef SHARED_TABLES
+	"create_shared", "attach_shared",
+#endif
+	(char *)NULL
     };
 
     enum options
     {
-        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD, OPT_CEXTENSION
+        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD, OPT_CEXTENSION,
+#ifdef SHARED_TABLES
+	OPT_CREATE_SHARED, OPT_ATTACH_SHARED,
+#endif
+	NUM_OPTIONS
     };
 
     ctable_CreatorTable *creator = (ctable_CreatorTable *)clientData;
