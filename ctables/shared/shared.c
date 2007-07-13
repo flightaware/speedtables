@@ -119,6 +119,7 @@ shminitmap(volatile mapinfo *mapinfo)
     mapheader *map = mapinfo->map;
     freelist  *free;
     uint32_t  *block;
+    uint32_t  freesize;
 
     map->magic = MAP_MAGIC;
     map->headersize = sizeof *map;
@@ -136,9 +137,18 @@ shminitmap(volatile mapinfo *mapinfo)
     free->pools = NULL;
 
     // Initialise the freelist by making the whole of the map after the
-    // header one big *alloacted* block.
+    // header three blocks:
     block = &map[1];
-    setfree(block, size-sizeof *map, FALSE);
+
+    //  One block just containing a 0, lower sentinel
+    *block++ = 0;
+
+    //  One "used" block, freesize bytes long
+    freesize = size - sizeof *map - 2 * sizeof *block;
+    setfree(block, freesize, FALSE);
+
+    //  One block containing a 0, upper sentinel.
+    *(uint32_t *)((char *)block) + freesize) = 0;
 
     // And freeing it (free the address of the block's data)
     shmdealloc(mapinfo, &block[1]);
@@ -345,15 +355,44 @@ int shmdealloc(mapinfo *mapinfo, uint32_t *block)
     size = -size;
     setfree(block, size, TRUE);
 
-    // TODO add code to coalesce the free list here
-
-    // contents of free block is a freeblock entry.
+    // contents of free block is a freelist entry, create it
     free = (freeblock *)&block[1];
-    free->next = mapinfo->free->list;
-    if(free->next)
-	free->next->prev = free;
-    free->prev = 0;
-    mapinfo->free->list = free;
+    free->next = free->prev = NULL;
 
+    // merge previous freed blocks
+    while(1) {
+	if(block[-1] > 0) {
+	    int prevsize = block[-1];
+	    uint32_t *prev = (uint32_t)(((char *)block) - prevsize);
+
+	    // increase the size of the previous block to include this block
+	    size += prevsize;
+	    setfree(prev, size, TRUE);
+
+	    // *become* the previous block
+	    block = prev;
+	    free = &block[1];
+
+	    // remove it from the free list
+	    remove_from_freelist(mapinfo, free);
+	}
+    }
+
+    // merge following free blocks
+    while(1) {
+	uint32_t *next = (uint32_t)(((char *)block) + size);
+	if(*next > 0) {
+	     int nextsize = *next;
+
+	     // remove next from the free list
+	     remove_from_freelist(mapinfo, &next[1]);
+
+	     // increase the size of this block to include it
+	     size += nextsize;
+	     setfree(block, size, TRUE);
+	}
+    }
+
+    insert_in_freelist(mapinfo, free);
     return 1;
 }
