@@ -150,7 +150,7 @@ shminitmap(volatile mapinfo *mapinfo)
     //  One block containing a 0, upper sentinel.
     *(uint32_t *)((char *)block) + freesize) = 0;
 
-    // And freeing it (free the address of the block's data)
+    // Finally, initialize the free list by freeing it.
     shmdealloc(mapinfo, &block[1]);
 }
 
@@ -211,50 +211,48 @@ char *shmalloc(mapinfo *map, size_t size)
     return _shmalloc(map, size);
 }
 
+#define free2block(free) (&((uint32_t *)free)[-1])
+#define block2free(block) ((freeblock *)&(block)[1])
+
+#define prevsize(block) ((block)[-1])
+#define nextblock(block) ((uint32_t *)(((char *)block) + abs(*(block))))
+#define nextsize(block) (*nextblock(block))
+#define prevblock(block) ((uint32_t *)(((char *)block) - abs(prevsize(block))))
+
 char *_shmalloc(mapinfo *map, size_t size)
 {
-    freeblock *p = map->free->list, *q = NULL;
+    freeblock *free = map->free->list;
     size_t fullsize = size + 2 * sizeof uint32_t;
 
-    while(p) {
-	uint32_t *block = p;
-	block--;
+    while(free) {
+	uint32_t *block = free2block(free);
 	blocksize = *block;
+
+	if(blocksize < 0)
+	    panic("corrupt free list");
 
 	if(blocksize > fullsize) {
 	    int remnant = fullsize - blocksize;
 
-	    // take it out of the freelist
-	    if(q) {
-	        q->next = p->next;
-	        if(p->next)
-	            p->next->prev = q;
-	    } else {
-	        map->free->list = p->next;
-	        if(p->next)
-		    p->next->prev = NULL;
-	    }
+	    remove_from_freelist(map, free);
 
+	    // See if the remaining chunk is big enough to be worth using
 	    if(remnant < sizeof freeblock + 2 * sizeof uint32_t) {
 		fullsize = blocksize;
 	    } else {
-		uint32_t *nextblock = ((char *)block) + fullsize;
-		freelist *new = &nextblock[1];
+		uint32_t *next = nextblock(block);
+		freelist *new = block2free(next);
 
 		// add it into the free list
 		setfree(nextblock, remnant, TRUE);
-		new->next = map->free->list;
-		if(new->next)
-		    new->next->prev = new;
-		new->prev = NULL;
+		insert_in_freelist(map, new);
 	    }
 
 	    setfree(block, fullsize, FALSE);
 	    return &block[1];
 	}
 
-	q = p;
-	p = p->next;
+	free = free->next;
     }
 
     return NULL;
@@ -360,37 +358,30 @@ int shmdealloc(mapinfo *mapinfo, uint32_t *block)
     free->next = free->prev = NULL;
 
     // merge previous freed blocks
-    while(1) {
-	if(block[-1] > 0) {
-	    int prevsize = block[-1];
-	    uint32_t *prev = (uint32_t)(((char *)block) - prevsize);
+    while(prevsize(block) > 0) {
+	uint32_t *prev = prevblock(block);
 
-	    // increase the size of the previous block to include this block
-	    size += prevsize;
-	    setfree(prev, size, TRUE);
+	// increase the size of the previous block to include this block
+	size += prevsize(block);
+	setfree(prev, size, TRUE);
 
-	    // *become* the previous block
-	    block = prev;
-	    free = &block[1];
+	// *become* the previous block
+	block = prev;
+	free = block2free(block);
 
-	    // remove it from the free list
-	    remove_from_freelist(mapinfo, free);
-	}
+	// remove it from the free list
+	remove_from_freelist(mapinfo, free);
     }
 
     // merge following free blocks
-    while(1) {
-	uint32_t *next = (uint32_t)(((char *)block) + size);
-	if(*next > 0) {
-	     int nextsize = *next;
+    while(nextsize(block) > 0) {
+	uint32_t *next = nextblock(block);
+	// remove next from the free list
+	remove_from_freelist(mapinfo, block2free(next));
 
-	     // remove next from the free list
-	     remove_from_freelist(mapinfo, &next[1]);
-
-	     // increase the size of this block to include it
-	     size += nextsize;
-	     setfree(block, size, TRUE);
-	}
+	// increase the size of this block to include it
+	size += nextsize(block);
+	setfree(block, size, TRUE);
     }
 
     insert_in_freelist(mapinfo, free);
