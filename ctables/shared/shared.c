@@ -130,7 +130,7 @@ void shminitmap(mapinfo *mapinfo)
     map->readers.next = 0;
     map->readers.count = 0;
 
-    mapinfo->unfree = NULL;
+    mapinfo->garbage = NULL;
 
     free = mapinfo->free = (freelist *)ckalloc(sizeof *free);
 
@@ -256,20 +256,20 @@ char *shmalloc(mapinfo *map, size_t size)
 
 void shmfree(mapinfo *mapinfo, char *block)
 {
-    pool *pool = mapinfo->unfreepool;
-    unfreeblock *entry = (unfreeblock *)palloc(pool, UN_POOL_SIZE);
+    pool *pool = mapinfo->garbage_pool;
+    garbage *entry = (garbage *)palloc(pool, GARBAGE_POOL_SIZE);
 
     if(!entry) {
-	pool = ckallocpool(sizeof (unfreeblock), UN_POOL_SIZE);
-	pool->next = mapinfo->unfreepool;
-	mapinfo->unfreepool = pool;
-	entry = (unfreeblock *)palloc(pool, UN_POOL_SIZE);
+	pool = ckallocpool(sizeof (garbage), GARBAGE_POOL_SIZE);
+	pool->next = mapinfo->garbage_pool;
+	mapinfo->garbage_pool = pool;
+	entry = (garbage *)palloc(pool, GARBAGE_POOL_SIZE);
     }
 
     entry->cycle = mapinfo->map->cycle;
     entry->block = block;
-    entry->next = mapinfo->unfree;
-    mapinfo->unfree = entry;
+    entry->next = mapinfo->garbage;
+    mapinfo->garbage = entry;
 }
 
 // Attempt to put a pending freed block back in a pool
@@ -379,4 +379,55 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
 
     insert_in_freelist(mapinfo, free);
     return 1;
+}
+
+void write_lock(mapinfo *mapinfo)
+{
+    volatile mapheader *map = mapinfo->map;
+
+    while(!++map->cycle)
+	continue;
+}
+
+void write_unlock(mapinfo *mapinfo)
+{
+    cell_t new_horizon = oldest_reader_cycle(mapinfo);
+
+    if(new_horizon - mapinfo->horizon > 0) {
+	mapinfo->horizon = new_horizon;
+	garbage_collect(mapinfo);
+    }
+}
+
+reader *pid2reader(volatile mapheader *map, int pid)
+{
+}
+
+void read_lock(mapinfo *mapinfo)
+{
+    volatile mapheader *map = mapinfo->map;
+    volatile reader *self = mapinfo->self;
+
+    if(!self)
+	self = mapinfo->self = pid2reader(map, getpid());
+    self->cycle = map->cycle;
+}
+
+void read_unlock(mapinfo *mapinfo)
+{
+    volatile mapheader *map = mapinfo->map;
+    volatile reader *self = mapinfo->self;
+
+    if(!self)
+	return;
+
+    self->cycle = 0;
+}
+
+void garbage_collect(mapinfo *mapinfo)
+{
+//    pool *pool = mapinfo->garbage_pool;
+//    garbage *garbage = mapinfo->garbage;
+
+// ....
 }

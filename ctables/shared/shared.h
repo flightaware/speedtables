@@ -19,16 +19,16 @@ typedef uint32_t cell_t;
 // allocate a new reader block every READERS_PER_BLOCK readers
 #define READERS_PER_BLOCK 64
 
-// How many unfree entries to allocate at a time.
-#define UN_POOL_SIZE 1024
+// How many garbage entries to allocate at a time.
+#define GARBAGE_POOL_SIZE 1024
 
 // shared memory that is no longer needed but can't be freed until the
 // last reader that was "live" when it was in use has released it
-typedef struct _unfreeblock {
-    struct _unfreeblock	*next;
+typedef struct _garbage {
+    struct _garbage	*next;
     cell_t	         cycle;		// read cycle it's waiting on
     char		*block;		// address of block in shared mem
-} unfreeblock;
+} garbage;
 
 // Pool control block
 //
@@ -43,15 +43,18 @@ typedef struct _pool {
     char		*brk;		// start of never-allocated space
     char		*freelist;      // first freed element
 } pool;
+
 // Reader control block, containing READERS_PER_BLOCK reader records
 // When a reader subscribes, it's handed the offset of its record
+typedef struct _reader {
+    cell_t		 pid;
+    cell_t		 cycle;
+} reader;
+
 typedef struct _rblock {
     struct _rblock 	*next;		// offset of next reader block
-    cell_t             count;		// number of live readers in block
-    struct {
-        cell_t     pid;		// process ID of reader (or 0 if free)
-        cell_t     cycle;		// write cycle if currently reading
-    } readers[READERS_PER_BLOCK];
+    cell_t		 count;		// number of live readers in block
+    reader		 readers[READERS_PER_BLOCK];
 } reader_block;
 
 // mapinfo->map points to this structure, at the front of the mapped file.
@@ -82,9 +85,13 @@ typedef struct _mapinfo {
     mapheader		*map;
     size_t		 size;
     int			 fd;
+// server-only fields:
     freelist		*free;
-    unfreeblock		*unfree;
-    pool		*unfreepool;
+    garbage		*garbage;
+    pool		*garbage_pool;
+    cell_t		 horizon;
+// client-only fields:
+    reader		*self;
 } mapinfo;
 
 int open_new(char *file, size_t size);
@@ -101,6 +108,12 @@ void shmfree(mapinfo *map, char *block);
 int shmdepool(mapinfo *mapinfo, char *block);
 void setfree(cell_t *block, size_t size, int is_free);
 int shmdealloc(mapinfo *mapinfo, char *data);
+void write_lock(mapinfo *mapinfo);
+void write_unlock(mapinfo *mapinfo);
+reader *pid2reader(volatile mapheader *map, int pid);
+void read_lock(mapinfo *mapinfo);
+void read_unlock(mapinfo *mapinfo);
+void garbage_collect(mapinfo *mapinfo);
 
 // shift between the data inside a variable sized block, and the block itself
 #define data2block(data) (&((cell_t *)data)[-1])
