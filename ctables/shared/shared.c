@@ -39,7 +39,7 @@ int open_new(char *file, size_t size)
 // map_file - map a file at addr. If the file doesn't exist, create it first
 // with size default_size. Return map info structure or NULL on failure. Errno
 // WILL be meaningful after a failure.
-char *map_file(char *file, char *addr, size_t default_size)
+mapinfo *map_file(char *file, char *addr, size_t default_size)
 {
     char    *map;
     int      flags = MAP_SHARED|MAP_NOSYNC;
@@ -74,7 +74,7 @@ char *map_file(char *file, char *addr, size_t default_size)
     }
 
     mapinfo_buf = (mapinfo *)ckalloc(sizeof (mapinfo));
-    mapinfo_buf->map = map;
+    mapinfo_buf->map = (mapheader *)map;
     mapinfo_buf->size = size;
     mapinfo_buf->fd = fd;
     mapinfo_buf->next = mapinfo_list;
@@ -87,7 +87,7 @@ char *map_file(char *file, char *addr, size_t default_size)
 // unmap_file - Unmap the open and mapped associated with the memory mapped
 // at address "map", return 0 if there is no memory we know about mapped
 // there. Errno is not meaningful after failure.
-int unmap_file(char *map)
+int unmap_file(mapheader *map)
 {
     mapinfo *p, *q;
 
@@ -114,7 +114,7 @@ int unmap_file(char *map)
     return 1;
 }
 
-shminitmap(volatile mapinfo *mapinfo)
+void shminitmap(volatile mapinfo *mapinfo)
 {
     mapheader *map = mapinfo->map;
     freelist  *free;
@@ -123,32 +123,32 @@ shminitmap(volatile mapinfo *mapinfo)
 
     map->magic = MAP_MAGIC;
     map->headersize = sizeof *map;
-    map->mapsize = size;
-    map->addr = map;
+    map->mapsize = mapinfo->size;
+    map->addr = (char *)map;
     map->write_lock = 0;
     map->cycle = 0;
-    map->readers->next = 0;
-    map->readers->count = 0;
+    map->readers.next = 0;
+    map->readers.count = 0;
 
     mapinfo->unfree = NULL;
 
-    free = mapinfo->free = ckalloc(sizeof *free);
+    free = mapinfo->free = (freelist *)ckalloc(sizeof *free);
 
     free->pools = NULL;
 
     // Initialise the freelist by making the whole of the map after the
     // header three blocks:
-    block = &map[1];
+    block = (uint32_t *)&map[1];
 
     //  One block just containing a 0, lower sentinel
     *block++ = 0;
 
     //  One "used" block, freesize bytes long
-    freesize = size - sizeof *map - 2 * sizeof *block;
+    freesize = mapinfo->size - sizeof *map - 2 * sizeof *block;
     setfree(block, freesize, FALSE);
 
     //  One block containing a 0, upper sentinel.
-    *(uint32_t *)((char *)block) + freesize) = 0;
+    *((uint32_t *)((char *)block) + freesize) = 0;
 
     // Finally, initialize the free list by freeing it.
     shmdealloc(mapinfo, &block[1]);
@@ -156,15 +156,15 @@ shminitmap(volatile mapinfo *mapinfo)
 
 pool *makepool(char *memory, size_t blocksize, int blocks)
 {
-    pool *pool = ckalloc(sizeof pool);
-    pool->start = memory;
-    pool->blocks = blocks;
-    pool->blocksize = blocksize;
-    pool->avail = blocks;
-    pool->brk = pool->start;
-    pool->freelist = NULL;
-    pool->next = NULL;
-    return pool;
+    pool *new = (pool *)ckalloc(sizeof *new);
+    new->start = memory;
+    new->blocks = blocks;
+    new->blocksize = blocksize;
+    new->avail = blocks;
+    new->brk = new->start;
+    new->freelist = NULL;
+    new->next = NULL;
+    return new;
 }
 
 int shmaddpool(mapinfo *map, size_t blocksize, int blocks)
@@ -180,7 +180,7 @@ int shmaddpool(mapinfo *map, size_t blocksize, int blocks)
     return 1;
 }
 
-char *palloc(pool)
+char *palloc(pool *pool)
 {
     if(pool->avail <= 0)
 	return NULL;
@@ -196,28 +196,6 @@ char *palloc(pool)
     pool->avail--;
     return block;
 }
-
-char *shmalloc(mapinfo *map, size_t size)
-{
-    char *block = NULL;
-    pool *pool = map->free->pools;
-    while(pool) {
-	if(pool->blocksize == size)
-	    if(block = palloc(pool))
-		return block;
-	pool = pool->next;
-    }
-
-    return _shmalloc(map, size);
-}
-
-#define free2block(free) (&((uint32_t *)free)[-1])
-#define block2free(block) ((freeblock *)&(block)[1])
-
-#define prevsize(block) ((block)[-1])
-#define nextblock(block) ((uint32_t *)(((char *)block) + abs(*(block))))
-#define nextsize(block) (*nextblock(block))
-#define prevblock(block) ((uint32_t *)(((char *)block) - abs(prevsize(block))))
 
 char *_shmalloc(mapinfo *map, size_t size)
 {
@@ -256,6 +234,20 @@ char *_shmalloc(mapinfo *map, size_t size)
     }
 
     return NULL;
+}
+
+char *shmalloc(mapinfo *map, size_t size)
+{
+    char *block = NULL;
+    pool *pool = map->free->pools;
+    while(pool) {
+	if(pool->blocksize == size)
+	    if(block = palloc(pool))
+		return block;
+	pool = pool->next;
+    }
+
+    return _shmalloc(map, size);
 }
 
 shmfree(mapinfo *map, char *block)
