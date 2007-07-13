@@ -114,12 +114,12 @@ int unmap_file(mapheader *map)
     return 1;
 }
 
-void shminitmap(volatile mapinfo *mapinfo)
+void shminitmap(mapinfo *mapinfo)
 {
-    mapheader *map = mapinfo->map;
-    freelist  *free;
-    uint32_t  *block;
-    uint32_t  freesize;
+    mapheader	*map = mapinfo->map;
+    freelist  	*free;
+    cell_t	*block;
+    cell_t 	 freesize;
 
     map->magic = MAP_MAGIC;
     map->headersize = sizeof *map;
@@ -138,7 +138,7 @@ void shminitmap(volatile mapinfo *mapinfo)
 
     // Initialise the freelist by making the whole of the map after the
     // header three blocks:
-    block = (uint32_t *)&map[1];
+    block = (cell_t *)&map[1];
 
     //  One block just containing a 0, lower sentinel
     *block++ = 0;
@@ -148,13 +148,13 @@ void shminitmap(volatile mapinfo *mapinfo)
     setfree(block, freesize, FALSE);
 
     //  One block containing a 0, upper sentinel.
-    *((uint32_t *)((char *)block) + freesize) = 0;
+    *((cell_t *)((char *)block) + freesize) = 0;
 
     // Finally, initialize the free list by freeing it.
-    shmdealloc(mapinfo, &block[1]);
+    shmdealloc(mapinfo, (char *)&block[1]);
 }
 
-pool *makepool(char *memory, size_t blocksize, int blocks)
+pool *initpool(char *memory, size_t blocksize, int blocks)
 {
     pool *new = (pool *)ckalloc(sizeof *new);
     new->start = memory;
@@ -174,24 +174,33 @@ int shmaddpool(mapinfo *map, size_t blocksize, int blocks)
 
     if(!memory) return 0;
 
-    pool = makepool(memory, blocksize, blocks);
+    pool = initpool(memory, blocksize, blocks);
     pool->next = map->free->pools;
     map->free->pools = pool;
     return 1;
 }
 
-char *palloc(pool *pool)
+pool *ckallocpool(size_t blocksize, int blocks)
 {
-    if(pool->avail <= 0)
-	return NULL;
+    return initpool((char *)ckalloc(blocksize * blocks), blocksize, blocks);
+}
+
+char *palloc(pool *pool, size_t wanted)
+{
+    char *block;
+
+    while(pool->avail <= 0 || pool->blocksize != wanted) {
+	pool = pool->next;
+	if(pool == NULL)
+	    return NULL;
+    }
 
     if(pool->freelist) {
 	block = pool->freelist;
-	pool->freelist = pool->freelist->next;
-	return block;
+	pool->freelist = *(char **)block;
     } else {
 	block = pool->brk;
-	pool->brk += size;
+	pool->brk += pool->blocksize;
     }
     pool->avail--;
     return block;
@@ -200,11 +209,11 @@ char *palloc(pool *pool)
 char *_shmalloc(mapinfo *map, size_t size)
 {
     freeblock *free = map->free->list;
-    size_t fullsize = size + 2 * sizeof uint32_t;
+    size_t fullsize = size + 2 * CELLSIZE;
 
     while(free) {
-	uint32_t *block = free2block(free);
-	blocksize = *block;
+	cell_t *block = data2block(free);
+	int blocksize = *block;
 
 	if(blocksize < 0)
 	    panic("corrupt free list");
@@ -215,19 +224,19 @@ char *_shmalloc(mapinfo *map, size_t size)
 	    remove_from_freelist(map, free);
 
 	    // See if the remaining chunk is big enough to be worth using
-	    if(remnant < sizeof freeblock + 2 * sizeof uint32_t) {
+	    if(remnant < sizeof (freeblock) + 2 * CELLSIZE) {
 		fullsize = blocksize;
 	    } else {
-		uint32_t *next = nextblock(block);
-		freelist *new = block2free(next);
+		cell_t *next = nextblock(block);
+		freeblock *new = (freeblock *)block2data(next);
 
 		// add it into the free list
-		setfree(nextblock, remnant, TRUE);
+		setfree(next, remnant, TRUE);
 		insert_in_freelist(map, new);
 	    }
 
 	    setfree(block, fullsize, FALSE);
-	    return &block[1];
+	    return (char *)&block[1];
 	}
 
 	free = free->next;
@@ -238,38 +247,29 @@ char *_shmalloc(mapinfo *map, size_t size)
 
 char *shmalloc(mapinfo *map, size_t size)
 {
-    char *block = NULL;
-    pool *pool = map->free->pools;
-    while(pool) {
-	if(pool->blocksize == size)
-	    if(block = palloc(pool))
-		return block;
-	pool = pool->next;
-    }
+    char *block;
 
-    return _shmalloc(map, size);
+    if(!(block = palloc(map->free->pools, size)))
+	block = _shmalloc(map, size);
+    return block;
 }
 
-shmfree(mapinfo *map, char *block)
+void shmfree(mapinfo *mapinfo, char *block)
 {
-    unfreelist *entry = NULL;
-    pool *pool = map->unfreepool;
-
-    while(pool) {
-	entry = palloc(pool);
-	if(entry) break;
-	pool = pool->next;
-    }
+    pool *pool = mapinfo->unfreepool;
+    unfreeblock *entry = (unfreeblock *)palloc(pool, UN_POOL_SIZE);
 
     if(!entry) {
-	pool = makepool(ckalloc(UN_POOL_SIZE * sizeof *entry), sizeof *entry, UN_POOL_SIZE);
-	entry = palloc(pool);
+	pool = ckallocpool(sizeof (unfreeblock), UN_POOL_SIZE);
+	pool->next = mapinfo->unfreepool;
+	mapinfo->unfreepool = pool;
+	entry = (unfreeblock *)palloc(pool, UN_POOL_SIZE);
     }
 
-    entry->cycle = map->cycle;
+    entry->cycle = mapinfo->map->cycle;
     entry->block = block;
-    entry->next = map->unfree;
-    map->unfree = entry;
+    entry->next = mapinfo->unfree;
+    mapinfo->unfree = entry;
 }
 
 // Attempt to put a pending freed block back in a pool
@@ -301,10 +301,10 @@ int shmdepool(mapinfo *mapinfo, char *block)
 
 // Marks a block as free or busy, by storing the size of the block at both
 // ends... positive if free, negative if not.
-setfree(uint32_t *block, size_t size, int is_free)
+void setfree(cell_t *block, size_t size, int is_free)
 {
     *block = is_free ? size : -size;
-    block = (uint32_t *) &((char *)block)[size]; // point to next block;
+    block = (cell_t *) &((char *)block)[size]; // point to next block;
     block--; // step back one word;
     *block = is_free ? size : -size;
 }
@@ -325,16 +325,17 @@ setfree(uint32_t *block, size_t size, int is_free)
 //    char data[size-8];
 //    int32 -size;
 
-int shmdealloc(mapinfo *mapinfo, uint32_t *block)
+int shmdealloc(mapinfo *mapinfo, char *memory)
 {
     size_t size;
     freeblock *free;
+    cell_t *block;
 
     // Try and free it back into a pool.
-    if(shmdepool(mapinfo, start)) return 1;
+    if(shmdepool(mapinfo, memory)) return 1;
 
     // step back to block header
-    block--;
+    block = data2block(memory);
 
     size = *block;
 
@@ -351,7 +352,7 @@ int shmdealloc(mapinfo *mapinfo, uint32_t *block)
 
     // merge previous freed blocks
     while(prevsize(block) > 0) {
-	uint32_t *prev = prevblock(block);
+	cell_t *prev = prevblock(block);
 
 	// increase the size of the previous block to include this block
 	size += prevsize(block);
@@ -359,7 +360,7 @@ int shmdealloc(mapinfo *mapinfo, uint32_t *block)
 
 	// *become* the previous block
 	block = prev;
-	free = block2free(block);
+	free = (freeblock *)block2data(block);
 
 	// remove it from the free list
 	remove_from_freelist(mapinfo, free);
@@ -367,9 +368,9 @@ int shmdealloc(mapinfo *mapinfo, uint32_t *block)
 
     // merge following free blocks
     while(nextsize(block) > 0) {
-	uint32_t *next = nextblock(block);
+	cell_t *next = nextblock(block);
 	// remove next from the free list
-	remove_from_freelist(mapinfo, block2free(next));
+	remove_from_freelist(mapinfo, (freeblock *)block2data(next));
 
 	// increase the size of this block to include it
 	size += nextsize(block);
