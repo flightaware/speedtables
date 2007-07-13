@@ -106,7 +106,7 @@ int unmap_file(mapheader *map)
     if(q) q->next = p->next;
     else mapinfo_list = p->next;
 
-    munmap(p->map, p->size);
+    munmap((char *)p->map, p->size);
     close(p->fd);
 
     ckfree(p);
@@ -116,17 +116,17 @@ int unmap_file(mapheader *map)
 
 void shminitmap(mapinfo *mapinfo)
 {
-    mapheader	*map = mapinfo->map;
-    freelist  	*free;
-    cell_t	*block;
-    cell_t 	 freesize;
+    volatile mapheader	*map = mapinfo->map;
+    freelist  		*free;
+    cell_t		*block;
+    cell_t 		 freesize;
 
     map->magic = MAP_MAGIC;
     map->headersize = sizeof *map;
     map->mapsize = mapinfo->size;
     map->addr = (char *)map;
     map->write_lock = 0;
-    map->cycle = 0;
+    map->cycle = LOST_HORIZON;
     map->readers.next = 0;
     map->readers.count = 0;
 
@@ -167,16 +167,16 @@ pool *initpool(char *memory, size_t blocksize, int blocks)
     return new;
 }
 
-int shmaddpool(mapinfo *map, size_t blocksize, int blocks)
+int shmaddpool(mapinfo *mapinfo, size_t blocksize, int blocks)
 {
-    char *memory = _shmalloc(map, blocksize*blocks);
+    char *memory = _shmalloc(mapinfo, blocksize*blocks);
     pool *pool;
 
     if(!memory) return 0;
 
     pool = initpool(memory, blocksize, blocks);
-    pool->next = map->free->pools;
-    map->free->pools = pool;
+    pool->next = mapinfo->free->pools;
+    mapinfo->free->pools = pool;
     return 1;
 }
 
@@ -206,10 +206,10 @@ char *palloc(pool *pool, size_t wanted)
     return block;
 }
 
-char *_shmalloc(mapinfo *map, size_t size)
+char *_shmalloc(mapinfo *mapinfo, size_t size)
 {
-    freeblock *free = map->free->list;
-    size_t fullsize = size + 2 * CELLSIZE;
+    volatile freeblock *free = mapinfo->free->list;
+    size_t 		fullsize = size + 2 * CELLSIZE;
 
     while(free) {
 	cell_t *block = data2block(free);
@@ -221,7 +221,7 @@ char *_shmalloc(mapinfo *map, size_t size)
 	if(blocksize > fullsize) {
 	    int remnant = fullsize - blocksize;
 
-	    remove_from_freelist(map, free);
+	    remove_from_freelist(mapinfo, free);
 
 	    // See if the remaining chunk is big enough to be worth using
 	    if(remnant < sizeof (freeblock) + 2 * CELLSIZE) {
@@ -232,7 +232,7 @@ char *_shmalloc(mapinfo *map, size_t size)
 
 		// add it into the free list
 		setfree(next, remnant, TRUE);
-		insert_in_freelist(map, new);
+		insert_in_freelist(mapinfo, new);
 	    }
 
 	    setfree(block, fullsize, FALSE);
@@ -245,12 +245,12 @@ char *_shmalloc(mapinfo *map, size_t size)
     return NULL;
 }
 
-char *shmalloc(mapinfo *map, size_t size)
+char *shmalloc(mapinfo *mapinfo, size_t size)
 {
     char *block;
 
-    if(!(block = palloc(map->free->pools, size)))
-	block = _shmalloc(map, size);
+    if(!(block = palloc(mapinfo->free->pools, size)))
+	block = _shmalloc(mapinfo, size);
     return block;
 }
 
@@ -273,10 +273,8 @@ void shmfree(mapinfo *mapinfo, char *block)
 }
 
 // Attempt to put a pending freed block back in a pool
-int shmdepool(mapinfo *mapinfo, char *block)
+int shmdepool(pool *pool, char *block)
 {
-    pool *pool = mapinfo->free->pools;
-
     while(pool) {
 	size_t offset = block - pool->start;
 	if(offset < 0 || offset > (pool->blocks * pool->blocksize)) {
@@ -332,7 +330,7 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     cell_t *block;
 
     // Try and free it back into a pool.
-    if(shmdepool(mapinfo, memory)) return 1;
+    if(shmdepool(mapinfo->free->pools, memory)) return 1;
 
     // step back to block header
     block = data2block(memory);
@@ -381,7 +379,7 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     return 1;
 }
 
-void write_lock(mapinfo *mapinfo)
+int write_lock(mapinfo *mapinfo)
 {
     volatile mapheader *map = mapinfo->map;
 
@@ -399,18 +397,31 @@ void write_unlock(mapinfo *mapinfo)
     }
 }
 
-reader *pid2reader(volatile mapheader *map, int pid)
+volatile reader *pid2reader(volatile mapheader *map, int pid)
 {
+    volatile reader_block *b = &map->readers;
+    while(b) {
+	if(b->count) {
+	    int i;
+	    for(i = 0; i < READERS_PER_BLOCK; i++)
+		if(b->readers[i].pid == pid)
+		    return &b->readers[i];
+	}
+	b = b->next;
+    }
+    return NULL;
 }
 
-void read_lock(mapinfo *mapinfo)
+int read_lock(mapinfo *mapinfo)
 {
     volatile mapheader *map = mapinfo->map;
     volatile reader *self = mapinfo->self;
 
     if(!self)
-	self = mapinfo->self = pid2reader(map, getpid());
-    self->cycle = map->cycle;
+	mapinfo->self = self = pid2reader(map, getpid());
+    if(!self)
+	return 0;
+    return self->cycle = map->cycle;
 }
 
 void read_unlock(mapinfo *mapinfo)
@@ -421,13 +432,32 @@ void read_unlock(mapinfo *mapinfo)
     if(!self)
 	return;
 
-    self->cycle = 0;
+    self->cycle = LOST_HORIZON;
 }
 
 void garbage_collect(mapinfo *mapinfo)
 {
-//    pool *pool = mapinfo->garbage_pool;
-//    garbage *garbage = mapinfo->garbage;
+    pool	*pool = mapinfo->garbage_pool;
+    garbage	*garbp = mapinfo->garbage;
+    garbage	*garbo = NULL;
+    cell_t	 horizon = mapinfo->horizon;
 
-// ....
+    horizon -= TWILIGHT_ZONE;
+
+    while(garbp) {
+	if(garbp->cycle = LOST_HORIZON || horizon - garbp->cycle > 0) {
+	    garbage *next = garbp->next;
+	    shmdealloc(mapinfo, garbp->block);
+	    shmdepool(mapinfo->garbage_pool, (char *)garbp);
+	    garbp = next;
+
+	    if(garbo)
+		garbo->next = garbp;
+	    else
+		mapinfo->garbage = garbp;
+	} else {
+	    garbo = garbp;
+	    garbp = garbp->next;
+	}
+    }
 }

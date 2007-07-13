@@ -22,6 +22,13 @@ typedef uint32_t cell_t;
 // How many garbage entries to allocate at a time.
 #define GARBAGE_POOL_SIZE 1024
 
+// How long to leave garbage uncollected after it falls below the horizon
+// (measured in lock cycles)
+#define TWILIGHT_ZONE 1024
+
+// Sentinel for a reader that isn't holding any garbage
+#define LOST_HORIZON 0
+
 // shared memory that is no longer needed but can't be freed until the
 // last reader that was "live" when it was in use has released it
 typedef struct _garbage {
@@ -70,19 +77,19 @@ typedef struct _mapheader {
 
 // Freelist entry
 typedef struct _freeblock {
-    struct _freeblock   *next;
-    struct _freeblock   *prev;
+    volatile struct _freeblock   *next;
+    volatile struct _freeblock   *prev;
 } freeblock;
 
 // Freelist control block
 typedef struct _freelist {
     pool		*pools;
-    freeblock		*list;
+    volatile freeblock	*list;
 } freelist;
 
 typedef struct _mapinfo {
     struct _mapinfo	*next;
-    mapheader		*map;
+    volatile mapheader	*map;
     size_t		 size;
     int			 fd;
 // server-only fields:
@@ -91,7 +98,7 @@ typedef struct _mapinfo {
     pool		*garbage_pool;
     cell_t		 horizon;
 // client-only fields:
-    reader		*self;
+    volatile reader	*self;
 } mapinfo;
 
 int open_new(char *file, size_t size);
@@ -105,13 +112,13 @@ char *palloc(pool *pool, size_t size);
 char *_shmalloc(mapinfo *map, size_t size);
 char *shmalloc(mapinfo *map, size_t size);
 void shmfree(mapinfo *map, char *block);
-int shmdepool(mapinfo *mapinfo, char *block);
+int shmdepool(pool *pool, char *block);
 void setfree(cell_t *block, size_t size, int is_free);
 int shmdealloc(mapinfo *mapinfo, char *data);
-void write_lock(mapinfo *mapinfo);
+int write_lock(mapinfo *mapinfo);
 void write_unlock(mapinfo *mapinfo);
-reader *pid2reader(volatile mapheader *map, int pid);
-void read_lock(mapinfo *mapinfo);
+volatile reader *pid2reader(volatile mapheader *map, int pid);
+int read_lock(mapinfo *mapinfo);
 void read_unlock(mapinfo *mapinfo);
 void garbage_collect(mapinfo *mapinfo);
 
