@@ -295,6 +295,10 @@ typedef struct ctableTable {
     ctable_BaseRow                      *ll_head;
 
     int                                  autoRowNumber;
+#ifdef SHARED_TABLES
+    int					 share_type;
+    char				*share_file;
+#endif
     Tcl_Command                          commandInfo;
     long                                 count;
 } CTable;
@@ -307,7 +311,8 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth)
 #define is_hidden_name(fieldNames,field) ((fieldNames)[field][0] == '_')
 #define is_hidden_field(table,field) is_hidden_name((table)->fieldNames,field)
 
-#ifdef SHARED_TABLE
+// Values for share_type
+#ifdef SHARED_TABLES
 # define CTABLE_SHARED_NONE 0
 # define CTABLE_SHARED_MASTER 1
 # define CTABLE_SHARED_READER 2
