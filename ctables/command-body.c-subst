@@ -48,9 +48,32 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     Tcl_HashEntry *registeredProcHashEntry;
     int indexCtl;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "capabilities", "key", "makekey", "methods", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "capabilities", "key", "makekey", "methods",
+#ifdef SHARED_TABLES
+								"attach",
+#endif
+		(char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_CAPS, OPT_KEY, OPT_MAKEKEY, OPT_METHODS};
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_CAPS, OPT_KEY, OPT_MAKEKEY, OPT_METHODS,
+#ifdef SHARED_TABLES
+			OPT_ATTACH,
+#endif
+					NUM_OPTIONS
+		};
+
+#ifdef SHARED_TABLES
+    // Options allowed in shared tables
+    static enum options shared_options[] = { OPT_ATTACH, OPT_METHODS, OPT_CAPS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, NUM_OPTIONS };
+    static int shared_ok[NUM_OPTIONS] = {-1};
+
+    if(shared_ok[0] == -1) {
+	int i;
+	for(i = 0; i < NUM_OPTIONS; i++)
+	    shared_ok[i] = FALSE;
+	for(i = 0; shared_options[i] != NUM_OPTIONS; i++)
+	    shared_ok[shared_options[i]] = TRUE;
+    }
+#endif
 
     if (objc == 1) {
         Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
@@ -87,6 +110,15 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	return result;
     }
 
+#ifdef SHARED_TABLE
+    if (${table}_share_type == CTABLE_SHARED_READER) {
+      if (!shared_ok[optIndex]) {
+	Tcl_AppendResult (interp, "Command '", options(optIndex), "' is not possible in a shared reader.", (char *)NULL);
+	return TCL_ERROR;
+      }
+    }
+#endif
+
     switch ((enum options) optIndex) {
       case OPT_TYPE: {
           Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
@@ -112,6 +144,39 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  return TCL_OK;
       }
+
+#ifdef SHARED_TABLE
+      // attach to shared memory table, search only
+      case OPT_ATTACH: {
+	  int         listObjc;
+	  Tcl_Obj   **listObjv;
+
+	  if (objc < 3) {
+	      Tcl_WrongNumArgs (interp, 2, objv, "pairList or field value ?field value...?");
+	      return TCL_ERROR;
+	  }
+
+	  if (objc == 3) {
+	      // If there's precisely one element in the list, get a new list
+	      // vector from the first element
+	      if (Tcl_ListObjGetElements (interp, objv[2], &listObjc, &listObjv) == TCL_ERROR) {
+		  Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		  return TCL_ERROR;
+	      }
+	  } else {
+	      // new list vector is the old list vector
+	      listObjc = objc - 2;
+	      listObjv = (Tcl_Obj **)objv + 2;
+	  }
+	  
+	  if ((listObjc % 2) != 0) {
+	      Tcl_AppendResult (interp, "key-value list must contain an even number of elements", (char *)NULL);
+	      return TCL_ERROR;
+	  }
+
+	  return ${table}_attach(listObjc, listObjv);
+      }
+#endif
 
       // return a capabilities list (stub)
       case OPT_CAPS: {
@@ -368,7 +433,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
         Tcl_Obj    *keyObj;
 	static char keyString[32];
 
-	if ((objc < 2) || ((objc != 3) && (objc % 2) == 1)) {
+	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "pairList or field value ?field value...?");
 	    return TCL_ERROR;
 	}
