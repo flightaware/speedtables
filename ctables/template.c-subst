@@ -71,14 +71,22 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 #ifdef SHARED_TABLES
 	    int typeIndex = -1;
 	    int share_type = CTABLE_SHARED_NONE;
+	    char *share_file = NULL;
 
-	    if (objc == 5) {
+	    if (objc == 5 || objc == 4) {
 		if(Tcl_GetIndexFromObj(interp, objv[3], types, "type", TCL_EXACT, &typeIndex) != TCL_OK)
 		{
 		    return TCL_ERROR;
 		}
 		share_type = share_types[typeIndex];
-		share_file = Tcl_GetString(objv[4]);
+		if(share_type == CTABLE_SHARED_MASTER) {
+		    if(objc != 5) {
+			Tcl_WrongNumArgs (interp, 2, objv, "name master filename");
+		    }
+		    share_file = Tcl_GetString(objv[4]);
+		} else if(objc != 4) {
+		    Tcl_WrongNumArgs (interp, 2, objv, "name reader");
+		}
 	    }
 	    else
 #endif
