@@ -213,15 +213,20 @@ proc gen_allocate {ctable lvalue type size {private 0}} {
 }
 
 variable allocateSource {
+${table}_shmpanic(${table} ctable)
+{
+    panic (
+	"Out of shared memory for \"%s\".",
+	 Tcl_GetCommandName(ctable->commandInfo)
+    );
+}
+
 char *${table}_allocate(${table} *ctable, size_t amount)
 {
     if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share_mapinfo) {
 	char *memory = shmalloc(ctable->share_mapinfo, amount);
 	if(!memory)
-	    panic (
-		"Out of shared memory for \"%s\".",
-		 Tcl_GetCommandName(ctable->commandInfo)
-	    );
+	    ${table}_shmpanic(ctable);
 	return memory;
     }
     return (char *)ckalloc(amount);
@@ -1143,43 +1148,32 @@ struct $table *${table}_make_row_struct () {
     return row;
 }
 
-#ifdef WITH_SHARED_TABLES
-struct ctable_BaseRow *${table}_make_row_pointer () {
-    struct ctable_BaseRow *row;
-
-    row = (struct ctable_BaseRow *)ckalloc (sizeof (struct ctable_BaseRow));
-    row->hashEntry.key = NULL;
-    row->sharedRow = NULL;
-
-    return row;
-}
-#endif
-
 struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) {
     struct $table *row = NULL;
-    ctable_HashEntry *(*make_row)();
     ctable_HashEntry *hashEntry;
 
 #ifdef WITH_SHARED_TABLES
+    static struct ${table} *nextRow;
+
     if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share_mapinfo) {
-	row = (struct $table *)shmalloc(ctable, sizeof(struct $table));
-	if(!row)
-	    panic(...);
-        ${table}_init (row);
-	make_row = (ctable_HashEntry *(*)())${table}_make_row_pointer;
-    } else {
-	make_row = (ctable_HashEntry *(*)())${table}_make_row_struct;
-    }
+	// Make sure the preallocated row is prepared
+	if(!nextRow) {
+	    nextRow = (struct $table *)shmalloc(ctable, sizeof(struct $table));
+	    if(!nextRow)
+	        ${table}_shmpanic(ctable);
+            ${table}_init (nextRow);
+	}
+
+        hashEntry = ctable_InitOrStoreHashEntry (ctable->keyTablePtr, key, NULL, nextRow, newPtr);
+
+	// If we used this row, forget the old row.
+	if(*newPtr)
+	    nextRow = NULL;
+    } else
 #else
-    make_row = (ctable_HashEntry *(*)())${table}_make_row_struct;
+    hashEntry = ctable_InitHashEntry (ctable->keyTablePtr, key, (ctable_HashEntry *(*)())${table}_make_row_struct, newPtr);
 #endif
 
-    hashEntry = ctable_InitHashEntry (ctable->keyTablePtr, key, make_row, newPtr);
-
-#ifdef WITH_SHARED_TABLES
-    if(row)
-	row->sharedRow = (struct ctable_BaseRow *)hashEntry;
-#endif
     row = (struct $table *)hashEntry;
 
     if (*newPtr) {
@@ -1884,9 +1878,6 @@ proc gen_defaults_subr {subr struct} {
     emit "        // $baseCopy.__dirtyIsNull = 0;"
     emit "        // $baseCopy._dirty = 1;"
     emit "        $baseCopy.hashEntry.key = NULL;"
-    if {$withSharedTables} {
-      emit "        $baseCopy.sharedRow = NULL;"
-    }
 
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
@@ -2156,9 +2147,6 @@ proc gen_struct {} {
     # Generating this as #ifdef...#endif instead of conditionally generating
     # it here because otherwise the resulting code violates the POLA while
     # debugging.
-    emit "#ifdef WITH_SHARED_TABLES"
-    putfield "struct $table" "*sharedRow"
-    emit "#endif"
 
     putfield "ctable_LinkedListNode"  "_ll_nodes\[$NLINKED_LISTS\]"
 

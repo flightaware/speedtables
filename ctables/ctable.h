@@ -58,14 +58,10 @@ typedef struct {
     struct ctable_baseRowStruct **head;
 } ctable_LinkedListNode;
 
+// This must start off as a copy of the start of the generated ctable
 typedef struct ctable_baseRowStruct {
     // hashEntry absolutely must be the first thing defined in the base row
     ctable_HashEntry     hashEntry;
-#ifdef WITH_SHARED_TABLES
-    // rowPointer must be the second
-    struct ctable_BaseRowStruct *sharedRow;
-#endif
-
     // _ll_nodes absolutely must be the last thing defined in the base row
     ctable_LinkedListNode _ll_nodes[];
 } ctable_BaseRow;
