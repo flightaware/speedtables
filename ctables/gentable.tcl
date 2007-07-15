@@ -241,6 +241,58 @@ proc gen_allocate_function {table} {
     }
 }
 
+set insertRowSource {
+int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct ${table} *row, int indexCtl)
+{
+    ctable_HashEntry *new, *old;
+    int isNew;
+
+    // Check for duplicates
+    old = ctable_FindHashEntry(ctable->keyTablePtr, value);
+    if(old) {
+	Tcl_AppendResult (interp, "Duplicate key '", value, "' when setting key field", (char *)NULL);
+	return TCL_ERROR;
+    }
+
+    // Remove old key.
+    if(indexCtl == CTABLE_INDEX_NORMAL) {
+        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);
+    } else {
+        // This shouldn't be possible, but just in case
+        if(row->hashEntry.key) {
+	    ckfree(row->hashEntry.key);
+	    row->hashEntry.key = NULL;
+        }
+    }
+
+    // Insert existing row with new key
+    new = ctable_InitOrStoreHashEntry(ctable->keyTablePtr, value, NULL, (ctable_HashEntry *)row, &isNew);
+
+    if(!isNew) {
+	Tcl_AppendResult (interp, "Duplicate key '", value, "' after setting key field!", (char *)NULL);
+	return TCL_ERROR;
+    }
+
+    if(indexCtl == CTABLE_INDEX_NEW) {
+	int field;
+        // Add to indexes.
+        for(field = 0; field < ${TABLE}_NFIELDS; field++) {
+	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+		return TCL_ERROR;
+	    }
+	}
+    }
+
+    return TCL_OK;
+}
+}
+
+proc gen_insert_row_function {table} {
+    set TABLE [string toupper $table]
+    variable insertRowSource
+    emit [string range [subst -nobackslashes -nocommands $insertRowSource] 1 end-1]
+}
+
 #
 # preambleCannedSource -- stuff that goes at the start of the file we generate
 #
@@ -436,7 +488,6 @@ set numberSetSource {
 	break;
       }
 }
-
 set keySetSource {
       case $optname: {
         char *value = Tcl_GetString(obj);
@@ -456,8 +507,7 @@ set keySetSource {
 		}
 		case CTABLE_INDEX_NORMAL:
 		case CTABLE_INDEX_NEW: {
-		    Tcl_AppendResult (interp, "Key field '$fieldName' can not be modified", (char *)NULL);
-		    return TCL_ERROR;
+		    return ${table}_insert_row(interp, ctable, value, row, indexCtl);
 		}
 	    }
 	}
@@ -2842,6 +2892,8 @@ proc gen_code {} {
     set rowStruct $table
 
     gen_allocate_function $table
+
+    gen_insert_row_function $table
 
     gen_set_function $table
 
