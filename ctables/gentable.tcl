@@ -19,6 +19,7 @@ namespace eval ctable {
     variable ctableTypes
     variable ctableErrorInfo
     variable withPgtcl
+    variable withSharedTables
     variable reservedWords
     variable errorDebug
 
@@ -37,6 +38,8 @@ namespace eval ctable {
     set genCompilerDebug 0
     set showCompilerCommands 0
     set memDebug 0
+
+    set withSharedTables 0
 
     set targetDir /usr/local
     set pgTargetDir /usr/local
@@ -193,6 +196,44 @@ proc field_to_var {table fieldName varName} {
 #
 proc field_to_nameObj {table fieldName} {
     return [field_to_var $table $fieldName nameObj]
+}
+
+#
+# gen_allocate - return the code to allocate memory and assign
+#
+proc gen_allocate {ctable lvalue type size {private 0}} {
+    variable withSharedTables
+    if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
+	return "$lvalue = ($type)ckalloc($size)"
+    }
+    if {"$private" == "0" || "$private" == "FALSE"} {
+	return "$lvalue = ($type)shmalloc($ctable->share_mapinfo, $size)"
+    }
+    return "$lvalue = ($private) ? ($type)ckalloc($size) : ($type)shmalloc($ctable->share_mapinfo, $size)"
+}
+
+variable allocateSource {
+char *${table}_allocate(${table} *ctable, size_t amount)
+{
+    if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share_mapinfo) {
+	char *memory = shmalloc(ctable->share_mapinfo, amount);
+	if(!memory)
+	    panic (
+		"Out of shared memory for \"%s\".",
+		 Tcl_GetCommandName(ctable->commandInfo)
+	    );
+	return memory;
+    }
+    return (char *)ckalloc(amount);
+}
+}
+
+proc gen_allocate_function {table} {
+    variable withSharedTables
+    variable allocateSource
+    if {$withSharedTables} {
+	emit [string range [subst -nobackslashes -nocommands $allocateSource] 1 end-1]
+    }
 }
 
 #
@@ -404,7 +445,7 @@ set keySetSource {
 	        case CTABLE_INDEX_PRIVATE: {
 		    // fake hash entry for search
 		    if(row->hashEntry.key) ckfree(row->hashEntry.key);
-		    row->hashEntry.key = ckalloc(strlen(value)+1);
+		    [gen_allocate ctable row->hashEntry.key "char *" "strlen(value)+1" 1];
 		    strcpy(row->hashEntry.key, value);
 		    break;
 		}
@@ -480,7 +521,7 @@ set varstringSetSource {
 	    if (row->$fieldName != NULL) {
 		ckfree ((void *)row->$fieldName);
 	    }
-	    row->$fieldName = ckalloc (length + 1);
+	    [gen_allocate ctable "row->$fieldName" "char *" "length + 1" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    row->_${fieldName}AllocatedLength = length + 1;
 	}
 	strncpy (row->$fieldName, string, length + 1);
@@ -1102,12 +1143,45 @@ struct $table *${table}_make_row_struct () {
     return row;
 }
 
+#ifdef WITH_SHARED_TABLES
+struct ctable_BaseRow *${table}_make_row_pointer () {
+    struct ctable_BaseRow *row;
+
+    row = (struct ctable_BaseRow *)ckalloc (sizeof (struct ctable_BaseRow));
+    row->hashEntry.key = NULL;
+    row->sharedRow = NULL;
+
+    return row;
+}
+#endif
+
 struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) {
-    struct $table *row;
+    struct $table *row = NULL;
+    ctable_HashEntry *(*make_row)();
+    ctable_HashEntry *hashEntry;
 
-    ctable_HashEntry *hashEntry = ctable_InitHashEntry (ctable->keyTablePtr, key, (ctable_HashEntry *(*)())${table}_make_row_struct, newPtr);
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share_mapinfo) {
+	row = (struct $table *)shmalloc(ctable, sizeof(struct $table));
+	if(!row)
+	    panic(...);
+        ${table}_init (row);
+	make_row = (ctable_HashEntry *(*)())${table}_make_row_pointer;
+    } else {
+	make_row = (ctable_HashEntry *(*)())${table}_make_row_struct;
+    }
+#else
+    make_row = (ctable_HashEntry *(*)())${table}_make_row_struct;
+#endif
 
+    hashEntry = ctable_InitHashEntry (ctable->keyTablePtr, key, make_row, newPtr);
+
+#ifdef WITH_SHARED_TABLES
+    if(row)
+	row->sharedRow = (struct ctable_BaseRow *)hashEntry;
+#endif
     row = (struct $table *)hashEntry;
+
     if (*newPtr) {
 	ctable_ListInsertHead (&ctable->ll_head, (ctable_BaseRow *)row, 0);
 	ctable->count++;
@@ -1793,6 +1867,7 @@ proc gen_ctable_type_stuff {} {
 proc gen_defaults_subr {subr struct} {
     variable table
     variable fields
+    variable withSharedTables
     variable fieldList
     variable leftCurly
     variable rightCurly
@@ -1809,6 +1884,9 @@ proc gen_defaults_subr {subr struct} {
     emit "        // $baseCopy.__dirtyIsNull = 0;"
     emit "        // $baseCopy._dirty = 1;"
     emit "        $baseCopy.hashEntry.key = NULL;"
+    if {$withSharedTables} {
+      emit "        $baseCopy.sharedRow = NULL;"
+    }
 
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
@@ -2074,6 +2152,14 @@ proc gen_struct {} {
     emit "struct $table $leftCurly"
 
     putfield "ctable_HashEntry" "hashEntry"
+
+    # Generating this as #ifdef...#endif instead of conditionally generating
+    # it here because otherwise the resulting code violates the POLA while
+    # debugging.
+    emit "#ifdef WITH_SHARED_TABLES"
+    putfield "struct $table" "*sharedRow"
+    emit "#endif"
+
     putfield "ctable_LinkedListNode"  "_ll_nodes\[$NLINKED_LISTS\]"
 
     foreach fieldName $nonBooleans {
@@ -2753,6 +2839,7 @@ proc gen_code {} {
     variable booleans
     variable fields
     variable fieldList
+    variable withSharedTables
     variable leftCurly
     variable rightCurly
     variable cmdBodySource
@@ -2765,6 +2852,8 @@ proc gen_code {} {
     set nFields [string toupper $table]_NFIELDS
 
     set rowStruct $table
+
+    gen_allocate_function $table
 
     gen_set_function $table
 
@@ -3406,6 +3495,7 @@ proc gen_gets_string_cases {} {
 #
 proc gen_preamble {} {
     variable withPgtcl
+    variable withSharedTables
     variable preambleCannedSource
 
     emit "/* autogenerated by ctable table generator [clock format [clock seconds]] */"
@@ -3414,6 +3504,10 @@ proc gen_preamble {} {
     if {$withPgtcl} {
         emit "#define WITH_PGTCL"
         emit ""
+    }
+    if {$withSharedTables} {
+	emit "#define WITH_SHARED_TABLES"
+	emit ""
     }
 
     emit $preambleCannedSource
@@ -4278,6 +4372,9 @@ proc save_extension_code {name version code} {
 #
 proc install_ch_files {targetDir} {
     variable srcDir
+    variable withSharedTables
+
+    lappend subdirs skiplists hash
 
     set copyFiles {
 	ctable.h ctable_search.c ctable_lists.c ctable_batch.c
@@ -4285,13 +4382,30 @@ proc install_ch_files {targetDir} {
 	speedtables.h speedtableHash.c
     }
 
+    if {$withSharedTables} {
+	lappend copyFiles shared.c shared.h
+	lappend subdirs shared
+    }
+
     foreach file $copyFiles {
-	if {[file exists $srcDir/$file]} {
-            file copy -force $srcDir/$file $targetDir
-	} elseif {[file exists $srcDir/skiplists/$file]} {
-            file copy -force $srcDir/skiplists/$file $targetDir
-	} elseif {[file exists $srcDir/hash/$file]} {
-            file copy -force $srcDir/hash/$file $targetDir
+	set fullName [file join $srcDir $file]
+
+	if {![file exists $fullName]} {
+	    unset fullName
+
+	    foreach dir $subdirs {
+		set fullName [file join $srcDir $dir $file]
+
+		if {![file exists $fullName]} {
+		    unset fullName
+		} else {
+		    break
+		}
+	    }
+	}
+
+	if [info exists fullName] {
+            file copy -force $fullName $targetDir
 	} else {
 	    return -code error "Can't find $file in $srcDir"
 	}

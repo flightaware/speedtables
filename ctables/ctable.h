@@ -29,6 +29,10 @@
 
 #include "speedtables.h"
 
+#ifdef WITH_SHARED_TABLES
+#include "shared.h"
+#endif
+
 // these types must line up with ctableTypes in gentable.tcl
 enum ctable_types {
     CTABLE_TYPE_BOOLEAN,
@@ -57,6 +61,10 @@ typedef struct {
 typedef struct ctable_baseRowStruct {
     // hashEntry absolutely must be the first thing defined in the base row
     ctable_HashEntry     hashEntry;
+#ifdef WITH_SHARED_TABLES
+    // rowPointer must be the second
+    struct ctable_BaseRowStruct *sharedRow;
+#endif
 
     // _ll_nodes absolutely must be the last thing defined in the base row
     ctable_LinkedListNode _ll_nodes[];
@@ -295,9 +303,10 @@ typedef struct ctableTable {
     ctable_BaseRow                      *ll_head;
 
     int                                  autoRowNumber;
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
     int					 share_type;
     char				*share_file;
+    mapinfo                             *share_mapinfo;
 #endif
     Tcl_Command                          commandInfo;
     long                                 count;
@@ -312,7 +321,7 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth)
 #define is_hidden_field(table,field) is_hidden_name((table)->fieldNames,field)
 
 // Values for share_type
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
 # define CTABLE_SHARED_NONE 0
 # define CTABLE_SHARED_MASTER 1
 # define CTABLE_SHARED_READER 2

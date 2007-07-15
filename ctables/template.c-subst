@@ -33,11 +33,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
     enum options
     {
-        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD, OPT_CEXTENSION,
-	NUM_OPTIONS
+        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD, OPT_CEXTENSION
     };
 
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
     static const char *types[] = { "master", "reader", (char *)NULL };
 
     enum types { CREATE_MASTER, CREATE_READER };
@@ -68,7 +67,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int i;
 	    int baseNameLength = 0;
 
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
 	    int typeIndex = -1;
 	    int share_type = CTABLE_SHARED_NONE;
 	    char *share_file = NULL;
@@ -100,9 +99,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->keyTablePtr = (ctable_HashTable *)ckalloc (sizeof (ctable_HashTable));
 	    ctable->count = 0;
 	    ctable->autoRowNumber = 0;
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
 	    ctable->share_file = share_file;
+	    ctable->share_mapinfo = NULL;
 #endif
 
 	    // create an array of pointers to possible skip lists,

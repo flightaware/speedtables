@@ -49,19 +49,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     int indexCtl;
 
     static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "capabilities", "key", "makekey", "methods",
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
 								"attach",
 #endif
 		(char *)NULL};
 
     enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_CAPS, OPT_KEY, OPT_MAKEKEY, OPT_METHODS,
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
 			OPT_ATTACH,
 #endif
 					NUM_OPTIONS
 		};
 
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
     // Options allowed in shared tables
     static enum options shared_options[] = { OPT_ATTACH, OPT_METHODS, OPT_CAPS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, NUM_OPTIONS };
     static int shared_ok[NUM_OPTIONS] = {-1};
@@ -110,7 +110,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	return result;
     }
 
-#ifdef SHARED_TABLES
+#ifdef WITH_SHARED_TABLES
     if (ctable->share_type == CTABLE_SHARED_READER) {
       if (!shared_ok[optIndex]) {
 	Tcl_AppendResult (interp, "Command '", options(optIndex), "' is not possible in a shared reader table.", (char *)NULL);
@@ -120,6 +120,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #endif
 
     switch ((enum options) optIndex) {
+      case NUM_OPTIONS: { // Can't happen!
+	  Tcl_AppendResult (interp, "Can't happen.", (char *)NULL);
+	  return TCL_ERROR;
+      }
+
       case OPT_TYPE: {
           Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
 	  return TCL_OK;
@@ -145,7 +150,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  return TCL_OK;
       }
 
-#ifdef SHARED_TABLE
+#ifdef WITH_SHARED_TABLES
       // attach to shared memory table, search only
       case OPT_ATTACH: {
 	  int         listObjc;
