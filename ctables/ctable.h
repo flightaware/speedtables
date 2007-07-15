@@ -201,6 +201,8 @@ typedef struct {
 
     int                                  endAction;
 
+    int					 bufferResults;
+
     int                                  nComponents;
     int                                  countMax;
     int                                  offset;

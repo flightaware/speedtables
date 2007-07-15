@@ -670,15 +670,15 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 
     if(search->sortControl.nFields) {	// sorting
       qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, creator->sort_compare);
+    }
 
-      // it's sorted
-
+    if(search->bufferResults) { // we deferred the operation to here
       // walk the result
       for (sortIndex = search->offset; sortIndex < search->offsetLimit; sortIndex++) {
         int actionResult;
 
 	/* here is where we want to take the match actions
-	 * when we are sorting
+	 * when we are sorting or otherwise buffering
 	 */
 	 actionResult = ctable_SearchAction (interp, ctable, search, search->tranTable[sortIndex]);
 	 if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
@@ -749,12 +749,14 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	 * against start and limit and stuff */
 	assert (search->matchCount < ctable->count);
 	search->tranTable[search->matchCount++] = row;
-	if(search->sortControl.nFields)
+
+	// If buffering for any reason (eg, sorting), defer until later
+	if(search->bufferResults)
 	    return TCL_CONTINUE;
     }
 
-    // We're not sorting, let's figure out what to do as we match.
-    // If we haven't met the start point, blow it off.
+    // We're not sorting or buffering, let's figure out what to do as we
+    // match. If we haven't met the start point, blow it off.
     if (search->matchCount <= search->offset) {
 	return TCL_CONTINUE;
     }
@@ -1056,14 +1058,23 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	}
     }
 
-    // if we're (still) sorting or running a transaction, allocate a space
-    // for the search results that we'll then sort from
+    // buffer results if:
+    //   We're not countOnly, and...
+    //     We're searching, or...
+    //     We explicitly requested bufering.
+    if(search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) {
+	search->bufferResults = 0;
+    } else if(search->sortControl.nFields > 0) {
+	search->bufferResults = 1;
+    } else if(search->bufferResults == -1) {
+    	search->bufferResults = 0;
+    }
+
+    // if we're buffering (for any reason) or running a transaction,
+    // allocate a space for the search results that we'll then sort from
     if (
-      (
-	(search->sortControl.nFields > 0) ||
-	search->tranType != CTABLE_SEARCH_TRAN_NONE
-      ) &&
-      (search->endAction != CTABLE_SEARCH_ACTION_COUNT_ONLY)
+      search->bufferResults ||
+      search->tranType != CTABLE_SEARCH_TRAN_NONE
     ) {
 	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
     }
@@ -1260,13 +1271,13 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     int             searchTerm = 0;
     CONST char                 **fieldNames = ctable->creator->fieldNames;
 
-    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-delete", "-update", "-index", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-delete", "-update", "-buffer", "-index", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY, SEARCH_OPT_ARRAY_WITH_NULLS, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_INDEX};
+    enum searchOptions {SEARCH_OPT_ARRAY, SEARCH_OPT_ARRAY_WITH_NULLS, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX};
 
     if (objc < 2) {
       wrong_args:
-	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-noKeys 0|1? ?-offset offset? ?-regexp pattern? ?-sort {?-?field1..}? ?-write_tabsep channel?");
+	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-noKeys 0|1? ?-offset offset? ?-regexp pattern? ?-sort {?-?field1..}? ?-write_tabsep channel? ?-delete 0|1? ?-update {fields value...}? ?-buffer 0|1?");
 	return TCL_ERROR;
     }
 
@@ -1291,6 +1302,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->writingTabsepIncludeFieldNames = 0;
     search->tranType = CTABLE_SEARCH_TRAN_NONE;
     search->reqIndexField = indexField;
+    search->bufferResults = -1; // -1 is "if sorting only"
 
     for (i = 2; i < objc; ) {
 	if (Tcl_GetIndexFromObj (interp, objv[i++], searchOptions, "search option", TCL_EXACT, &searchTerm) != TCL_OK) {
@@ -1475,6 +1487,17 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    }
 	    search->tranType = CTABLE_SEARCH_TRAN_UPDATE;
 	    search->tranData = objv[i++];
+	    break;
+	  }
+
+	  case SEARCH_OPT_BUFFER: {
+	    int do_buffer;
+	    if (Tcl_GetIntFromObj (interp, objv[i++], &do_buffer) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing buffer option", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+
+	    search->bufferResults = do_buffer;
 	    break;
 	  }
 
