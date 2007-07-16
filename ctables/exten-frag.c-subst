@@ -88,6 +88,15 @@
 	t->fieldList[i] = i;
     }
 
+    // make a *public* field list -- excludes hidden fields (starting with _)
+    t->nPublicFields = 0;
+    t->publicFieldList = (int *)ckalloc (t->nFields * sizeof (int));
+    for (i = 0; i < t->nFields; i++) {
+	if(${table}_fields[i][0] == '_')
+	    continue;
+	t->publicFieldList[t->nPublicFields++] = i;
+    }
+
     /* Create the ${table}MetaObjCmd command -- it's fairly equivalent to an
      * Itcl class in that it can create its own commands with their
      * own data spaces, etc.

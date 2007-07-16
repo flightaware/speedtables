@@ -256,6 +256,7 @@ typedef struct ctableCreatorTable {
     Tcl_Obj             **nameObjList;
     Tcl_Obj		**keyObjList;
     int                  *fieldList;
+    int			 *publicFieldList;
     enum ctable_types    *fieldTypes;
     int                  *fieldsThatNeedQuoting;
     int			  keyField;
@@ -263,6 +264,7 @@ typedef struct ctableCreatorTable {
     ctable_FieldInfo    **fields;
 
     int                nFields;
+    int		       nPublicFields;
     int                nLinkedLists;
 
     void *(*make_empty_row) ();
