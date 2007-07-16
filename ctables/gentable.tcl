@@ -463,6 +463,7 @@ set boolSetSource {
         }
 [gen_unset_null_during_set_source $table $fieldName]
         row->$fieldName = boolean;
+	break;
       }
 }
 

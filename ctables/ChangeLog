@@ -1,6 +1,10 @@
 
 $Id$
 
+7/16/2007 karl
+    * Fix bug in boolean set source where it failed to break out of the
+      switch statement.
+
 6/2/2007 karl
     * Further parameterize the calls to compile stuff so that you can
       separately control where Tcl gets picked up from, where PostgreSQL
