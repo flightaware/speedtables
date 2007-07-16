@@ -223,7 +223,7 @@ ${table}_shmpanic(${table} ctable)
 
 char *${table}_allocate(${table} *ctable, size_t amount)
 {
-    if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share_mapinfo) {
+    if(ctable->share_type == CTABLE_SHARED_MASTER) {
 	char *memory = shmalloc(ctable->share_mapinfo, amount);
 	if(!memory)
 	    ${table}_shmpanic(ctable);
@@ -2112,9 +2112,32 @@ proc gen_obj_is_null_subr {} {
 proc sanity_check {} {
     variable fieldList
     variable table
+    variable keyFieldName
+    variable withSharedTables
 
     if {[llength $fieldList] == 0} {
         error "no fields defined in table \"$table\" -- at least one field must be defined in a table"
+    }
+
+    # If we're enabling shared tables, disable them again if any of the
+    # fields are the key, or there are no indexed fields.
+
+    if {$withSharedTables} {
+        if {[info exists keyFieldName] && "$keyFieldName" != "_key"} {
+	    set withSharedTables 0
+	}
+	set nIndexed 0
+        foreach fieldName $fieldList {
+	    upvar ::ctable::fields::$fieldName field
+
+            # if the "indexed" field doesn't exist or is 0, skip it
+            if {[info exists field(indexed)] && $field(indexed)} {
+		incr nIndexed
+	    }
+        }
+	if {!$nIndexed} {
+	    set withSharedTables 0
+	}
     }
 }
 
@@ -4537,9 +4560,6 @@ proc CTable {name data} {
 
     # Create a key field if there isn't already one
     ::ctable::key _key
-if ![info exists ::ctable::keyFieldName] {
-error "WTFOMG no key !?????"
-}
 
     ::ctable::gen_struct
 
