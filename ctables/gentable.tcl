@@ -245,7 +245,7 @@ set insertRowSource {
 int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct ${table} *row, int indexCtl)
 {
     ctable_HashEntry *new, *old;
-    int isNew;
+    int isNew = 0;
 
     // Check for duplicates
     old = ctable_FindHashEntry(ctable->keyTablePtr, value);
