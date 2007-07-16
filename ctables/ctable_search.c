@@ -528,8 +528,8 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search
     Tcl_DStringInit (&dString);
 
     if (search->nRetrieveFields < 0) {
-	fields = creator->fieldList;
-	nFields = creator->nFields;
+	fields = creator->publicFieldList;
+	nFields = creator->nPublicFields;
     } else {
 	nFields = search->nRetrieveFields;
 	fields = search->retrieveFields;
