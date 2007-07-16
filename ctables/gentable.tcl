@@ -266,7 +266,7 @@ int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct 
     }
 
     // Insert existing row with new key
-    new = ctable_InitOrStoreHashEntry(ctable->keyTablePtr, value, NULL, (ctable_HashEntry *)row, &isNew);
+    new = ctable_StoreHashEntry(ctable->keyTablePtr, value, (ctable_HashEntry *)row, &isNew);
 
     if(!isNew) {
 	Tcl_AppendResult (interp, "Duplicate key '", value, "' after setting key field!", (char *)NULL);
@@ -1201,31 +1201,27 @@ struct $table *${table}_make_row_struct () {
 
 struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) {
     struct $table *row = NULL;
-    ctable_HashEntry *hashEntry;
+    static struct $table *nextRow = NULL;
 
+    // Make sure the preallocated row is prepared
+    if(!nextRow) {
 #ifdef WITH_SHARED_TABLES
-    static struct ${table} *nextRow;
-
-    if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share_mapinfo) {
-	// Make sure the preallocated row is prepared
-	if(!nextRow) {
-	    nextRow = (struct $table *)shmalloc(ctable, sizeof(struct $table));
+        if(ctable->share_type == CTABLE_SHARED_MASTER) {
+	    nextRow = (struct $table *)shmalloc(ctable->share_mapinfo, sizeof(struct $table));
 	    if(!nextRow)
 	        ${table}_shmpanic(ctable);
-            ${table}_init (nextRow);
-	}
-
-        hashEntry = ctable_InitOrStoreHashEntry (ctable->keyTablePtr, key, NULL, nextRow, newPtr);
-
-	// If we used this row, forget the old row.
-	if(*newPtr)
-	    nextRow = NULL;
-    } else
-#else
-    hashEntry = ctable_InitHashEntry (ctable->keyTablePtr, key, (ctable_HashEntry *(*)())${table}_make_row_struct, newPtr);
+	} else
 #endif
+	    nextRow = (struct $table *)ckalloc(sizeof(struct $table));
 
-    row = (struct $table *)hashEntry;
+        ${table}_init (nextRow);
+    }
+
+    row = (struct $table *)ctable_StoreHashEntry (ctable->keyTablePtr, key, (ctable_HashEntry *)nextRow, newPtr);
+
+    // If we used this row, forget the old row.
+    if(*newPtr)
+	nextRow = NULL;
 
     if (*newPtr) {
 	ctable_ListInsertHead (&ctable->ll_head, (ctable_BaseRow *)row, 0);

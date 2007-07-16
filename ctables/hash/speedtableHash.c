@@ -117,6 +117,7 @@ ctable_InitHashTable(register ctable_HashTable *tablePtr)
  *	is getting inserted, then *newPtr will be set to a non-zero value;
  *	otherwise *newPtr will be set to 0. If this is a new entry the value
  *	stored in the entry will initially be 0.
+ *      if NewPtr is NULL, then 
  *
  * Side effects:
  *	A new entry may be added to the hash table.
@@ -230,6 +231,42 @@ ctable_InitHashEntry(
 {
     return
 	ctable_InitOrStoreHashEntry(tablePtr, key, make_row_func, NULL, newPtr);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * ctable_StoreHashEntry --
+ *
+ *	Given a hash table with string keys, and a string key, find the entry
+ *	with a matching key. If there is no matching entry, then store the
+ *      provided entry into the table.
+ *
+ * Results:
+ *	The return value is a pointer to the matching entry. If the entry
+ *	is getting inserted, then *newPtr will be set to a non-zero value;
+ *	otherwise *newPtr will be set to 0. If this is a new entry the value
+ *	stored in the entry will initially be 0.
+ *
+ * Side effects:
+ *	A new entry may be added to the hash table.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static
+inline
+ctable_HashEntry *
+ctable_StoreHashEntry(
+    ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
+    CONST char *key,		/* Key to use to find or create matching
+				 * entry. */
+    ctable_HashEntry *newEntry,	/* if not null, use this entry */
+    int *newPtr)		/* Store info here telling whether a new entry
+				 * was created. */
+{
+    return
+	ctable_InitOrStoreHashEntry(tablePtr, key, NULL, newEntry, newPtr);
 }
 
 
