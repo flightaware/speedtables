@@ -5,6 +5,110 @@ $Id$
     * Fix bug in boolean set source where it failed to break out of the
       switch statement.
 
+7/15/2007 peter
+	#ifdef WITH_SHARED_TABLES
+     *  	Written ckalloc-alike wrapper for shmalloc.
+
+     *  	Code to generate two possible sets of allocators,
+		depending on whether shared table support is enabled or
+		not.
+
+     *  	Hash keys are in memory for master only, unless I further
+		pervert the hash API.  Hash table proper is in main memory
+		as well. This means that only the master can access keys.
+		Shared tables *must not* have non-default keys, and *must*
+		have skiplists. TODO: disable sharing if the table doesn't
+		satisfy these requireents.
+	#endif
+
+7/15/2007 peter
+     *  Implement ctable set commands keys for non-private rows as well.
+
+7/15/2007 peter
+     *  Add "-buffer" option to search. This explicitly forces the search
+	results to be buffered, whether or not sorting or other transaction
+	like operation is going on. This must be used if you're calling
+	any "set" operation on a row that might modify the field you're
+	walking (and should probably be used any time you may be using
+	"set" operations on rows.
+
+7/11/2007 peter
+     *  remove the separate control flow for booleans by making the list
+	name an optional argument on deffield
+
+7/10/2007 peter
+     *  Search optimizations:
+
+	* If only one sort field, and search file == sort field, and walking
+	  in order anyway, don't sort.
+
+	* Pick the highest scoring comparison for the search field:
+	    'in' = 100 points (and win)
+	    hashed '=' = 100 points (and win)
+	    skip '=' = 6 points
+	    skip 'range' = 4 points
+	    skip <= < >= = 2 points
+	    skip > = 1 point
+	  plus 1 point if it's the sort field.
+
+7/8/2007 peter
+     *  Added ctable search = or IN on hash
+
+7/5/2007 peter
+     *  ctable_search will use the first index it finds, not just
+	the first comparison. This means that ${table}_search_compare
+	needs to know which index to skip. Changed "tailoredWalk"
+	to "skipIndex" default -1, and also let ${table}_search_compare
+	pull that out of searchControl instead of passing it
+	redundantly.
+
+7/4/2007 peter
+     *  Enabled "set" commands on ctable row for keyfield, but only for
+	private rows.
+
+7/3/2007 peter
+     *  Added "key" type. Key is a restricted subset of varstr.
+	* At the moment, keys are read-only (will change)
+	* If no keys are specified, define a "hidden" _key variable.
+	* Have not removed the old key attribute, have to change
+	  that code to use the key type.
+	* Important milestone: works without breaking any of the
+	  tests if "key" is not used.
+	* read_tabsep -noKeys and store using the key pseudo-field
+	  when available.
+
+6/21/2007 peter
+     *  Make skiplist search selection table-driven. Make all possible
+	comparisons use skiplists (add table entries).
+
+     *  Note: there should be a way to make it NOT use skiplists,
+	when you know that it's going to hit most of the rows and
+	so a hashtable is going to be faster.
+
+6/20/2007 peter
+     *  Completely reorganised ctable search
+
+	* Only really one path through search.
+	* Currently, for compatibility, -index option or search+ term is
+	  required to get skiplist search.
+	* Should be easier to add more cases in search, other than
+	  eq, range, and in
+	* skiplist falls back on hash search if it can't take
+	  advantage of skiplists
+
+	* regression tests changed to ignore order of results in search+ tests,
+	  since that's not predictable.
+
+6/18/2007 peter
+     *  Allow search -key -code with no -array or -get options.
+
+     *  Add transaction tests to regression tests.
+
+6/17/2007 peter
+     *  First Cut at -delete and -update. Note - this verson passes
+	the existing tests but I have not tested the new code beyond
+	that. I wanted to get this into CVS before continuing.
+
 6/2/2007 karl
     * Further parameterize the calls to compile stuff so that you can
       separately control where Tcl gets picked up from, where PostgreSQL
@@ -13,6 +117,17 @@ $Id$
 5/14/2007 karl
     * Fixed bug in "reset" method (${table}_delete_all_rows) where none
       of the hashtable string keys would be deleted.
+
+3/21/2007 peter
+
+     *  Backing out partial support for generated keys in read/write
+	tabsep, need to make more changes to support them, and
+	they're not really needed unless generating tabsep files
+	outside ctables. It's only when you're importing data to
+	ctables (with store or importing from postgres) that you
+	need to generate the keys. This will be replaced by the new
+	key type.
+
 
 3/20/2007 peter
     * Implemented key generation for import_postgres_result. Have not
