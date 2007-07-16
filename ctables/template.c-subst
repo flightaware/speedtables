@@ -24,7 +24,9 @@ int
 ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     int      optIndex;
-
+#ifdef WITH_SHARED_TABLES
+    mapinfo *mapinfo;
+#endif
 
     static CONST char *options[] = {
         "create", "info", "null_value", "method", "cextension",
@@ -72,17 +74,42 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int share_type = CTABLE_SHARED_NONE;
 	    char *share_file = NULL;
 
-	    if (objc == 5 || objc == 4) {
+	    if (objc <= 6 && objc >= 4) {
 		if(Tcl_GetIndexFromObj(interp, objv[3], types, "type", TCL_EXACT, &typeIndex) != TCL_OK)
 		{
 		    return TCL_ERROR;
 		}
 		share_type = share_types[typeIndex];
 		if(share_type == CTABLE_SHARED_MASTER) {
-		    if(objc != 5) {
-			Tcl_WrongNumArgs (interp, 2, objv, "name master filename");
+		    if(objc == 4) {
+			Tcl_WrongNumArgs (interp, 2, objv, "name master filename ?size?");
 		    }
 		    share_file = Tcl_GetString(objv[4]);
+		    if(objc == 6) {
+			char *s = Tcl_GetString(objv[5]);
+			size_t size = 0;
+			while(isdigit(*s)) {
+			    size = size * 10 + *s - '0';
+			    s++;
+			}
+			switch(toupper(*s)) {
+			    case 'G': size *= 1024;
+			    case 'M': size *= 1024;
+			    case 'K': size *= 1024;
+				s++;
+			}
+			if(*s) {
+			    Tcl_AppendResult("Bad size, must be an integer optionally followed by 'k', 'm', or 'g': ", Tcl_GetString(objv[5]), NULL);
+			    return TCL_ERROR;
+			}
+		    } else {
+			size = DEFAULT_SHARED_MEMORY_SIZE;
+		    }
+		    mapinfo = create_and_map_share(share_file, size);
+		    if(!mapinfo) {
+			Tcl_AppendResult("Can't map shared memory for ", share_file, NULL);
+			return TCL_ERROR;
+		    }
 		} else if(objc != 4) {
 		    Tcl_WrongNumArgs (interp, 2, objv, "name reader");
 		}
@@ -94,7 +121,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		return TCL_ERROR;
 	    }
 
-	    ctable = (CTable *)ckalloc (sizeof(CTable));
+#ifdef WITH_SHARED_TABLES
+	    if(share_type == CTABLE_SHARED_MASTER)
+		ctable = (CTable *)shmalloc (mapinfo, sizeof(CTable));
+	    else
+#endif
+	        ctable = (CTable *)ckalloc (sizeof(CTable));
+
 	    ctable->creator = creator;
 	    ctable->keyTablePtr = (ctable_HashTable *)ckalloc (sizeof (ctable_HashTable));
 	    ctable->count = 0;
@@ -102,12 +135,21 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 #ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
 	    ctable->share_file = share_file;
-	    ctable->share_mapinfo = NULL;
+	    if(share_type == CTABLE_SHARED_MASTER)
+		ctable->share_mapinfo = mapinfo;
+	    else
+		ctable->share_mapinfo = NULL;
 #endif
 
 	    // create an array of pointers to possible skip lists,
 	    // one per field
-	    ctable->skipLists = (jsw_skip_t **)ckalloc (creator->nFields * sizeof (jsw_skip_t *));
+#ifdef WITH_SHARED_TABLES
+	    if(share_type == CTABLE_SHARED_MASTER)
+	        ctable->skipLists = (jsw_skip_t **)shmalloc (mapinfo, creator->nFields * sizeof (jsw_skip_t *));
+	    else
+#endif
+		ctable->skipLists = (jsw_skip_t **)ckalloc (creator->nFields * sizeof (jsw_skip_t *));
+
 	    for (i = 0; i < creator->nFields; i++) {
 		ctable->skipLists[i] = NULL;
 	    }
