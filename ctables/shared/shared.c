@@ -392,7 +392,7 @@ int write_lock(mapinfo *mapinfo)
 {
     volatile mapheader *map = mapinfo->map;
 
-    while(++map->cycle != LOST_HORIZON)
+    while(++map->cycle == LOST_HORIZON)
 	continue;
 }
 
@@ -451,10 +451,14 @@ void garbage_collect(mapinfo *mapinfo)
     garbage	*garbo = NULL;
     cell_t	 horizon = mapinfo->horizon;
 
-    horizon -= TWILIGHT_ZONE;
+    if(horizon != LOST_HORIZON) {
+	horizon -= TWILIGHT_ZONE;
+	if(horizon == LOST_HORIZON)
+	    horizon --;
+    }
 
     while(garbp) {
-	if(garbp->cycle = LOST_HORIZON || horizon - garbp->cycle > 0) {
+	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || horizon - garbp->cycle > 0) {
 	    garbage *next = garbp->next;
 	    shmdealloc(mapinfo, garbp->block);
 	    shmdepool(mapinfo->garbage_pool, (char *)garbp);
@@ -470,3 +474,32 @@ void garbage_collect(mapinfo *mapinfo)
 	}
     }
 }
+
+cell_t oldest_reader_cycle(mapinfo *mapinfo)
+{
+    volatile reader_block *r = &mapinfo->map->readers;
+    int i;
+    int l;
+    cell_t cycle = LOST_HORIZON;
+    unsigned oldest_age = 0;
+    unsigned age;
+
+    while(r) {
+	int count = 0;
+        for(i = 0; count < r->count && i < READERS_PER_BLOCK; i++) {
+	    if(r->readers[i].pid) {
+		count++;
+		if(cycle == LOST_HORIZON)
+		    continue;
+		age = mapinfo->map->cycle - r->readers[i].cycle;
+		if(age >= oldest_age) {
+		    oldest_age = age;
+		    cycle = r->readers[i].cycle;
+		}
+	    }
+	}
+	r = r->next;
+    }
+    return cycle;
+}
+

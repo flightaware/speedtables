@@ -121,6 +121,7 @@ volatile reader *pid2reader(volatile mapheader *map, int pid);
 int read_lock(mapinfo *mapinfo);
 void read_unlock(mapinfo *mapinfo);
 void garbage_collect(mapinfo *mapinfo);
+cell_t oldest_reader_cycle(mapinfo *mapinfo);
 
 // shift between the data inside a variable sized block, and the block itself
 #define data2block(data) (&((cell_t *)data)[-1])
