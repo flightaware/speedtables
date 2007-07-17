@@ -7,7 +7,7 @@
 
 #include "shared.h"
 
-#define MAPADDR ((char *) 0x88150000)
+#define MAPADDR ((char *) 0xA0000000)
 #define MAPSIZE (1024*1024*50)
 
 main()
@@ -21,6 +21,8 @@ main()
 	"Mapped 0x%lX .. 0x%lX\n",
 	mapinfo->map,
 	((char *)mapinfo->map) + mapinfo->size);
+    shminitmap(mapinfo);
+
     unmap_file(mapinfo);
 }
 

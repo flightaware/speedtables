@@ -99,6 +99,14 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
 	}
 
 	size = (size_t) sb.st_size;
+
+	if(addr == 0) {
+	    mapheader tmp;
+	    if(read(fd, tmp, sizeof (mapheader)) == sizeof (mapheader))
+		addr = tmp.addr;
+	    lseek(fd, 0L, SEEK_SET);
+	}
+
     }
 
     if(addr) flags |= MAP_FIXED;
@@ -199,6 +207,7 @@ void shminitmap(mapinfo *mapinfo)
 
     //  One "used" block, freesize bytes long
     freesize = mapinfo->size - sizeof *map - 2 * sizeof *block;
+
     setfree(block, freesize, FALSE);
 
     //  One block containing a 0, upper sentinel.
@@ -417,7 +426,7 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     size = *block;
 
     // negative size means it's allocated, positive it's free
-    if(size > 0)
+    if(((int)size) > 0)
 	panic("freeing freed block");
 
     size = -size;
