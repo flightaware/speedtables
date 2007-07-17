@@ -29,6 +29,18 @@ typedef uint32_t cell_t;
 // Sentinel for a reader that isn't holding any garbage
 #define LOST_HORIZON 0
 
+// internal errors
+extern int shared_errno;
+extern char *shared_errmsg[];
+enum shared_error_e {
+	SH_ERROR_0,
+	SH_NEW_FILE,
+	SH_PRIVATE_MEMORY,
+	SH_MAP_FILE,
+	SH_OPEN_FILE
+};
+extern void shared_perror(char *text);
+
 // shared memory that is no longer needed but can't be freed until the
 // last reader that was "live" when it was in use has released it
 typedef struct _garbage {
@@ -98,7 +110,7 @@ typedef struct _mapinfo {
 
 int open_new(char *file, size_t size);
 mapinfo *map_file(char *file, char *addr, size_t default_size);
-int unmap_file(mapheader *map);
+int unmap_file(mapinfo *mapinfo);
 void shminitmap(mapinfo *mapinfo);
 pool *initpool(char *memory, size_t blocksize, int blocks);
 pool *ckallocpool(size_t blocksize, int blocks);

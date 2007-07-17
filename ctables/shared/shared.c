@@ -13,6 +13,30 @@
 
 static mapinfo *mapinfo_list;
 
+int shared_errno;
+char *shared_errmsg[] = {
+	"unknown",				// ERROR_0
+	"Creating new mapped file",		// NEW_FILE
+	"In private memory",			// PRIVATE_MEMORY
+	"When mapping file",			// MAP_FILE
+	"Opening existing mapped file",		// OPEN_FILE
+	NULL
+};
+
+void shared_perror(char *text) {
+	static char bigbuf [1024];
+	if(shared_errno < 0) {
+		fprintf(stderr, "%s: %s\n", text, shared_errmsg[-shared_errno]);
+	} else if(shared_errno > 0) {
+		strcpy(bigbuf, text);
+		strcat(bigbuf, ": ");
+		strcat(bigbuf, shared_errmsg[shared_errno]);
+		perror(bigbuf);
+	} else {
+		perror(text);
+	}
+}
+
 // open_new - open a new large, empty, mappable file. Return open file
 // descriptor or -1. Errno WILL be set on failure.
 int open_new(char *file, size_t size)
@@ -22,13 +46,14 @@ int open_new(char *file, size_t size)
     size_t	 nbytes;
     int		 fd = open(file, O_RDWR|O_CREAT, 0666);
 
-    if(fd == -1) return -1;
+    if(fd == -1) {
+	shared_errno = SH_NEW_FILE;
+	return -1;
+    }
 
     if(nulbufsize > size)
 	nulbufsize = (size + 1023) & ~1023;
     buffer = calloc(nulbufsize/1024, 1024);
-
-    if(!buffer) { close(fd); unlink(file); return -1; }
 
     while(size > 0) {
 	if(nulbufsize > size) nulbufsize = size;
@@ -54,7 +79,7 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
     int      flags = MAP_SHARED|MAP_NOSYNC;
     size_t   size;
     int      fd;
-    mapinfo *mapinfo_buf;
+    mapinfo *p;
 
     fd = open(file, O_RDWR, 0);
 
@@ -68,8 +93,10 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
     } else {
 	struct stat sb;
 
-	if(fstat(fd, &sb) < 0)
+	if(fstat(fd, &sb) < 0) {
+	    shared_errno = SH_OPEN_FILE;
 	    return NULL;
+	}
 
 	size = (size_t) sb.st_size;
     }
@@ -78,34 +105,37 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
     map = mmap(addr, size, PROT_READ|PROT_WRITE, flags, fd, (off_t) 0);
 
     if(map == MAP_FAILED) {
+	shared_errno = SH_MAP_FILE;
 	close(fd);
 	return NULL;
     }
 
-    mapinfo_buf = (mapinfo *)ckalloc(sizeof (mapinfo));
-    mapinfo_buf->map = (mapheader *)map;
-    mapinfo_buf->size = size;
-    mapinfo_buf->fd = fd;
-    mapinfo_buf->next = mapinfo_list;
-    mapinfo_buf->freelist = NULL;
-    mapinfo_buf->pools = NULL;
-    mapinfo_list = mapinfo_buf;
+    p = (mapinfo *)ckalloc(sizeof (*p));
+    p->map = (mapheader *)map;
+    p->size = size;
+    p->fd = fd;
+    p->next = mapinfo_list;
+    p->freelist = NULL;
+    p->pools = NULL;
+    mapinfo_list = p;
 
-    return mapinfo_buf;
+    return p;
 }
 
 // unmap_file - Unmap the open and mapped associated with the memory mapped
 // at address "map", return 0 if there is no memory we know about mapped
 // there. Errno is not meaningful after failure.
-int unmap_file(mapheader *map)
+int unmap_file(mapinfo *info)
 {
     mapinfo *p, *q;
+    char *map;
+    size_t size;
 
     p = mapinfo_list;
     q = NULL;
 
     while(p) {
-	if(p->map == map)
+	if(p == info)
 	    break;
 	q = p;
 	p = p->next;
@@ -115,11 +145,12 @@ int unmap_file(mapheader *map)
 
     if(q) q->next = p->next;
     else mapinfo_list = p->next;
-
-    munmap((char *)p->map, p->size);
+    map = (char *)p->map;
+    size = p->size;
+    munmap((char *)map, size);
     close(p->fd);
-
     ckfree(p);
+
 
     return 1;
 }
