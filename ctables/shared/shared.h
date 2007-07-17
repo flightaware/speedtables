@@ -99,9 +99,16 @@ typedef struct _mapheader {
 
 // Freelist entry
 typedef struct _freeblock {
+    cell_t			  size;
     volatile struct _freeblock   *next;
     volatile struct _freeblock   *prev;
 } freeblock;
+
+// Busy block
+typedef struct {
+    cell_t			  size;
+    char			  data[];
+} busyblock;
 
 typedef struct _mapinfo {
     struct _mapinfo	*next;
@@ -132,7 +139,7 @@ char *_shmalloc(mapinfo *map, size_t size);
 char *shmalloc(mapinfo *map, size_t size);
 void shmfree(mapinfo *map, char *block);
 int shmdepool(pool *pool, char *block);
-void setfree(cell_t *block, size_t size, int is_free);
+void setfree(volatile freeblock *block, size_t size, int is_free);
 int shmdealloc(mapinfo *mapinfo, char *data);
 int write_lock(mapinfo *mapinfo);
 void write_unlock(mapinfo *mapinfo);
@@ -146,11 +153,11 @@ int add_symbol(mapinfo *mapinfo, char *name, char *value);
 char *get_symbol(mapinfo *mapinfo, char *name);
 
 // shift between the data inside a variable sized block, and the block itself
-#define data2block(data) (&((cell_t *)data)[-1])
-#define block2data(block) ((char *)&(block)[1])
+#define data2block(data) ((freeblock *)&((cell_t *)(data))[-1])
+#define block2data(block) (((busyblock *)(block))->data)
 
-#define prevsize(block) ((block)[-1])
-#define nextblock(block) ((cell_t *)(((char *)block) + abs(*(block))))
-#define nextsize(block) (*nextblock(block))
-#define prevblock(block) ((cell_t *)(((char *)block) - abs(prevsize(block))))
+#define prevsize(block) (((cell_t *)block)[-1])
+#define nextblock(block) ((freeblock *)(((char *)block) + abs((block)->size)))
+#define nextsize(block) (nextblock(block)->size)
+#define prevblock(block) ((freeblock *)(((char *)block) - abs(prevsize(block))))
 

@@ -13,6 +13,9 @@
 
 static mapinfo *mapinfo_list;
 
+// #define DEBUG(x) x
+#define DEBUG(x) ;
+
 int shared_errno;
 char *shared_errmsg[] = {
 	"unknown",				// ERROR_0
@@ -201,20 +204,20 @@ void shminitmap(mapinfo *mapinfo)
     // Initialise the freelist by making the whole of the map after the
     // header three blocks:
     block = (cell_t *)&map[1];
-//DEBUG// fprintf(stderr, "block @ 0x%lX <- 0\n", block);
+DEBUG(fprintf(stderr, "block @ 0x%lX <- 0\n", block);)
 
     //  One block just containing a 0, lower sentinel
     *block++ = 0;
-//DEBUG// fprintf(stderr, "block @ 0x%lX <- used\n", block);
+DEBUG(fprintf(stderr, "block @ 0x%lX <- used\n", block);)
 
     //  One "used" block, freesize bytes long
     freesize = mapinfo->size - sizeof *map - 2 * sizeof *block;
 
-    setfree(block, freesize, FALSE);
+    setfree((freeblock *)block, freesize, FALSE);
 
     //  One block containing a 0, upper sentinel.
     *((cell_t *)((char *)block) + freesize) = 0;
-//DEBUG// fprintf(stderr, "block @ 0x%lX <= 0\n", ((char *)block) + freesize);
+DEBUG(fprintf(stderr, "block @ 0x%lX <= 0\n", ((char *)block) + freesize);)
 
     // Finally, initialize the free list by freeing it.
     shmdealloc(mapinfo, (char *)&block[1]);
@@ -276,15 +279,15 @@ void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block)
 {
     volatile freeblock *next = block->next, *prev = block->prev;
 
-//DEBUG// fprintf(stderr, "remove_from_freelist(mapinfo, 0x%lX);\n", block);
-//DEBUG// fprintf(stderr, "  next = 0x%lX, prev = 0x%lX\n", next, prev);
+DEBUG(fprintf(stderr, "remove_from_freelist(mapinfo, 0x%lX);\n", block);)
+DEBUG(fprintf(stderr, "  next = 0x%lX, prev = 0x%lX\n", next, prev);)
     if(next == block) {
 	if(prev != block)
 	    panic("Corrupt free list");
 	mapinfo->freelist = NULL;
 	return;
     }
-//DEBUG// fprintf(stderr, "  next->prev = 0x%lX, prev->next = 0x%lX\n", next->prev, prev->next);
+DEBUG(fprintf(stderr, "  next->prev = 0x%lX, prev->next = 0x%lX\n", next->prev, prev->next);)
     prev->next = block->next;
     next->prev = block->prev;
 }
@@ -292,59 +295,57 @@ void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block)
 void insert_in_freelist(mapinfo *mapinfo, volatile freeblock *block)
 {
     volatile freeblock *next, *prev;
-//DEBUG// fprintf(stderr, "insert_in_freelist(mapinfo, 0x%lX);\n", block);
+DEBUG(fprintf(stderr, "insert_in_freelist(mapinfo, 0x%lX);\n", block);)
 
     if(!mapinfo->freelist) {
-//DEBUG// fprintf(stderr, "   mapinfo->freelist = block->next = block->prev = 0x%lX;\n", block);
+DEBUG(fprintf(stderr, "   mapinfo->freelist = block->next = block->prev = 0x%lX;\n", block);)
 	mapinfo->freelist = block->next = block->prev = block;
 	return;
     }
-//DEBUG// fprintf(stderr, "   next = block->next = 0x%lX\n", mapinfo->freelist->next);
+DEBUG(fprintf(stderr, "   next = block->next = 0x%lX\n", mapinfo->freelist->next);)
     next = block->next = mapinfo->freelist->next;
-//DEBUG// fprintf(stderr, "   prev = block->prev = 0x%lX\n", mapinfo->freelist->prev);
+DEBUG(fprintf(stderr, "   prev = block->prev = 0x%lX\n", mapinfo->freelist->prev);)
     prev = block->prev = mapinfo->freelist->prev;
-//DEBUG// fprintf(stderr, "   next->prev = prev->next = 0x%lX\n", block);
+DEBUG(fprintf(stderr, "   next->prev = prev->next = 0x%lX\n", block);)
     next->prev = prev->next = block;
 }
 
-char *_shmalloc(mapinfo *mapinfo, size_t datasize)
+char *_shmalloc(mapinfo *mapinfo, size_t nbytes)
 {
-    volatile freeblock *free = mapinfo->freelist;
-    size_t 		blocksize = datasize + 2 * CELLSIZE;
-//DEBUG// fprintf(stderr, "_shmalloc(mapinfo, %ld);\n", datasize);
+    volatile freeblock *block = mapinfo->freelist;
+    size_t 		needed = nbytes + 2 * CELLSIZE;
+DEBUG(fprintf(stderr, "_shmalloc(mapinfo, %ld);\n", nbytes);)
 
-    while(free) {
-	cell_t *block = data2block(free);
-	int space = *block;
-//DEBUG// fprintf(stderr, "  free = 0x%lX, block = 0x%lX, space = %ld\n", free, block, space);
+    while(block) {
+	int space = block->size;
+DEBUG(fprintf(stderr, "  block = 0x%lX, space = %ld\n", block, space);)
 
 	if(space < 0)
 	    panic("trying to allocate non-free block");
 
-	if(space > blocksize) {
-	    int remnant = space - blocksize;
+	if(space > needed) {
+	    int remnant = space - needed;
 
-//DEBUG// fprintf(stderr, "  remnant = %ld\n", remnant);
+DEBUG(fprintf(stderr, "  remnant = %ld\n", remnant);)
 
-	    remove_from_freelist(mapinfo, free);
+	    remove_from_freelist(mapinfo, block);
 
 	    // See if the remaining chunk is big enough to be worth using
 	    if(remnant < sizeof (freeblock) + 2 * CELLSIZE) {
-		blocksize = space;
+		needed = space;
 	    } else {
-		cell_t *new_block = (cell_t *)(((char *)block) + blocksize);
-		freeblock *new_free = (freeblock *)block2data(new_block);
+		freeblock *new_block = (freeblock *)(((char *)block) + needed);
 
 		// add it into the free list
 		setfree(new_block, remnant, TRUE);
-		insert_in_freelist(mapinfo, new_free);
+		insert_in_freelist(mapinfo, new_block);
 	    }
 
-	    setfree(block, blocksize, FALSE);
-	    return (char *)&block[1];
+	    setfree(block, needed, FALSE);
+	    return block2data(block);
 	}
 
-	free = free->next;
+	block = block->next;
     }
 
     return NULL;
@@ -404,15 +405,16 @@ int shmdepool(pool *pool, char *block)
 
 // Marks a block as free or busy, by storing the size of the block at both
 // ends... positive if free, negative if not.
-void setfree(cell_t *block, size_t size, int is_free)
+void setfree(volatile freeblock *block, size_t size, int is_free)
 {
-//DEBUG// fprintf(stderr, "setfree(0x%lX, %ld, %d);\n", block, size, is_free);
-    *block = is_free ? size : -size;
-//DEBUG// fprintf(stderr, "  cell @ 0x%lX <- %ld\n", block, is_free ? size : -size);
-    block = (cell_t *) &((char *)block)[size]; // point to next block;
-    block--; // step back one word;
-//DEBUG// fprintf(stderr, "  cell @ 0x%lX <- %ld\n", block, is_free ? size : -size);
-    *block = is_free ? size : -size;
+    volatile cell_t *cell = (cell_t *)block;
+DEBUG(fprintf(stderr, "setfree(0x%lX, %ld, %d);\n", cell, size, is_free);)
+    *cell = is_free ? size : -size;
+DEBUG(fprintf(stderr, "  cell @ 0x%lX <- %ld\n", cell, is_free ? size : -size);)
+    cell = (cell_t *) &((char *)cell)[size]; // point to next block;
+    cell--; // step back one word;
+DEBUG(fprintf(stderr, "  cell @ 0x%lX <- %ld\n", cell, is_free ? size : -size);)
+    *cell = is_free ? size : -size;
 }
 
 // attempt to free a block
@@ -422,7 +424,8 @@ void setfree(cell_t *block, size_t size, int is_free)
 
 // free block structure:
 //    int32 size;
-//    freeblock;
+//    pointer next
+//    pointer free
 //    char unused[size - 8 - sizeof(freeblock);
 //    int32 size;
 
@@ -434,9 +437,8 @@ void setfree(cell_t *block, size_t size, int is_free)
 int shmdealloc(mapinfo *mapinfo, char *memory)
 {
     size_t size;
-    freeblock *free;
-    cell_t *block;
-//DEBUG// fprintf(stderr, "shmdealloc(mapinfo, 0x%lX);\n", memory);
+    freeblock *block;
+DEBUG(fprintf(stderr, "shmdealloc(mapinfo, 0x%lX);\n", memory);)
 
     // Try and free it back into a pool.
     if(shmdepool(mapinfo->pools, memory)) return 1;
@@ -444,7 +446,7 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     // step back to block header
     block = data2block(memory);
 
-    size = *block;
+    size = block->size;
 
     // negative size means it's allocated, positive it's free
     if(((int)size) > 0)
@@ -454,13 +456,12 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     setfree(block, size, TRUE);
 
     // contents of free block is a freelist entry, create it
-    free = (freeblock *)&block[1];
-    free->next = free->prev = NULL;
+    block->next = block->prev = NULL;
 
     // merge previous freed blocks
     while(prevsize(block) > 0) {
-	cell_t *prev = prevblock(block);
-//DEBUG// fprintf(stderr, "Merging 0x%lX into 0x%lX from below\n", prev, block);
+	freeblock *prev = prevblock(block);
+DEBUG(fprintf(stderr, "Merging 0x%lX into 0x%lX from below\n", prev, block);)
 
 	// increase the size of the previous block to include this block
 	size += prevsize(block);
@@ -468,26 +469,25 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
 
 	// *become* the previous block
 	block = prev;
-	free = (freeblock *)block2data(block);
 
 	// remove it from the free list
-	remove_from_freelist(mapinfo, free);
+	remove_from_freelist(mapinfo, block);
     }
 
     // merge following free blocks
     while(((int)nextsize(block)) > 0) {
-	cell_t *next = nextblock(block);
+	freeblock *next = nextblock(block);
 
-//DEBUG// fprintf(stderr, "Merging 0x%lX with next 0x%lX (%ld bytes)\n", block, next, nextsize(block));
+DEBUG(fprintf(stderr, "Merging 0x%lX with next 0x%lX (%ld bytes)\n", block, next, nextsize(block));)
 	// remove next from the free list
-	remove_from_freelist(mapinfo, (freeblock *)block2data(next));
+	remove_from_freelist(mapinfo, next);
 
 	// increase the size of this block to include it
 	size += nextsize(block);
 	setfree(block, size, TRUE);
     }
 
-    insert_in_freelist(mapinfo, free);
+    insert_in_freelist(mapinfo, block);
     return 1;
 }
 
