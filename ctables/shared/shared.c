@@ -155,6 +155,23 @@ int unmap_file(mapinfo *info)
     return 1;
 }
 
+// unmap_all - Unmap all mapped files.
+void unmap_all(void)
+{
+    while(mapinfo_list) {
+	mapinfo *p    = mapinfo_list;
+	char    *map  = (char *)p->map;
+	size_t   size = p->size;
+	int	 fd   = p->fd;
+
+	mapinfo_list = mapinfo_list->next;
+
+	ckfree(p);
+	munmap((char *)map, size);
+	close(fd);
+    }
+}
+
 void shminitmap(mapinfo *mapinfo)
 {
     volatile mapheader	*map = mapinfo->map;
@@ -165,7 +182,6 @@ void shminitmap(mapinfo *mapinfo)
     map->headersize = sizeof *map;
     map->mapsize = mapinfo->size;
     map->addr = (char *)map;
-    map->write_lock = 0;
     map->cycle = LOST_HORIZON;
     map->readers.next = 0;
     map->readers.count = 0;
@@ -555,5 +571,45 @@ cell_t oldest_reader_cycle(mapinfo *mapinfo)
 	r = r->next;
     }
     return cycle;
+}
+
+// Add a symbol to the internal namelist. This will allow the master to
+// pass things like the address of a ctable to the reader without having
+// more addresses than necessary involved.
+//
+// Constraint - these entries are never deallocated (though they may be
+// removed from the list) and the list is never updated with an incomplete
+// entry, so no locking is necessary.
+
+int add_symbol(mapinfo *mapinfo, char *name, char *value)
+{
+    int i;
+    int namelen = strlen(name);
+    volatile mapheader *map = mapinfo->map;
+    volatile symbol *s =
+		(symbol *)shmalloc(mapinfo, sizeof (symbol) + namelen + 1);
+
+    if(!s) return 0;
+
+    for(i = 0; i <= namelen; i++)
+	s->name[i] = name[i];
+
+    s->addr = value;
+    s->next = map->namelist;
+
+    map->namelist = s;
+}
+
+// Get a symbol back.
+char *get_symbol(mapinfo *mapinfo, char *name)
+{
+    volatile mapheader *map = mapinfo->map;
+    volatile symbol *s = map->namelist;
+    while(s) {
+	if(strcmp(name, (char *)s->name) == 0)
+	    return (char *)s->addr;
+	s = s->next;
+    }
+    return NULL;
 }
 

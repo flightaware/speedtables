@@ -63,6 +63,13 @@ typedef struct _pool {
     char		*freelist;      // first freed element
 } pool;
 
+// Symbol table, to pass addresses of internal structures to readers
+typedef struct _symbol {
+    volatile struct _symbol *next;
+    volatile char	    *addr;
+    char		     name[];
+} symbol;
+
 // Reader control block, containing READERS_PER_BLOCK reader records
 // When a reader subscribes, it's handed the offset of its record
 typedef struct _reader {
@@ -78,12 +85,12 @@ typedef struct _rblock {
 
 // mapinfo->map points to this structure, at the front of the mapped file.
 typedef struct _mapheader {
-    cell_t         magic;		// Magic number, "initialised"
-    cell_t         headersize;	// Size of this header
-    cell_t         mapsize;		// Size of this map
+    cell_t           magic;		// Magic number, "initialised"
+    cell_t           headersize;	// Size of this header
+    cell_t           mapsize;		// Size of this map
     char	    *addr;		// Address mapped to
-    cell_t         write_lock;
-    cell_t         cycle;		// incremented every write
+    volatile symbol *namelist;		// Internal symbol table
+    cell_t           cycle;		// incremented every write
     reader_block     readers;		// advisory locks for readers
 } mapheader;
 
@@ -131,6 +138,9 @@ int read_lock(mapinfo *mapinfo);
 void read_unlock(mapinfo *mapinfo);
 void garbage_collect(mapinfo *mapinfo);
 cell_t oldest_reader_cycle(mapinfo *mapinfo);
+
+int add_symbol(mapinfo *mapinfo, char *name, char *value);
+char *get_symbol(mapinfo *mapinfo, char *name);
 
 // shift between the data inside a variable sized block, and the block itself
 #define data2block(data) (&((cell_t *)data)[-1])
