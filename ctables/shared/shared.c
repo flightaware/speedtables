@@ -87,7 +87,8 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
     mapinfo_buf->size = size;
     mapinfo_buf->fd = fd;
     mapinfo_buf->next = mapinfo_list;
-    mapinfo_buf->free = NULL;
+    mapinfo_buf->freelist = NULL;
+    mapinfo_buf->pools = NULL;
     mapinfo_list = mapinfo_buf;
 
     return mapinfo_buf;
@@ -126,7 +127,6 @@ int unmap_file(mapheader *map)
 void shminitmap(mapinfo *mapinfo)
 {
     volatile mapheader	*map = mapinfo->map;
-    freelist  		*free;
     cell_t		*block;
     cell_t 		 freesize;
 
@@ -140,10 +140,8 @@ void shminitmap(mapinfo *mapinfo)
     map->readers.count = 0;
 
     mapinfo->garbage = NULL;
-
-    free = mapinfo->free = (freelist *)ckalloc(sizeof *free);
-
-    free->pools = NULL;
+    mapinfo->freelist = NULL;
+    mapinfo->pools = NULL;
 
     // Initialise the freelist by making the whole of the map after the
     // header three blocks:
@@ -184,8 +182,8 @@ int shmaddpool(mapinfo *mapinfo, size_t blocksize, int blocks)
     if(!memory) return 0;
 
     pool = initpool(memory, blocksize, blocks);
-    pool->next = mapinfo->free->pools;
-    mapinfo->free->pools = pool;
+    pool->next = mapinfo->pools;
+    mapinfo->pools = pool;
     return 1;
 }
 
@@ -215,9 +213,34 @@ char *palloc(pool *pool, size_t wanted)
     return block;
 }
 
+void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block)
+{
+    volatile freeblock *next = block->next, *prev = block->prev;
+    if(next == block) {
+	if(prev != block)
+	    panic("Corrupt free list");
+	mapinfo->freelist = NULL;
+	return;
+    }
+    prev->next = block->next;
+    next->prev = block->prev;
+}
+
+void insert_in_freelist(mapinfo *mapinfo, volatile freeblock *block)
+{
+    volatile freeblock *next, *prev;
+    if(!mapinfo->freelist) {
+	mapinfo->freelist = block->next = block->prev = block;
+	return;
+    }
+    next = block->next = mapinfo->freelist->next;
+    prev = block->prev = mapinfo->freelist->prev;
+    next->prev = prev->next = block;
+}
+
 char *_shmalloc(mapinfo *mapinfo, size_t size)
 {
-    volatile freeblock *free = mapinfo->free->list;
+    volatile freeblock *free = mapinfo->freelist;
     size_t 		fullsize = size + 2 * CELLSIZE;
 
     while(free) {
@@ -258,7 +281,7 @@ char *shmalloc(mapinfo *mapinfo, size_t size)
 {
     char *block;
 
-    if(!(block = palloc(mapinfo->free->pools, size)))
+    if(!(block = palloc(mapinfo->pools, size)))
 	block = _shmalloc(mapinfo, size);
     return block;
 }
@@ -339,7 +362,7 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     cell_t *block;
 
     // Try and free it back into a pool.
-    if(shmdepool(mapinfo->free->pools, memory)) return 1;
+    if(shmdepool(mapinfo->pools, memory)) return 1;
 
     // step back to block header
     block = data2block(memory);

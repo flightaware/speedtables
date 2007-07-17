@@ -81,19 +81,14 @@ typedef struct _freeblock {
     volatile struct _freeblock   *prev;
 } freeblock;
 
-// Freelist control block
-typedef struct _freelist {
-    pool		*pools;
-    volatile freeblock	*list;
-} freelist;
-
 typedef struct _mapinfo {
     struct _mapinfo	*next;
     volatile mapheader	*map;
     size_t		 size;
     int			 fd;
 // server-only fields:
-    freelist		*free;
+    pool		*pools;
+    volatile freeblock	*freelist;
     garbage		*garbage;
     pool		*garbage_pool;
     cell_t		 horizon;
@@ -109,6 +104,8 @@ pool *initpool(char *memory, size_t blocksize, int blocks);
 pool *ckallocpool(size_t blocksize, int blocks);
 int shmaddpool(mapinfo *map, size_t blocksize, int blocks);
 char *palloc(pool *pool, size_t size);
+void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block);
+void insert_in_freelist(mapinfo *mapinfo, volatile freeblock *block);
 char *_shmalloc(mapinfo *map, size_t size);
 char *shmalloc(mapinfo *map, size_t size);
 void shmfree(mapinfo *map, char *block);
