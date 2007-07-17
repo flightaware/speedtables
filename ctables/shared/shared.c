@@ -201,9 +201,11 @@ void shminitmap(mapinfo *mapinfo)
     // Initialise the freelist by making the whole of the map after the
     // header three blocks:
     block = (cell_t *)&map[1];
+//DEBUG// fprintf(stderr, "block @ 0x%lX <- 0\n", block);
 
     //  One block just containing a 0, lower sentinel
     *block++ = 0;
+//DEBUG// fprintf(stderr, "block @ 0x%lX <- used\n", block);
 
     //  One "used" block, freesize bytes long
     freesize = mapinfo->size - sizeof *map - 2 * sizeof *block;
@@ -212,6 +214,7 @@ void shminitmap(mapinfo *mapinfo)
 
     //  One block containing a 0, upper sentinel.
     *((cell_t *)((char *)block) + freesize) = 0;
+//DEBUG// fprintf(stderr, "block @ 0x%lX <= 0\n", ((char *)block) + freesize);
 
     // Finally, initialize the free list by freeing it.
     shmdealloc(mapinfo, (char *)&block[1]);
@@ -252,11 +255,11 @@ char *palloc(pool *pool, size_t wanted)
 {
     char *block;
 
-    while(pool->avail <= 0 || pool->blocksize != wanted) {
+    while(pool && (pool->avail <= 0 || pool->blocksize != wanted))
 	pool = pool->next;
-	if(pool == NULL)
-	    return NULL;
-    }
+
+    if(pool == NULL)
+	return NULL;
 
     if(pool->freelist) {
 	block = pool->freelist;
@@ -272,12 +275,16 @@ char *palloc(pool *pool, size_t wanted)
 void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block)
 {
     volatile freeblock *next = block->next, *prev = block->prev;
+
+//DEBUG// fprintf(stderr, "remove_from_freelist(mapinfo, 0x%lX);\n", block);
+//DEBUG// fprintf(stderr, "  next = 0x%lX, prev = 0x%lX\n", next, prev);
     if(next == block) {
 	if(prev != block)
 	    panic("Corrupt free list");
 	mapinfo->freelist = NULL;
 	return;
     }
+//DEBUG// fprintf(stderr, "  next->prev = 0x%lX, prev->next = 0x%lX\n", next->prev, prev->next);
     prev->next = block->next;
     next->prev = block->prev;
 }
@@ -285,45 +292,55 @@ void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block)
 void insert_in_freelist(mapinfo *mapinfo, volatile freeblock *block)
 {
     volatile freeblock *next, *prev;
+//DEBUG// fprintf(stderr, "insert_in_freelist(mapinfo, 0x%lX);\n", block);
+
     if(!mapinfo->freelist) {
+//DEBUG// fprintf(stderr, "   mapinfo->freelist = block->next = block->prev = 0x%lX;\n", block);
 	mapinfo->freelist = block->next = block->prev = block;
 	return;
     }
+//DEBUG// fprintf(stderr, "   next = block->next = 0x%lX\n", mapinfo->freelist->next);
     next = block->next = mapinfo->freelist->next;
+//DEBUG// fprintf(stderr, "   prev = block->prev = 0x%lX\n", mapinfo->freelist->prev);
     prev = block->prev = mapinfo->freelist->prev;
+//DEBUG// fprintf(stderr, "   next->prev = prev->next = 0x%lX\n", block);
     next->prev = prev->next = block;
 }
 
-char *_shmalloc(mapinfo *mapinfo, size_t size)
+char *_shmalloc(mapinfo *mapinfo, size_t datasize)
 {
     volatile freeblock *free = mapinfo->freelist;
-    size_t 		fullsize = size + 2 * CELLSIZE;
+    size_t 		blocksize = datasize + 2 * CELLSIZE;
+//DEBUG// fprintf(stderr, "_shmalloc(mapinfo, %ld);\n", datasize);
 
     while(free) {
 	cell_t *block = data2block(free);
-	int blocksize = *block;
+	int space = *block;
+//DEBUG// fprintf(stderr, "  free = 0x%lX, block = 0x%lX, space = %ld\n", free, block, space);
 
-	if(blocksize < 0)
-	    panic("corrupt free list");
+	if(space < 0)
+	    panic("trying to allocate non-free block");
 
-	if(blocksize > fullsize) {
-	    int remnant = fullsize - blocksize;
+	if(space > blocksize) {
+	    int remnant = space - blocksize;
+
+//DEBUG// fprintf(stderr, "  remnant = %ld\n", remnant);
 
 	    remove_from_freelist(mapinfo, free);
 
 	    // See if the remaining chunk is big enough to be worth using
 	    if(remnant < sizeof (freeblock) + 2 * CELLSIZE) {
-		fullsize = blocksize;
+		blocksize = space;
 	    } else {
-		cell_t *next = nextblock(block);
-		freeblock *new = (freeblock *)block2data(next);
+		cell_t *new_block = (cell_t *)(((char *)block) + blocksize);
+		freeblock *new_free = (freeblock *)block2data(new_block);
 
 		// add it into the free list
-		setfree(next, remnant, TRUE);
-		insert_in_freelist(mapinfo, new);
+		setfree(new_block, remnant, TRUE);
+		insert_in_freelist(mapinfo, new_free);
 	    }
 
-	    setfree(block, fullsize, FALSE);
+	    setfree(block, blocksize, FALSE);
 	    return (char *)&block[1];
 	}
 
@@ -389,9 +406,12 @@ int shmdepool(pool *pool, char *block)
 // ends... positive if free, negative if not.
 void setfree(cell_t *block, size_t size, int is_free)
 {
+//DEBUG// fprintf(stderr, "setfree(0x%lX, %ld, %d);\n", block, size, is_free);
     *block = is_free ? size : -size;
+//DEBUG// fprintf(stderr, "  cell @ 0x%lX <- %ld\n", block, is_free ? size : -size);
     block = (cell_t *) &((char *)block)[size]; // point to next block;
     block--; // step back one word;
+//DEBUG// fprintf(stderr, "  cell @ 0x%lX <- %ld\n", block, is_free ? size : -size);
     *block = is_free ? size : -size;
 }
 
@@ -416,6 +436,7 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     size_t size;
     freeblock *free;
     cell_t *block;
+//DEBUG// fprintf(stderr, "shmdealloc(mapinfo, 0x%lX);\n", memory);
 
     // Try and free it back into a pool.
     if(shmdepool(mapinfo->pools, memory)) return 1;
@@ -439,6 +460,7 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     // merge previous freed blocks
     while(prevsize(block) > 0) {
 	cell_t *prev = prevblock(block);
+//DEBUG// fprintf(stderr, "Merging 0x%lX into 0x%lX from below\n", prev, block);
 
 	// increase the size of the previous block to include this block
 	size += prevsize(block);
@@ -453,8 +475,10 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
     }
 
     // merge following free blocks
-    while(nextsize(block) > 0) {
+    while(((int)nextsize(block)) > 0) {
 	cell_t *next = nextblock(block);
+
+//DEBUG// fprintf(stderr, "Merging 0x%lX with next 0x%lX (%ld bytes)\n", block, next, nextsize(block));
 	// remove next from the free list
 	remove_from_freelist(mapinfo, (freeblock *)block2data(next));
 
@@ -477,6 +501,11 @@ int write_lock(mapinfo *mapinfo)
 
 void write_unlock(mapinfo *mapinfo)
 {
+#ifdef LAZY_GC
+    static garbage_strike = 0;
+    if(++garbage_strike < LAZY_GC) return;
+    garbage_strike = 0;
+#endif
     cell_t new_horizon = oldest_reader_cycle(mapinfo);
 
     if(new_horizon - mapinfo->horizon > 0) {

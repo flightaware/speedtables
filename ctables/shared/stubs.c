@@ -24,6 +24,6 @@ ckfree(char *p)
     free(p);
 }
 panic(char *s) {
-    fprintf(stderr, "PANIC: %s\n");
+    fprintf(stderr, "PANIC: %s\n", s);
     abort();
 }

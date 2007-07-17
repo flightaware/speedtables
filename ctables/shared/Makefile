@@ -3,6 +3,10 @@ T=testmaster
 X=$C $T.c
 O=${C:.c=.o}
 
+CFLAGS=-g
+
 $T: $T.o $O
 	${CC} ${CFLAGS} -o $T $T.o $O
 
+clean:
+	rm $O $T.o

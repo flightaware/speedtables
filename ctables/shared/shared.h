@@ -26,6 +26,9 @@ typedef uint32_t cell_t;
 // (measured in lock cycles)
 #define TWILIGHT_ZONE 1024
 
+// How often to check for GC (1 in every LAZY_GC write cycles
+#define LAZY_GC 10
+
 // Sentinel for a reader that isn't holding any garbage
 #define LOST_HORIZON 0
 
