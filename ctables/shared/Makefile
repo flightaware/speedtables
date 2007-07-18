@@ -16,7 +16,7 @@ $T: $T.o $O
 	${CC} ${CFLAGS} -o $T $T.o $O
 
 $S: $C
-	${CC} ${CFLAGS} ${SFLAGS} -o $S $C ${STUB}
+	${CC} ${CFLAGS} ${SFLAGS} -DTCL_EXTENSION -o $S $C ${STUB}
 
 clean:
 	rm -f $O $T.o $S test.map
