@@ -8,7 +8,7 @@
 
 package require Pgtcl
 
-namespace eval ::sttp {
+namespace eval ::stapi {
   variable pg_conn
   variable dio_initted 0
 
@@ -148,4 +148,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_postgres 1.0
+package provide st_postgres 1.0

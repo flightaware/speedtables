@@ -6,10 +6,10 @@
 # $Id$
 #
 
-package require sttp
-package require sttp_optimizer
+package require stapi
+package require st_optimizer
 
-namespace eval ::sttpx {
+namespace eval ::stapi::extend {
   variable stapi_cmds
   array set stapi_cmds {
     indexed indexed
@@ -73,10 +73,10 @@ namespace eval ::sttpx {
       set args [array get opts]
     }
 
-    # debug "[list ::sttp::connect $handle] $args"
+    # debug "[list ::stapi::connect $handle] $args"
     # If URI format, connect, otherwise assume it's already an open ctable
     if [string match "*://*" $handle] {
-      set ctable($handle) [eval [list ::sttp::connect $handle] $args]
+      set ctable($handle) [eval [list ::stapi::connect $handle] $args]
     } else {
       set ctable($handle) [uplevel 1 [list namespace which $handle]]
     }
@@ -84,14 +84,14 @@ namespace eval ::sttpx {
     set separator($handle) $keysep
 
     incr seq
-    set stable($handle) ::sttpx::_table$seq
+    set stable($handle) ::stapi::extend::_table$seq
     proc $stable($handle) {cmd args} "
 	uplevel 1 \[concat \[stapi \$cmd $handle] \$args]
     "
     return $stable($handle)
   }
 
-  # Check if the handle supports minimal sttp extensions:
+  # Check if the handle supports minimal stapi extensions:
   # * If it's wrapped, yes, otherwise...
   #   * Handles "method" method.
   #   * Handles "makekey" command.
@@ -99,7 +99,7 @@ namespace eval ::sttpx {
   #   * Handles "key" or "keys" commands.
   #   * If keys required, [$handle key/keys] matches
   proc extended {handle {keys {}}} {
-    if {[string match ::sttpx::_table* $handle]} { return 1 }
+    if {[string match ::stapi::extend::_table* $handle]} { return 1 }
 
     if {[catch {set mlist [$handle methods]}]} { return 0 }
 
@@ -153,7 +153,7 @@ namespace eval ::sttpx {
 
     set list {}
     if [info exists stapi_cmds($cmd)] {
-      lappend list ::sttpx::$stapi_cmds($cmd) $handle
+      lappend list ::stapi::extend::$stapi_cmds($cmd) $handle
     } else {
       lappend list $ctable($handle) $cmd
     }
@@ -238,7 +238,7 @@ namespace eval ::sttpx {
   }
 
   proc debug {args} {
-    eval ::sttp::debug $args
+    eval ::stapi::debug $args
   }
 
   proc search {handle args} {
@@ -296,7 +296,7 @@ namespace eval ::sttpx {
 
     set search search
     if {"[set i [indexed $handle]]" != ""} {
-      if [::sttp::optimize_array options $i [types $handle]] {
+      if [::stapi::optimize_array options $i [types $handle]] {
 	set search search+
       }
     }
@@ -321,9 +321,9 @@ namespace eval ::sttpx {
   }
 }
 
-namespace eval ::sttp {
-  namespace import ::sttpx::*
+namespace eval ::stapi {
+  namespace import ::stapi::extend::*
 }
 
-package provide sttpx 1.0
+package provide stapi_extend 1.0
 

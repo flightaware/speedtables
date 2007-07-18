@@ -1,6 +1,6 @@
 # $Id$
 
-namespace eval ::sttp {
+namespace eval ::stapi {
   # Ops that can be usefully indexed
   variable index_ops {"<" "=" ">" "<=" ">=" "in" "range"}
   # Ops that strongly limit a search, in ascending quality
@@ -246,4 +246,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_optimizer 1.0
+package provide st_optimizer 1.0

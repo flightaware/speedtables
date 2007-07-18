@@ -1,6 +1,6 @@
-==== sttp_server ====
+==== st_server ====
 
-::sttp::init ?options?
+::stapi::init ?options?
 
    Options:
      -dir work_directory
@@ -12,7 +12,7 @@
      -cache minutes
         How long to treat a cached tsv file as "good"
 
-::sttp::init_ctable name table_list where_clause ?columns|column...?
+::stapi::init_ctable name table_list where_clause ?columns|column...?
 
    Initialize a cache ctable based on one or more SQL tables. If necessary,
    this builds a ctable based on the columns, and generates new SQL to read
@@ -43,7 +43,7 @@
    If the expression is missing or blank, it's assumed to be the same as
       the field name.
 
-::sttp::from_table table_name keys ?-option value?
+::stapi::from_table table_name keys ?-option value?
 
    Generate a column list for init_ctable by querying the SQL database
    for the table definition.
@@ -70,7 +70,7 @@
      -prefix text
         If specified, prefix column names with "$prefix"
 
-::sttp::open_cached name ?pattern? ?-opt val?...
+::stapi::open_cached name ?pattern? ?-opt val?...
 
    Open an initialised ctable, maintaining a local cache of the underlying
    SQL table in a .tsv file in the workdir.
@@ -91,7 +91,7 @@
      -index field_name
         Name of a field to create an index on. Multiple -index are allowed.
 
-::sttp::refresh_ctable ctable ?last_read? ?err?
+::stapi::refresh_ctable ctable ?last_read? ?err?
  
    Update new rows from SQL for ctable 'ctable'.
 
@@ -106,27 +106,27 @@
    column in the table that can be used to determine the last change time,
    then the whole table will be re-read.
 
-::sttp::save_ctable ctable ?tsv_file?
+::stapi::save_ctable ctable ?tsv_file?
 
   Save a ctable. If the tsv_file is provided, that's all it does. If not,
   it locates and locks the correct tsv file.
 
-::sttp::remove_tsv_file table_name
-::sttp::remove_tcl_file table_name
+::stapi::remove_tsv_file table_name
+::stapi::remove_tcl_file table_name
 
   Remove the cached tcl or tsv files, which will force the cache to be
   reread (if the tsv file is missing) or reconstructed using SQL queries (if
   the tcl file is missing).
 
-::sttp::open_raw_ctable name
+::stapi::open_raw_ctable name
 
   Open an initialized ctable (as in open_cached) but don't fetch anything
   from SQL. This is used internally, and is also useful for setting up
   temporary tables, copies, etcetera...
 
-==== sttp_client ====
+==== st_client ====
 
-::sttp::optimize_array array_name {indexed_col ...} {col type...}
+::stapi::optimize_array array_name {indexed_col ...} {col type...}
 
   query optimizer
   input  - an array containing the arguments to a $ctable search
@@ -135,7 +135,7 @@
   output - a possibly optimised search in the array
          - true if optimization was possible and you can use search+
 
-::sttp::connect uri ?-name value...?
+::stapi::connect uri ?-name value...?
 
   Connect to a ctable or other database with a ctable interface via a URI.
 
@@ -156,19 +156,19 @@
 	Define the separator used to build the key. [extension]
 
     If you provide these options, additional ctable methods are made
-    available. These are documented below under "sttpx".
+    available. These are documented below under "stapi::extended".
 
     The option "-key" or "-keys" with a single key produces a more
     compatible interface.
 
   Methods intially defined, and the packages they're defined in:
 
-    package require sttp_client
+    package require st_client
     ctable://[host:port]/[dir/]table[/stuff][?stuff]
 
 	 Use a ctable server via remote_ctable.
 
-    package require sttp_client_pgtcl
+    package require st_client_pgtcl
     sql://connection/table[/col[:type]/col...][?param&param...]
 
 	Create a ctable interface to a PostgreSQL table
@@ -188,18 +188,18 @@
 		_keys=column:column:...
 			Define the key in terms of a list of columns.
 
-	This uses the methods defined in sttp_server.
+	This uses the methods defined in st_server.
 
 	The "search" method implements the extensions described in in the
 	last part of this file.
 
-    package require sttp_client
+    package require st_client
     ctable (no method)
 
 	If the URI is not URI format, it assumes it's an object that provides
 	the same semantics as a ctable... typically either a ctable, an
 	already-opened ctable_client connection, or the result of a previous
-	call to ::sttp::connect. If necessary it creates a wrapper around the
+	call to ::stapi::connect. If necessary it creates a wrapper around the
 	ctable to implement the extra methods that STTP provides.
 
 	Required methods to avoid the creation of a wrapper:
@@ -208,33 +208,25 @@
 	    makekey
 	    perform
 
-  With CableAware:
+::stapi::register method transport_handler
 
-    package require sc_ca_cttp_client
-    cache://[host:host:host...]/table
+  register a transport method for ::stapi::connect
 
-	Look up ctable in CableAware's ctable registry, preferring hosts
-	listed.
-
-::sttp::register method transport_handler
-
-  register a transport method for ::sttp::connect
-
-== STTPX - the STTP API extensions to CTABLES
+== stapi::extend - the STTP API extensions to CTABLES
 
 These are required for display, but may not be required by other users of the
 package, so the wrapper object is only created when needed.
 
-::sttpx::connect object key-list ?-keysep string?
+::stapi::extend::connect object key-list ?-keysep string?
 
-  This is also called by ::sttp::connect if the "-key" or "-keys" option
+  This is also called by ::stapi::connect if the "-key" or "-keys" option
   is provided.
 
-  If the _object_ was created by ::sttpx::connect, then it is returned
+  If the _object_ was created by ::stapi::extend::connect, then it is returned
   immediately. This can not be used to change the keysep or keys of an
   existing ctable.
 
-  Otherwise, this behaves identically to calling ::sttp::connect with the
+  Otherwise, this behaves identically to calling ::stapi::connect with the
   -key/-keys argument, and creates a wrapper object that understands the
   additional methods:
 
@@ -252,7 +244,7 @@ package, so the wrapper object is only created when needed.
         $ctable set [$ctable makekey $list] $list
 
     $ctable perform array ?-name value?...
-    ::sttpx::perform array ?-name value?...
+    ::stapi::extend::perform array ?-name value?...
 
       Perform a canned search, comparable to
 

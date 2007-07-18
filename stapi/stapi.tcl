@@ -1,6 +1,6 @@
 # $Id$
 
-package require sttp_client
+package require st_client
 
-package provide sttp 1.0
+package provide stapi 1.0
 

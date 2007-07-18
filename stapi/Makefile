@@ -2,14 +2,13 @@
 V=""
 V=-verbose
 
-CLIENT=client/client.tcl client/pgsql.tcl client/optimizer.tcl client/sttpx.tcl
+CLIENT=client/client.tcl client/pgsql.tcl client/optimizer.tcl client/extend.tcl
 SERVER=server/server.tcl server/lock.tcl
 DISPLAY=display/display.tcl display/test.tcl
-COMMON=debug.tcl pgsql.tcl sttp.tcl copy.tcl
-CA=sc-ca/client_glue.tcl sc-ca/server_glue.tcl
+COMMON=debug.tcl pgsql.tcl stapi.tcl copy.tcl
 TEST=server/test.tcl client/test.tcl
 
-SRC=$(CLIENT) $(SERVER) $(DISPLAY) $(COMMON) $(CA)
+SRC=$(CLIENT) $(SERVER) $(DISPLAY) $(COMMON)
 
 all: pkgIndex.tcl
 

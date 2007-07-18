@@ -1,8 +1,8 @@
-package require sttp_display
-package require sttp_debug
-package require sttp_client_postgres
+package require st_display
+package require st_debug
+package require st_client_postgres
 
-namespace eval ::sttp_display {
+namespace eval ::stapi::display {
   proc dumper {args} {
     set text [join $args "\n"]
     regsub -all {\<} $text {\&lt;} text
@@ -10,10 +10,10 @@ namespace eval ::sttp_display {
     puts stdout "<PRE>$text</PRE>"
     # flush stdout
   }
-  ::sttp::debug_handler dumper
+  ::stapi::debug_handler dumper
 
   proc display_test {table keys {cols {}}} {
-    set ctable [::sttp::connect_sql $table $keys -cols $cols]
+    set ctable [::stapi::connect_sql $table $keys -cols $cols]
     STTPDisplay test -ctable $ctable -mode List
   
     foreach field [$ctable fields] {
@@ -23,10 +23,10 @@ namespace eval ::sttp_display {
   }
 }
 
-proc sttp_display_test {} {
-  if [catch {::sttp_display::display_test sc_ca_ctable_servers {table_name host}} err] {
-    ::sttp_display::dumper $::errorInfo
+proc stapi_display_test {} {
+  if [catch {::stapi::display::display_test sc_ca_ctable_servers {table_name host}} err] {
+    ::stapi::display::dumper $::errorInfo
   }
 }
 
-package provide sttp_display_test 1.0
+package provide st_display_test 1.0

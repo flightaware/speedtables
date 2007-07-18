@@ -2,7 +2,7 @@
 
 package require ctable_client
 
-namespace eval ::sttp {
+namespace eval ::stapi {
   variable transport_handlers
 
   proc register {transport handler} {
@@ -18,8 +18,8 @@ namespace eval ::sttp {
     # If "-keys" defined, save them to create a wrapper
     if {[info exists opts(-keys)] || [info exists opts(-key)]} {
       # Check here so if this errors out we haven't done the heavy lifting
-      if ![namespace exists ::sttpx] {
-	uplevel #0 "package require sttpx"
+      if ![namespace exists ::stapi::extend] {
+	uplevel #0 "package require stapi_extend"
       }
       # Save "-keys" option but don't pass it on downstream
       if [info exists opts(-keys)] {
@@ -48,8 +48,8 @@ namespace eval ::sttp {
     }
 
     if [info exists keys] {
-      if ![::sttpx::extended $handle $keys] {
-        set handle [eval [list ::sttpx::connect $handle $keys] $args $keyargs]
+      if ![::stapi::extend::extended $handle $keys] {
+        set handle [eval [list ::stapi::extend::connect $handle $keys] $args $keyargs]
       }
     }
     return $handle
@@ -60,7 +60,7 @@ namespace eval ::sttp {
   proc connect_ctable {table_path {address "localhost"} args} {
     variable ctable_serial
     set uri ctable://$address/$table_path
-    set local_table ::sttp::ctable[incr ctable_serial]
+    set local_table ::stapi::ctable[incr ctable_serial]
     remote_ctable $uri $local_table
     return $local_table
   }
@@ -94,5 +94,5 @@ namespace eval ::sttp {
   register package connect_package
 }
 
-package provide sttp_client 1.0
+package provide st_client 1.0
 

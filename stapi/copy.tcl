@@ -4,7 +4,7 @@
 # $Id$
 #
 
-namespace eval ::sttp {
+namespace eval ::stapi {
   # set rows [copyin_tsv_file $filename $table ?$skip? ?err?]
   #
   # Copy a named tsv file in, optionally skipping ?$skip? columns
@@ -146,5 +146,5 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_postgres 1.0
+package provide st_postgres 1.0
 

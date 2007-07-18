@@ -1,4 +1,4 @@
-# sttp/display/display.tcl -- derived from diodisplay.tcl
+# stapi/display/display.tcl -- derived from diodisplay.tcl
 
 # Copyright 2006 Superconnect
 
@@ -23,12 +23,12 @@
 
 package require Itcl
 package require form
-package require sttp_client
+package require st_client
 
 #
 # Only load ::csv:: if it's actually wanted.
 #
-namespace eval ::sttp_display {
+namespace eval ::stapi::display {
   variable csv_loaded 0
   proc load_csv {} {
     variable csv_loaded
@@ -39,9 +39,9 @@ namespace eval ::sttp_display {
   }
 }
 
-catch { ::itcl::delete class STTPDisplay }
+catch { ::itcl::delete class STDisplay }
 
-::itcl::class ::STTPDisplay {
+::itcl::class ::STDisplay {
     constructor {args} {
 	eval configure $args
 	load_response
@@ -51,7 +51,7 @@ catch { ::itcl::delete class STTPDisplay }
 	  unset stable
 	}
         # If it's not already an extended table, treat it like a URI
-        if {[info exists ctable] && ![::sttp::extended $ctable]} {
+        if {[info exists ctable] && ![::stapi::extend::extended $ctable]} {
 	  set uri $ctable
 	  unset ctable
         }
@@ -71,11 +71,11 @@ catch { ::itcl::delete class STTPDisplay }
 	    }
 	  }
 	  if ![info exists keyfields] {
-	    if ![::sttp::extended $uri] {
+	    if ![::stapi::extended $uri] {
 	      return -code error "No key/keyfields"
 	    }
 	  }
-	  set ctable [::sttp::connect $uri -keys $keyfields]
+	  set ctable [::stapi::connect $uri -keys $keyfields]
 	}
 
 	if ![info exists keyfields] {
@@ -126,7 +126,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    set args [lrange $args 1 end]
 	}
 	if {$show} {
-	    eval ::sttp::debug $args
+	    eval ::stapi::debug $args
 	}
     }
 
@@ -134,7 +134,7 @@ catch { ::itcl::delete class STTPDisplay }
     ## The way DIO builds SQL that can be exposed outside DIO in assembling
     ## a request is used by DIODisplay. We have to make that more abstract
 
-    ## New exposed configvars for STTPDisplay
+    ## New exposed configvars for STDisplay
     public variable ctable
     public variable stable	;# Alias
     public variable uri
@@ -292,7 +292,7 @@ catch { ::itcl::delete class STTPDisplay }
 
     # state - return a list of name-value pairs that represents the current
     # state of the query, which can be used to properly populate links
-    # outside STTPDisplay.
+    # outside STDisplay.
     method state {} {
 	set state {}
 	foreach var {mode query by how sort rev num page} {
@@ -860,10 +860,10 @@ catch { ::itcl::delete class STTPDisplay }
     method field {name args} {
 	import_keyvalue_pairs data $args
 
-	set class STTPDisplayField
+	set class STDisplayField
 	if {[info exists data(type)]} {
-	    if {![lempty [::itcl::find classes *STTPDisplayField_$data(type)]]} {
-		set class STTPDisplayField_$data(type)
+	    if {![lempty [::itcl::find classes *STDisplayField_$data(type)]]} {
+		set class STDisplayField_$data(type)
 	    }
 	}
 
@@ -1079,7 +1079,7 @@ catch { ::itcl::delete class STTPDisplay }
 	    return
 	}
 
-        ::sttp_display::load_csv
+        ::stapi::display::load_csv
 
 	make_request request
 	set_limit request
@@ -2058,14 +2058,14 @@ catch { ::itcl::delete class STTPDisplay }
     private variable limit
     private variable search_list
 
-} ; ## ::itcl::class STTPDisplay
+} ; ## ::itcl::class STDisplay
 
-catch { ::itcl::delete class ::STTPDisplayField }
+catch { ::itcl::delete class ::STDisplayField }
 
 #
-# STTPDisplayField object -- defined for each field we're displaying
+# STDisplayField object -- defined for each field we're displaying
 #
-::itcl::class ::STTPDisplayField {
+::itcl::class ::STDisplayField {
 
     constructor {args} {
 	## We want to simulate Itcl's configure command, but we want to
@@ -2232,16 +2232,16 @@ catch { ::itcl::delete class ::STTPDisplayField }
     # readonly - if 1, we don't allow the value to be changed
     public variable readonly		0
 
-} ; ## ::itcl::class STTPDisplayField
+} ; ## ::itcl::class STDisplayField
 
-catch { ::itcl::delete class ::STTPDisplayField_boolean }
+catch { ::itcl::delete class ::STDisplayField_boolean }
 
 #
-# STTPDisplayField_boolen -- superclass of STTPDisplayField that overrides
+# STDisplayField_boolen -- superclass of STDisplayField that overrides
 # a few methods to specially handle booleans
 #
-::itcl::class ::STTPDisplayField_boolean {
-    inherit ::STTPDisplayField
+::itcl::class ::STDisplayField_boolean {
+    inherit ::STDisplayField
 
     constructor {args} {eval configure $args} {
 	eval configure $args
@@ -2329,7 +2329,7 @@ catch { ::itcl::delete class ::STTPDisplayField_boolean }
 	return 0
     }
 
-} ; ## ::itcl::class ::STTPDisplayField_boolean
+} ; ## ::itcl::class ::STDisplayField_boolean
 
-package provide sttp_display 1.0
+package provide st_display 1.0
 

@@ -1,7 +1,7 @@
 #
 # $Id$
 
-namespace eval ::sttp {
+namespace eval ::stapi {
   variable debugging 1
   variable debug_timestamp_format "%Y-%m-%d %H:%M:%S %Z"
   variable debug_handler
@@ -33,4 +33,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_debug 1.0
+package provide st_debug 1.0

@@ -2,12 +2,12 @@
 # $Id$
 
 package require ctable
-package require sttp_locks
-package require sttp_postgres
-package require sttp_debug
+package require st_locks
+package require st_postgres
+package require st_debug
 package require Pgtcl
 
-namespace eval ::sttp {
+namespace eval ::stapi {
   # Generated file version - change any time there's an incompatible change
   # in the format or behaviour of speedcache
   variable version 0.1
@@ -64,7 +64,7 @@ namespace eval ::sttp {
     varstring	varchar
   }
 
-  # ::sttp::init ?options?
+  # ::stapi::init ?options?
   #
   # Options:
   #   -root build_root
@@ -883,4 +883,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_server 1.0
+package provide st_server 1.0

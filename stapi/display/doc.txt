@@ -1,6 +1,6 @@
-# sttp/display/display.tcl -- derived from diodisplay.tcl
+# stapi/display/display.tcl -- derived from diodisplay.tcl
 
-set display [::STTPDisplay #auto ?-confvar value? ... \
+set display [::STDisplay #auto ?-confvar value? ... \
 	-ctable ctable ?-keyfields key_list?  			_OR_
 	-uri uri						_OR_
 	-table registered_table ?-hosts host_list?
@@ -9,10 +9,10 @@ set display [::STTPDisplay #auto ?-confvar value? ... \
 One of -ctable, -table, or -uri must be provided.
 
 	-ctable - use already opened ctable. If the ctable isn't wrapped
-		with an "sttp" wrapper, wrap it... keyfields must be provided.
+		with an "stapi" wrapper, wrap it... keyfields must be provided.
 
-	-uri - Use ::sttp::connect to connect to a ctable from a URI. Any
-		valid STTP URI can be used.
+	-uri - Use ::stapi::connect to connect to a ctable from a URI. Any
+		valid STAPI URI can be used.
 
 	-table - cable-aware only, connect to a registered ctable server
 

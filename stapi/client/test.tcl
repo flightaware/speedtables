@@ -2,13 +2,13 @@
 
 lappend auto_path [exec pwd]
 
-package require sttp_server
-package require sttp_client
-package require sttp_client_postgres
+package require st_server
+package require st_client
+package require st_client_postgres
 
 # Open a sql ctable
-set ctable [::sttp::connect sql:///sc_ca_jobs]
-puts "\[::sttp::connect sql:///sc_ca_jobs] = $ctable"
+set ctable [::stapi::connect sql:///sc_ca_jobs]
+puts "\[::stapi::connect sql:///sc_ca_jobs] = $ctable"
 
 set fields [$ctable fields]
 puts "\$ctable fields = [$ctable fields]"

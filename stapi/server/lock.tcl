@@ -3,7 +3,7 @@
 
 package require Tclx
 
-namespace eval ::sttp {
+namespace eval ::stapi {
   variable locking 0
   variable lock_level
   proc lockfile {name _err {timeout 120} {recursing 0}} {
@@ -156,4 +156,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_locks 1.0
+package provide st_locks 1.0

@@ -1,9 +1,9 @@
 # $Id$
 
-package require sttp_client
-package require sttp_postgres
+package require st_client
+package require st_postgres
 
-namespace eval ::sttp {
+namespace eval ::stapi {
   proc make_sql_uri {table args} {
     while {[llength $args]} {
       set arg [lindex $args 0]
@@ -160,16 +160,16 @@ namespace eval ::sttp {
       # set fields [lrange $fields 1 end]
     }
 
-    set ns ::sttp::sqltable[incr sqltable_seq]
+    set ns ::stapi::sqltable[incr sqltable_seq]
 
     namespace eval $ns {
       proc ctable {args} {
 	set level [expr {[info level] - 1}]
-	eval [list ::sttp::sql_ctable $level [namespace current]] $args
+	eval [list ::stapi::sql_ctable $level [namespace current]] $args
       }
 
       # copy the search proc into this namespace
-      proc search_to_sql [info args ::sttp::search_to_sql] [info body ::sttp::search_to_sql]
+      proc search_to_sql [info args ::stapi::search_to_sql] [info body ::stapi::search_to_sql]
     }
 
     set ${ns}::table_name $table
@@ -395,7 +395,7 @@ namespace eval ::sttp {
 
   proc sql_ctable_foreach {level ns cmd keyvar value code} {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
-    append sql " WHERE [set ${ns}::key] ILIKE [::sttp::quote_glob $val];"
+    append sql " WHERE [set ${ns}::key] ILIKE [::stapi::quote_glob $val];"
     set code "set $keyvar \[lindex $__key 0]\n$code"
     uplevel #$level [list pg_select [conn] $sql __key $code]
   }
@@ -454,7 +454,7 @@ namespace eval ::sttp {
 
   #
   # This is never evaluated directly, it's only copied into a namespace
-  # with [info body], so variables are from $ns and anything in ::sttp
+  # with [info body], so variables are from $ns and anything in ::stapi
   # needs direct quoting
   #
   proc search_to_sql {_req} {
@@ -521,34 +521,34 @@ namespace eval ::sttp {
 	  >= { lappend where "$col >= $q1" }
 	  > { lappend where "$col > $q1" }
 
-	  imatch { lappend where "$col ILIKE [::sttp::quote_glob $v1]" }
-	  -imatch { lappend where "NOT $col ILIKE [::sttp::quote_glob $v1]" }
+	  imatch { lappend where "$col ILIKE [::stapi::quote_glob $v1]" }
+	  -imatch { lappend where "NOT $col ILIKE [::stapi::quote_glob $v1]" }
 
-	  match { lappend where "$col ILIKE [::sttp::quote_glob $v1]" }
-	  notmatch { lappend where "NOT $col ILIKE [::sttp::quote_glob $v1]" }
+	  match { lappend where "$col ILIKE [::stapi::quote_glob $v1]" }
+	  notmatch { lappend where "NOT $col ILIKE [::stapi::quote_glob $v1]" }
 
-	  xmatch { lappend where "$col LIKE [::sttp::quote_glob $v1]" }
-	  -xmatch { lappend where "NOT $col LIKE [::sttp::quote_glob $v1]" }
+	  xmatch { lappend where "$col LIKE [::stapi::quote_glob $v1]" }
+	  -xmatch { lappend where "NOT $col LIKE [::stapi::quote_glob $v1]" }
 
-	  match_case { lappend where "$col LIKE [::sttp::quote_glob $v1]" }
+	  match_case { lappend where "$col LIKE [::stapi::quote_glob $v1]" }
 	  notmatch_case {
-	    lappend where "NOT $col LIKE [::sttp::quote_glob $v1]"
+	    lappend where "NOT $col LIKE [::stapi::quote_glob $v1]"
 	  }
 
 	  umatch {
-	    lappend where "$col LIKE [::sttp::quote_glob [string toupper $v1]]"
+	    lappend where "$col LIKE [::stapi::quote_glob [string toupper $v1]]"
 	  }
 	  -umatch {
 	    lappend where "NOT $col LIKE [
-				::sttp::quote_glob [string toupper $v1]]"
+				::stapi::quote_glob [string toupper $v1]]"
 	  }
 
 	  lmatch {
-	    lappend where "$col LIKE [::sttp::quote_glob [string tolower $v1]]"
+	    lappend where "$col LIKE [::stapi::quote_glob [string tolower $v1]]"
 	  }
 	  -lmatch {
 	    lappend where "NOT $col LIKE [
-				::sttp::quote_glob [string tolower $v1]]"
+				::stapi::quote_glob [string tolower $v1]]"
 	  }
 
 	  range {
@@ -632,10 +632,10 @@ namespace eval ::sttp {
   }
 
   # Helper routine to shortcut the business of creating a URI and connecting
-  # with the same keys. Using this implicitly pulls in sttpx inside connect
+  # with the same keys. Using this implicitly pulls in stape::extend inside connect
   # if it hasn't already been pulled in.
   #
-  # Eg: ::sttp::connect_sql my_table {index} -cols {index name value}
+  # Eg: ::stapi::connect_sql my_table {index} -cols {index name value}
   #
   proc connect_sql {table keys args} {
     lappend make make_sql_uri $table -keys $keys
@@ -644,4 +644,4 @@ namespace eval ::sttp {
   }
 }
 
-package provide sttp_client_postgres 1.0
+package provide st_client_postgres 1.0
