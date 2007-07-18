@@ -6,7 +6,7 @@ S=shared.so
 
 U=/usr/local
 
-STUB=-ltclstub8.4g
+STUB=$U/lib/libtclstub84g.a
 
 SFLAGS=-shared -fPIC -I$U/include -I$U/include/tcl8.4 -fno-common -DUSE_TCL_STUBS=1 
 

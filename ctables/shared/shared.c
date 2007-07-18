@@ -685,20 +685,81 @@ void shmpanic(char *s)
 }
 
 #ifdef TCL_EXTENSION
-typedef struct _namedshares {
-    struct _namedshares	*next;
+void TclShmError(Tcl_Interp *interp, char *name)
+{
+    if(shared_errno >= 0) {
+        char *msg = Tcl_PosixError(interp);
+        Tcl_AppendResult(interp, name, ": ", msg, NULL);
+    } else {
+        Tcl_AppendResult(interp, name, NULL);
+	shared_errno = -shared_errno;
+    }
+    if(shared_errno)
+	Tcl_AppendResult(interp, ": ", shared_errlist[shared_errno], NULL);
+}
+
+typedef struct _nshare {
+    struct _nshare	*next;
     int			 creator;
     mapinfo		*mapinfo;
     char		 name[];
-} namedshares;
+} nshare;
 
-static namedshares *sharelist;
+static nshare *sharelist;
+
+// share create sharename filename size --> sharename
+int createSubCommand(Tcl_Interp *interp, char *sharename, int objc, Tcl_Obj *CONST objv[])
+{
+    nshare    *share;
+    char      *filename;
+    size_t     size;
+
+    if(objc < 2) {
+	Tcl_WrongNumArgs (interp, 0, objv, "... create sharename filename size");
+	return TCL_ERROR;
+    }
+
+    filename = Tcl_GetString(objv[0]);
+    if (Tcl_GetIntFromObj (interp, objv[1], &size) == TCL_ERROR) {
+	Tcl_AppendResult(" in ... create ", sharename, NULL);
+	return TCL_ERROR;
+    }
+
+    mapinfo = map_file(filename, NULL, size);
+    if(!mapinfo) {
+	TclShmError(interp, filename);
+	return TCL_ERROR;
+    }
+
+    if(strcmp(sharename, "#auto")) {
+	static char namebuf[32];
+	sprintf(namebuf, "share%d\n", ++autoshare);
+	sharename = namebuf;
+    }
+    share = ckalloc(sizeof (nshare) + strlen(sharename) + 1);
+    strcpy(share->name, sharename);
+    share->next = sharelist;
+    share->mapinfo = mapinfo;
+    share->creator = 1;
+    sharelist = share;
+
+    Tcl_AppendResult(sharename, NULL);
+    return TCL_OK;
+}
+
+int attachSubCommand(Tcl_Interp *interp, char *sharename, int objc, Tcl_Obj *CONST objv[])
+{
+}
+
+int detachSubCommand(Tcl_Interp *interp, nshare *share, int objc, Tcl_Obj *CONST objv[])
+{
+}
 
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     int   	 cmdIndex;
     char	*sharename;
-    namedshares *share;
+    nshare	*share;
 
     static CONST char *commands[] = {"create", "attach", "detach", (char *)NULL};
     enum commands {CMD_CREATE, CMD_ATTACH, CMD_DETACH};
@@ -746,11 +807,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 		Tcl_AppendResult(interp, "No such share: ", sharename, NULL);
 		return TCL_ERROR;
 	    }
-	    if(share->creator) {
-	        return deleteCmd(interp, share, objc, objv);
-	    } else {
-		return detachCmd(interp, share, objc, objv);
-	    }
+	    return detachCmd(interp, share, objc, objv);
 	}
     }
 }
