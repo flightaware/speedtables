@@ -2,12 +2,18 @@
  * $Id$
  */
 
-#include <sys/types.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/ipc.h>
+#ifdef TCL_EXTENSION
+#include <tcl.h>
+#endif
 
 #include "shared.h"
 
@@ -105,7 +111,7 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
 
 	if(addr == 0) {
 	    mapheader tmp;
-	    if(read(fd, tmp, sizeof (mapheader)) == sizeof (mapheader))
+	    if(read(fd, &tmp, sizeof (mapheader)) == sizeof (mapheader))
 		addr = tmp.addr;
 	    lseek(fd, 0L, SEEK_SET);
 	}
@@ -121,7 +127,14 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
 	return NULL;
     }
 
-    p = (mapinfo *)ckalloc(sizeof (*p));
+    p = (mapinfo *)malloc(sizeof (*p));
+    if(!p) {
+	shared_errno = SH_PRIVATE_MEMORY;
+	munmap(map, size);
+	close(fd);
+	return NULL;
+    }
+
     p->map = (mapheader *)map;
     p->size = size;
     p->fd = fd;
@@ -160,7 +173,7 @@ int unmap_file(mapinfo *info)
     size = p->size;
     munmap((char *)map, size);
     close(p->fd);
-    ckfree(p);
+    free(p);
 
 
     return 1;
@@ -177,7 +190,7 @@ void unmap_all(void)
 
 	mapinfo_list = mapinfo_list->next;
 
-	ckfree(p);
+	free(p);
 	munmap((char *)map, size);
 	close(fd);
     }
@@ -225,7 +238,11 @@ DEBUG(fprintf(stderr, "block @ 0x%lX <= 0\n", ((char *)block) + freesize);)
 
 pool *initpool(char *memory, size_t blocksize, int blocks)
 {
-    pool *new = (pool *)ckalloc(sizeof *new);
+    pool *new = (pool *)malloc(sizeof *new);
+    if(!new) {
+	shared_errno = SH_PRIVATE_MEMORY;
+	return NULL;
+    }
     new->start = memory;
     new->blocks = blocks;
     new->blocksize = blocksize;
@@ -249,9 +266,14 @@ int shmaddpool(mapinfo *mapinfo, size_t blocksize, int blocks)
     return 1;
 }
 
-pool *ckallocpool(size_t blocksize, int blocks)
+pool *mallocpool(size_t blocksize, int blocks)
 {
-    return initpool((char *)ckalloc(blocksize * blocks), blocksize, blocks);
+    char *memory = (char *)malloc(blocksize * blocks);
+    if(!memory) {
+	shared_errno = SH_PRIVATE_MEMORY;
+	return NULL;
+    }
+    return initpool(memory, blocksize, blocks);
 }
 
 char *palloc(pool *pool, size_t wanted)
@@ -283,7 +305,7 @@ DEBUG(fprintf(stderr, "remove_from_freelist(mapinfo, 0x%lX);\n", block);)
 DEBUG(fprintf(stderr, "  next = 0x%lX, prev = 0x%lX\n", next, prev);)
     if(next == block) {
 	if(prev != block)
-	    panic("Corrupt free list");
+	    shmpanic("Corrupt free list");
 	mapinfo->freelist = NULL;
 	return;
     }
@@ -321,7 +343,7 @@ DEBUG(fprintf(stderr, "_shmalloc(mapinfo, %ld);\n", nbytes);)
 DEBUG(fprintf(stderr, "  block = 0x%lX, space = %ld\n", block, space);)
 
 	if(space < 0)
-	    panic("trying to allocate non-free block");
+	    shmpanic("trying to allocate non-free block");
 
 	if(space > needed) {
 	    int remnant = space - needed;
@@ -366,7 +388,10 @@ void shmfree(mapinfo *mapinfo, char *block)
     garbage *entry = (garbage *)palloc(pool, GARBAGE_POOL_SIZE);
 
     if(!entry) {
-	pool = ckallocpool(sizeof (garbage), GARBAGE_POOL_SIZE);
+	pool = mallocpool(sizeof (garbage), GARBAGE_POOL_SIZE);
+	if(!pool)
+	    shmpanic("Can't allocate memory for garbage pool");
+
 	pool->next = mapinfo->garbage_pool;
 	mapinfo->garbage_pool = pool;
 	entry = (garbage *)palloc(pool, GARBAGE_POOL_SIZE);
@@ -450,7 +475,7 @@ DEBUG(fprintf(stderr, "shmdealloc(mapinfo, 0x%lX);\n", memory);)
 
     // negative size means it's allocated, positive it's free
     if(((int)size) > 0)
-	panic("freeing freed block");
+	shmpanic("freeing freed block");
 
     size = -size;
     setfree(block, size, TRUE);
@@ -497,6 +522,8 @@ int write_lock(mapinfo *mapinfo)
 
     while(++map->cycle == LOST_HORIZON)
 	continue;
+
+    return map->cycle;
 }
 
 void write_unlock(mapinfo *mapinfo)
@@ -543,7 +570,6 @@ int read_lock(mapinfo *mapinfo)
 
 void read_unlock(mapinfo *mapinfo)
 {
-    volatile mapheader *map = mapinfo->map;
     volatile reader *self = mapinfo->self;
 
     if(!self)
@@ -569,7 +595,7 @@ void garbage_collect(mapinfo *mapinfo)
 	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || horizon - garbp->cycle > 0) {
 	    garbage *next = garbp->next;
 	    shmdealloc(mapinfo, garbp->block);
-	    shmdepool(mapinfo->garbage_pool, (char *)garbp);
+	    shmdepool(pool, (char *)garbp);
 	    garbp = next;
 
 	    if(garbo)
@@ -586,14 +612,13 @@ void garbage_collect(mapinfo *mapinfo)
 cell_t oldest_reader_cycle(mapinfo *mapinfo)
 {
     volatile reader_block *r = &mapinfo->map->readers;
-    int i;
-    int l;
     cell_t cycle = LOST_HORIZON;
     unsigned oldest_age = 0;
     unsigned age;
 
     while(r) {
 	int count = 0;
+        int i;
         for(i = 0; count < r->count && i < READERS_PER_BLOCK; i++) {
 	    if(r->readers[i].pid) {
 		count++;
@@ -636,6 +661,8 @@ int add_symbol(mapinfo *mapinfo, char *name, char *value)
     s->next = map->namelist;
 
     map->namelist = s;
+
+    return 1;
 }
 
 // Get a symbol back.
@@ -651,3 +678,91 @@ char *get_symbol(mapinfo *mapinfo, char *name)
     return NULL;
 }
 
+void shmpanic(char *s)
+{
+    fprintf(stderr, "PANIC: %s\n", s);
+    abort();
+}
+
+#ifdef TCL_EXTENSION
+typedef struct _namedshares {
+    struct _namedshares	*next;
+    int			 creator;
+    mapinfo		*mapinfo;
+    char		 name[];
+} namedshares;
+
+static namedshares *sharelist;
+
+int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+    int   	 cmdIndex;
+    char	*sharename;
+    namedshares *share;
+
+    static CONST char *commands[] = {"create", "attach", "detach", (char *)NULL};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_DETACH};
+
+    if(objc < 3) {
+	Tcl_WrongNumArgs (interp, 1, objv, "command sharename ?args...?");
+        return TCL_ERROR;
+    }
+     
+    if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
+	return TCL_ERROR;
+    }
+
+    sharename = Tcl_GetString(objv[2]);
+
+    // Step past the arguments already parsed
+    objc -= 3;
+    objv += 3;
+
+    share = sharelist;
+    while(share) {
+	if(strcmp(share->name, sharename) == 0) {
+	    break;
+	}
+	share = share->next;
+    }
+
+    switch (cmdIndex) {
+        case CMD_CREATE: {
+	    if(share) {
+	         Tcl_AppendResult(interp, "Share already exists: ", sharename, NULL);
+	         return TCL_ERROR;
+	    }
+	    return createCmd(interp, sharename, objc, objv);
+	}
+        case CMD_ATTACH: {
+	    if(share) {
+	         Tcl_AppendResult(interp, "Share already exists: ", sharename);
+	         return TCL_ERROR;
+	    }
+	    return attachCmd(interp, sharename, objc, objv);
+	}
+        case CMD_DETACH: {
+	    if(!share) {
+		Tcl_AppendResult(interp, "No such share: ", sharename, NULL);
+		return TCL_ERROR;
+	    }
+	    if(share->creator) {
+	        return deleteCmd(interp, share, objc, objv);
+	    } else {
+		return detachCmd(interp, share, objc, objv);
+	    }
+	}
+    }
+}
+
+int
+Shared_Init(Tcl_Interp *interp)
+{
+    if (NULL == Tcl_InitStubs (interp, TCL_VERSION, 0))
+        return TCL_ERROR;
+
+    Tcl_CreateObjCommand(interp, "share", (Tcl_ObjCmdProc *) shareCmd, (ClientData)NULL, (Tcl_CmdDeleteProc *)shareCleanup);
+
+    return Tcl_PkgProvide(interp, "Shared", "1.0");
+}
+#endif

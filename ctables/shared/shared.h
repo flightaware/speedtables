@@ -148,6 +148,7 @@ int read_lock(mapinfo *mapinfo);
 void read_unlock(mapinfo *mapinfo);
 void garbage_collect(mapinfo *mapinfo);
 cell_t oldest_reader_cycle(mapinfo *mapinfo);
+void shmpanic(char *message);
 
 int add_symbol(mapinfo *mapinfo, char *name, char *value);
 char *get_symbol(mapinfo *mapinfo, char *name);
