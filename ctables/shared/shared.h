@@ -71,6 +71,7 @@ typedef struct _pool {
 typedef struct _symbol {
     volatile struct _symbol *next;
     volatile char	    *addr;
+    int			     is_string;
     char		     name[];
 } symbol;
 
@@ -152,8 +153,8 @@ void garbage_collect(mapinfo *mapinfo);
 cell_t oldest_reader_cycle(mapinfo *mapinfo);
 void shmpanic(char *message);
 
-int add_symbol(mapinfo *mapinfo, char *name, char *value);
-char *get_symbol(mapinfo *mapinfo, char *name);
+int add_symbol(mapinfo *mapinfo, char *name, char *value, int is_string);
+char *get_symbol(mapinfo *mapinfo, char *name, int needs_string);
 
 // shift between the data inside a variable sized block, and the block itself
 #define data2block(data) ((freeblock *)&((cell_t *)(data))[-1])

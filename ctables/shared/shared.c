@@ -224,6 +224,7 @@ void shminitmap(mapinfo *mapinfo)
     map->cycle = LOST_HORIZON;
     map->readers.next = 0;
     map->readers.count = 0;
+    map->namelist = NULL;
 
     mapinfo->garbage = NULL;
     mapinfo->freelist = NULL;
@@ -267,9 +268,14 @@ pool *initpool(char *memory, size_t blocksize, int blocks)
 
 int shmaddpool(mapinfo *mapinfo, size_t blocksize, int blocks)
 {
-    char *memory = _shmalloc(mapinfo, blocksize*blocks);
+    char *memory;
     pool *pool;
 
+    // align size
+    if(blocksize % CELLSIZE)
+	blocksize += CELLSIZE - blocksize % CELLSIZE;
+    
+    memory = _shmalloc(mapinfo, blocksize*blocks);
     if(!memory) return 0;
 
     pool = initpool(memory, blocksize, blocks);
@@ -280,7 +286,13 @@ int shmaddpool(mapinfo *mapinfo, size_t blocksize, int blocks)
 
 pool *mallocpool(size_t blocksize, int blocks)
 {
-    char *memory = (char *)malloc(blocksize * blocks);
+    char *memory;
+
+    // align size
+    if(blocksize % CELLSIZE)
+	blocksize += CELLSIZE - blocksize % CELLSIZE;
+
+    memory = (char *)malloc(blocksize * blocks);
     if(!memory) {
 	shared_errno = SH_PRIVATE_MEMORY;
 	return NULL;
@@ -291,6 +303,10 @@ pool *mallocpool(size_t blocksize, int blocks)
 char *palloc(pool *pool, size_t wanted)
 {
     char *block;
+
+    // align size
+    if(wanted % CELLSIZE)
+	wanted += CELLSIZE - wanted % CELLSIZE;
 
     while(pool && (pool->avail <= 0 || pool->blocksize != wanted))
 	pool = pool->next;
@@ -341,6 +357,10 @@ char *_shmalloc(mapinfo *mapinfo, size_t nbytes)
     volatile freeblock *block = mapinfo->freelist;
     size_t 		needed = nbytes + 2 * CELLSIZE;
 
+    // align size
+    if(nbytes % CELLSIZE)
+	nbytes += CELLSIZE - nbytes % CELLSIZE;
+
     while(block) {
 	int space = block->size;
 
@@ -377,6 +397,10 @@ char *_shmalloc(mapinfo *mapinfo, size_t nbytes)
 char *shmalloc(mapinfo *mapinfo, size_t size)
 {
     char *block;
+
+    // align size
+    if(size % CELLSIZE)
+	size += CELLSIZE - size % CELLSIZE;
 
     if(!(block = palloc(mapinfo->pools, size)))
 	block = _shmalloc(mapinfo, size);
@@ -639,20 +663,33 @@ cell_t oldest_reader_cycle(mapinfo *mapinfo)
 // removed from the list) and the list is never updated with an incomplete
 // entry, so no locking is necessary.
 
-int add_symbol(mapinfo *mapinfo, char *name, char *value)
+int add_symbol(mapinfo *mapinfo, char *name, char *value, int is_string)
 {
     int i;
     int namelen = strlen(name);
     volatile mapheader *map = mapinfo->map;
-    volatile symbol *s =
-		(symbol *)shmalloc(mapinfo, sizeof (symbol) + namelen + 1);
+    volatile symbol *s;
+    int len = sizeof(symbol) + namelen + 1;
+    if(is_string)
+	len += strlen(value) + 1;
+
+    s = (symbol *)shmalloc(mapinfo, len);
 
     if(!s) return 0;
 
     for(i = 0; i <= namelen; i++)
 	s->name[i] = name[i];
 
-    s->addr = value;
+    if(is_string) {
+	s->addr = &s->name[namelen+1];
+	len = strlen(value);
+	for(i = 0; i <= len; i++)
+	    s->name[namelen+1+i] = value[i];
+	s->is_string = 1;
+    } else {
+	s->addr = value;
+	s->is_string = 0;
+    }
     s->next = map->namelist;
 
     map->namelist = s;
@@ -661,13 +698,17 @@ int add_symbol(mapinfo *mapinfo, char *name, char *value)
 }
 
 // Get a symbol back.
-char *get_symbol(mapinfo *mapinfo, char *name)
+char *get_symbol(mapinfo *mapinfo, char *name, int mustbe_string)
 {
     volatile mapheader *map = mapinfo->map;
     volatile symbol *s = map->namelist;
     while(s) {
-	if(strcmp(name, (char *)s->name) == 0)
+	if(strcmp(name, (char *)s->name) == 0) {
+	    if(mustbe_string && !s->is_string) {
+		return NULL;
+	    }
 	    return (char *)s->addr;
+	}
 	s = s->next;
     }
     return NULL;
@@ -705,7 +746,7 @@ static int autoshare = 0;
 
 #define ATTACH_ONLY ((size_t)-1)
 
-int createOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size)
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size)
 {
     nshare    *share;
     mapinfo   *info;
@@ -729,9 +770,9 @@ int createOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t s
         return TCL_ERROR;
     }
 
-    if(strcmp(sharename, "#auto")) {
+    if(strcmp(sharename, "#auto") == 0) {
 	static char namebuf[32];
-	sprintf(namebuf, "share%d\n", ++autoshare);
+	sprintf(namebuf, "share%d", ++autoshare);
 	sharename = namebuf;
     }
 
@@ -748,37 +789,7 @@ int createOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t s
 }
 
 
-// share create sharename filename size --> sharename
-int createSubCommand(Tcl_Interp *interp, char *sharename, int objc, Tcl_Obj *CONST objv[])
-{
-    char      *filename;
-    size_t     size;
-
-    if(objc != 2) {
-	Tcl_WrongNumArgs (interp, 0, objv, "... create sharename filename size");
-	return TCL_ERROR;
-    }
-
-    filename = Tcl_GetString(objv[0]);
-    if (Tcl_GetIntFromObj (interp, objv[1], &size) == TCL_ERROR) {
-	Tcl_AppendResult(interp, " in ... create ", sharename, NULL);
-	return TCL_ERROR;
-    }
-
-    return createOrAttach(interp, sharename, filename, size);
-}
-// share attach sharename filename --> sharename
-int attachSubCommand(Tcl_Interp *interp, char *sharename, int objc, Tcl_Obj *CONST objv[])
-{
-    if(objc != 1) {
-	Tcl_WrongNumArgs (interp, 0, objv, "... attach sharename filename");
-	return TCL_ERROR;
-    }
-
-    return createOrAttach(interp, sharename, Tcl_GetString(objv[0]), ATTACH_ONLY);
-}
-
-int detachSubCommand(Tcl_Interp *interp, nshare *share, int objc, Tcl_Obj *CONST objv[])
+int doDetach(Tcl_Interp *interp, nshare *share)
 {
     if(sharelist) {
         if(sharelist->next == share) {
@@ -809,8 +820,21 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     char	*sharename;
     nshare	*share;
 
-    static CONST char *commands[] = {"create", "attach", "detach", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_DETACH};
+    static CONST char *commands[] = {"create", "attach", "detach", "names", "get", "set", (char *)NULL};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET};
+
+    static CONST struct {
+	int need_share;
+	int nargs;
+	char *args;
+    } template[] = {
+	{0, 5, "filename size"},
+	{0, 4, "filename"},
+	{1, 3, ""},
+	{1, 0, "names"},
+	{1, -4, "name ?name?..."},
+	{1, -5, "name value ?name value?..."},
+    };
 
     if(objc < 3) {
 	Tcl_WrongNumArgs (interp, 1, objv, "command sharename ?args...?");
@@ -821,11 +845,15 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	return TCL_ERROR;
     }
 
-    sharename = Tcl_GetString(objv[2]);
+    if(
+	(template[cmdIndex].nargs > 0 && objc != template[cmdIndex].nargs) ||
+	(template[cmdIndex].nargs < 0 && objc < -template[cmdIndex].nargs)
+    ) {
+	Tcl_WrongNumArgs (interp, 3, objv, template[cmdIndex].args);
+	return TCL_ERROR;
+    }
 
-    // Step past the arguments already parsed
-    objc -= 3;
-    objv += 3;
+    sharename = Tcl_GetString(objv[2]);
 
     share = sharelist;
     while(share) {
@@ -835,27 +863,93 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	share = share->next;
     }
 
+    if(template[cmdIndex].need_share) {
+	if(!share) {
+	    Tcl_AppendResult(interp, "No such share: ", sharename, NULL);
+	    return TCL_ERROR;
+	}
+    }
+
     switch (cmdIndex) {
         case CMD_CREATE: {
+	    char      *filename;
+	    size_t     size;
+
 	    if(share) {
 	         Tcl_AppendResult(interp, "Share already exists: ", sharename, NULL);
 	         return TCL_ERROR;
 	    }
-	    return createSubCommand(interp, sharename, objc, objv);
+
+	    filename = Tcl_GetString(objv[3]);
+
+	    if (Tcl_GetIntFromObj (interp, objv[4], &size) == TCL_ERROR) {
+		Tcl_AppendResult(interp, " in ... create ", sharename, NULL);
+		return TCL_ERROR;
+	    }
+
+	    return doCreateOrAttach(interp, sharename, filename, size);
 	}
         case CMD_ATTACH: {
 	    if(share) {
 	         Tcl_AppendResult(interp, "Share already exists: ", sharename);
 	         return TCL_ERROR;
 	    }
-	    return attachSubCommand(interp, sharename, objc, objv);
+
+	    return doCreateOrAttach(
+		interp, sharename, Tcl_GetString(objv[3]), ATTACH_ONLY);
 	}
         case CMD_DETACH: {
-	    if(!share) {
-		Tcl_AppendResult(interp, "No such share: ", sharename, NULL);
+	    return doDetach(interp, share);
+	}
+	case CMD_NAMES: {
+	    if (objc == 3) {
+	        volatile symbol *sym = share->mapinfo->map->namelist;
+	        while(sym) {
+		    Tcl_AppendElement(interp, (char *)sym->name);
+		    sym = sym->next;
+	        }
+	    } else {
+		int i;
+		for (i = 3; i < objc; i++) {
+		    char *name = Tcl_GetString(objv[i]);
+		    if(get_symbol(share->mapinfo, name, 0))
+			Tcl_AppendElement(interp, name);
+		}
+	    }
+	    return TCL_OK;
+	}
+	case CMD_GET: {
+	    int   i;
+	    for (i = 3; i < objc; i++) {
+		char *name = Tcl_GetString(objv[i]);
+		char *s = get_symbol(share->mapinfo, name, 1);
+		if(!s) {
+		    Tcl_ResetResult(interp);
+		    Tcl_AppendResult(interp, "Unknown name ",name," in ",sharename, NULL);
+		    return TCL_ERROR;
+		}
+		Tcl_AppendElement(interp, s);
+	    }
+	    return TCL_OK;
+	}
+	case CMD_SET: {
+	    int   i;
+
+	    if (!(objc & 1)) {
+		Tcl_AppendResult(interp, "Odd number of elements in name-value list.",NULL);
 		return TCL_ERROR;
 	    }
-	    return detachSubCommand(interp, share, objc, objv);
+
+	    for (i = 3; i < objc; i+=2) {
+		char *name = Tcl_GetString(objv[i]);
+		if(get_symbol(share->mapinfo, name, 0)) {
+		    Tcl_ResetResult(interp);
+		    Tcl_AppendResult(interp, "Can't override ",name," in ",sharename, NULL);
+		    return TCL_ERROR;
+		}
+		add_symbol(share->mapinfo, name, Tcl_GetString(objv[i+1]), 1);
+	    }
+	    return TCL_OK;
 	}
     }
     Tcl_AppendResult(interp, "Should not happen, internal error: no defined subcommand or missing break in switch", NULL);
