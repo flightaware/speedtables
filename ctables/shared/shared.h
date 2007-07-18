@@ -40,7 +40,8 @@ enum shared_error_e {
 	SH_NEW_FILE,
 	SH_PRIVATE_MEMORY,
 	SH_MAP_FILE,
-	SH_OPEN_FILE
+	SH_OPEN_FILE,
+	SH_NO_MAP
 };
 extern void shared_perror(char *text);
 
@@ -129,6 +130,7 @@ int open_new(char *file, size_t size);
 mapinfo *map_file(char *file, char *addr, size_t default_size);
 int unmap_file(mapinfo *mapinfo);
 void shminitmap(mapinfo *mapinfo);
+int shmcheckmap(volatile mapheader *map);
 pool *initpool(char *memory, size_t blocksize, int blocks);
 pool *ckallocpool(size_t blocksize, int blocks);
 int shmaddpool(mapinfo *map, size_t blocksize, int blocks);
