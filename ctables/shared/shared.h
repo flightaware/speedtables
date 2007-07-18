@@ -11,6 +11,13 @@ typedef uint32_t cell_t;
 #define TRUE 1
 #define FALSE 0
 
+// If defining a TCL extension, using TCL
+#ifdef TCL_EXTENSION
+# ifndef WITH_TCL
+#  define WITH_TCL
+# endif
+#endif
+
 // TUNING
 
 // How big a buffer of nulls to use when zeroing a file
@@ -152,9 +159,13 @@ void read_unlock(mapinfo *mapinfo);
 void garbage_collect(mapinfo *mapinfo);
 cell_t oldest_reader_cycle(mapinfo *mapinfo);
 void shmpanic(char *message);
-
 int add_symbol(mapinfo *mapinfo, char *name, char *value, int is_string);
 char *get_symbol(mapinfo *mapinfo, char *name, int needs_string);
+
+#ifdef WITH_TCL
+int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, int *ptr);
+void TclShmError(Tcl_Interp *interp, char *name);
+#endif
 
 // shift between the data inside a variable sized block, and the block itself
 #define data2block(data) ((freeblock *)&((cell_t *)(data))[-1])

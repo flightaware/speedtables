@@ -7,11 +7,12 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/ipc.h>
-#ifdef TCL_EXTENSION
+#ifdef WITH_TCL
 #include <tcl.h>
 #endif
 
@@ -720,7 +721,32 @@ void shmpanic(char *s)
     abort();
 }
 
-#ifdef TCL_EXTENSION
+#ifdef WITH_TCL
+int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, int *ptr)
+{
+    char *s = Tcl_GetString(obj);
+    size_t size = 0;
+
+    while(isdigit(*s)) {
+	size = size * 10 + *s - '0';
+	s++;
+    }
+    switch(toupper(*s)) {
+	case 'G': size *= 1024;
+	case 'M': size *= 1024;
+	case 'K': size *= 1024;
+	    s++;
+    }
+    if(*s) {
+	Tcl_ResetResult(interp);
+	Tcl_AppendResult(interp, "Bad size, must be an integer optionally followed by 'k', 'm', or 'g': ", Tcl_GetString(obj), NULL);
+	return TCL_ERROR;
+    }
+
+    *ptr = size;
+    return TCL_OK;
+}
+
 void TclShmError(Tcl_Interp *interp, char *name)
 {
     if(shared_errno >= 0) {
@@ -733,7 +759,9 @@ void TclShmError(Tcl_Interp *interp, char *name)
     if(shared_errno)
 	Tcl_AppendResult(interp, ": ", shared_errmsg[shared_errno], NULL);
 }
+#endif
 
+#ifdef TCL_EXTENSION
 typedef struct _nshare {
     struct _nshare	*next;
     int			 creator;
@@ -813,7 +841,6 @@ int doDetach(Tcl_Interp *interp, nshare *share)
      
     return TCL_OK;
 }
-
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     int   	 cmdIndex;
@@ -882,7 +909,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 	    filename = Tcl_GetString(objv[3]);
 
-	    if (Tcl_GetIntFromObj (interp, objv[4], &size) == TCL_ERROR) {
+	    if (TclGetSizeFromObj (interp, objv[4], &size) == TCL_ERROR) {
 		Tcl_AppendResult(interp, " in ... create ", sharename, NULL);
 		return TCL_ERROR;
 	    }

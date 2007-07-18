@@ -22,9 +22,9 @@ int main(int ac, char **av)
 	(long)(mapinfo->map),
 	(long)(((char *)mapinfo->map) + mapinfo->size));
     shminitmap(mapinfo);
-    add_symbol(mapinfo, "_base", shmalloc(mapinfo, 100));
+    add_symbol(mapinfo, "_base", shmalloc(mapinfo, 100), 0);
     fprintf(stderr, "Added symbol '_base'\n");
-    fprintf(stderr, "Value is 0x%lX\n", (long)(get_symbol(mapinfo, "_base")));
+    fprintf(stderr, "Value is 0x%lX\n", (long)(get_symbol(mapinfo, "_base", 0)));
 
     unmap_file(mapinfo);
 
