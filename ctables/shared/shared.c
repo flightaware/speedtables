@@ -935,6 +935,10 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	case CMD_SET: {
 	    int   i;
 
+	    if (!share->creator) {
+		Tcl_AppendResult(interp, "Can not write to ",sharename,": Permission denied", NULL);
+		return TCL_ERROR;
+	    }
 	    if (!(objc & 1)) {
 		Tcl_AppendResult(interp, "Odd number of elements in name-value list.",NULL);
 		return TCL_ERROR;
