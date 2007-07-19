@@ -24,7 +24,7 @@ namespace eval ::stapi::display {
 }
 
 proc stapi_display_test {} {
-  if [catch {::stapi::display::display_test sc_ca_ctable_servers {table_name host}} err] {
+  if [catch {::stapi::display::display_test stapi_test {isbn} err] {
     ::stapi::display::dumper $::errorInfo
   }
 }
