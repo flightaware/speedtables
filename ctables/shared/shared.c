@@ -664,14 +664,14 @@ cell_t oldest_reader_cycle(mapinfo *mapinfo)
 // removed from the list) and the list is never updated with an incomplete
 // entry, so no locking is necessary.
 
-int add_symbol(mapinfo *mapinfo, char *name, char *value, int is_string)
+int add_symbol(mapinfo *mapinfo, char *name, char *value, int type)
 {
     int i;
     int namelen = strlen(name);
     volatile mapheader *map = mapinfo->map;
     volatile symbol *s;
     int len = sizeof(symbol) + namelen + 1;
-    if(is_string)
+    if(type == SYM_TYPE_STRING)
 	len += strlen(value) + 1;
 
     s = (symbol *)shmalloc(mapinfo, len);
@@ -681,16 +681,17 @@ int add_symbol(mapinfo *mapinfo, char *name, char *value, int is_string)
     for(i = 0; i <= namelen; i++)
 	s->name[i] = name[i];
 
-    if(is_string) {
+    if(type == SYM_TYPE_STRING) {
 	s->addr = &s->name[namelen+1];
 	len = strlen(value);
 	for(i = 0; i <= len; i++)
 	    s->name[namelen+1+i] = value[i];
-	s->is_string = 1;
     } else {
 	s->addr = value;
-	s->is_string = 0;
     }
+
+    s->type = type;
+
     s->next = map->namelist;
 
     map->namelist = s;
@@ -699,13 +700,13 @@ int add_symbol(mapinfo *mapinfo, char *name, char *value, int is_string)
 }
 
 // Get a symbol back.
-char *get_symbol(mapinfo *mapinfo, char *name, int mustbe_string)
+char *get_symbol(mapinfo *mapinfo, char *name, int wanted)
 {
     volatile mapheader *map = mapinfo->map;
     volatile symbol *s = map->namelist;
     while(s) {
 	if(strcmp(name, (char *)s->name) == 0) {
-	    if(mustbe_string && !s->is_string) {
+	    if(wanted != SYM_TYPE_ANY && wanted != s->type) {
 		return NULL;
 	    }
 	    return (char *)s->addr;
@@ -934,7 +935,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 		int i;
 		for (i = 3; i < objc; i++) {
 		    char *name = Tcl_GetString(objv[i]);
-		    if(get_symbol(share->mapinfo, name, 0))
+		    if(get_symbol(share->mapinfo, name, SYM_TYPE_ANY))
 			Tcl_AppendElement(interp, name);
 		}
 	    }
@@ -944,7 +945,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    int   i;
 	    for (i = 3; i < objc; i++) {
 		char *name = Tcl_GetString(objv[i]);
-		char *s = get_symbol(share->mapinfo, name, 1);
+		char *s = get_symbol(share->mapinfo, name, SYM_TYPE_STRING);
 		if(!s) {
 		    Tcl_ResetResult(interp);
 		    Tcl_AppendResult(interp, "Unknown name ",name," in ",sharename, NULL);
@@ -968,12 +969,10 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 	    for (i = 3; i < objc; i+=2) {
 		char *name = Tcl_GetString(objv[i]);
-		if(get_symbol(share->mapinfo, name, 0)) {
-		    Tcl_ResetResult(interp);
-		    Tcl_AppendResult(interp, "Can't override ",name," in ",sharename, NULL);
-		    return TCL_ERROR;
-		}
-		add_symbol(share->mapinfo, name, Tcl_GetString(objv[i+1]), 1);
+		if(get_symbol(share->mapinfo, name, TYPE_ANY))
+		    set_symbol(share->mapinfo, name, Tcl_GetString(objv[i+1]), TYPE_STRING);
+		else
+		    add_symbol(share->mapinfo, name, Tcl_GetString(objv[i+1]), SYM_TYPE_STRING);
 	    }
 	    return TCL_OK;
 	}

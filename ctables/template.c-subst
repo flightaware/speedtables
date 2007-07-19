@@ -50,7 +50,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
     CTable *ctable;
 
-    if (objc < 2 || objc > 6) {
+    if (objc < 2) {
       err:
 	Tcl_WrongNumArgs (interp, 1, objv, "subcommand ?object? ?args?");
 	return TCL_ERROR;
@@ -68,6 +68,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int i;
 	    int baseNameLength = 0;
 	    char      *commandName;
+#ifdef WITH_SHARED_TABLES
+	    int typeIndex = -1;
+	    int share_type = CTABLE_SHARED_NONE;
+	    char *share_file = NULL;
+	    size_t size = 0;
+	    named_share *share = NULL;
+#endif
 
 	    commandName = Tcl_GetString(objv[2]);
 
@@ -81,39 +88,41 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 #ifdef WITH_SHARED_TABLES
-	    int typeIndex = -1;
-	    int share_type = CTABLE_SHARED_NONE;
-	    char *share_file = NULL;
-	    size_t size = 0;
-	    named_share *share = NULL;
-
-	    if (objc <= 6 && objc >= 5) {
+	    if (objc >= 5) {
 		if(Tcl_GetIndexFromObj(interp, objv[3], types, "type", TCL_EXACT, &typeIndex) != TCL_OK)
-		{
 		    goto createError;
-		}
+
 		share_type = share_types[typeIndex];
-		share_file = Tcl_GetString(objv[4]);
 		if(share_type == CTABLE_SHARED_MASTER) {
-		    if(objc == 6) {
-			if (TclGetSizeFromObj(interp, obj[5], &size) == TCL_ERROR) {
+		    if(objc > 6) {
+			Tcl_WrongNumArgs (interp, 2, objv, "name master filename ?size?");
+			goto createError;
+		    } else if(objc == 6) {
+			if (TclGetSizeFromObj(interp, objv[5], &size) != TCL_OK) {
 			    Tcl_AppendResult(interp, " reading 'size'", NULL);
 			    goto createError;
 			}
 		    }
+
+		    share_file = Tcl_GetString(objv[4]);
 		    if(!size) {
 			size = DEFAULT_SHARED_SIZE;
 		    }
-		    if(doCreateOrAttach(interp, commandName, filename, size, &share) == TCL_ERROR)
+		    if(doCreateOrAttach(interp, commandName, share_file, size, &share) != TCL_OK)
 			goto createError;
 		    
 		} else {
-		    if(objc == 6) {
-			Tcl_WrongNumArgs (interp, 2, objv, "name reader filename");
-			goto createError;
+		    int i;
+		    char *share_name = "_base";
+		    for(i = 5; i < objc; i+=2) {
+			if(strcmp(Tcl_GetString(objv[i]), "file") == 0)
+			    share_file = Tcl_GetString(objv[i+1]);
+			else if(strcmp(Tcl_GetString(objv[i]), "name") == 0)
+			    share_name = Tcl_GetString(objv[i+1]);
 		    }
-		    if(doCreateOrAttach(interp, commandName, filename, ATTACH_ONLY, &share) == TCL_ERROR)
+		    if(doCreateOrAttach(interp, commandName, share_file, ATTACH_ONLY, &share) != TCL_OK)
 			goto createError;
+		    share_master = get_symbol(share->mapinfo, share_name, TYPE_STRING);
 		}
 	    }
 	    else
@@ -125,7 +134,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 #ifdef WITH_SHARED_TABLES
 	    if(share_type == CTABLE_SHARED_MASTER)
-		ctable = (CTable *)shmalloc (mapinfo, sizeof(CTable));
+		ctable = (CTable *)shmalloc (share->mapinfo, sizeof(CTable));
 	    else
 #endif
 	        ctable = (CTable *)ckalloc (sizeof(CTable));
@@ -137,10 +146,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 #ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
 	    ctable->share_file = share_file;
-	    if(share_type == CTABLE_SHARED_MASTER)
-		ctable->share_mapinfo = mapinfo;
-	    else
-		ctable->share_mapinfo = NULL;
+	    ctable->share_mapinfo = share->mapinfo;
 #endif
 
 	    // create an array of pointers to possible skip lists,

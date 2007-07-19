@@ -159,8 +159,12 @@ void read_unlock(mapinfo *mapinfo);
 void garbage_collect(mapinfo *mapinfo);
 cell_t oldest_reader_cycle(mapinfo *mapinfo);
 void shmpanic(char *message);
-int add_symbol(mapinfo *mapinfo, char *name, char *value, int is_string);
-char *get_symbol(mapinfo *mapinfo, char *name, int needs_string);
+int add_symbol(mapinfo *mapinfo, char *name, char *value, int type);
+char *get_symbol(mapinfo *mapinfo, char *name, int wanted);
+
+#define SYM_TYPE_STRING 1
+#define SYM_TYPE_DATA 0
+#define SYM_TYPE_ANY -1
 
 #ifdef WITH_TCL
 typedef struct _named_share {
