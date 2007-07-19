@@ -163,8 +163,19 @@ int add_symbol(mapinfo *mapinfo, char *name, char *value, int is_string);
 char *get_symbol(mapinfo *mapinfo, char *name, int needs_string);
 
 #ifdef WITH_TCL
+typedef struct _named_share {
+    struct _named_share	*next;
+    int			 creator;
+    mapinfo		*mapinfo;
+    char		 name[];
+} named_share;
+
+#define ATTACH_ONLY ((size_t)-1)
+
 int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, int *ptr);
 void TclShmError(Tcl_Interp *interp, char *name);
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size);
+int doDetach(Tcl_Interp *interp, named_share *share);
 #endif
 
 // shift between the data inside a variable sized block, and the block itself

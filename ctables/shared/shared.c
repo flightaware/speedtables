@@ -759,24 +759,13 @@ void TclShmError(Tcl_Interp *interp, char *name)
     if(shared_errno)
 	Tcl_AppendResult(interp, ": ", shared_errmsg[shared_errno], NULL);
 }
-#endif
 
-#ifdef TCL_EXTENSION
-typedef struct _nshare {
-    struct _nshare	*next;
-    int			 creator;
-    mapinfo		*mapinfo;
-    char		 name[];
-} nshare;
-
-static nshare *sharelist;
+static named_share *sharelist;
 static int autoshare = 0;
 
-#define ATTACH_ONLY ((size_t)-1)
-
-int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size)
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, named_share *sharePtr)
 {
-    nshare    *share;
+    named_share    *share;
     mapinfo   *info;
     int	       creator = 1;
 
@@ -804,7 +793,7 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 	sharename = namebuf;
     }
 
-    share = (nshare *)ckalloc(sizeof (nshare) + strlen(sharename) + 1);
+    share = (named_share *)ckalloc(sizeof (named_share) + strlen(sharename) + 1);
 
     strcpy(share->name, sharename);
     share->next = sharelist;
@@ -812,18 +801,21 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
     share->creator = size != 0;
     sharelist = share;
 
-    Tcl_AppendResult(interp, sharename, NULL);
+    if(sharePtr)
+	*sharePtr = share;
+    else
+        Tcl_AppendResult(interp, sharename, NULL);
+
     return TCL_OK;
 }
 
-
-int doDetach(Tcl_Interp *interp, nshare *share)
+int doDetach(Tcl_Interp *interp, named_share *share)
 {
     if(sharelist) {
         if(sharelist->next == share) {
 	    sharelist = sharelist->next;
         } else {
-            nshare *p = sharelist;
+            named_share *p = sharelist;
     
             while(p && p->next != share)
 		p = p->next;
@@ -841,11 +833,14 @@ int doDetach(Tcl_Interp *interp, nshare *share)
      
     return TCL_OK;
 }
+#endif
+
+#ifdef TCL_EXTENSION
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     int   	 cmdIndex;
     char	*sharename;
-    nshare	*share;
+    named_share	*share;
 
     static CONST char *commands[] = {"create", "attach", "detach", "names", "get", "set", (char *)NULL};
     enum commands {CMD_CREATE, CMD_ATTACH, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET};
@@ -914,7 +909,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 		return TCL_ERROR;
 	    }
 
-	    return doCreateOrAttach(interp, sharename, filename, size);
+	    return doCreateOrAttach(interp, sharename, filename, size, NULL);
 	}
         case CMD_ATTACH: {
 	    if(share) {
@@ -923,7 +918,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    }
 
 	    return doCreateOrAttach(
-		interp, sharename, Tcl_GetString(objv[3]), ATTACH_ONLY);
+		interp, sharename, Tcl_GetString(objv[3]), ATTACH_ONLY, NULL);
 	}
         case CMD_DETACH: {
 	    return doDetach(interp, share);

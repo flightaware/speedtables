@@ -63,63 +63,64 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
     }
 
     switch ((enum options) optIndex) {
-	char      *commandName;
 
         case OPT_CREATE: {
 	    int i;
 	    int baseNameLength = 0;
+	    char      *commandName;
+
+	    commandName = Tcl_GetString(objv[2]);
+
+	    if (strcmp (commandName, "#auto") == 0) {
+		char *objName;
+
+	        objName = Tcl_GetStringFromObj (objv[0], &baseNameLength);
+		baseNameLength += 42;
+		commandName = ckalloc (baseNameLength);
+		snprintf (commandName, baseNameLength, "%s%lu", objName, creator->nextAutoCounter++);
+	    }
 
 #ifdef WITH_SHARED_TABLES
 	    int typeIndex = -1;
 	    int share_type = CTABLE_SHARED_NONE;
 	    char *share_file = NULL;
+	    size_t size = 0;
+	    named_share *share = NULL;
 
-	    if (objc <= 6 && objc >= 4) {
+	    if (objc <= 6 && objc >= 5) {
 		if(Tcl_GetIndexFromObj(interp, objv[3], types, "type", TCL_EXACT, &typeIndex) != TCL_OK)
 		{
-		    return TCL_ERROR;
+		    goto createError;
 		}
 		share_type = share_types[typeIndex];
+		share_file = Tcl_GetString(objv[4]);
 		if(share_type == CTABLE_SHARED_MASTER) {
-		    if(objc == 4) {
-			Tcl_WrongNumArgs (interp, 2, objv, "name master filename ?size?");
-		    }
-		    share_file = Tcl_GetString(objv[4]);
 		    if(objc == 6) {
-			char *s = Tcl_GetString(objv[5]);
-			size_t size = 0;
-			while(isdigit(*s)) {
-			    size = size * 10 + *s - '0';
-			    s++;
+			if (TclGetSizeFromObj(interp, obj[5], &size) == TCL_ERROR) {
+			    Tcl_AppendResult(interp, " reading 'size'", NULL);
+			    goto createError;
 			}
-			switch(toupper(*s)) {
-			    case 'G': size *= 1024;
-			    case 'M': size *= 1024;
-			    case 'K': size *= 1024;
-				s++;
-			}
-
-			if(*s) {
-			    Tcl_AppendResult("Bad size, must be an integer optionally followed by 'k', 'm', or 'g': ", Tcl_GetString(objv[5]), NULL);
-			    return TCL_ERROR;
-			}
-		    } else {
-			size = DEFAULT_SHARED_MEMORY_SIZE;
 		    }
-		    mapinfo = create_and_map_share(share_file, size);
-		    if(!mapinfo) {
-			Tcl_AppendResult("Can't map shared memory for ", share_file, NULL);
-			return TCL_ERROR;
+		    if(!size) {
+			size = DEFAULT_SHARED_SIZE;
 		    }
-		} else if(objc != 4) {
-		    Tcl_WrongNumArgs (interp, 2, objv, "name reader");
+		    if(doCreateOrAttach(interp, commandName, filename, size, &share) == TCL_ERROR)
+			goto createError;
+		    
+		} else {
+		    if(objc == 6) {
+			Tcl_WrongNumArgs (interp, 2, objv, "name reader filename");
+			goto createError;
+		    }
+		    if(doCreateOrAttach(interp, commandName, filename, ATTACH_ONLY, &share) == TCL_ERROR)
+			goto createError;
 		}
 	    }
 	    else
 #endif
 	    if (objc != 3) {
 		Tcl_WrongNumArgs (interp, 2, objv, "name");
-		return TCL_ERROR;
+		goto createError;
 	    }
 
 #ifdef WITH_SHARED_TABLES
@@ -160,16 +161,6 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable_ListInit (&ctable->ll_head);
 
 	    ctable_InitHashTable (ctable->keyTablePtr);
-	    commandName = Tcl_GetString(objv[2]);
-
-	    if (strcmp (commandName, "#auto") == 0) {
-		char *objName;
-
-	        objName = Tcl_GetStringFromObj (objv[0], &baseNameLength);
-		baseNameLength += 42;
-		commandName = ckalloc (baseNameLength);
-		snprintf (commandName, baseNameLength, "%s%lu", objName, creator->nextAutoCounter++);
-	    }
 
 	    ctable->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) ctable, NULL);
 
@@ -179,6 +170,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 	    return TCL_OK;
+
+          createError:
+	    if (baseNameLength) {
+	        ckfree (commandName);
+	    }
+
+	    return TCL_ERROR;
 	}
 
 	case OPT_INFO:
