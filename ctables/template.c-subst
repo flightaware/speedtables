@@ -50,7 +50,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
     CTable *ctable;
 
-    if (objc < 2 || objc > 4) {
+    if (objc < 2 || objc > 6) {
       err:
 	Tcl_WrongNumArgs (interp, 1, objv, "subcommand ?object? ?args?");
 	return TCL_ERROR;
@@ -98,6 +98,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			    case 'K': size *= 1024;
 				s++;
 			}
+
 			if(*s) {
 			    Tcl_AppendResult("Bad size, must be an integer optionally followed by 'k', 'm', or 'g': ", Tcl_GetString(objv[5]), NULL);
 			    return TCL_ERROR;

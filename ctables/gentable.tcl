@@ -4271,7 +4271,7 @@ proc compile {fileFragName version} {
 	    if {$genCompilerDebug} {
 		set optflag "-O0"
 		set dbgflag "-g"
-		set stub "-ltclstub8.4g"
+		set stub "-ltclstub84g"
 		set lib "-ltcl84g"
 	    } else {
 		set optflag "-O3"
