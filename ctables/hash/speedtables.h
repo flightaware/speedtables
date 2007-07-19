@@ -19,6 +19,14 @@
 #define _SPEEDTABLES_H
 
 /*
+ * Flags
+ */
+#define KEY_MASK	0x3
+#define KEY_MALLOCED	0x1	// Key was allocated by malloc
+#define KEY_STATIC	0x2	// Key is static
+#define KEY_VOLATILE	0x0	// Key needs to be copied and freed
+
+/*
  * Forward declarations of ctable_HashTable and related types.
  */
 

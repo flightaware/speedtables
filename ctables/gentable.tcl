@@ -246,6 +246,7 @@ int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct 
 {
     ctable_HashEntry *new, *old;
     int isNew = 0;
+    int flags = KEY_VOLATILE;
 
     // Check for duplicates
     old = ctable_FindHashEntry(ctable->keyTablePtr, value);
@@ -256,20 +257,34 @@ int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct 
 
     // Remove old key.
     if(indexCtl == CTABLE_INDEX_NORMAL) {
-        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);
+	${table}_deleteHashEntry (ctable, row);
+#ifdef WITH_SHARED_TABLES
+        // Save new key
+        if(ctable->share_type == CTABLE_SHARED_MASTER) {
+	    row->hashEntry.key = shmalloc(ctable->share_mapinfo, strlen(value)+1);
+	    if(!row->hashEntry.key)
+	        shmpanic("Out of shared memory for key");
+	    strcpy(row->hashEntry.key, value);
+	    flags = KEY_STATIC;
+        }
+#endif
     } else {
         // This shouldn't be possible, but just in case
-        if(row->hashEntry.key) {
-	    ckfree(row->hashEntry.key);
-	    row->hashEntry.key = NULL;
-        }
+	ckfree(row->hashEntry.key);
+	row->hashEntry.key = NULL;
     }
 
     // Insert existing row with new key
-    new = ctable_StoreHashEntry(ctable->keyTablePtr, value, (ctable_HashEntry *)row, &isNew);
+    new = ctable_StoreHashEntry(ctable->keyTablePtr, value, (ctable_HashEntry *)row, flags, &isNew);
 
     if(!isNew) {
 	Tcl_AppendResult (interp, "Duplicate key '", value, "' after setting key field!", (char *)NULL);
+#ifdef WITH_SHARED_TABLES
+	if(flags == KEY_STATIC) {
+	    shmfree(ctable->share_mapinfo, row->hashEntry.key);
+	    row->hashEntry.key = NULL;
+	}
+#endif
 	return TCL_ERROR;
     }
 
@@ -1202,6 +1217,7 @@ struct $table *${table}_make_row_struct () {
 struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) {
     struct $table *row = NULL;
     static struct $table *nextRow = NULL;
+    int flags = KEY_VOLATILE;
 
     // Make sure the preallocated row is prepared
     if(!nextRow) {
@@ -1217,11 +1233,25 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) 
         ${table}_init (nextRow);
     }
 
-    row = (struct $table *)ctable_StoreHashEntry (ctable->keyTablePtr, key, (ctable_HashEntry *)nextRow, newPtr);
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_MASTER) {
+        nextRow->hashEntry.key = (char *)shmalloc(ctable->share_mapinfo, strlen(key)+1);
+	if(!nextRow->hashEntry.key)
+	    ${table}_shmpanic(ctable);
+	strcpy(nextRow->hashEntry.key, key);
+	flags = KEY_STATIC;
+    }
+#endif
+
+    row = (struct $table *)ctable_StoreHashEntry (ctable->keyTablePtr, key, (ctable_HashEntry *)nextRow, flags, newPtr);
 
     // If we used this row, forget the old row.
     if(*newPtr)
 	nextRow = NULL;
+#ifdef WITH_SHARED_TABLES
+    else if(flags == KEY_STATIC)
+	${table}_deleteKey(ctable, nextRow);
+#endif
 
     if (*newPtr) {
 	ctable_ListInsertHead (&ctable->ll_head, (ctable_BaseRow *)row, 0);
@@ -2030,6 +2060,30 @@ proc gen_defaults_subr {subr struct} {
     emit ""
 }
 
+set deleteRowHelperSource {
+void ${table}_deleteKey(CTable *table, struct ${table} *row)
+{
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_MASTER)
+	shmfree(ctable->share_mapinfo, row->hashEntry.key);
+    else
+#endif
+	ckfree(row->hashEntry.key);
+    row->hashEntry.key = NULL;
+}
+ 
+void ${table}_deleteHashEntry(CTable *ctable, struct ${table} *row)
+{
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_MASTER) {
+	shmfree(ctable->share_mapinfo, row->hashEntry.key);
+	row->hashEntry.key = NULL;
+    }
+#endif
+    ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);
+}
+}
+
 #
 # gen_delete_subr - gen code to delete (free) a row
 #
@@ -2039,12 +2093,21 @@ proc gen_delete_subr {subr struct} {
     variable fieldList
     variable leftCurly
     variable rightCurly
+    variable withSharedTables
+    variable deleteRowHelperSource
+
+    emit [string range [subst -nobackslashes -nocommands $deleteRowHelperSource] 1 end-1]
 
     emit "void ${subr}(CTable *ctable, void *vRow, int indexCtl) {"
     emit "    struct $struct *row = vRow;"
     emit ""
     emit "    if (indexCtl == CTABLE_INDEX_NORMAL) {"
     emit "        ctable_RemoveFromAllIndexes (ctable, (void *)row);"
+    if {$withSharedTables} {
+	emit "        if(ctable->share_type == CTABLE_SHARED_MASTER) {"
+	emit "            ${table}_deleteKey(ctable, row);"
+	emit "        }"
+    }
     emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);"
     emit "    } else if(row->hashEntry.key) {"
     emit "        ckfree(row->hashEntry.key);"
