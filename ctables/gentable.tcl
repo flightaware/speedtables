@@ -3018,9 +3018,20 @@ proc gen_shared_string_allocator {} {
     emit "    // If it's not a shared table, just use constants"
     emit "    if(ctable->share_type == CTABLE_SHARED_NONE) $leftCurly"
     emit "        ctable->emptyString = \"\";"
-    emit "        ctable->defaultStrings = ckalloc([llength $fieldList] * sizeof (char *));"
+    emit "        ctable->defaultStrings = ${table}_defaultStrings;"
+    emit "        return;"
+    emit "    $rightCurly"
+    emit ""
 
-    # Generate the simple assignments to constants, save the assignments
+    emit "    // reader table, use the master table"
+    emit "    if(ctable->share_type == CTABLE_SHARED_READER) $leftCurly"
+    emit "        ctable->emptyString = ctable->share_ctable->emptyString;"
+    emit "        ctable->defaultStrings = ctable->share_ctable->defaultStrings;"
+    emit "        return;"
+    emit "    $rightCurly"
+    emit ""
+
+    # Generate and save the assignments
     # to the shared bundle, and set up bundle
     set bundle {\0}
     set bundleLen 1
@@ -3029,14 +3040,11 @@ proc gen_shared_string_allocator {} {
 	upvar ::ctable::fields::$fieldName field
 
 	if {$field(type) != "varstring"} {
-	    emit "        ctable->defaultStrings\[$fieldNum] = NULL;"
 	    lappend sets "    defaultList\[$fieldNum] = NULL;"
 	} elseif {![info exists field(default)]} {
-	    emit "        ctable->defaultStrings\[$fieldNum] = \"\";"
 	    lappend sets "    defaultList\[$fieldNum] = &bundle[0];"
 	} else {
 	    set def [cquote $field(default)]
-	    emit "        ctable->defaultStrings\[$fieldNum] = \"def\";"
 	    lappend sets "    defaultList\[$fieldNum] = &bundle\[$bundleLen];"
 
 	    append bundle $def
@@ -3046,16 +3054,6 @@ proc gen_shared_string_allocator {} {
 	}
 	incr fieldNum
     }
-
-    emit "        return;"
-    emit "    $rightCurly"
-
-    emit "    // reader table, use the master table"
-    emit "    else if(ctable->share_type == CTABLE_SHARED_READER) $leftCurly"
-    emit "        ctable->emptyString = ctable->share_ctable->emptyString;"
-    emit "        ctable->defaultStrings = ctable->share_ctable->defaultStrings;"
-    emit "    $rightCurly"
-    emit ""
 
     emit "    // Allocate array and the strings themselves in one chunk"
 
@@ -3522,6 +3520,7 @@ proc gen_field_names {} {
     variable leftCurly
     variable rightCurly
     variable keyField
+    variable withSharedTables
 
     emit "#define [string toupper $table]_NFIELDS [llength $fieldList]"
     emit ""
@@ -3646,9 +3645,20 @@ proc gen_field_names {} {
 	    if {$field(default) != ""} {
 		emit "Tcl_Obj *${table}_${myField}DefaultStringObj;"
 	    }
+	    lappend defaultStrings [cquote $field(default)]
+	} else {
+	    lappend defaultStrings ""
 	}
     }
     emit ""
+
+    if {$withSharedTables} {
+        emit "// define default string list"
+        emit "char *${table}_defaultStrings[] = $leftCurly"
+        emit "    \"[join $defaultStrings {", "}]\""
+        emit "$rightCurly"
+        emit ""
+    }
 }
 
 #
