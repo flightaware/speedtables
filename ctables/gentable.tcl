@@ -212,6 +212,35 @@ proc gen_allocate {ctable lvalue type size {private 0}} {
     return "$lvalue = ($private) ? ($type)ckalloc($size) : ($type)shmalloc($ctable->share_mapinfo, $size)"
 }
 
+#
+# Oposite function for free
+#
+proc gen_deallocate {ctable pointer {private 0}} {
+    variable withSharedTables
+    if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
+	return "ckfree((void *)($pointer))"
+    }
+    if {"$private" == "0" || "$private" == "FALSE"} {
+	return "shmdealloc(($ctable)->share_mapinfo, (void *)($pointer))"
+    }
+    return "($private) ? ckfree((void *)($pointer)) : shmdealloc(($ctable)->share_mapinfo, (void *)($pointer))"
+}
+
+#
+# Default empty string for table
+#
+proc gen_defaultEmptyString {lvalue {private 0}} {
+    variable withSharedTables
+    variable table
+
+    if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
+	return "Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &($lvalue))"
+    } else {
+	return "_what do I do here_"
+    }
+    return "(($private) ? ([gen_defaultEmptyString $lvalue 0]) : _or here_)"
+}
+
 variable allocateSource {
 ${table}_shmpanic(${table} ctable)
 {
@@ -516,7 +545,7 @@ set keySetSource {
 	    switch (indexCtl) {
 	        case CTABLE_INDEX_PRIVATE: {
 		    // fake hash entry for search
-		    if(row->hashEntry.key) ckfree(row->hashEntry.key);
+		    if(row->hashEntry.key) [gen_deallocate row->hashEntry.key, 1];
 		    [gen_allocate ctable row->hashEntry.key "char *" "strlen(value)+1" 1];
 		    strcpy(row->hashEntry.key, value);
 		    break;
@@ -555,7 +584,7 @@ set varstringSetSource {
 	    if (row->$fieldName != (char *) NULL) {
 		// string was something but now matches the empty string
 [gen_ctable_remove_from_index $fieldName]
-		ckfree ((void *)row->$fieldName);
+		[gen_deallocate row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
 
 		// It's a change to the be default string. If we're
 		// indexed, force the default string in there so the 
@@ -563,7 +592,7 @@ set varstringSetSource {
 		// can't use our proc here yet because of the
 		// default empty string obj fanciness
 		if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] == NULL)) {
-		    row->$fieldName = Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &row->_${fieldName}Length);
+		    row->$fieldName = [gen_defaultEmptyString row->_${fieldName}Length 0];
 		    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 			return TCL_ERROR;
 		    }
@@ -590,7 +619,7 @@ set varstringSetSource {
 	// else reuse the previously allocagted space
 	if (row->_${fieldName}AllocatedLength <= length) {
 	    if (row->$fieldName != NULL) {
-		ckfree ((void *)row->$fieldName);
+		[gen_deallocate ctable "row->$fieldName" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    }
 	    [gen_allocate ctable "row->$fieldName" "char *" "length + 1" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    row->_${fieldName}AllocatedLength = length + 1;
