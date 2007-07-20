@@ -571,7 +571,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int               noKeys = 0;
 	  int               pgRow;
 	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
-	  Tcl_Obj          *valueObj = Tcl_NewObj();
+	  Tcl_Obj          *valueObj;
+	  Tcl_Obj          *utilityObj = Tcl_NewObj();
 	  char              keyNumberString[32];
 	  int		    keyColumn;
 	  int		    firstColumn;
@@ -658,11 +659,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		              return TCL_ERROR;
 			  }
 		          continue;
-		      } else {
-		          valueObj = ${table}_DefaultEmptyStringObj;
 		      }
+		      valueObj = ${table}_DefaultEmptyStringObj;
+		  } else {
+		      Tcl_SetStringObj (utilityObj, value, -1);
+		      valueObj = utilityObj;
 		  }
-		  Tcl_SetStringObj (valueObj, value, -1);
 		  ${table}_set (interp, ctable, valueObj, row, fieldList[field], indexCtl);
 	      }
 	  }
