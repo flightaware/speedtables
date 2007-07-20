@@ -72,8 +72,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int typeIndex = -1;
 	    int share_type = CTABLE_SHARED_NONE;
 	    char *share_file = NULL;
+	    mapinfo *share_mapinfo = NULL;
 	    size_t size = 0;
 	    named_share *share = NULL;
+	    struct ${table} share_ctable = NULL;
 #endif
 
 	    commandName = Tcl_GetString(objv[2]);
@@ -110,7 +112,6 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		    }
 		    if(doCreateOrAttach(interp, commandName, share_file, size, &share) != TCL_OK)
 			goto createError;
-		    
 		} else {
 		    int i;
 		    char *share_name = "_base";
@@ -122,8 +123,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		    }
 		    if(doCreateOrAttach(interp, commandName, share_file, ATTACH_ONLY, &share) != TCL_OK)
 			goto createError;
-		    share_master = get_symbol(share->mapinfo, share_name, TYPE_STRING);
+		    share_ctable = get_symbol(share->mapinfo, share_name, TYPE_DATA);
+		    if(!share_ctable) {
+		        Tcl_AppendResult("No data in ", share_file, " tagged with ", share_name, NULL);
+		        goto createError;
+		    }
 		}
+	        share_mapinfo = share->mapinfo;
 	    }
 	    else
 #endif
@@ -146,27 +152,35 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 #ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
 	    ctable->share_file = share_file;
-	    ctable->share_mapinfo = share->mapinfo;
-#endif
+	    ctable->share_mapinfo = share_mapinfo;
+	    ctable->share_ctable = share_ctable;
 
-	    // create an array of pointers to possible skip lists,
-	    // one per field
+	    if(share_type == CTABLE_SHARED_READER) {
+		// use the skiplists and so on from the master.
+		ctable->skiplists = ctable->share_ctable->skiplists;
+		ctable->ll_head = ctable->share_ctable->ll_head;
+		ctable->keyTablePtr = NULL;
+	    } else {
+		// create an array of pointers to possible skip lists,
+		// one per field
+	        if(share_type == CTABLE_SHARED_MASTER)
+	            ctable->skipLists = (jsw_skip_t **)shmalloc (mapinfo, creator->nFields * sizeof (jsw_skip_t *));
+	        else
+#endif
+		    ctable->skipLists = (jsw_skip_t **)ckalloc (creator->nFields * sizeof (jsw_skip_t *));
+
+	        for (i = 0; i < creator->nFields; i++) {
+		    ctable->skipLists[i] = NULL;
+	        }
+
+	        // create an array of pointers to possible linked lists,
+	        // one for each wanted as determined by gentable
+	        ctable_ListInit (&ctable->ll_head);
+
+	        ctable_InitHashTable (ctable->keyTablePtr);
 #ifdef WITH_SHARED_TABLES
-	    if(share_type == CTABLE_SHARED_MASTER)
-	        ctable->skipLists = (jsw_skip_t **)shmalloc (mapinfo, creator->nFields * sizeof (jsw_skip_t *));
-	    else
-#endif
-		ctable->skipLists = (jsw_skip_t **)ckalloc (creator->nFields * sizeof (jsw_skip_t *));
-
-	    for (i = 0; i < creator->nFields; i++) {
-		ctable->skipLists[i] = NULL;
 	    }
-
-	    // create an array of pointers to possible linked lists,
-	    // one for each wanted as determined by gentable
-	    ctable_ListInit (&ctable->ll_head);
-
-	    ctable_InitHashTable (ctable->keyTablePtr);
+#endif
 
 	    ctable->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) ctable, NULL);
 
@@ -181,6 +195,9 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    if (baseNameLength) {
 	        ckfree (commandName);
 	    }
+#ifdef WITH_SHARED_TABLES
+		_more here_
+#endif
 
 	    return TCL_ERROR;
 	}
