@@ -106,7 +106,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #ifdef WITH_SHARED_TABLES
     if (ctable->share_type == CTABLE_SHARED_READER) {
       if (!shared_ok[optIndex]) {
-	Tcl_AppendResult (interp, "Command '", options(optIndex), "' is not possible in a shared reader table.", (char *)NULL);
+	Tcl_AppendResult (interp, "Command '", options[optIndex], "' is not possible in a shared reader table.", (char *)NULL);
 	return TCL_ERROR;
       }
     }

@@ -30,7 +30,9 @@
 #include "speedtables.h"
 
 #ifdef WITH_SHARED_TABLES
-#include "shared.h"
+#include "shared.c"
+
+#define DEFAULT_SHARED_SIZE (1024*1024*4)
 #endif
 
 // these types must line up with ctableTypes in gentable.tcl
@@ -305,7 +307,7 @@ typedef struct ctableTable {
     int                                  autoRowNumber;
 #ifdef WITH_SHARED_TABLES
     char				*emptyString;
-    char			       **defaultStrings
+    char			       **defaultStrings;
 
     int					 share_type;
     char				*share_file;

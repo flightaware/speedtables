@@ -12,7 +12,7 @@ typedef uint32_t cell_t;
 #define FALSE 0
 
 // If defining a TCL extension, using TCL
-#ifdef TCL_EXTENSION
+#ifdef SHARED_TCL_EXTENSION
 # ifndef WITH_TCL
 #  define WITH_TCL
 # endif
@@ -78,7 +78,7 @@ typedef struct _pool {
 typedef struct _symbol {
     volatile struct _symbol *next;
     volatile char	    *addr;
-    int			     is_string;
+    int			     type;
     char		     name[];
 } symbol;
 
@@ -178,7 +178,7 @@ typedef struct _named_share {
 
 int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, int *ptr);
 void TclShmError(Tcl_Interp *interp, char *name);
-int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size);
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, named_share **sharePtr);
 int doDetach(Tcl_Interp *interp, named_share *share);
 #endif
 

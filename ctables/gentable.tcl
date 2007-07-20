@@ -20,6 +20,7 @@ namespace eval ctable {
     variable ctableErrorInfo
     variable withPgtcl
     variable withSharedTables
+    variable withSharedTclExtension
     variable reservedWords
     variable errorDebug
 
@@ -40,6 +41,7 @@ namespace eval ctable {
     set memDebug 0
 
     set withSharedTables 0
+    set withSharedTclExtension 0
 
     set targetDir /usr/local
     set pgTargetDir /usr/local
@@ -257,15 +259,14 @@ proc gen_defaultEmptyString {ctable lvalue {private 0}} {
 }
 
 variable allocateSource {
-${table}_shmpanic(${table} ctable)
+void ${table}_shmpanic(CTable *ctable)
 {
     panic (
-	"Out of shared memory for \"%s\".",
-	 Tcl_GetCommandName(ctable->commandInfo)
+	"Out of shared memory for \"%s\".", ctable->share_file
     );
 }
 
-char *${table}_allocate(${table} *ctable, size_t amount)
+char *${table}_allocate(CTable *ctable, size_t amount)
 {
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
 	char *memory = shmalloc(ctable->share_mapinfo, amount);
@@ -307,7 +308,7 @@ int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct 
         if(ctable->share_type == CTABLE_SHARED_MASTER) {
 	    row->hashEntry.key = shmalloc(ctable->share_mapinfo, strlen(value)+1);
 	    if(!row->hashEntry.key)
-	        shmpanic("Out of shared memory for key");
+	        ${table}_shmpanic(ctable);
 	    strcpy(row->hashEntry.key, value);
 	    flags = KEY_STATIC;
         }
@@ -325,7 +326,7 @@ int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct 
 	Tcl_AppendResult (interp, "Duplicate key '", value, "' after setting key field!", (char *)NULL);
 #ifdef WITH_SHARED_TABLES
 	if(flags == KEY_STATIC) {
-	    shmfree(ctable->share_mapinfo, row->hashEntry.key);
+	    shmdealloc(ctable->share_mapinfo, (void *)row->hashEntry.key);
 	    row->hashEntry.key = NULL;
 	}
 #endif
@@ -560,7 +561,7 @@ set keySetSource {
 	    switch (indexCtl) {
 	        case CTABLE_INDEX_PRIVATE: {
 		    // fake hash entry for search
-		    if(row->hashEntry.key) [gen_deallocate row->hashEntry.key, 1];
+		    if(row->hashEntry.key) [gen_deallocate ctable row->hashEntry.key 1];
 		    row->hashEntry.key = (char *)[gen_allocate ctable "strlen(value)+1" 1];
 		    strcpy(row->hashEntry.key, value);
 		    break;
@@ -599,7 +600,7 @@ set varstringSetSource {
 	    if (row->$fieldName != (char *) NULL) {
 		// string was something but now matches the empty string
 [gen_ctable_remove_from_index $fieldName]
-		[gen_deallocate row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
+		[gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
 
 		// It's a change to the be default string. If we're
 		// indexed, force the default string in there so the 
@@ -2108,11 +2109,11 @@ proc gen_defaults_subr {subr struct} {
 }
 
 set deleteRowHelperSource {
-void ${table}_deleteKey(CTable *table, struct ${table} *row)
+void ${table}_deleteKey(CTable *ctable, struct ${table} *row)
 {
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER)
-	shmfree(ctable->share_mapinfo, row->hashEntry.key);
+	shmdealloc(ctable->share_mapinfo, (void *)row->hashEntry.key);
     else
 #endif
 	ckfree(row->hashEntry.key);
@@ -2123,7 +2124,7 @@ void ${table}_deleteHashEntry(CTable *ctable, struct ${table} *row)
 {
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	shmfree(ctable->share_mapinfo, row->hashEntry.key);
+	shmdealloc(ctable->share_mapinfo, (void *)row->hashEntry.key);
 	row->hashEntry.key = NULL;
     }
 #endif
@@ -3042,7 +3043,7 @@ proc gen_shared_string_allocator {} {
 	if {$field(type) != "varstring"} {
 	    lappend sets "    defaultList\[$fieldNum] = NULL;"
 	} elseif {![info exists field(default)]} {
-	    lappend sets "    defaultList\[$fieldNum] = &bundle[0];"
+	    lappend sets "    defaultList\[$fieldNum] = &bundle\[0];"
 	} else {
 	    set def [cquote $field(default)]
 	    lappend sets "    defaultList\[$fieldNum] = &bundle\[$bundleLen];"
@@ -3058,19 +3059,19 @@ proc gen_shared_string_allocator {} {
     emit "    // Allocate array and the strings themselves in one chunk"
 
     set totalSize "$fieldNum * sizeof (char *) + $bundleLen"
-    emit "    defaultList = shmalloc(ctable->share_mapinfo, $totalSize);"
+    emit "    defaultList = (volatile char **)shmalloc(ctable->share_mapinfo, $totalSize);"
     emit "    if (!defaultList)"
-    emit "        ${table}_shmPanic(ctable);"
+    emit "        ${table}_shmpanic(ctable);"
     emit ""
 
-    emit "    bundle = &defaultList[$fieldNum];"
+    emit "    bundle = (char *)&defaultList\[$fieldNum];"
     emit ""
 
-    emit "    memcpy(bundle, \"$bundle\", $bundleLen);"
+    emit "    memcpy((char *)bundle, \"$bundle\", $bundleLen);"
     emit ""
 
-    emit "   ctable->emptyString = &bundle[0];"
-    emit "   ctable->defaultStrings = defaultList;"
+    emit "   ctable->emptyString = (char *)&bundle\[0];"
+    emit "   ctable->defaultStrings = (char **)defaultList;"
     emit ""
 
     emit [join $sets "\n"]
@@ -3654,9 +3655,9 @@ proc gen_field_names {} {
 
     if {$withSharedTables} {
         emit "// define default string list"
-        emit "char *${table}_defaultStrings[] = $leftCurly"
+        emit "char *${table}_defaultStrings\[] = $leftCurly"
         emit "    \"[join $defaultStrings {", "}]\""
-        emit "$rightCurly"
+        emit "$rightCurly;"
         emit ""
     }
 }
@@ -3759,6 +3760,7 @@ proc gen_gets_string_cases {} {
 proc gen_preamble {} {
     variable withPgtcl
     variable withSharedTables
+    variable withSharedTclExtension
     variable preambleCannedSource
 
     emit "/* autogenerated by ctable table generator [clock format [clock seconds]] */"
@@ -3770,6 +3772,10 @@ proc gen_preamble {} {
     }
     if {$withSharedTables} {
 	emit "#define WITH_SHARED_TABLES"
+	emit "#define WITH_TCL"
+	if {$withSharedTclExtension} {
+	    emit "#define SHARED_TCL_EXTENSION"
+	}
 	emit ""
     }
 

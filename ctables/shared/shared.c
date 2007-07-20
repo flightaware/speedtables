@@ -764,7 +764,7 @@ void TclShmError(Tcl_Interp *interp, char *name)
 static named_share *sharelist;
 static int autoshare = 0;
 
-int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, named_share *sharePtr)
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, named_share **sharePtr)
 {
     named_share    *share;
     mapinfo   *info;
@@ -836,7 +836,7 @@ int doDetach(Tcl_Interp *interp, named_share *share)
 }
 #endif
 
-#ifdef TCL_EXTENSION
+#ifdef SHARED_TCL_EXTENSION
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     int   	 cmdIndex;

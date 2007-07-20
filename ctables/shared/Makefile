@@ -8,7 +8,7 @@ U=/usr/local
 
 STUB=$U/lib/libtclstub84g.a
 
-SFLAGS=-shared -fPIC -I$U/include -I$U/include/tcl8.4 -fno-common -DUSE_TCL_STUBS=1 -DWITH_TCL -DTCL_EXTENSION
+SFLAGS=-shared -fPIC -I$U/include -I$U/include/tcl8.4 -fno-common -DUSE_TCL_STUBS=1 -DWITH_TCL -DSHARED_TCL_EXTENSION
 
 CFLAGS=-g -Wall -Wno-implicit-int
 
