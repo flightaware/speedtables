@@ -201,15 +201,20 @@ proc field_to_nameObj {table fieldName} {
 #
 # gen_allocate - return the code to allocate memory and assign
 #
-proc gen_allocate {ctable lvalue type size {private 0}} {
+proc gen_allocate {ctable size {private 0}} {
     variable withSharedTables
+    set priv "ckalloc($size)"
+    set pub "shmalloc($ctable->share_mapinfo, $size)"
+
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
-	return "$lvalue = ($type)ckalloc($size)"
+	return $priv
     }
+
     if {"$private" == "0" || "$private" == "FALSE"} {
-	return "$lvalue = ($type)shmalloc($ctable->share_mapinfo, $size)"
+	return $pub
     }
-    return "$lvalue = ($private) ? ($type)ckalloc($size) : ($type)shmalloc($ctable->share_mapinfo, $size)"
+
+    return "(($private) ? $priv : $pub)"
 }
 
 #
@@ -217,28 +222,38 @@ proc gen_allocate {ctable lvalue type size {private 0}} {
 #
 proc gen_deallocate {ctable pointer {private 0}} {
     variable withSharedTables
+    set priv "ckfree((void *)($pointer))"
+    set pub "shmdealloc(($ctable)->share_mapinfo, (void *)($pointer))"
+
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
-	return "ckfree((void *)($pointer))"
+	return $priv
     }
+
     if {"$private" == "0" || "$private" == "FALSE"} {
-	return "shmdealloc(($ctable)->share_mapinfo, (void *)($pointer))"
+	return $pub
     }
-    return "($private) ? ckfree((void *)($pointer)) : shmdealloc(($ctable)->share_mapinfo, (void *)($pointer))"
+
+    return "(($private) ? $priv : $pub)"
 }
 
 #
 # Default empty string for table
 #
-proc gen_defaultEmptyString {lvalue {private 0}} {
+proc gen_defaultEmptyString {ctable lvalue {private 0}} {
     variable withSharedTables
     variable table
+    set priv "Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &($lvalue))"
+    set pub "(($lvalue) = 0, ($ctable)->emptyString)"
 
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
-	return "Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &($lvalue))"
-    } else {
-	return "_what do I do here_"
+	return $priv
     }
-    return "(($private) ? ([gen_defaultEmptyString $lvalue 0]) : _or here_)"
+
+    if {"$private" == "0" || "$private" == "false"} {
+	return $pub
+    }
+
+    return "(($private) ? $priv : $pub)"
 }
 
 variable allocateSource {
@@ -546,7 +561,7 @@ set keySetSource {
 	        case CTABLE_INDEX_PRIVATE: {
 		    // fake hash entry for search
 		    if(row->hashEntry.key) [gen_deallocate row->hashEntry.key, 1];
-		    [gen_allocate ctable row->hashEntry.key "char *" "strlen(value)+1" 1];
+		    row->hashEntry.key = (char *)[gen_allocate ctable "strlen(value)+1" 1];
 		    strcpy(row->hashEntry.key, value);
 		    break;
 		}
@@ -591,8 +606,11 @@ set varstringSetSource {
 		// compare routine will be happy and then insert it.
 		// can't use our proc here yet because of the
 		// default empty string obj fanciness
+		//
+		// Since row->$fieldName is thrown away right after,
+		// shouldn't we be able to jsut use ""?
 		if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] == NULL)) {
-		    row->$fieldName = [gen_defaultEmptyString row->_${fieldName}Length 0];
+		    row->$fieldName = [gen_defaultEmptyString ctable row->_${fieldName}Length 0];
 		    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 			return TCL_ERROR;
 		    }
@@ -621,7 +639,7 @@ set varstringSetSource {
 	    if (row->$fieldName != NULL) {
 		[gen_deallocate ctable "row->$fieldName" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    }
-	    [gen_allocate ctable "row->$fieldName" "char *" "length + 1" "indexCtl == CTABLE_INDEX_PRIVATE"];
+	    row->$fieldName = (char *)[gen_allocate ctable "length + 1" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    row->_${fieldName}AllocatedLength = length + 1;
 	}
 	strncpy (row->$fieldName, string, length + 1);
@@ -2980,6 +2998,87 @@ proc gen_setup_routine {table} {
     emit ""
 }
 
+# Generate allocator for shared ctables
+proc gen_shared_string_allocator {} {
+    variable withSharedTables
+    variable table
+    variable leftCurly
+    variable rightCurly
+    variable fieldList
+
+    if {!$withSharedTables} {
+	return
+    }
+
+    emit "void ${table}_setupDefaultStrings(CTable *ctable) $leftCurly"
+    emit "    volatile char **defaultList;"
+    emit "    volatile char *bundle;"
+    emit ""
+
+    emit "    // If it's not a shared table, just use constants"
+    emit "    if(ctable->share_type == CTABLE_SHARED_NONE) $leftCurly"
+    emit "        ctable->emptyString = \"\";"
+    emit "        ctable->defaultStrings = ckalloc([llength $fieldList] * sizeof (char *));"
+
+    # Generate the simple assignments to constants, save the assignments
+    # to the shared bundle, and set up bundle
+    set bundle {\0}
+    set bundleLen 1
+    set fieldNum 0
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
+
+	if {$field(type) != "varstring"} {
+	    emit "        ctable->defaultStrings\[$fieldNum] = NULL;"
+	    lappend sets "    defaultList\[$fieldNum] = NULL;"
+	} elseif {![info exists field(default)]} {
+	    emit "        ctable->defaultStrings\[$fieldNum] = \"\";"
+	    lappend sets "    defaultList\[$fieldNum] = &bundle[0];"
+	} else {
+	    set def [cquote $field(default)]
+	    emit "        ctable->defaultStrings\[$fieldNum] = \"def\";"
+	    lappend sets "    defaultList\[$fieldNum] = &bundle\[$bundleLen];"
+
+	    append bundle $def
+	    incr bundleLen [string length $field(default)]
+	    append bundle {\0}
+	    incr bundleLen
+	}
+	incr fieldNum
+    }
+
+    emit "        return;"
+    emit "    $rightCurly"
+
+    emit "    // reader table, use the master table"
+    emit "    else if(ctable->share_type == CTABLE_SHARED_READER) $leftCurly"
+    emit "        ctable->emptyString = ctable->share_ctable->emptyString;"
+    emit "        ctable->defaultStrings = ctable->share_ctable->defaultStrings;"
+    emit "    $rightCurly"
+    emit ""
+
+    emit "    // Allocate array and the strings themselves in one chunk"
+
+    set totalSize "$fieldNum * sizeof (char *) + $bundleLen"
+    emit "    defaultList = shmalloc(ctable->share_mapinfo, $totalSize);"
+    emit "    if (!defaultList)"
+    emit "        ${table}_shmPanic(ctable);"
+    emit ""
+
+    emit "    bundle = &defaultList[$fieldNum];"
+    emit ""
+
+    emit "    memcpy(bundle, \"$bundle\", $bundleLen);"
+    emit ""
+
+    emit "   ctable->emptyString = &bundle[0];"
+    emit "   ctable->defaultStrings = defaultList;"
+    emit ""
+
+    emit [join $sets "\n"]
+    emit "$rightCurly"
+}
+
 #
 # gen_code - generate all of the code for the underlying methods for
 #  managing a created table
@@ -3022,6 +3121,8 @@ proc gen_code {} {
     gen_search_compare_function
 
     gen_make_key_functions
+
+    gen_shared_string_allocator
 
     emit [subst -nobackslashes -nocommands $cmdBodySource]
 }

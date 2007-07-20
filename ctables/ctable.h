@@ -304,9 +304,13 @@ typedef struct ctableTable {
 
     int                                  autoRowNumber;
 #ifdef WITH_SHARED_TABLES
+    char				*emptyString;
+    char			       **defaultStrings
+
     int					 share_type;
     char				*share_file;
     mapinfo                             *share_mapinfo;
+    struct ctableTable			*share_ctable;
 #endif
     Tcl_Command                          commandInfo;
     long                                 count;

@@ -155,6 +155,9 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->share_mapinfo = share_mapinfo;
 	    ctable->share_ctable = share_ctable;
 
+	    // call out for this, it's a little complex
+	    ${table}_setupDefaultStrings(ctable);
+
 	    if(share_type == CTABLE_SHARED_READER) {
 		// use the skiplists and so on from the master.
 		ctable->skiplists = ctable->share_ctable->skiplists;
