@@ -19,3 +19,9 @@ all:
 key:
 	-rm build/*
 	tclsh8.4 key-tests.tcl
+
+master:
+	-rm build/* *.dat
+	tclsh8.4 master.tcl
+	rm *.dat
+

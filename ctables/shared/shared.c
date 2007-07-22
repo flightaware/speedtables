@@ -244,7 +244,7 @@ void shminitmap(mapinfo *mapinfo)
     setfree((freeblock *)block, freesize, FALSE);
 
     //  One block containing a 0, upper sentinel.
-    *((cell_t *)((char *)block) + freesize) = 0;
+    *((cell_t *)(((char *)block) + freesize)) = 0;
 
     // Finally, initialize the free list by freeing it.
     shmdealloc(mapinfo, (char *)&block[1]);

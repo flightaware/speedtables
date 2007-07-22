@@ -24,6 +24,9 @@ test:
 keytest:
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make key"
 
+mastertest:
+	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make master"
+
 install:
 	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c $(INSTDIR)
