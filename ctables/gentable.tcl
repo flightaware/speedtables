@@ -40,7 +40,7 @@ namespace eval ctable {
     set showCompilerCommands 0
     set memDebug 0
 
-    set withSharedTables 0
+    set withSharedTables 1
     set withSharedTclExtension 0
 
     set targetDir /usr/local
@@ -205,8 +205,9 @@ proc field_to_nameObj {table fieldName} {
 #
 proc gen_allocate {ctable size {private 0}} {
     variable withSharedTables
+    variable table
     set priv "ckalloc($size)"
-    set pub "shmalloc($ctable->share_mapinfo, $size)"
+    set pub "${table}_allocate($ctable, $size)"
 
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
 	return $priv
@@ -4710,24 +4711,13 @@ proc CExtension {name version code} {
 
     file mkdir $::ctable::buildPath
 
-    ::ctable::install_ch_files $::ctable::buildPath
-
     if {[::ctable::extension_already_built $name $version $code]} {
         #puts stdout "extension $name $version unchanged"
 	return
     }
 
-    set ::ctable::ofp [open $::ctable::buildPath/$name-$version.c w]
-
-    ::ctable::gen_preamble
-    ::ctable::gen_ctable_type_stuff
-
-    ::ctable::emit "#include \"ctable_search.c\""
-
-    ::ctable::emit "static char *sourceCode = \"[::ctable::cquote "CExtension $name $version { $code }"]\";"
-    ::ctable::emit ""
-
-    ::ctable::emit "static char *ctablePackageVersion = \"$::ctable::ctablePackageVersion\";"
+    set ::ctable::sourceCode $code
+    set ::ctable::sourceFile $::ctable::buildPath/$name-$version.c
 
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
@@ -4752,6 +4742,29 @@ proc CExtension {name version code} {
     ::ctable::save_extension_code $name $version $code
 }
 
+##
+## start_ctable_codegen - can't be run until the ctable is loaded
+##
+proc start_codegen {} {
+    if [info exists ::ctable::ofp] {
+	return
+    }
+
+    ::ctable::install_ch_files $::ctable::buildPath
+
+    set ::ctable::ofp [open $::ctable::sourceFile w]
+
+    ::ctable::gen_preamble
+    ::ctable::gen_ctable_type_stuff
+
+    ::ctable::emit "#include \"ctable_search.c\""
+
+    ::ctable::emit "static char *sourceCode = \"[::ctable::cquote "CExtension $::ctable::extension $::ctable::extensionVersion { $::ctable::sourceCode }"]\";"
+    ::ctable::emit ""
+
+    ::ctable::emit "static char *ctablePackageVersion = \"$::ctable::ctablePackageVersion\";"
+}
+
 #
 # CTable - define a C meta table
 #
@@ -4766,6 +4779,8 @@ proc CTable {name data} {
     namespace eval ::ctable $data
 
     ::ctable::sanity_check
+
+    start_codegen
 
     # Create a key field if there isn't already one
     ::ctable::key _key
