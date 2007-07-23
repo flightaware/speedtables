@@ -1,6 +1,11 @@
 
 $Id$
 
+7/23/2007 peter
+    * Got all the shared library stuff working on the master side, so far
+      as I can tell without looking from the reader side. That's the next
+      can of worms to pop.
+
 7/16/2007 karl
     * Fix bug in boolean set source where it failed to break out of the
       switch statement.
