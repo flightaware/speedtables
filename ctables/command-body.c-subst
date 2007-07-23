@@ -15,22 +15,27 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
 	// gotta free key strings here or they don't get freed.  slight kludge.
 	// gotta do it before ${table}_delete because afterwards, the row
 	// is already deleted.
-        ckfree (row->hashEntry.key);
+#ifdef WITH_SHARED_TABLES
+	if(ctable->share_type == CTABLE_SHARED_MASTER)
+	    shmfree(ctable->share_mapinfo, row->hashEntry.key);
+	else
+#endif
+            ckfree (row->hashEntry.key);
+
 	// Remove the freed key, because it *is* possible for a private table
 	// to have a valid key. Alternatively, we could remove this free and
 	// depend on ${table}_delete doing it.
-	row->hashEntry.key = 0;
+	row->hashEntry.key = NULL;
 
-	${table}_delete(ctable, (struct ${table} *)row, CTABLE_INDEX_PRIVATE);
-
+	${table}_delete(ctable, (struct ${table} *)row, CTABLE_INDEX_FASTDELETE);
     }
 
     // reset the linked list of all rows
     ctable_ListInit (&ctable->ll_head);
 
-    // drop all indexes, if any
     ctable_DeleteHashTable (ctable->keyTablePtr);
 
+    // drop all indexes, if any
     ctable_DropAllIndexes (ctable);
 
     ctable->count = 0;

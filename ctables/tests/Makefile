@@ -17,11 +17,12 @@ all:
 	tclsh8.4 trans-tests.tcl
 
 key:
-	-rm build/*
+	-rm -f build/*
 	tclsh8.4 key-tests.tcl
 
 master:
-	-rm build/* *.dat
+	-rm -f build/* *.dat
+	tclsh8.4 tsv-nokey-tests.tcl
 	tclsh8.4 master.tcl
-	rm *.dat
+	rm -f *.dat
 

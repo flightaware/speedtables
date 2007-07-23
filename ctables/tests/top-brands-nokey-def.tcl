@@ -8,9 +8,13 @@ package require ctable
 
 #CTableBuildPath /tmp
 
-CExtension topbrandsnokey 1.0 {
+if {![info exists suffix]} {
+    set suffix ""
+}
 
-CTable top_brands_nokey {
+CExtension topbrandsnokey$suffix 1.0 {
+
+CTable top_brands_nokey$suffix {
     varstring id indexed 1
     int rank indexed 1
     varstring name indexed 1
@@ -19,6 +23,6 @@ CTable top_brands_nokey {
 
 }
 
-package require Topbrandsnokey
+package require Topbrandsnokey$suffix
 
-top_brands_nokey create t
+top_brands_nokey$suffix create t

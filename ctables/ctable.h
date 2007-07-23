@@ -118,7 +118,12 @@ typedef struct ctable_baseRowStruct {
 // setting up structures for comparisons and the like, i.e. stuff that
 // should not be a row in the ctable.
 //
+// CTABLE_INDEX_FASTDELETE is only used by _delete_all_rows and passed to
+// _delete.  if fastdelete is set, then the keys have been pre-deleted but
+// otherwise it should be treated as normal
+//
 // do not change, new and normal and 0 and 1 also expected from find_or_create
+#define CTABLE_INDEX_FASTDELETE -2
 #define CTABLE_INDEX_PRIVATE -1
 #define CTABLE_INDEX_NORMAL 0
 #define CTABLE_INDEX_NEW 1

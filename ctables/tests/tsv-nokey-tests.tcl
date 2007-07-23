@@ -6,6 +6,12 @@
 
 source top-brands-nokey-def.tcl
 
+proc check_value {format expected actual} {
+    if {"$expected" != "$actual"} {
+	error [format $format $expected $actual]
+    }
+}
+
 proc suck_in_top_brands_nokeys {} {
     set fp [open top-brands.tsv]
     set lastKey [t read_tabsep $fp -nokeys]
@@ -18,55 +24,33 @@ proc suck_in_top_brands_nokeys {} {
 
 set lastKey [suck_in_top_brands_nokeys]
 
-if {[t count] != 100} {
-    error "should have had 100 rows after read_tabsepping top-brands.tsv"
-}
+check_value "Expected %d rows, got %d, after read_tabsepping top-brands.tsv" 100 [t count]
 
-if {$lastKey != 99} {
-    error "last row read was $lastKey and should have been 99"
-}
+check_value "Expected %s got %s for lastKey" 99 $lastKey
 
 suck_in_top_brands_nokeys
 
-if {[t count] != 200} {
-    error "should have had 200 rows after second read_tabsepping top-brands.tsv"
-}
+check_value "Expected %d rows, got %d, after read_tabsepping top-brands.tsv" 200 [t count]
 
 set lastKey [suck_in_top_brands_nokeys]
 
-if {[t count] != 300} {
-    error "should have had 300 rows after second read_tabsepping top-brands.tsv"
-}
+check_value "Expected %d rows, got %d, after read_tabsepping top-brands.tsv" 300 [t count]
 
-if {$lastKey != 299} {
-    error "last row read was $lastKey and should have been 299"
-}
+check_value "Expected %s got %s for lastKey" 299 $lastKey
 
-if {[t get 299 id] != "polo"} {
-    error "row 299's ID should have been polo"
-}
+check_value "Expected %s for row 299's id, got %s" [t get 299 id] "polo"
 
 t reset
 
-if {[t count] != 0} {
-    error "count should have been zero after reset"
-}
+check_value "Expected count = %s, got %s after reset" 0 [t count]
 
-if {[t get 99 id] != ""} {
-    error "row 99 has something and shouldn't"
-}
+check_value "After reset, expected empty%s row 99 but got %s" "" [t get 99 id]
 
 suck_in_top_brands_nokeys
 
-if {[t count] != 100} {
-    error "should have had 100 rows after read_tabsepping top-brands.tsv"
-}
+check_value "After reset, expected %d rows, got %d, after read_tabsepping top-brands.tsv" 100 [t count]
 
-if {[t get 99 id] != "polo"} {
-    error "row 99's ID should have been polo but is [t get 99 id]"
-}
+check_value "After reset, expected %s for row 99's id, got %s" [t get 99 id] "polo"
 
-if {[t get 299 id] != ""} {
-    error "row 299 shouldn't have had anything"
-}
+check_value "After reset, expected empty%s row 299 but got %s" "" [t get 299 id]
 
