@@ -2,6 +2,12 @@
  * $Id$
  */
 
+#ifdef VERBOSE_DEBUG
+#define IFDEBUG(x) x				/* Debug code included*/
+#else
+#define IFDEBUG(x)				/* Debug code elided */
+#endif
+
 // Atomic word size, "cell_t".
 typedef uint32_t cell_t;
 #define CELLSIZE (sizeof (cell_t))
