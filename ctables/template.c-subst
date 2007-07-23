@@ -202,10 +202,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    if(share_type == CTABLE_SHARED_MASTER) {
 		if(ctable) {
 		    if(ctable->defaultStrings)
-			shmdealloc(share->mapinfo, (void *)ctable->defaultStrings);
+			shmfree(share->mapinfo, (void *)ctable->defaultStrings);
 		    if(ctable->skipLists)
-			shmdealloc(share->mapinfo, (void *)ctable->skipLists);
-		    shmdealloc (share->mapinfo, (void *)ctable);
+			shmfree(share->mapinfo, (void *)ctable->skipLists);
+		    shmfree (share->mapinfo, (void *)ctable);
 		}
 	    }
 

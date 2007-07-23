@@ -142,6 +142,7 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
     p->next = mapinfo_list;
     p->freelist = NULL;
     p->pools = NULL;
+    p->garbage_pool = NULL;
     mapinfo_list = p;
 
     return p;
@@ -305,6 +306,7 @@ char *palloc(pool *pool, size_t wanted)
 {
     char *block;
 
+fprintf(stderr, "palloc(0x%lX, %ld);\n", (long)pool, (long)wanted);
     // align size
     if(wanted % CELLSIZE)
 	wanted += CELLSIZE - wanted % CELLSIZE;
@@ -315,20 +317,25 @@ char *palloc(pool *pool, size_t wanted)
     if(pool == NULL)
 	return NULL;
 
+fprintf(stderr, "    alloc from 0x%lx\n", (long)pool);
     if(pool->freelist) {
+fprintf(stderr, "          from freelist 0x%lX\n", (long)pool->freelist);
 	block = pool->freelist;
 	pool->freelist = *(char **)block;
     } else {
+fprintf(stderr, "          from avail 0x%lX\n", (long)pool->brk);
 	block = pool->brk;
 	pool->brk += pool->blocksize;
     }
     pool->avail--;
+fprintf(stderr, "done\n");
     return block;
 }
 
 void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block)
 {
     volatile freeblock *next = block->next, *prev = block->prev;
+fprintf(stderr, "remove_from_freelist(mapinfo, 0x%lX);\n", (long)block);
 
     if(next == block) {
 	if(prev != block)
@@ -343,20 +350,25 @@ void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block)
 void insert_in_freelist(mapinfo *mapinfo, volatile freeblock *block)
 {
     volatile freeblock *next, *prev;
+fprintf(stderr, "insert_in_freelist(mapinfo, 0x%lX);\n", (long)block);
 
     if(!mapinfo->freelist) {
+fprintf(stderr, "    empty freelist, set all to block\n");
 	mapinfo->freelist = block->next = block->prev = block;
 	return;
     }
     next = block->next = mapinfo->freelist->next;
     prev = block->prev = mapinfo->freelist->prev;
+fprintf(stderr, "    insert between 0x%lX and 0x%lX\n", (long)prev, (long)next);
     next->prev = prev->next = block;
+fprintf(stderr, "    done\n");
 }
 
 char *_shmalloc(mapinfo *mapinfo, size_t nbytes)
 {
     volatile freeblock *block = mapinfo->freelist;
     size_t 		needed = nbytes + 2 * CELLSIZE;
+fprintf(stderr, "_shmalloc(mapinfo, %ld);\n", (long)nbytes);
 
     // align size
     if(nbytes % CELLSIZE)
@@ -398,6 +410,7 @@ char *_shmalloc(mapinfo *mapinfo, size_t nbytes)
 char *shmalloc(mapinfo *mapinfo, size_t size)
 {
     char *block;
+fprintf(stderr, "shmalloc(mapinfo, 0x%lX);/n", (long)size);
 
     // align size
     if(size % CELLSIZE)
@@ -411,7 +424,10 @@ char *shmalloc(mapinfo *mapinfo, size_t size)
 void shmfree(mapinfo *mapinfo, char *block)
 {
     pool *pool = mapinfo->garbage_pool;
-    garbage *entry = (garbage *)palloc(pool, GARBAGE_POOL_SIZE);
+    garbage *entry;
+
+fprintf(stderr, "shmfree(mapinfo, 0x%lX);\n", (long)block);
+    entry = (garbage *)palloc(pool, GARBAGE_POOL_SIZE);
 
     if(!entry) {
 	pool = mallocpool(sizeof (garbage), GARBAGE_POOL_SIZE);
@@ -486,6 +502,7 @@ int shmdealloc(mapinfo *mapinfo, char *memory)
 {
     size_t size;
     freeblock *block;
+fprintf(stderr, "shmdealloc(mapinfo, 0x%lX);\n", (long)memory);
 
     // Try and free it back into a pool.
     if(shmdepool(mapinfo->pools, memory)) return 1;

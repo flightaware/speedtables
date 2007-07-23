@@ -226,7 +226,7 @@ proc gen_allocate {ctable size {private 0}} {
 proc gen_deallocate {ctable pointer {private 0}} {
     variable withSharedTables
     set priv "ckfree((void *)($pointer))"
-    set pub "shmdealloc(($ctable)->share_mapinfo, (void *)($pointer))"
+    set pub "shmfree(($ctable)->share_mapinfo, (void *)($pointer))"
 
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
 	return $priv
@@ -327,7 +327,7 @@ int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct 
 	Tcl_AppendResult (interp, "Duplicate key '", value, "' after setting key field!", (char *)NULL);
 #ifdef WITH_SHARED_TABLES
 	if(flags == KEY_STATIC) {
-	    shmdealloc(ctable->share_mapinfo, (void *)row->hashEntry.key);
+	    shmfree(ctable->share_mapinfo, (void *)row->hashEntry.key);
 	    row->hashEntry.key = NULL;
 	}
 #endif
@@ -2114,7 +2114,7 @@ void ${table}_deleteKey(CTable *ctable, struct ${table} *row)
 {
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER)
-	shmdealloc(ctable->share_mapinfo, (void *)row->hashEntry.key);
+	shmfree(ctable->share_mapinfo, (void *)row->hashEntry.key);
     else
 #endif
 	ckfree(row->hashEntry.key);
@@ -2125,7 +2125,7 @@ void ${table}_deleteHashEntry(CTable *ctable, struct ${table} *row)
 {
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	shmdealloc(ctable->share_mapinfo, (void *)row->hashEntry.key);
+	shmfree(ctable->share_mapinfo, (void *)row->hashEntry.key);
 	row->hashEntry.key = NULL;
     }
 #endif
