@@ -316,6 +316,7 @@ typedef struct ctableTable {
 
     int					 share_type;
     char				*share_file;
+    char				*share_name;
     mapinfo                             *share_mapinfo;
     struct ctableTable			*share_ctable;
 #endif

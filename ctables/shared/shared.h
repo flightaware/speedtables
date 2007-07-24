@@ -167,6 +167,7 @@ cell_t oldest_reader_cycle(mapinfo *mapinfo);
 void shmpanic(char *message);
 int add_symbol(mapinfo *mapinfo, char *name, char *value, int type);
 char *get_symbol(mapinfo *mapinfo, char *name, int wanted);
+int shmattachpid(mapinfo *info, int pid);
 
 #define SYM_TYPE_STRING 1
 #define SYM_TYPE_DATA 0

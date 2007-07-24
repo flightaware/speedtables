@@ -53,9 +53,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     Tcl_HashEntry *registeredProcHashEntry;
     int indexCtl;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "capabilities", "key", "makekey", "methods", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "capabilities", "key", "makekey", "methods", "attach", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_CAPS, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, NUM_OPTIONS
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_CAPS, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
@@ -360,6 +360,46 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
           Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
 	  return TCL_OK;
+      }
+
+      case OPT_ATTACH: {
+#ifdef WITH_SHARED_TABLES
+	  if (ctable->share_type == CTABLE_SHARED_MASTER) {
+	      int	 pid = -1;
+	      Tcl_Obj	*resultObj = Tcl_GetObjResult(interp);
+	      char	*resultList[4];
+	      int	 i;
+
+	      if (objc != 4) {
+		  Tcl_AppendResult(interp, "Expected process id.", NULL);
+		  return TCL_ERROR;
+	      }
+	      if (Tcl_GetIntFromObj (interp, objv[3], &pid) == TCL_ERROR) {
+		  Tcl_AppendResult(interp, " parsing process id", NULL);
+		  return TCL_ERROR;
+	      }
+
+	      if (!shmattachpid(ctable->share_mapinfo, pid)) {
+		  TclShmError(interp, Tcl_GetString(objv[3]));
+		  return TCL_ERROR;
+	      }
+
+	      resultList[0] = "file";
+	      resultList[1] = ctable->share_file;
+	      resultList[2] = "name";
+	      resultList[3] = ctable->share_name;
+
+	      for(i = 0; i < 4; i++) {
+	          if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (resultList[i], -1)) == TCL_ERROR) {
+		      return TCL_ERROR;
+	          }
+	      }
+
+	      return TCL_OK;
+	  }
+#endif
+	  Tcl_AppendResult(interp, "Not a shared table.\n", NULL);
+	  return TCL_ERROR;
       }
 
       case OPT_DELETE: {

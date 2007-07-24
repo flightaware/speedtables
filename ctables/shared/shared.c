@@ -649,6 +649,38 @@ volatile reader *pid2reader(volatile mapheader *map, int pid)
     return NULL;
 }
 
+int shmattachpid(mapinfo *info, int pid)
+{
+    volatile mapheader *map = info->map;
+    volatile reader_block *b = &map->readers;
+
+    if(pid2reader(map, pid)) return 1;
+
+    while(b) {
+	int i;
+	for(i = 0; i < b->count; i++) {
+	    if(b->readers[i].pid == 0) {
+		b->readers[i].pid = pid;
+		return 1;
+	    }
+	}
+	if(b->count < READERS_PER_BLOCK) {
+	    b->readers[b->count++].pid = pid;
+	    return 1;
+	}
+	b = b->next;
+    }
+    b = (reader_block *)shmalloc(info, sizeof *b);
+    if(!b) {
+	return 0;
+    }
+    b->count = 0;
+    b->next = map->readers.next;
+    map->readers.next = (reader_block *)b;
+    b->readers[b->count++].pid = pid;
+    return 1;
+}
+
 int read_lock(mapinfo *mapinfo)
 {
     volatile mapheader *map = mapinfo->map;

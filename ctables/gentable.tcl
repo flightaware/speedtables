@@ -1636,7 +1636,9 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
         if (key) {
 	    char *keyEnd = strchr(key, '\t');
 	    if(keyEnd) *keyEnd = 0;
-	    keyCopy = key = strdup(key);
+	    keyCopy = ckalloc(strlen(key)+1);
+	    strcpy(keyCopy, key);
+	    key = keyCopy;
 	    if(keyEnd) *keyEnd = '\t';
         }
 	if(!key)

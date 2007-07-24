@@ -45,7 +45,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
     ctable_CreatorTable *creator = (ctable_CreatorTable *)clientData;
 
-    CTable *ctable;
+    CTable *ctable = NULL;
 
     if (objc < 2) {
       err:
@@ -69,6 +69,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int typeIndex = -1;
 	    int share_type = CTABLE_SHARED_NONE;
 	    char *share_file = NULL;
+	    char *share_name = "_base";
 	    mapinfo *share_mapinfo = NULL;
 	    size_t size = 0;
 	    named_share *share = NULL;
@@ -111,7 +112,6 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			goto createError;
 		} else {
 		    int i;
-		    char *share_name = "_base";
 		    for(i = 5; i < objc; i+=2) {
 			if(strcmp(Tcl_GetString(objv[i]), "file") == 0)
 			    share_file = Tcl_GetString(objv[i+1]);
@@ -138,6 +138,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 #ifdef WITH_SHARED_TABLES
 	    if(share_type == CTABLE_SHARED_MASTER) {
 		ctable = (CTable *)shmalloc (share->mapinfo, sizeof(CTable));
+		if(!ctable) {
+		    TclShmError(interp, commandName);
+		    goto createError;
+		}
 		ctable->skipLists = NULL; // to tell if we can safely dealloc
 		ctable->defaultStrings = NULL;
 	    } else
@@ -150,7 +154,16 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->autoRowNumber = 0;
 #ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
-	    ctable->share_file = share_file;
+	    if(share_file) {
+	        ctable->share_file = ckalloc(strlen(share_file)+1);
+		strcpy(ctable->share_file, share_file);
+	    } else
+		ctable->share_file = NULL;
+	    if(share_name) {
+	        ctable->share_name = ckalloc(strlen(share_name)+1);
+		strcpy(ctable->share_name, share_name);
+	    } else
+		ctable->share_name = NULL;
 	    ctable->share_mapinfo = share_mapinfo;
 	    ctable->share_ctable = share_ctable;
 
@@ -199,6 +212,15 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 #ifdef WITH_SHARED_TABLES
+	    if (share_type == CTABLE_SHARED_READER) {
+		ctable = NULL;
+	    }
+
+	    if(ctable) {
+		if(ctable->share_file) ckfree(ctable->share_file);
+		if(ctable->share_name) ckfree(ctable->share_name);
+	    }
+
 	    if(share_type == CTABLE_SHARED_MASTER) {
 		if(ctable) {
 		    if(ctable->defaultStrings)
@@ -206,11 +228,14 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		    if(ctable->skipLists)
 			shmfree(share->mapinfo, (void *)ctable->skipLists);
 		    shmfree (share->mapinfo, (void *)ctable);
+		    ctable = NULL;
 		}
 	    }
 
 	    if(share) doDetach(interp, share);
 #endif
+	    if(ctable)
+		ckfree((void *)ctable);
 
 	    return TCL_ERROR;
 	}
