@@ -370,17 +370,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      char	*resultList[4];
 	      int	 i;
 
-	      if (objc != 4) {
+	      if (objc != 3) {
 		  Tcl_AppendResult(interp, "Expected process id.", NULL);
 		  return TCL_ERROR;
 	      }
-	      if (Tcl_GetIntFromObj (interp, objv[3], &pid) == TCL_ERROR) {
+	      if (Tcl_GetIntFromObj (interp, objv[2], &pid) == TCL_ERROR) {
 		  Tcl_AppendResult(interp, " parsing process id", NULL);
 		  return TCL_ERROR;
 	      }
 
 	      if (!shmattachpid(ctable->share_mapinfo, pid)) {
-		  TclShmError(interp, Tcl_GetString(objv[3]));
+		  TclShmError(interp, Tcl_GetString(objv[2]));
 		  return TCL_ERROR;
 	      }
 
