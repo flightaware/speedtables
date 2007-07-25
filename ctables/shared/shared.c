@@ -18,7 +18,7 @@
 
 #include "shared.h"
 
-static mapinfo *mapinfo_list;
+static shm_t   *share_list;
 
 int shared_errno;
 char *shared_errmsg[] = {
@@ -81,13 +81,13 @@ int open_new(char *file, size_t size)
 // map_file - map a file at addr. If the file doesn't exist, create it first
 // with size default_size. Return map info structure or NULL on failure. Errno
 // WILL be meaningful after a failure.
-mapinfo *map_file(char *file, char *addr, size_t default_size)
+shm_t   *map_file(char *file, char *addr, size_t default_size)
 {
     char    *map;
     int      flags = MAP_SHARED|MAP_NOSYNC;
     size_t   size;
     int      fd;
-    mapinfo *p;
+    shm_t   *p;
 
     fd = open(file, O_RDWR, 0);
 
@@ -128,7 +128,7 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
 	return NULL;
     }
 
-    p = (mapinfo *)malloc(sizeof (*p));
+    p = (shm_t   *)malloc(sizeof (*p));
     if(!p) {
 	shared_errno = SH_PRIVATE_MEMORY;
 	munmap(map, size);
@@ -137,10 +137,12 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
     }
 
     // Completely initialise all fields!
-    p->next = mapinfo_list;
+    p->next = share_list;
     p->map = (mapheader *)map;
     p->size = size;
     p->fd = fd;
+    p->name = NULL;
+    p->creator = 0;
     p->pools = NULL;
     p->freelist = NULL;
     p->garbage = NULL;
@@ -148,7 +150,7 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
     p->horizon = LOST_HORIZON;
     p->self = NULL;
 
-    mapinfo_list = p;
+    share_list = p;
 
     return p;
 }
@@ -156,20 +158,20 @@ mapinfo *map_file(char *file, char *addr, size_t default_size)
 // unmap_file - Unmap the open and mapped associated with the memory mapped
 // at address "map", return 0 if there is no memory we know about mapped
 // there. Errno is not meaningful after failure.
-int unmap_file(mapinfo *info)
+int unmap_file(shm_t   *info)
 {
     char	*map;
     size_t	 size;
     int		 fd;
 
     // remove from list
-    if(!mapinfo_list) {
+    if(!share_list) {
 	shared_errno = -SH_NO_MAP;
 	return 0;
-    } else if(mapinfo_list == info) {
-	mapinfo_list = info->next;
+    } else if(share_list == info) {
+	share_list = info->next;
     } else {
-	mapinfo *p = mapinfo_list;
+	shm_t   *p = share_list;
 
 	while(p && p->next != info)
 	    p = p->next;
@@ -196,13 +198,13 @@ int unmap_file(mapinfo *info)
 // unmap_all - Unmap all mapped files.
 void unmap_all(void)
 {
-    while(mapinfo_list) {
-	mapinfo *p    = mapinfo_list;
+    while(share_list) {
+	shm_t   *p    = share_list;
 	char    *map  = (char *)p->map;
 	size_t   size = p->size;
 	int	 fd   = p->fd;
 
-	mapinfo_list = mapinfo_list->next;
+	share_list = share_list->next;
 
 	free(p);
 
@@ -218,28 +220,30 @@ int shmcheckmap(volatile mapheader *map)
     return 1;
 }
 
-void shminitmap(mapinfo *mapinfo)
+void shminitmap(shm_t   *shm)
 {
-    volatile mapheader	*map = mapinfo->map;
+    volatile mapheader	*map = shm->map;
     cell_t		*block;
     cell_t 		 freesize;
 
     // COMPLETELY initialise map.
     map->magic = MAP_MAGIC;
     map->headersize = sizeof *map;
-    map->mapsize = mapinfo->size;
+    map->mapsize = shm->size;
     map->addr = (char *)map;
     map->namelist = NULL;
     map->cycle = LOST_HORIZON;
-    map->readers.next = 0;
-    map->readers.count = 0;
+    map->readers = NULL;
 
     // freshly mapped, so this stuff is void
-    mapinfo->garbage = NULL;
-    mapinfo->garbage_pool = NULL;
-    mapinfo->freelist = NULL;
-    mapinfo->pools = NULL;
-    mapinfo->horizon = LOST_HORIZON;
+    shm->garbage = NULL;
+    shm->garbage_pool = NULL;
+    shm->freelist = NULL;
+    shm->pools = NULL;
+    shm->horizon = LOST_HORIZON;
+
+    // Remember that we own this.
+    shm->creator = 1;
 
     // Initialise the freelist by making the whole of the map after the
     // header three blocks:
@@ -249,7 +253,7 @@ void shminitmap(mapinfo *mapinfo)
     *block++ = 0;
 
     //  One "used" block, freesize bytes long
-    freesize = mapinfo->size - sizeof *map - 2 * sizeof *block;
+    freesize = shm->size - sizeof *map - 2 * sizeof *block;
 
     setfree((freeblock *)block, freesize, FALSE);
 
@@ -257,7 +261,7 @@ void shminitmap(mapinfo *mapinfo)
     *((cell_t *)(((char *)block) + freesize)) = 0;
 
     // Finally, initialize the free list by freeing it.
-    shmdealloc(mapinfo, (char *)&block[1]);
+    shmdealloc(shm, (char *)&block[1]);
 }
 
 pool *initpool(char *memory, size_t blocksize, int blocks)
@@ -277,7 +281,7 @@ pool *initpool(char *memory, size_t blocksize, int blocks)
     return new;
 }
 
-int shmaddpool(mapinfo *mapinfo, size_t blocksize, int blocks)
+int shmaddpool(shm_t   *shm, size_t blocksize, int blocks)
 {
     char *memory;
     pool *pool;
@@ -286,12 +290,12 @@ int shmaddpool(mapinfo *mapinfo, size_t blocksize, int blocks)
     if(blocksize % CELLSIZE)
 	blocksize += CELLSIZE - blocksize % CELLSIZE;
     
-    memory = _shmalloc(mapinfo, blocksize*blocks);
+    memory = _shmalloc(shm, blocksize*blocks);
     if(!memory) return 0;
 
     pool = initpool(memory, blocksize, blocks);
-    pool->next = mapinfo->pools;
-    mapinfo->pools = pool;
+    pool->next = shm->pools;
+    shm->pools = pool;
     return 1;
 }
 
@@ -341,10 +345,10 @@ IFDEBUG(fprintf(stderr, "done\n");)
     return block;
 }
 
-void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block)
+void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
 {
     volatile freeblock *next = block->next, *prev = block->prev;
-IFDEBUG(fprintf(stderr, "remove_from_freelist(mapinfo, 0x%lX);\n", (long)block);)
+IFDEBUG(fprintf(stderr, "remove_from_freelist(shm, 0x%lX);\n", (long)block);)
 IFDEBUG(fprintf(stderr, "    prev = 0x%lX, next=0x%lX\n", (long)prev, (long)next);)
     if(!block->next)
 	shmpanic("Freeing freed block (next == NULL)!");
@@ -357,10 +361,10 @@ IFDEBUG(fprintf(stderr, "    prev = 0x%lX, next=0x%lX\n", (long)prev, (long)next
     if(next == block || prev == block) {
 	if(next != prev)
 	    shmpanic("Corrupt free list (half-closed list)!");
-	if(block != mapinfo->freelist)
+	if(block != shm->freelist)
 	    shmpanic("Corrupt free list (closed list != freelist)!");
 IFDEBUG(fprintf(stderr, "    last free, empty freelist\n");)
-	mapinfo->freelist = NULL;
+	shm->freelist = NULL;
 	return;
     }
 
@@ -378,34 +382,34 @@ IFDEBUG(fprintf(stderr, "    set 0x%lX->next = 0x%lX\n", (long)prev, (long)next)
 IFDEBUG(fprintf(stderr, "    set 0x%lX->prev = 0x%lX\n", (long)next, (long)prev);)
     next->prev = prev;
 
-    if(mapinfo->freelist == block) {
+    if(shm->freelist == block) {
 IFDEBUG(fprintf(stderr, "    set freelist = 0x%lX\n", (long)next);)
-	mapinfo->freelist = next;
+	shm->freelist = next;
     }
 }
 
-void insert_in_freelist(mapinfo *mapinfo, volatile freeblock *block)
+void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
 {
     volatile freeblock *next, *prev;
-IFDEBUG(fprintf(stderr, "insert_in_freelist(mapinfo, 0x%lX);\n", (long)block);)
+IFDEBUG(fprintf(stderr, "insert_in_freelist(shm, 0x%lX);\n", (long)block);)
 
-    if(!mapinfo->freelist) {
+    if(!shm->freelist) {
 IFDEBUG(fprintf(stderr, "    empty freelist, set all to block\n");)
-	mapinfo->freelist = block->next = block->prev = block;
+	shm->freelist = block->next = block->prev = block;
 	return;
     }
-    next = block->next = mapinfo->freelist;
-    prev = block->prev = mapinfo->freelist->prev;
+    next = block->next = shm->freelist;
+    prev = block->prev = shm->freelist->prev;
 IFDEBUG(fprintf(stderr, "    insert between 0x%lX and 0x%lX\n", (long)prev, (long)next);)
     next->prev = prev->next = block;
 IFDEBUG(fprintf(stderr, "    done\n");)
 }
 
-char *_shmalloc(mapinfo *mapinfo, size_t nbytes)
+char *_shmalloc(shm_t   *shm, size_t nbytes)
 {
-    volatile freeblock *block = mapinfo->freelist;
+    volatile freeblock *block = shm->freelist;
     size_t 		needed = nbytes + 2 * CELLSIZE;
-IFDEBUG(fprintf(stderr, "_shmalloc(mapinfo, %ld);\n", (long)nbytes);)
+IFDEBUG(fprintf(stderr, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
 
     // align size
     if(nbytes % CELLSIZE)
@@ -428,7 +432,7 @@ IFDEBUG(fprintf(stderr, "_shmalloc(mapinfo, %ld);\n", (long)nbytes);)
 	    }
 
 IFDEBUG(fprintf(stderr, "    removing block size %d\n", used);)
-	    remove_from_freelist(mapinfo, block);
+	    remove_from_freelist(shm, block);
 	    setfree(block, used, FALSE);
 
 	    // If there's space left
@@ -441,7 +445,7 @@ IFDEBUG(fprintf(stderr, "    removing block size %d\n", used);)
 
 IFDEBUG(fprintf(stderr, "    adding new block 0s%lX size %d\n", (long)new_block, left);)
 		// add it into the free list
-		insert_in_freelist(mapinfo, new_block);
+		insert_in_freelist(shm, new_block);
 	    }
 
 	    return block2data(block);
@@ -453,26 +457,26 @@ IFDEBUG(fprintf(stderr, "    adding new block 0s%lX size %d\n", (long)new_block,
     return NULL;
 }
 
-char *shmalloc(mapinfo *mapinfo, size_t size)
+char *shmalloc(shm_t   *shm, size_t size)
 {
     char *block;
-IFDEBUG(fprintf(stderr, "shmalloc(mapinfo, 0x%lX);\n", (long)size);)
+IFDEBUG(fprintf(stderr, "shmalloc(shm, 0x%lX);\n", (long)size);)
 
     // align size
     if(size % CELLSIZE)
 	size += CELLSIZE - size % CELLSIZE;
 
-    if(!(block = palloc(mapinfo->pools, size)))
-	block = _shmalloc(mapinfo, size);
+    if(!(block = palloc(shm->pools, size)))
+	block = _shmalloc(shm, size);
     return block;
 }
 
-void shmfree(mapinfo *mapinfo, char *block)
+void shmfree(shm_t   *shm, char *block)
 {
-    pool *pool = mapinfo->garbage_pool;
+    pool *pool = shm->garbage_pool;
     garbage *entry;
 
-IFDEBUG(fprintf(stderr, "shmfree(mapinfo, 0x%lX);\n", (long)block);)
+IFDEBUG(fprintf(stderr, "shmfree(shm, 0x%lX);\n", (long)block);)
     entry = (garbage *)palloc(pool, sizeof *entry);
 
     if(!entry) {
@@ -480,17 +484,17 @@ IFDEBUG(fprintf(stderr, "shmfree(mapinfo, 0x%lX);\n", (long)block);)
 	if(!pool)
 	    shmpanic("Can't allocate memory for garbage pool");
 
-	pool->next = mapinfo->garbage_pool;
-	mapinfo->garbage_pool = pool;
+	pool->next = shm->garbage_pool;
+	shm->garbage_pool = pool;
 	entry = (garbage *)palloc(pool, sizeof *entry);
 	if(!entry)
 	    shmpanic("Can't allocate entry from garbage pool!");
     }
 
-    entry->cycle = mapinfo->map->cycle;
+    entry->cycle = shm->map->cycle;
     entry->block = block;
-    entry->next = mapinfo->garbage;
-    mapinfo->garbage = entry;
+    entry->next = shm->garbage;
+    shm->garbage = entry;
 }
 
 // Attempt to put a pending freed block back in a pool
@@ -547,14 +551,14 @@ IFDEBUG(fprintf(stderr, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)size, i
 //    char data[size-8];
 //    int32 -size;
 
-int shmdealloc(mapinfo *mapinfo, char *memory)
+int shmdealloc(shm_t   *shm, char *memory)
 {
     size_t size;
     freeblock *block;
-IFDEBUG(fprintf(stderr, "shmdealloc(mapinfo, 0x%lX);\n", (long)memory);)
+IFDEBUG(fprintf(stderr, "shmdealloc(shm, 0x%lX);\n", (long)memory);)
 
     // Try and free it back into a pool.
-    if(shmdepool(mapinfo->pools, memory)) return 1;
+    if(shmdepool(shm->pools, memory)) return 1;
 
     // step back to block header
     block = data2block(memory);
@@ -574,7 +578,7 @@ IFDEBUG(fprintf(stderr, "shmdealloc(mapinfo, 0x%lX);\n", (long)memory);)
 
 IFDEBUG(fprintf(stderr, "    merge prev block 0x%lX size %d\n", (long)prev, new_size);)
 	// remove it from the free list
-	remove_from_freelist(mapinfo, prev);
+	remove_from_freelist(shm, prev);
 
 	// increase the size of the previous block to include this block
 	new_size += size;
@@ -592,7 +596,7 @@ IFDEBUG(fprintf(stderr, "    merge prev block 0x%lX size %d\n", (long)prev, new_
 
 IFDEBUG(fprintf(stderr, "    merge next block 0x%lX\n", (long)next);)
 	// remove next from the free list
-	remove_from_freelist(mapinfo, next);
+	remove_from_freelist(shm, next);
 
 	// increase the size of this block to include it
 	size += new_size;
@@ -605,13 +609,13 @@ IFDEBUG(fprintf(stderr, "    merge next block 0x%lX\n", (long)next);)
     // contents of free block is a freelist entry, create it
     block->next = block->prev = NULL;
 
-    insert_in_freelist(mapinfo, block);
+    insert_in_freelist(shm, block);
     return 1;
 }
 
-int write_lock(mapinfo *mapinfo)
+int write_lock(shm_t   *shm)
 {
-    volatile mapheader *map = mapinfo->map;
+    volatile mapheader *map = shm->map;
 
     while(++map->cycle == LOST_HORIZON)
 	continue;
@@ -619,24 +623,24 @@ int write_lock(mapinfo *mapinfo)
     return map->cycle;
 }
 
-void write_unlock(mapinfo *mapinfo)
+void write_unlock(shm_t   *shm)
 {
 #ifdef LAZY_GC
     static garbage_strike = 0;
     if(++garbage_strike < LAZY_GC) return;
     garbage_strike = 0;
 #endif
-    cell_t new_horizon = oldest_reader_cycle(mapinfo);
+    cell_t new_horizon = oldest_reader_cycle(shm);
 
-    if(new_horizon - mapinfo->horizon > 0) {
-	mapinfo->horizon = new_horizon;
-	garbage_collect(mapinfo);
+    if(new_horizon - shm->horizon > 0) {
+	shm->horizon = new_horizon;
+	garbage_collect(shm);
     }
 }
 
 volatile reader *pid2reader(volatile mapheader *map, int pid)
 {
-    volatile reader_block *b = &map->readers;
+    volatile reader_block *b = map->readers;
     while(b) {
 	if(b->count) {
 	    int i;
@@ -649,10 +653,10 @@ volatile reader *pid2reader(volatile mapheader *map, int pid)
     return NULL;
 }
 
-int shmattachpid(mapinfo *info, int pid)
+int shmattachpid(shm_t   *info, int pid)
 {
     volatile mapheader *map = info->map;
-    volatile reader_block *b = &map->readers;
+    volatile reader_block *b = map->readers;
 
     if(pid2reader(map, pid)) return 1;
 
@@ -675,27 +679,27 @@ int shmattachpid(mapinfo *info, int pid)
 	return 0;
     }
     b->count = 0;
-    b->next = map->readers.next;
-    map->readers.next = (reader_block *)b;
+    b->next = map->readers;
+    map->readers = (reader_block *)b;
     b->readers[b->count++].pid = pid;
     return 1;
 }
 
-int read_lock(mapinfo *mapinfo)
+int read_lock(shm_t   *shm)
 {
-    volatile mapheader *map = mapinfo->map;
-    volatile reader *self = mapinfo->self;
+    volatile mapheader *map = shm->map;
+    volatile reader *self = shm->self;
 
     if(!self)
-	mapinfo->self = self = pid2reader(map, getpid());
+	shm->self = self = pid2reader(map, getpid());
     if(!self)
 	return 0;
     return self->cycle = map->cycle;
 }
 
-void read_unlock(mapinfo *mapinfo)
+void read_unlock(shm_t   *shm)
 {
-    volatile reader *self = mapinfo->self;
+    volatile reader *self = shm->self;
 
     if(!self)
 	return;
@@ -703,12 +707,12 @@ void read_unlock(mapinfo *mapinfo)
     self->cycle = LOST_HORIZON;
 }
 
-void garbage_collect(mapinfo *mapinfo)
+void garbage_collect(shm_t   *shm)
 {
-    pool	*pool = mapinfo->garbage_pool;
-    garbage	*garbp = mapinfo->garbage;
+    pool	*pool = shm->garbage_pool;
+    garbage	*garbp = shm->garbage;
     garbage	*garbo = NULL;
-    cell_t	 horizon = mapinfo->horizon;
+    cell_t	 horizon = shm->horizon;
 
     if(horizon != LOST_HORIZON) {
 	horizon -= TWILIGHT_ZONE;
@@ -719,14 +723,14 @@ void garbage_collect(mapinfo *mapinfo)
     while(garbp) {
 	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || horizon - garbp->cycle > 0) {
 	    garbage *next = garbp->next;
-	    shmdealloc(mapinfo, garbp->block);
+	    shmdealloc(shm, garbp->block);
 	    shmdepool(pool, (char *)garbp);
 	    garbp = next;
 
 	    if(garbo)
 		garbo->next = garbp;
 	    else
-		mapinfo->garbage = garbp;
+		shm->garbage = garbp;
 	} else {
 	    garbo = garbp;
 	    garbp = garbp->next;
@@ -734,9 +738,9 @@ void garbage_collect(mapinfo *mapinfo)
     }
 }
 
-cell_t oldest_reader_cycle(mapinfo *mapinfo)
+cell_t oldest_reader_cycle(shm_t   *shm)
 {
-    volatile reader_block *r = &mapinfo->map->readers;
+    volatile reader_block *r = shm->map->readers;
     cell_t cycle = LOST_HORIZON;
     unsigned oldest_age = 0;
     unsigned age;
@@ -749,7 +753,7 @@ cell_t oldest_reader_cycle(mapinfo *mapinfo)
 		count++;
 		if(cycle == LOST_HORIZON)
 		    continue;
-		age = mapinfo->map->cycle - r->readers[i].cycle;
+		age = shm->map->cycle - r->readers[i].cycle;
 		if(age >= oldest_age) {
 		    oldest_age = age;
 		    cycle = r->readers[i].cycle;
@@ -769,17 +773,17 @@ cell_t oldest_reader_cycle(mapinfo *mapinfo)
 // removed from the list) and the list is never updated with an incomplete
 // entry, so no locking is necessary.
 
-int add_symbol(mapinfo *mapinfo, char *name, char *value, int type)
+int add_symbol(shm_t   *shm, char *name, char *value, int type)
 {
     int i;
     int namelen = strlen(name);
-    volatile mapheader *map = mapinfo->map;
+    volatile mapheader *map = shm->map;
     volatile symbol *s;
     int len = sizeof(symbol) + namelen + 1;
     if(type == SYM_TYPE_STRING)
 	len += strlen(value) + 1;
 
-    s = (symbol *)shmalloc(mapinfo, len);
+    s = (symbol *)shmalloc(shm, len);
 
     if(!s) return 0;
 
@@ -804,10 +808,39 @@ int add_symbol(mapinfo *mapinfo, char *name, char *value, int type)
     return 1;
 }
 
-// Get a symbol back.
-char *get_symbol(mapinfo *mapinfo, char *name, int wanted)
+// Change the value of a symbol. Note that old values of symbols are never
+// freed, because we don't know what they're used for and we don't want to
+// lock the garbage collector for long-term symbol use. It's up to the
+// caller to determine if the value can be freed and to do it.
+int set_symbol(shm_t *shm, char *name, char *value, int type)
 {
-    volatile mapheader *map = mapinfo->map;
+    volatile mapheader *map = shm->map;
+    volatile symbol *s = map->namelist;
+    while(s) {
+	if(strcmp(name, (char *)s->name) == 0) {
+	    if(type != SYM_TYPE_ANY && type != s->type) {
+		return 0;
+	    }
+	    if(type == SYM_TYPE_STRING) {
+		char *copy = shmalloc(shm, strlen(value));
+		if(!copy)
+		    return 0;
+		strcpy(copy, value);
+		s->addr = copy;
+	    } else {
+	        s->addr = value;
+	    }
+	    return 1;
+	}
+	s = s->next;
+    }
+    return 0;
+}
+
+// Get a symbol back.
+char *get_symbol(shm_t *shm, char *name, int wanted)
+{
+    volatile mapheader *map = shm->map;
     volatile symbol *s = map->namelist;
     while(s) {
 	if(strcmp(name, (char *)s->name) == 0) {
@@ -866,31 +899,16 @@ void TclShmError(Tcl_Interp *interp, char *name)
 	Tcl_AppendResult(interp, ": ", shared_errmsg[shared_errno], NULL);
 }
 
-static named_share *sharelist;
 static int autoshare = 0;
 
-int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, named_share **sharePtr)
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, shm_t **sharePtr)
 {
-    named_share    *share;
-    mapinfo   *info;
+    shm_t     *share;
     int	       creator = 1;
 
     if(size == ATTACH_ONLY) {
 	creator = 0;
 	size = 0;
-    }
-
-    info = map_file(filename, NULL, size);
-    if(!info) {
-	TclShmError(interp, filename);
-	return TCL_ERROR;
-    }
-    if(creator) {
-	shminitmap(info);
-    } else if(!shmcheckmap(info->map)) {
-	Tcl_AppendResult(interp, "Not a valid share: ", filename, NULL);
-	unmap_file(info);
-        return TCL_ERROR;
     }
 
     if(strcmp(sharename, "#auto") == 0) {
@@ -899,13 +917,21 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 	sharename = namebuf;
     }
 
-    share = (named_share *)ckalloc(sizeof (named_share) + strlen(sharename) + 1);
+    share = map_file(filename, NULL, size);
+    if(!share) {
+	TclShmError(interp, filename);
+	return TCL_ERROR;
+    }
+    if(creator) {
+	shminitmap(share);
+    } else if(!shmcheckmap(share->map)) {
+	Tcl_AppendResult(interp, "Not a valid share: ", filename, NULL);
+	unmap_file(share);
+        return TCL_ERROR;
+    }
 
+    share->name = ckalloc(strlen(sharename)+1);
     strcpy(share->name, sharename);
-    share->next = sharelist;
-    share->mapinfo = info;
-    share->creator = size != 0;
-    sharelist = share;
 
     if(sharePtr)
 	*sharePtr = share;
@@ -915,28 +941,18 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
     return TCL_OK;
 }
 
-int doDetach(Tcl_Interp *interp, named_share *share)
+int doDetach(Tcl_Interp *interp, shm_t *share)
 {
-    if(sharelist) {
-        if(sharelist->next == share) {
-	    sharelist = sharelist->next;
-        } else {
-            named_share *p = sharelist;
-    
-            while(p && p->next != share)
-		p = p->next;
-    
-	    if(p)
-	        p->next = share->next;
-        }
+    if(share->name) {
+	ckfree(share->name);
+	share->name = NULL;
     }
 
-    if(!unmap_file(share->mapinfo)) {
+    if(!unmap_file(share)) {
 	TclShmError(interp, share->name);
 	return TCL_ERROR;
     }
-    ckfree((char *)share);
-     
+
     return TCL_OK;
 }
 #endif
@@ -946,7 +962,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 {
     int   	 cmdIndex;
     char	*sharename;
-    named_share	*share;
+    shm_t	*share;
 
     static CONST char *commands[] = {"create", "attach", "detach", "names", "get", "set", (char *)NULL};
     enum commands {CMD_CREATE, CMD_ATTACH, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET};
@@ -983,7 +999,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
     sharename = Tcl_GetString(objv[2]);
 
-    share = sharelist;
+    share = share_list;
     while(share) {
 	if(strcmp(share->name, sharename) == 0) {
 	    break;
@@ -1031,7 +1047,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	}
 	case CMD_NAMES: {
 	    if (objc == 3) {
-	        volatile symbol *sym = share->mapinfo->map->namelist;
+	        volatile symbol *sym = share->map->namelist;
 	        while(sym) {
 		    Tcl_AppendElement(interp, (char *)sym->name);
 		    sym = sym->next;
@@ -1040,7 +1056,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 		int i;
 		for (i = 3; i < objc; i++) {
 		    char *name = Tcl_GetString(objv[i]);
-		    if(get_symbol(share->mapinfo, name, SYM_TYPE_ANY))
+		    if(get_symbol(share, name, SYM_TYPE_ANY))
 			Tcl_AppendElement(interp, name);
 		}
 	    }
@@ -1050,7 +1066,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    int   i;
 	    for (i = 3; i < objc; i++) {
 		char *name = Tcl_GetString(objv[i]);
-		char *s = get_symbol(share->mapinfo, name, SYM_TYPE_STRING);
+		char *s = get_symbol(share, name, SYM_TYPE_STRING);
 		if(!s) {
 		    Tcl_ResetResult(interp);
 		    Tcl_AppendResult(interp, "Unknown name ",name," in ",sharename, NULL);
@@ -1074,10 +1090,10 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 	    for (i = 3; i < objc; i+=2) {
 		char *name = Tcl_GetString(objv[i]);
-		if(get_symbol(share->mapinfo, name, TYPE_ANY))
-		    set_symbol(share->mapinfo, name, Tcl_GetString(objv[i+1]), TYPE_STRING);
+		if(get_symbol(share, name, SYM_TYPE_ANY))
+		    set_symbol(share, name, Tcl_GetString(objv[i+1]), SYM_TYPE_STRING);
 		else
-		    add_symbol(share->mapinfo, name, Tcl_GetString(objv[i+1]), SYM_TYPE_STRING);
+		    add_symbol(share, name, Tcl_GetString(objv[i+1]), SYM_TYPE_STRING);
 	    }
 	    return TCL_OK;
 	}

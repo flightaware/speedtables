@@ -89,7 +89,6 @@ typedef struct _symbol {
 } symbol;
 
 // Reader control block, containing READERS_PER_BLOCK reader records
-// When a reader subscribes, it's handed the offset of its record
 typedef struct _reader {
     cell_t		 pid;
     cell_t		 cycle;
@@ -101,7 +100,7 @@ typedef struct _rblock {
     reader		 readers[READERS_PER_BLOCK];
 } reader_block;
 
-// mapinfo->map points to this structure, at the front of the mapped file.
+// shm_t->map points to this structure, at the front of the mapped file.
 typedef struct _mapheader {
     cell_t           magic;		// Magic number, "initialised"
     cell_t           headersize;	// Size of this header
@@ -109,7 +108,7 @@ typedef struct _mapheader {
     char	    *addr;		// Address mapped to
     volatile symbol *namelist;		// Internal symbol table
     cell_t           cycle;		// incremented every write
-    reader_block     readers;		// advisory locks for readers
+    reader_block    *readers;		// advisory locks for readers
 } mapheader;
 
 // Freelist entry
@@ -125,11 +124,13 @@ typedef struct {
     char			  data[];
 } busyblock;
 
-typedef struct _mapinfo {
-    struct _mapinfo	*next;
+typedef struct _shm_t {
+    struct _shm_t	*next;
     volatile mapheader	*map;
     size_t		 size;
     int			 fd;
+    int                  creator;
+    char	        *name;
 // server-only fields:
     pool		*pools;
     volatile freeblock	*freelist;
@@ -138,55 +139,49 @@ typedef struct _mapinfo {
     cell_t		 horizon;
 // client-only fields:
     volatile reader	*self;
-} mapinfo;
+} shm_t;
 
 int open_new(char *file, size_t size);
-mapinfo *map_file(char *file, char *addr, size_t default_size);
-int unmap_file(mapinfo *mapinfo);
-void shminitmap(mapinfo *mapinfo);
+shm_t *map_file(char *file, char *addr, size_t default_size);
+int unmap_file(shm_t *shm);
+void shminitmap(shm_t *shm);
 int shmcheckmap(volatile mapheader *map);
 pool *initpool(char *memory, size_t blocksize, int blocks);
 pool *ckallocpool(size_t blocksize, int blocks);
-int shmaddpool(mapinfo *map, size_t blocksize, int blocks);
+int shmaddpool(shm_t *map, size_t blocksize, int blocks);
 char *palloc(pool *pool, size_t size);
-void remove_from_freelist(mapinfo *mapinfo, volatile freeblock *block);
-void insert_in_freelist(mapinfo *mapinfo, volatile freeblock *block);
-char *_shmalloc(mapinfo *map, size_t size);
-char *shmalloc(mapinfo *map, size_t size);
-void shmfree(mapinfo *map, char *block);
+void remove_from_freelist(shm_t *shm, volatile freeblock *block);
+void insert_in_freelist(shm_t *shm, volatile freeblock *block);
+char *_shmalloc(shm_t *map, size_t size);
+char *shmalloc(shm_t *map, size_t size);
+void shmfree(shm_t *map, char *block);
 int shmdepool(pool *pool, char *block);
 void setfree(volatile freeblock *block, size_t size, int is_free);
-int shmdealloc(mapinfo *mapinfo, char *data);
-int write_lock(mapinfo *mapinfo);
-void write_unlock(mapinfo *mapinfo);
+int shmdealloc(shm_t *shm, char *data);
+int write_lock(shm_t *shm);
+void write_unlock(shm_t *shm);
 volatile reader *pid2reader(volatile mapheader *map, int pid);
-int read_lock(mapinfo *mapinfo);
-void read_unlock(mapinfo *mapinfo);
-void garbage_collect(mapinfo *mapinfo);
-cell_t oldest_reader_cycle(mapinfo *mapinfo);
+int read_lock(shm_t *shm);
+void read_unlock(shm_t *shm);
+void garbage_collect(shm_t *shm);
+cell_t oldest_reader_cycle(shm_t *shm);
 void shmpanic(char *message);
-int add_symbol(mapinfo *mapinfo, char *name, char *value, int type);
-char *get_symbol(mapinfo *mapinfo, char *name, int wanted);
-int shmattachpid(mapinfo *info, int pid);
+int add_symbol(shm_t *shm, char *name, char *value, int type);
+int set_symbol(shm_t *shm, char *name, char *value, int type);
+char *get_symbol(shm_t *shm, char *name, int wanted);
+int shmattachpid(shm_t *info, int pid);
 
 #define SYM_TYPE_STRING 1
 #define SYM_TYPE_DATA 0
 #define SYM_TYPE_ANY -1
 
 #ifdef WITH_TCL
-typedef struct _named_share {
-    struct _named_share	*next;
-    int			 creator;
-    mapinfo		*mapinfo;
-    char		 name[];
-} named_share;
-
 #define ATTACH_ONLY ((size_t)-1)
 
 int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, int *ptr);
 void TclShmError(Tcl_Interp *interp, char *name);
-int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, named_share **sharePtr);
-int doDetach(Tcl_Interp *interp, named_share *share);
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, shm_t **sharePtr);
+int doDetach(Tcl_Interp *interp, shm_t *share);
 #endif
 
 // shift between the data inside a variable sized block, and the block itself
