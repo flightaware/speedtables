@@ -18,6 +18,7 @@ all:
 
 key:
 	-rm -f build/*
+#	tclsh8.4 new-tests.tcl
 	tclsh8.4 key-tests.tcl
 
 master:

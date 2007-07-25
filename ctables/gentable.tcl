@@ -21,6 +21,7 @@ namespace eval ctable {
     variable withPgtcl
     variable withSharedTables
     variable withSharedTclExtension
+    variable withDirty
     variable reservedWords
     variable errorDebug
 
@@ -42,6 +43,8 @@ namespace eval ctable {
 
     set withSharedTables 1
     set withSharedTclExtension 0
+
+    set withDirty 0
 
     set targetDir /usr/local
     set pgTargetDir /usr/local
@@ -140,6 +143,7 @@ proc cquote {string} {
 #
 variable specialFieldNames {
     _key
+    _dirty
 }
 
 #
@@ -287,7 +291,7 @@ proc gen_allocate_function {table} {
     }
 }
 
-set insertRowSource {
+variable insertRowSource {
 int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct ${table} *row, int indexCtl)
 {
     ctable_HashEntry *new, *old;
@@ -360,11 +364,11 @@ proc gen_insert_row_function {table} {
 #
 # preambleCannedSource -- stuff that goes at the start of the file we generate
 #
-set preambleCannedSource {
+variable preambleCannedSource {
 #include "ctable.h"
 }
 
-set nullIndexDuringSetSource {
+variable nullIndexDuringSetSource {
 	        if (ctable->skipLists[field] != NULL) {
 		    if (indexCtl == CTABLE_INDEX_NORMAL) {
 		        ctable_RemoveFromIndex (ctable, row, field);
@@ -379,13 +383,12 @@ set nullIndexDuringSetSource {
 #
 # nullCheckDuringSetSource - standard stuff for handling nulls during set
 #
-set nullCheckDuringSetSource {
+variable nullCheckDuringSetSource {
 	if (${table}_obj_is_null (obj)) {
 	    if (!row->_${fieldName}IsNull) {
 $handleNullIndex
 	        // field wasn't null but now is
 		row->_${fieldName}IsNull = 1;
-		// row->_dirty = 1;
 	    }
 	    break;
 	}
@@ -398,6 +401,7 @@ $handleNullIndex
 proc gen_null_check_during_set_source {table fieldName} {
     variable nullCheckDuringSetSource
     variable nullIndexDuringSetSource
+    variable setDirty
     variable fields
 
     upvar ::ctable::fields::$fieldName field
@@ -415,7 +419,7 @@ proc gen_null_check_during_set_source {table fieldName} {
     }
 }
 
-set unsetNullDuringSetSource {
+variable unsetNullDuringSetSource {
 	if (row->_${fieldName}IsNull) {
 	    row->_${fieldName}IsNull = 0;
 
@@ -428,10 +432,16 @@ set unsetNullDuringSetSource {
 	}
 }
 
-set unsetNullDuringSetSource_unindexed {
+variable unsetNullDuringSetSource_unindexed {
 	if (row->_${fieldName}IsNull) {
 	    row->_${fieldName}IsNull = 0;
 	}
+}
+
+# gen_special_code_check - generate special code for specific fields
+proc gen_special_code_check {fieldName checkName code} {
+    if {"$fieldName" == "$checkName"} {return $code}
+    return ""
 }
 
 #
@@ -462,7 +472,7 @@ proc gen_unset_null_during_set_source {table fieldName} {
 #
 #####
 
-set removeFromIndexSource {
+variable removeFromIndexSource {
 	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
 		ctable_RemoveFromIndex (ctable, row, field);
 	    }
@@ -487,7 +497,7 @@ proc gen_ctable_remove_from_index {fieldName} {
     
 }
 
-set insertIntoIndexSource {
+variable insertIntoIndexSource {
 	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
 	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 	        return TCL_ERROR;
@@ -516,7 +526,7 @@ proc gen_ctable_insert_into_index {fieldName} {
 #
 # boolSetSource - code we run subst over to generate a set of a boolean (bit)
 #
-set boolSetSource {
+variable boolSetSource {
       case $optname: {
         int boolean;
 
@@ -527,6 +537,7 @@ set boolSetSource {
         }
 [gen_unset_null_during_set_source $table $fieldName]
         row->$fieldName = boolean;
+[gen_special_code_check $fieldName _dirty "setDirty = 0;"]
 	break;
       }
 }
@@ -536,7 +547,7 @@ set boolSetSource {
 #  number such as an integer, long, double, and wide integer.  (We have to 
 #  handle shorts and floats specially due to type coercion requirements.)
 #
-set numberSetSource {
+variable numberSetSource {
       case $optname: {
         $typeText value;
 [gen_null_check_during_set_source $table $fieldName]
@@ -553,7 +564,7 @@ set numberSetSource {
 	break;
       }
 }
-set keySetSource {
+variable keySetSource {
       case $optname: {
         char *value = Tcl_GetString(obj);
 
@@ -593,7 +604,7 @@ set keySetSource {
 #
 # Otherwise allocate space for the new string value and copy it in.
 #
-set varstringSetSource {
+variable varstringSetSource {
       case $optname: {
 	char *string = NULL;
 	int   length;
@@ -661,7 +672,7 @@ set varstringSetSource {
 #
 # charSetSource - code we run subst over to generate a set of a single char.
 #
-set charSetSource {
+variable charSetSource {
       case $optname: {
 	char *string;
 [gen_null_check_during_set_source $table $fieldName]
@@ -676,7 +687,7 @@ set charSetSource {
 # fixedstringSetSource - code we run subst over to generate a set of a 
 # fixed-length string.
 #
-set fixedstringSetSource {
+variable fixedstringSetSource {
       case $optname: {
 	char *string;
 [gen_null_check_during_set_source $table $fieldName]
@@ -695,7 +706,7 @@ set fixedstringSetSource {
 # inetSetSource - code we run subst over to generate a set of an IPv4
 # internet address.
 #
-set inetSetSource {
+variable inetSetSource {
       case $optname: {
         struct in_addr value;
 [gen_null_check_during_set_source $table $fieldName]
@@ -718,7 +729,7 @@ set inetSetSource {
 # macSetSource - code we run subst over to generate a set of an ethernet
 # MAC address.
 #
-set macSetSource {
+variable macSetSource {
       case $optname: {
         struct ether_addr *mac;
 [gen_null_check_during_set_source $table $fieldName]
@@ -743,7 +754,7 @@ set macSetSource {
 #
 # tclobjs are Tcl_Obj *'s that we manage automagically.
 #
-set tclobjSetSource {
+variable tclobjSetSource {
       case $optname: {
 
 	if (row->$fieldName != (Tcl_Obj *) NULL) {
@@ -768,7 +779,7 @@ set tclobjSetSource {
 # nullSortSource - code to be inserted when null values are permitted for the
 #  field
 #
-set nullSortSource {
+variable nullSortSource {
         if (row1->_${fieldName}IsNull) {
 	    if (row2->_${fieldName}IsNull) {
 	        return 0;
@@ -796,7 +807,7 @@ proc gen_null_check_during_sort_comp {table fieldName} {
     }
 }
 
-set nullExcludeSource {
+variable nullExcludeSource {
 	      if (row->_${fieldName}IsNull) {
 		  exclude = 1;
 		  break;
@@ -819,7 +830,7 @@ proc gen_null_exclude_during_sort_comp {table fieldName} {
 # boolSortSource - code we run subst over to generate a compare of a 
 # boolean (bit) for use in a sort.
 #
-set boolSortSource {
+variable boolSortSource {
 	case $fieldEnum: {
 [gen_null_check_during_sort_comp $table $fieldName]
           if (row1->$fieldName && !row2->$fieldName) {
@@ -840,7 +851,7 @@ set boolSortSource {
 # numberSortSource - code we run subst over to generate a compare of a standard
 #  number such as an integer, long, double, and wide integer for use in a sort.
 #
-set numberSortSource {
+variable numberSortSource {
       case $fieldEnum: {
 [gen_null_check_during_sort_comp $table $fieldName]
         if (row1->$fieldName < row2->$fieldName) {
@@ -862,7 +873,7 @@ set numberSortSource {
 # varstringSortSource - code we run subst over to generate a compare of 
 # a string for use in a sort.
 #
-set varstringSortSource {
+variable varstringSortSource {
       case $fieldEnum: {
 [gen_null_check_during_sort_comp $table $fieldName]
         result = direction * strcmp (row1->$fieldName, row2->$fieldName);
@@ -874,7 +885,7 @@ set varstringSortSource {
 # fixedstringSortSource - code we run subst over to generate a comapre of a 
 # fixed-length string for use in a sort.
 #
-set fixedstringSortSource {
+variable fixedstringSortSource {
       case $fieldEnum: {
 [gen_null_check_during_sort_comp $table $fieldName]
         result = direction * strncmp (row1->$fieldName, row2->$fieldName, $length);
@@ -886,7 +897,7 @@ set fixedstringSortSource {
 # binaryDataSortSource - code we run subst over to generate a comapre of a 
 # inline binary arrays (inets and mac addrs) for use in a sort.
 #
-set binaryDataSortSource {
+variable binaryDataSortSource {
       case $fieldEnum: {
 [gen_null_check_during_sort_comp $table $fieldName]
         result = direction * memcmp (&row1->$fieldName, &row2->$fieldName, $length);
@@ -898,7 +909,7 @@ set binaryDataSortSource {
 # tclobjSortSource - code we run subst over to generate a compare of 
 # a tclobj for use in a sort.
 #
-set tclobjSortSource {
+variable tclobjSortSource {
       case $fieldEnum: {
         result = direction * strcmp (Tcl_GetString (row1->$fieldName), Tcl_GetString (row2->$fieldName));
 	break;
@@ -909,7 +920,7 @@ set tclobjSortSource {
 # keySortSource - code we run subst over to generate a compare of 
 # a key for use in a sort.
 #
-set keySortSource {
+variable keySortSource {
       case $fieldEnum: {
 	if(*row1->hashEntry.key > *row2->hashEntry.key)
 	    result = direction;
@@ -931,7 +942,7 @@ set keySortSource {
 # standardCompNullCheckSource - variable to substitute to do null
 # handling in all comparison types
 #
-set standardCompNullCheckSource {
+variable standardCompNullCheckSource {
 	  if (row->_${fieldName}IsNull) {
 	      if (compType == CTABLE_COMP_NULL) {
 		  break;
@@ -954,7 +965,7 @@ set standardCompNullCheckSource {
 # standardCompNotNullCheckSource - variable to substitute to do null
 # comparison handling for fields defined notnull.
 #
-set standardCompNotNullCheckSource {
+variable standardCompNotNullCheckSource {
 	  if (compType == CTABLE_COMP_NULL) {
 	      exclude = 1;
 	      break;
@@ -983,7 +994,7 @@ proc gen_standard_comp_null_check_source {table fieldName} {
 # standardCompSwitchSource -stuff that gets emitted in a number of compare
 #  routines we generate
 #
-set standardCompSwitchSource {
+variable standardCompSwitchSource {
           switch (compType) {
 	    case CTABLE_COMP_LT:
 	        exclude = !(strcmpResult < 0);
@@ -1028,7 +1039,7 @@ proc gen_standard_comp_switch_source {fieldName} {
 # boolCompSource - code we run subst over to generate a compare of a 
 # boolean (bit)
 #
-set boolCompSource {
+variable boolCompSource {
       case $fieldEnum: {
 [gen_standard_comp_null_check_source $table $fieldName]
 	switch (compType) {
@@ -1049,7 +1060,7 @@ set boolCompSource {
 #  number such as an integer, long, double, and wide integer.  (We have to 
 #  handle shorts and floats specially due to type coercion requirements.)
 #
-set numberCompSource {
+variable numberCompSource {
         case $fieldEnum: {
 [gen_standard_comp_null_check_source $table $fieldName]
           switch (compType) {
@@ -1096,7 +1107,7 @@ set numberCompSource {
 # varstringCompSource - code we run subst over to generate a compare of 
 # a string.
 #
-set varstringCompSource {
+variable varstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
 
@@ -1151,7 +1162,7 @@ set varstringCompSource {
 # fixedstringCompSource - code we run subst over to generate a comapre of a 
 # fixed-length string.
 #
-set fixedstringCompSource {
+variable fixedstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
 
@@ -1165,7 +1176,7 @@ set fixedstringCompSource {
 # binaryDataCompSource - code we run subst over to generate a comapre of a 
 # binary data.
 #
-set binaryDataCompSource {
+variable binaryDataCompSource {
         case $fieldEnum: {
           int              strcmpResult;
 
@@ -1184,7 +1195,7 @@ set binaryDataCompSource {
 # routine that sets this up, maybe don't do that and figure out some
 # way to compare objects (?)
 #
-set tclobjCompSource {
+variable tclobjCompSource {
         case $fieldEnum: {
           int      strcmpResult;
 
@@ -1198,7 +1209,7 @@ set tclobjCompSource {
 # keyCompSource - code we run subst over to generate a compare of 
 # a string.
 #
-set keyCompSource {
+variable keyCompSource {
         case $fieldEnum: {
           int     strcmpResult;
 
@@ -1256,7 +1267,7 @@ set keyCompSource {
 #
 #####
 
-set fieldObjSetSource {
+variable fieldObjSetSource {
 struct $table *${table}_make_row_struct () {
     struct $table *row;
 
@@ -1334,14 +1345,16 @@ ${table}_set_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct 
 }
 }
 
-set fieldSetSource {
+variable fieldSetSource {
 int
 ${table}_set (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
+}
 
+variable fieldSetSwitchSource {
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
-set fieldObjGetSource {
+variable fieldObjGetSource {
 struct $table *${table}_find (CTable *ctable, char *key) {
     ctable_HashEntry *hashEntry;
 
@@ -1397,7 +1410,7 @@ ${table}_lappend_fieldobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj *fieldObj
 }
 }
 
-set lappendFieldAndNameObjSource {
+variable lappendFieldAndNameObjSource {
 int
 ${table}_lappend_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer, int field)
 {
@@ -1430,7 +1443,7 @@ ${table}_lappend_field_and_nameobj (Tcl_Interp *interp, void *vPointer, Tcl_Obj 
 
 }
 
-set lappendNonnullFieldAndNameObjSource {
+variable lappendNonnullFieldAndNameObjSource {
 int
 ${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, void *vPointer, int field)
 {
@@ -1467,7 +1480,7 @@ ${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, void *vPointer, 
 
 }
 
-set arraySetFromFieldSource {
+variable arraySetFromFieldSource {
 int
 ${table}_array_set (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *vPointer, int field)
 {
@@ -1510,7 +1523,7 @@ ${table}_array_set_with_nulls (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *
 #
 #####
 
-set fieldGetSource {
+variable fieldGetSource {
 Tcl_Obj *
 ${table}_get (Tcl_Interp *interp, void *vPointer, int field) $leftCurly
     struct $table *row = vPointer;
@@ -1518,7 +1531,7 @@ ${table}_get (Tcl_Interp *interp, void *vPointer, int field) $leftCurly
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
-set fieldGetStringSource {
+variable fieldGetStringSource {
 CONST char *
 ${table}_get_string (const void *vPointer, int field, int *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
     int length;
@@ -1537,7 +1550,7 @@ ${table}_get_string (const void *vPointer, int field, int *lengthPtr, Tcl_Obj *u
 #
 #####
 
-set tabSepFunctionsSource {
+variable tabSepFunctionsSource {
 void
 ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys) {
     int              i;
@@ -1998,6 +2011,7 @@ proc gen_defaults_subr {subr struct} {
     variable table
     variable fields
     variable withSharedTables
+    variable withDirty
     variable fieldList
     variable leftCurly
     variable rightCurly
@@ -2011,8 +2025,9 @@ proc gen_defaults_subr {subr struct} {
     emit "    if (firstPass) $leftCurly"
     emit "        firstPass = 0;"
     emit ""
-    emit "        // $baseCopy.__dirtyIsNull = 0;"
-    emit "        // $baseCopy._dirty = 1;"
+    if $withDirty {
+        emit "        $baseCopy._dirty = 1;"
+    }
     emit "        $baseCopy.hashEntry.key = NULL;"
 
     foreach fieldName $fieldList {
@@ -2119,7 +2134,7 @@ proc gen_defaults_subr {subr struct} {
     emit ""
 }
 
-set deleteRowHelperSource {
+variable deleteRowHelperSource {
 void ${table}_deleteKey(CTable *ctable, struct ${table} *row)
 {
 fprintf(stderr, "${table}_deleteKey(ctable, {\"%s\" ...});\n", row->hashEntry.key);
@@ -2224,7 +2239,7 @@ proc gen_delete_subr {subr struct} {
 }
 
 
-set isNullSubrSource {
+variable isNullSubrSource {
 int ${table}_obj_is_null(Tcl_Obj *obj) {
     char     *nullValueString;
     int       nullValueLength;
@@ -2526,14 +2541,14 @@ proc emit_set_fixedstring_field {fieldName length} {
     emit [string range [subst $fixedstringSetSource] 1 end-1]
 } 
 
-set fieldIncrSource {
+variable fieldIncrSource {
 int
 ${table}_incr (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
 
-set numberIncrNullCheckSource {
+variable numberIncrNullCheckSource {
 	if (row->_${fieldName}IsNull) {
 	    // incr of a null field, default to 0
 	    if ((indexCtl == CTABLE_INDEX_NORMAL) && ctable->skipLists[field] != NULL) {
@@ -2588,7 +2603,7 @@ proc gen_set_notnull_if_notnull {table fieldName} {
 #  number such as an integer, long, double, and wide integer.  (We have to 
 #  handle shorts and floats specially due to type coercion requirements.)
 #
-set numberIncrSource {
+variable numberIncrSource {
       case $optname: {
 	int incrAmount;
 
@@ -2613,7 +2628,7 @@ set numberIncrSource {
       }
 }
 
-set illegalIncrSource {
+variable illegalIncrSource {
       case $optname: {
 	Tcl_ResetResult (interp);
 	Tcl_AppendResult (interp, "can't incr non-numeric field '$fieldName'", (char *)NULL);
@@ -2621,7 +2636,7 @@ set illegalIncrSource {
 	}
 }
 
-set incrFieldObjSource {
+variable incrFieldObjSource {
 int
 ${table}_incr_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
 {
@@ -2816,7 +2831,7 @@ proc gen_sets {} {
 #
 # setNullSource - code that gets substituted for nonnull fields for set_null
 #
-set setNullSource {
+variable setNullSource {
       case $optname: 
         if (row->_${myField}IsNull) {
 	    break;
@@ -2834,7 +2849,7 @@ set setNullSource {
 	break;
 }
 
-set setNullNotNullSource {
+variable setNullNotNullSource {
       case $optname: 
         Tcl_AppendResult (interp, "can't set non-null field \"${myField}\" to be null", (char *)NULL);
 	return TCL_ERROR;
@@ -2919,14 +2934,24 @@ proc put_init_extension_source {extension extensionVersion} {
 # and sets the value extracted from the obj into the field of the row
 #
 proc gen_set_function {table} {
+    variable withDirty
     variable fieldObjSetSource
     variable fieldSetSource
+    variable fieldSetSwitchSource
     variable leftCurly
     variable rightCurly
 
     emit [string range [subst -nobackslashes -nocommands $fieldSetSource] 1 end-1]
+    if {$withDirty} {
+        emit "    int setDirty = 1;"
+    }
 
+    emit [string range [subst -nobackslashes -nocommands $fieldSetSwitchSource] 1 end-1]
     gen_sets
+
+    if {$withDirty} {
+	emit "    if (setDirty) row->_dirty = 1;"
+    }
 
     emit "    $rightCurly"
     emit "    return TCL_OK;"
@@ -3837,7 +3862,7 @@ proc gen_preamble {} {
 #
 # fieldCompareNullCheckSource - this checks for nulls when comparing a field
 #
-set fieldCompareNullCheckSource {
+variable fieldCompareNullCheckSource {
     // nulls sort high
     if (row1->_${fieldName}IsNull) {
 	if (row2->_${fieldName}IsNull) {
@@ -3867,7 +3892,7 @@ proc gen_field_compare_null_check_source {table fieldName} {
 #
 # fieldCompareHeaderSource - code for defining a field compare function
 #
-set fieldCompareHeaderSource {
+variable fieldCompareHeaderSource {
 // field compare function for field '$fieldName' of the '$table' table...
 int ${table}_field_${fieldName}_compare(const ctable_BaseRow *vPointer1, const ctable_BaseRow *vPointer2) $leftCurly
     struct ${table} *row1, *row2;
@@ -3877,14 +3902,14 @@ int ${table}_field_${fieldName}_compare(const ctable_BaseRow *vPointer1, const c
 [gen_field_compare_null_check_source $table $fieldName]
 }
 
-set fieldCompareTrailerSource {
+variable fieldCompareTrailerSource {
 $rightCurly
 }
 
 #
 # keyCompareSource - code for defining a key compare function
 #
-set keyCompareSource {
+variable keyCompareSource {
 // field compare function for key of the '$table' table...
 int ${table}_key_compare(const ctable_BaseRow *vPointer1, const ctable_BaseRow *vPointer2) $leftCurly
     struct ${table} *row1, *row2;
@@ -3906,7 +3931,7 @@ $rightCurly
 # boolFieldCompSource - code we run subst over to generate a compare of a 
 # boolean (bit) for use in a field comparison routine.
 #
-set boolFieldCompSource {
+variable boolFieldCompSource {
     if (row1->$fieldName && !row2->$fieldName) {
 	return -1;
     }
@@ -3923,7 +3948,7 @@ set boolFieldCompSource {
 #  number such as an integer, long, double, and wide integer for use in field
 #  compares.
 #
-set numberFieldCompSource {
+variable numberFieldCompSource {
     if (row1->$fieldName < row2->$fieldName) {
         return -1;
     }
@@ -3939,7 +3964,7 @@ set numberFieldCompSource {
 # varstringFieldCompSource - code we run subst over to generate a compare of 
 # a string for use in searching, sorting, etc.
 #
-set varstringFieldCompSource {
+variable varstringFieldCompSource {
     if (*row1->$fieldName != *row2->$fieldName) {
         if (*row1->$fieldName < *row2->$fieldName) {
 	    return -1;
@@ -3954,7 +3979,7 @@ set varstringFieldCompSource {
 # fixedstringFieldCompSource - code we run subst over to generate a comapre of a 
 # fixed-length string for use in a searching, sorting, etc.
 #
-set fixedstringFieldCompSource {
+variable fixedstringFieldCompSource {
     if (*row1->$fieldName != *row2->$fieldName) {
         if (*row1->$fieldName < *row2->$fieldName) {
 	    return -1;
@@ -3969,7 +3994,7 @@ set fixedstringFieldCompSource {
 # binaryDataFieldCompSource - code we run subst over to generate a comapre of a 
 # inline binary arrays (inets and mac addrs) for use in searching and sorting.
 #
-set binaryDataFieldCompSource {
+variable binaryDataFieldCompSource {
     return memcmp (&row1->$fieldName, &row2->$fieldName, $length);
 }
 
@@ -3977,7 +4002,7 @@ set binaryDataFieldCompSource {
 # tclobjFieldCompSource - code we run subst over to generate a compare of 
 # a tclobj for use in searching and sorting.
 #
-set tclobjFieldCompSource {
+variable tclobjFieldCompSource {
     return strcmp (Tcl_GetString (row1->$fieldName), Tcl_GetString (row2->$fieldName));
 }
 
@@ -4111,7 +4136,7 @@ proc gen_field_compare_functions {} {
 #
 #####
 
-set sortCompareHeaderSource {
+variable sortCompareHeaderSource {
 
 int ${table}_sort_compare(void *clientData, const void *vRow1, const void *vRow2) $leftCurly
     CTableSort *sortControl = (CTableSort *)clientData;
@@ -4128,7 +4153,7 @@ int ${table}_sort_compare(void *clientData, const void *vRow1, const void *vRow2
         switch (sortControl->fields[i]) $leftCurly 
 }
 
-set sortCompareTrailerSource {
+variable sortCompareTrailerSource {
         $rightCurly // end of switch
 
 	// if they're not equal, we're done.  if they are, we may need to
@@ -4261,7 +4286,7 @@ proc gen_sort_comp {} {
 #
 #####
 
-set searchCompareHeaderSource {
+variable searchCompareHeaderSource {
 
 // compare a row to a block of search components and see if it matches
 int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, void *vPointer) $leftCurly
@@ -4338,7 +4363,7 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
       switch (component->fieldID) $leftCurly
 }
 
-set searchCompareTrailerSource {
+variable searchCompareTrailerSource {
        $rightCurly // end of switch on field ID
 
         // if exclude got set, we're done.
@@ -4816,10 +4841,6 @@ proc CTable {name data} {
     ::ctable::table $name
     lappend ::ctable::tables $name
 
-    #we can't do it this way, read_tabsep and stuff think it's standard
-    # no interface to _dirty yet
-    #::ctable::boolean _dirty
-
     namespace eval ::ctable $data
 
     ::ctable::sanity_check
@@ -4828,6 +4849,11 @@ proc CTable {name data} {
 
     # Create a key field if there isn't already one
     ::ctable::key _key
+
+    if {$::ctable::withDirty} {
+        # Create a 'dirty' field
+        ::ctable::boolean _dirty notnull 1
+    }
 
     ::ctable::gen_struct
 

@@ -5,7 +5,9 @@
 #
 
 proc dump_table {t} {
-    $t search -key k -array_get a -code { puts "$k => $a" }
+    foreach k [$t names] {
+        puts "$k => [$t array_get $k]"
+    }
 }
 
 source top-brands-genkey-def.tcl
@@ -47,7 +49,7 @@ t search+ -compare {{in id {1}}} -key k -array a -code {lappend list "$k: [array
 
 if {![info exists list]} {
    dump_table t
-   error "search+ test on 'in id {1}' no list expected {1: rank 3 name first id 1}"
+   error "search+ test on 'in id {1}' no list, expected {1: rank 3 name first id 1}"
 }
 if {"[lindex $list 0]" != "1: rank 3 name first id 1"} {
    error "search+ test on 'in id {1}' returns $list expected {1: rank 3 name first id 1}"
