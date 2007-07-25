@@ -226,7 +226,7 @@ proc gen_allocate {ctable size {private 0}} {
 proc gen_deallocate {ctable pointer {private 0}} {
     variable withSharedTables
     set priv "ckfree((void *)($pointer))"
-    set pub "shmfree(($ctable)->share_mapinfo, (void *)($pointer))"
+    set pub "shmfree(($ctable)->share, (void *)($pointer))"
 
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
 	return $priv
@@ -270,7 +270,7 @@ void ${table}_shmpanic(CTable *ctable)
 char *${table}_allocate(CTable *ctable, size_t amount)
 {
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	char *memory = shmalloc(ctable->share_mapinfo, amount);
+	char *memory = shmalloc(ctable->share, amount);
 	if(!memory)
 	    ${table}_shmpanic(ctable);
 	return memory;
@@ -308,7 +308,7 @@ int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct 
 #ifdef WITH_SHARED_TABLES
         // Save new key
         if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	    key = shmalloc(ctable->share_mapinfo, strlen(value)+1);
+	    key = shmalloc(ctable->share, strlen(value)+1);
 	    if(!key)
 	        ${table}_shmpanic(ctable);
 	    strcpy(key, value);
@@ -331,7 +331,7 @@ int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct 
 	    /* Don't need to "shmfree" because the key was never made
 	     * visible to any readers.
 	     */
-	    shmdealloc(ctable->share_mapinfo, (void *)key);
+	    shmdealloc(ctable->share, (void *)key);
 	}
 #endif
 	return TCL_ERROR;
@@ -1276,7 +1276,7 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) 
     if(!nextRow) {
 #ifdef WITH_SHARED_TABLES
         if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	    nextRow = (struct $table *)shmalloc(ctable->share_mapinfo, sizeof(struct $table));
+	    nextRow = (struct $table *)shmalloc(ctable->share, sizeof(struct $table));
 	    if(!nextRow)
 	        ${table}_shmpanic(ctable);
 	} else
@@ -1288,7 +1288,7 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) 
 
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
-        key_value = (char *)shmalloc(ctable->share_mapinfo, strlen(key)+1);
+        key_value = (char *)shmalloc(ctable->share, strlen(key)+1);
 	if(!key_value)
 	    ${table}_shmpanic(ctable);
 	strcpy(key_value, key);
@@ -1306,7 +1306,7 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) 
 	/* Don't need to "shmfree" because the key was never made visible to
 	 * any readers.
 	 */
-	shmdealloc(ctable->share_mapinfo, key);
+	shmdealloc(ctable->share, key);
     }
 #endif
 
@@ -2128,7 +2128,7 @@ fprintf(stderr, "${table}_deleteKey(ctable, {\"%s\" ...});\n", row->hashEntry.ke
 
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER)
-	shmfree(ctable->share_mapinfo, (void *)row->hashEntry.key);
+	shmfree(ctable->share, (void *)row->hashEntry.key);
     else
 #endif
 	ckfree(row->hashEntry.key);
@@ -2139,7 +2139,7 @@ void ${table}_deleteHashEntry(CTable *ctable, struct ${table} *row)
 {
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	shmfree(ctable->share_mapinfo, (void *)row->hashEntry.key);
+	shmfree(ctable->share, (void *)row->hashEntry.key);
 	row->hashEntry.key = NULL;
     }
 #endif
@@ -2189,7 +2189,7 @@ proc gen_delete_subr {subr struct} {
     		if {$withSharedTables} {
 	            emit "    if (row->$fieldName != (char *) NULL) {"
 		    emit "        if(del_shared && indexCtl != CTABLE_INDEX_PRIVATE) {"
-		    emit "            shmfree(ctable->share_mapinfo, (char *)row->$fieldName);"
+		    emit "            shmfree(ctable->share, (char *)row->$fieldName);"
 		    emit "            row->$fieldName = NULL;"
 		    emit "            row->_${fieldName}Length = 0;"
 		    if {![info exists field(notnull)] || !$field(notnull)} {
@@ -2211,7 +2211,7 @@ proc gen_delete_subr {subr struct} {
     }
     if {$withSharedTables} {
         emit "    if(del_shared && indexCtl != CTABLE_INDEX_PRIVATE) {"
-	emit "        shmfree(ctable->share_mapinfo, (char *)row);"
+	emit "        shmfree(ctable->share, (char *)row);"
 	emit "    } else {"
 	emit "        ckfree ((void *)row);"
 	emit "    }"
@@ -3104,7 +3104,7 @@ proc gen_shared_string_allocator {} {
     emit "    // Allocate array and the strings themselves in one chunk"
 
     set totalSize "$fieldNum * sizeof (char *) + $bundleLen"
-    emit "    defaultList = (volatile char **)shmalloc(ctable->share_mapinfo, $totalSize);"
+    emit "    defaultList = (volatile char **)shmalloc(ctable->share, $totalSize);"
     emit "    if (!defaultList)"
     emit "        ${table}_shmpanic(ctable);"
     emit ""

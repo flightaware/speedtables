@@ -17,7 +17,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
 	// is already deleted.
 #ifdef WITH_SHARED_TABLES
 	if(ctable->share_type == CTABLE_SHARED_MASTER)
-	    shmfree(ctable->share_mapinfo, row->hashEntry.key);
+	    shmfree(ctable->share, row->hashEntry.key);
 	else
 #endif
             ckfree (row->hashEntry.key);
@@ -379,7 +379,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		  return TCL_ERROR;
 	      }
 
-	      if (!shmattachpid(ctable->share_mapinfo, pid)) {
+	      if (!shmattachpid(ctable->share, pid)) {
 		  TclShmError(interp, Tcl_GetString(objv[2]));
 		  return TCL_ERROR;
 	      }
@@ -387,7 +387,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      resultList[0] = "file";
 	      resultList[1] = ctable->share_file;
 	      resultList[2] = "name";
-	      resultList[3] = ctable->share_name;
+	      resultList[3] = ctable->share->name;
 
 	      for(i = 0; i < 4; i++) {
 	          if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (resultList[i], -1)) == TCL_ERROR) {

@@ -69,10 +69,9 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int typeIndex = -1;
 	    int share_type = CTABLE_SHARED_NONE;
 	    char *share_file = NULL;
-	    char *share_name = "_base";
-	    mapinfo *share_mapinfo = NULL;
+	    char *share_name = NULL;
+	    shm_t *share = NULL;
 	    size_t size = 0;
-	    named_share *share = NULL;
 	    CTable *share_ctable = NULL;
 #endif
 
@@ -88,6 +87,8 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 #ifdef WITH_SHARED_TABLES
+	    if(!share_name) share_name = commandName;
+
 	    if (objc >= 5) {
 		if(Tcl_GetIndexFromObj(interp, objv[3], types, "type", TCL_EXACT, &typeIndex) != TCL_OK)
 		    goto createError;
@@ -108,7 +109,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		    if(!size) {
 			size = DEFAULT_SHARED_SIZE;
 		    }
-		    if(doCreateOrAttach(interp, commandName, share_file, size, &share) != TCL_OK)
+		    if(doCreateOrAttach(interp, share_name, share_file, size, &share) != TCL_OK)
 			goto createError;
 		} else {
 		    int i;
@@ -118,15 +119,14 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			else if(strcmp(Tcl_GetString(objv[i]), "name") == 0)
 			    share_name = Tcl_GetString(objv[i+1]);
 		    }
-		    if(doCreateOrAttach(interp, commandName, share_file, ATTACH_ONLY, &share) != TCL_OK)
+		    if(doCreateOrAttach(interp, share_name, share_file, ATTACH_ONLY, &share) != TCL_OK)
 			goto createError;
-		    share_ctable = (CTable *)get_symbol(share->mapinfo, share_name, SYM_TYPE_DATA);
+		    share_ctable = (CTable *)get_symbol(share, share_name, SYM_TYPE_DATA);
 		    if(!share_ctable) {
 		        Tcl_AppendResult(interp, "No data in ", share_file, " tagged with ", share_name, NULL);
 		        goto createError;
 		    }
 		}
-	        share_mapinfo = share->mapinfo;
 	    }
 	    else
 #endif
@@ -137,13 +137,18 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 #ifdef WITH_SHARED_TABLES
 	    if(share_type == CTABLE_SHARED_MASTER) {
-		ctable = (CTable *)shmalloc (share->mapinfo, sizeof(CTable));
+		ctable = (CTable *)shmalloc (share, sizeof(CTable));
 		if(!ctable) {
-		    TclShmError(interp, commandName);
+		    TclShmError(interp, share_name);
 		    goto createError;
 		}
 		ctable->skipLists = NULL; // to tell if we can safely dealloc
 		ctable->defaultStrings = NULL;
+		ctable->share_file = NULL;
+		if(!add_symbol(share, share_name, (char *)ctable, SYM_TYPE_DATA)) {
+		    Tcl_AppendResult(interp, "Can not save ctable name in share", NULL);
+		    goto createError;
+		}
 	    } else
 #endif
 	        ctable = (CTable *)ckalloc (sizeof(CTable));
@@ -159,12 +164,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		strcpy(ctable->share_file, share_file);
 	    } else
 		ctable->share_file = NULL;
-	    if(share_name) {
-	        ctable->share_name = ckalloc(strlen(share_name)+1);
-		strcpy(ctable->share_name, share_name);
-	    } else
-		ctable->share_name = NULL;
-	    ctable->share_mapinfo = share_mapinfo;
+	    ctable->share = share;
 	    ctable->share_ctable = share_ctable;
 
 	    // call out for this, it's a little complex
@@ -179,7 +179,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		// create an array of pointers to possible skip lists,
 		// one per field
 	        if(share_type == CTABLE_SHARED_MASTER)
-	            ctable->skipLists = (jsw_skip_t **)shmalloc (share_mapinfo, creator->nFields * sizeof (jsw_skip_t *));
+	            ctable->skipLists = (jsw_skip_t **)shmalloc (share, creator->nFields * sizeof (jsw_skip_t *));
 	        else
 #endif
 		    ctable->skipLists = (jsw_skip_t **)ckalloc (creator->nFields * sizeof (jsw_skip_t *));
@@ -218,16 +218,15 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	    if(ctable) {
 		if(ctable->share_file) ckfree(ctable->share_file);
-		if(ctable->share_name) ckfree(ctable->share_name);
 	    }
 
 	    if(share_type == CTABLE_SHARED_MASTER) {
 		if(ctable) {
 		    if(ctable->defaultStrings)
-			shmfree(share->mapinfo, (void *)ctable->defaultStrings);
+			shmfree(share, (void *)ctable->defaultStrings);
 		    if(ctable->skipLists)
-			shmfree(share->mapinfo, (void *)ctable->skipLists);
-		    shmfree (share->mapinfo, (void *)ctable);
+			shmfree(share, (void *)ctable->skipLists);
+		    shmfree (share, (void *)ctable);
 		    ctable = NULL;
 		}
 	    }

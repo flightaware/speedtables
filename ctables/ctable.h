@@ -316,8 +316,7 @@ typedef struct ctableTable {
 
     int					 share_type;
     char				*share_file;
-    char				*share_name;
-    mapinfo                             *share_mapinfo;
+    shm_t                               *share;
     struct ctableTable			*share_ctable;
 #endif
     Tcl_Command                          commandInfo;
