@@ -4556,8 +4556,6 @@ proc compile {fileFragName version} {
 		set memDebugString ""
 	    }
 
-	    myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$targetDir/include -I$targetDir/include/tcl8.4 -I$pgTargetDir/include -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -S"
-
 	    myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$targetDir/include -I$targetDir/include/tcl8.4 -I$pgTargetDir/include -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
 
 	    myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R$pgTargetDir/lib/pgtcl$pgtcl_ver -L$pgTargetDir/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgTargetDir/lib -lpq -L$targetDir/lib $stub"
