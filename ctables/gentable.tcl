@@ -50,7 +50,7 @@ namespace eval ctable {
     set withSharedTclExtension 0
 
     # Create and manage the "dirty" flag
-    set withDirty 0
+    set withDirty 1
 
     # create files in a subdirectory
     set withSubdir 1
@@ -164,6 +164,7 @@ proc cquote {string} {
 variable specialFieldNames {
     _key
     _dirty
+    _cycle
 }
 
 #
@@ -202,7 +203,7 @@ proc field_to_enum {fieldName} {
     variable table
 
     if {[regexp {^[._](.*)$} $fieldName _ pseudoName]} {
-	return "[string toupper $pseudoName]_[string toupper $table]"
+	return "SPECIAL_[string toupper $table]_[string toupper $pseudoName]"
     }
     return "FIELD_[string toupper $table]_[string toupper $fieldName]"
 }
@@ -312,7 +313,7 @@ proc gen_allocate_function {table} {
 }
 
 variable insertRowSource {
-int ${table}_insert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct ${table} *row, int indexCtl)
+int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct ${table} *row, int indexCtl)
 {
     ctable_HashEntry *new, *old;
     int isNew = 0;
@@ -409,8 +410,10 @@ variable nullCheckDuringSetSource {
 $handleNullIndex
 	        // field wasn't null but now is
 		row->_${fieldName}IsNull = 1;
+	    } else {
+		// No change, don't do anything
+	        return TCL_OK;
 	    }
-	    break;
 	}
 }
 
@@ -421,7 +424,6 @@ $handleNullIndex
 proc gen_null_check_during_set_source {table fieldName} {
     variable nullCheckDuringSetSource
     variable nullIndexDuringSetSource
-    variable setDirty
     variable fields
 
     upvar ::ctable::fields::$fieldName field
@@ -458,9 +460,9 @@ variable unsetNullDuringSetSource_unindexed {
 	}
 }
 
-# gen_special_code_check - generate special code for specific fields
-proc gen_special_code_check {fieldName checkName code} {
-    if {"$fieldName" == "$checkName"} {return $code}
+# gen_if_equal - generate code if $v1 == $v2
+proc gen_if_equal {v1 v2 code} {
+    if {"$v1" == "$v2"} {return $code}
     return ""
 }
 
@@ -468,7 +470,7 @@ proc gen_special_code_check {fieldName checkName code} {
 # gen_unset_null_during_set_source - generate standard null unsetting
 #  for a set
 #
-proc gen_unset_null_during_set_source {table fieldName} {
+proc gen_unset_null_during_set_source {table fieldName {elsecode {}}} {
     variable unsetNullDuringSetSource
     variable unsetNullDuringSetSource_unindexed
     variable fields
@@ -476,12 +478,19 @@ proc gen_unset_null_during_set_source {table fieldName} {
     upvar ::ctable::fields::$fieldName field
 
     if {[info exists field(notnull)] && $field(notnull)} {
-        return ""
-    } else {
-	if {[info exists field(indexed)] && $field(indexed)} {
-	    return [string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource] 1 end-1]
+	if {"$elsecode" == ""} {
+	    return ""
 	} else {
-	    return [string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource_unindexed] 1 end-1]
+            return "        $elsecode"
+	}
+    } else {
+	if {"$elsecode" != ""} {
+	    set elsecode " else $elsecode"
+	}
+	if {[info exists field(indexed)] && $field(indexed)} {
+	    return "[string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource] 1 end-1]$elsecode"
+	} else {
+	    return "[string range [subst -nobackslashes -nocommands $unsetNullDuringSetSource_unindexed] 1 end-1]$elsecode"
 	}
     }
 }
@@ -555,9 +564,12 @@ variable boolSetSource {
             Tcl_AppendResult (interp, " while converting $fieldName", (char *)NULL);
             return TCL_ERROR;
         }
-[gen_unset_null_during_set_source $table $fieldName]
+[gen_unset_null_during_set_source $table $fieldName \
+	"if (row->$fieldName == boolean)
+	    return TCL_OK;"]
+
         row->$fieldName = boolean;
-[gen_special_code_check $fieldName _dirty "setDirty = 0;"]
+        [gen_if_equal $fieldName _dirty "return TCL_OK; // Don't set dirty for meta-fields"]
 	break;
       }
 }
@@ -575,12 +587,13 @@ variable numberSetSource {
 	    Tcl_AppendResult (interp, " while converting $fieldName", (char *)NULL);
 	    return TCL_ERROR;
 	}
-[gen_unset_null_during_set_source $table $fieldName] else if (row->$fieldName == value) {
-	    return TCL_OK;
-	}
+[gen_unset_null_during_set_source $table $fieldName \
+	"if (row->$fieldName == value)
+	    return TCL_OK;"]
 [gen_ctable_remove_from_index $fieldName]
 	row->$fieldName = value;
 [gen_ctable_insert_into_index $fieldName]
+        [gen_if_equal $fieldName _cycle "return TCL_OK; // Don't set dirty for meta-fields"]
 	break;
       }
 }
@@ -588,27 +601,65 @@ variable keySetSource {
       case $optname: {
         char *value = Tcl_GetString(obj);
 
-	if(
-	    row->hashEntry.key == NULL ||
-	    *value != *row->hashEntry.key ||
-	    strcmp(value, row->hashEntry.key)
-	) {
-	    switch (indexCtl) {
-	        case CTABLE_INDEX_PRIVATE: {
-		    // fake hash entry for search
-		    if(row->hashEntry.key) [gen_deallocate ctable row->hashEntry.key 1];
-		    row->hashEntry.key = (char *)[gen_allocate ctable "strlen(value)+1" 1];
-		    strcpy(row->hashEntry.key, value);
-		    break;
-		}
-		case CTABLE_INDEX_NORMAL:
-		case CTABLE_INDEX_NEW: {
-		    return ${table}_insert_row(interp, ctable, value, row, indexCtl);
-		}
+        if (row->hashEntry.key != NULL && *value == *row->hashEntry.key && strcmp(value, row->hashEntry.key) == 0)
+	    return TCL_OK;
+
+	switch (indexCtl) {
+	    case CTABLE_INDEX_PRIVATE: {
+		// fake hash entry for search
+		if(row->hashEntry.key) [gen_deallocate ctable row->hashEntry.key 1];
+		row->hashEntry.key = (char *)[gen_allocate ctable "strlen(value)+1" 1];
+		strcpy(row->hashEntry.key, value);
+		break;
+	    }
+	    case CTABLE_INDEX_NORMAL:
+	    case CTABLE_INDEX_NEW: {
+		if (${table}_reinsert_row(interp, ctable, value, row, indexCtl) == TCL_ERROR)
+		    return TCL_ERROR;
+		break;
 	    }
 	}
 	break;
       }
+}
+
+proc gen_check_unchanged_string {fieldName default defaultLength} {
+    variable leftCurly
+    variable rightCurly
+
+	append code "if (!row->$fieldName) $leftCurly"
+	if {"$defaultLength" == "0"} {
+	    append code "
+            if (!*string)
+		return TCL_OK;"
+	} else {
+	    if {[string index $default 0] == "\\"} {
+	       set def0 "\"$default\"\[0]"
+	    } else {
+		set def0 '[string index $default 0]'
+	    }
+	    append code "
+	    if (length == $defaultLength && *string == $def0 && (strncmp (string, \"$default\", $defaultLength) == 0))
+	        return TCL_OK;"
+	}
+	append code "
+        $rightCurly else $leftCurly
+	    if(length == row->_${fieldName}Length && *string == *row->$fieldName && strcmp(string, row->$fieldName) == 0)
+	        return TCL_OK;
+	$rightCurly"
+	return $code
+}
+
+proc gen_default_test {varName lengthName default defaultLength} {
+    if {$defaultLength == 0} { return "!*$varName" }
+
+    if {[string index $default 0] == "\\"} {
+       set def0 "\"$default\"\[0]"
+    } else {
+	set def0 '[string index $default 0]'
+    }
+
+    return "$lengthName == $defaultLength && *$varName == $def0 && strncmp ($varName, \"$default\", $defaultLength) == 0"
 }
 
 #
@@ -629,40 +680,33 @@ variable varstringSetSource {
 	char *string = NULL;
 	int   length;
 [gen_null_check_during_set_source $table $fieldName]
-[gen_unset_null_during_set_source $table $fieldName]
-	string = Tcl_GetStringFromObj (obj, &length);
-	if ((length == $defaultLength) && (($defaultLength == 0) || (strncmp (string, "$default", $defaultLength) == 0))) {
-	    if (row->$fieldName != (char *) NULL) {
-		// string was something but now matches the empty string
-[gen_ctable_remove_from_index $fieldName]
-		[gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
 
-		// It's a change to the be default string. If we're
-		// indexed, force the default string in there so the 
-		// compare routine will be happy and then insert it.
-		// can't use our proc here yet because of the
-		// default empty string obj fanciness
-		//
-		// Since row->$fieldName is thrown away right after,
-		// shouldn't we be able to jsut use ""?
-		if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] == NULL)) {
-		    row->$fieldName = [gen_defaultEmptyString ctable row->_${fieldName}Length 0];
-		    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
-			return TCL_ERROR;
-		    }
+	string = Tcl_GetStringFromObj (obj, &length);
+[gen_unset_null_during_set_source $table $fieldName [gen_check_unchanged_string $fieldName $default $defaultLength]]
+
+	// we now know it's not the same as the previous value of the string,
+	// even if the previous value was default, so if the new value is
+	// default we know the old value wasn't.
+	if ([gen_default_test string length $default $defaultLength]) {
+[gen_ctable_remove_from_index $fieldName]
+	    [gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
+
+	    // It's a change to the be default string. If we're
+	    // indexed, force the default string in there so the 
+	    // compare routine will be happy and then insert it.
+	    // can't use our proc here yet because of the
+	    // default empty string obj fanciness
+	    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
+		row->$fieldName = \"$default\";
+		if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+		    return TCL_ERROR;
 		}
-		row->$fieldName = NULL;
-		row->_${fieldName}AllocatedLength = 0;
-		row->_${fieldName}Length = 0;
 	    }
+	    row->$fieldName = NULL;
+	    row->_${fieldName}AllocatedLength = 0;
+	    row->_${fieldName}Length = 0;
 	    break;
 	}
-
-	// previous field isn't null and new field isn't null and
-	// isn't the default string
-
-	// are they feeding us what we already have, we're outta here
-	if ((length == row->_${fieldName}Length) && (*row->$fieldName == *string) && (strncmp (row->$fieldName, string, length) == 0)) break;
 
 	// previous field isn't null, new field isn't null, isn't
 	// the default string, and isn't the same as the previous field
@@ -697,8 +741,12 @@ variable charSetSource {
 	char *string;
 [gen_null_check_during_set_source $table $fieldName]
 	string = Tcl_GetString (obj);
+[gen_unset_null_during_set_source $table $fieldName \
+	"if(row->$fieldName != string\[0])
+	    return TCL_OK;"]
+[gen_ctable_remove_from_index $fieldName]
 	row->$fieldName = string\[0\];
-[gen_unset_null_during_set_source $table $fieldName]
+[gen_ctable_insert_into_index $fieldName]
 	break;
       }
 }
@@ -712,9 +760,9 @@ variable fixedstringSetSource {
 	char *string;
 [gen_null_check_during_set_source $table $fieldName]
 	string = Tcl_GetString (obj);
-[gen_unset_null_during_set_source $table $fieldName] if (strncmp(row->$fieldName, string, $length) == 0) {
-	    return TCL_OK;
-	}
+[gen_unset_null_during_set_source $table $fieldName \
+	"if (*string == *row->$fieldName && strncmp(row->$fieldName, string, $length) == 0)
+	    return TCL_OK;"]
 [gen_ctable_remove_from_index $fieldName]
 	strncpy (row->$fieldName, string, $length);
 [gen_ctable_insert_into_index $fieldName]
@@ -734,9 +782,9 @@ variable inetSetSource {
 	    Tcl_AppendResult (interp, "expected IP address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$fieldName\\"", (char *)NULL);
 	    return TCL_ERROR;
 	}
-[gen_unset_null_during_set_source $table $fieldName] else if (memcmp (&row->$fieldName, &value, sizeof (struct in_addr)) == 0) {
-            return TCL_OK;
-	}
+[gen_unset_null_during_set_source $table $fieldName \
+	"if (memcmp (&row->$fieldName, &value, sizeof (struct in_addr)) == 0)
+            return TCL_OK;"]
 
 [gen_ctable_remove_from_index $fieldName]
 	row->$fieldName = value;
@@ -759,9 +807,9 @@ variable macSetSource {
 	    return TCL_ERROR;
 	}
 
-[gen_unset_null_during_set_source $table $fieldName] else if (memcmp (&row->$fieldName, mac, sizeof (struct ether_addr)) == 0) {
-            return TCL_OK;
-        }
+[gen_unset_null_during_set_source $table $fieldName \
+	"if (memcmp (&row->$fieldName, mac, sizeof (struct ether_addr)) == 0)
+            return TCL_OK;"]
 [gen_ctable_remove_from_index $fieldName]
 	row->$fieldName = *mac;
 [gen_ctable_insert_into_index $fieldName]
@@ -2045,9 +2093,6 @@ proc gen_defaults_subr {subr struct} {
     emit "    if (firstPass) $leftCurly"
     emit "        firstPass = 0;"
     emit ""
-    if $withDirty {
-        emit "        $baseCopy._dirty = 1;"
-    }
     emit "        $baseCopy.hashEntry.key = NULL;"
 
     foreach fieldName $fieldList {
@@ -2451,6 +2496,7 @@ proc gen_struct {} {
 proc emit_set_num_field {fieldName type} {
     variable numberSetSource
     variable table
+    variable withSharedTables
 
     set typeText $type
 
@@ -2933,6 +2979,7 @@ proc put_init_extension_source {extension extensionVersion} {
 #
 proc gen_set_function {table} {
     variable withDirty
+    variable withSharedTables
     variable fieldObjSetSource
     variable fieldSetSource
     variable fieldSetSwitchSource
@@ -2940,15 +2987,17 @@ proc gen_set_function {table} {
     variable rightCurly
 
     emit [string range [subst -nobackslashes -nocommands $fieldSetSource] 1 end-1]
-    if {$withDirty} {
-        emit "    int setDirty = 1;"
-    }
 
     emit [string range [subst -nobackslashes -nocommands $fieldSetSwitchSource] 1 end-1]
     gen_sets
 
     if {$withDirty} {
-	emit "    if (setDirty) row->_dirty = 1;"
+	emit "    row->_dirty = 1;"
+    }
+
+    if {$withSharedTables} {
+        emit "    if (ctable->share_type == CTABLE_SHARED_MASTER)"
+	emit "        row->_cycle = ctable->share->map->cycle;"
     }
 
     emit "    $rightCurly"
@@ -4898,7 +4947,12 @@ proc CTable {name data} {
 
     if {$::ctable::withDirty} {
         # Create a 'dirty' field
-        ::ctable::boolean _dirty notnull 1
+        ::ctable::boolean _dirty notnull 1 default 0
+    }
+
+    if {$::ctable::withSharedTables} {
+	# Create a 'cycle' field
+	::ctable::long _cycle notnull 1 default LOST_HORIZON
     }
 
     ::ctable::gen_struct
