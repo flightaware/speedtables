@@ -29,8 +29,9 @@ namespace eval ctable {
     variable showCompilerCommands
     variable withPipe
     variable memDebug
-    variable targetDir
-    variable pgTargetDir
+    variable sysPrefix
+    variable pgPrefix
+    variable keyCompileVariables
 
     set ctablePackageVersion 1.3
 
@@ -48,10 +49,14 @@ namespace eval ctable {
     set withSharedTables 1
     set withSharedTclExtension 0
 
+    # Create and manage the "dirty" flag
     set withDirty 0
 
-    set targetDir /usr/local
-    set pgTargetDir /usr/local
+    # create files in a subdirectory
+    set withSubdir 1
+
+    set sysPrefix /usr/local
+    set pgPrefix /usr/local
 
     variable pgtcl_ver 1.5
 
@@ -60,6 +65,17 @@ namespace eval ctable {
 
     set leftCurly \173
     set rightCurly \175
+
+    # Important compile settings, used in generating the ID
+    set keyCompileVariables {
+	withPgtcl
+	pgtcl_ver
+	withSharedTables
+	withSharedTclExtension
+	withDirty
+	genCompilerDebug
+	memDebug
+    }
 
     set ctableErrorInfo ""
 
@@ -4510,6 +4526,41 @@ proc myexec {command} {
 }
 
 #
+# Generate the fully qualified path to a file
+#
+proc target_name {name version {ext .c}} {
+    return [file join [target_path $name] $name-$version$ext]
+}
+
+#
+# Generate the path to the target files
+#
+# Either buildPath or buildPath/$name
+#
+# And make sure it exists!
+#
+proc target_path {name} {
+    variable buildPath
+    variable withSubdir
+    variable dirStatus
+
+    set path $buildPath
+
+    if {$withSubdir} {
+        set path [file join $path $name]
+    }
+
+    if {![info exists dirStatus($path)]} {
+	set dirStatus($path) [file isdirectory $path]
+	if {!$dirStatus($path)} {
+	    file mkdir $path
+	}
+    }
+
+    return $path
+}
+
+#
 # compile - compile and link the shared library
 #
 proc compile {fileFragName version} {
@@ -4518,13 +4569,15 @@ proc compile {fileFragName version} {
     variable pgtcl_ver
     variable genCompilerDebug
     variable memDebug
-    variable targetDir
-    variable pgTargetDir
+    variable sysPrefix
+    variable pgPrefix
     variable withPipe
+    variable withSubdir
 
-    set buildFragName $buildPath/$fileFragName-$version
-    set sourceFile $buildFragName.c
-    set objFile $buildFragName.o
+    set include [target_path include]
+    set targetPath [target_path $fileFragName]
+    set sourceFile [target_name $fileFragName $version]
+    set objFile [target_name $fileFragName $version .o]
 
     if {$withPipe} {
 	set pipeFlag "-pipe"
@@ -4556,10 +4609,10 @@ proc compile {fileFragName version} {
 		set memDebugString ""
 	    }
 
-	    myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$targetDir/include -I$targetDir/include/tcl8.4 -I$pgTargetDir/include -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
+	    myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$sysPrefix/include -I$sysPrefix/include/tcl8.4 -I$pgPrefix/include -I$include -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
 
-	    myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R$pgTargetDir/lib/pgtcl$pgtcl_ver -L$pgTargetDir/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgTargetDir/lib -lpq -L$targetDir/lib $stub"
-	    #myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -L$targetDir/lib $stub"
+	    myexec "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile -R$pgPrefix/lib/pgtcl$pgtcl_ver -L$pgPrefix/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgPrefix/lib -lpq -L$sysPrefix/lib $stub"
+	    #myexec "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile -L$sysPrefix/lib $stub"
 	}
 
 # -finstrument-functions / -lSaturn
@@ -4578,16 +4631,16 @@ proc compile {fileFragName version} {
 		set lib "-ltcl8.4"
 	    }
 
-	    myexec "gcc $pipeFlag -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$targetDir/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
+	    myexec "gcc $pipeFlag -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$sysPrefix/include -I$include -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
 
-	    myexec "gcc $pipeFlag $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub"
+	    myexec "gcc $pipeFlag $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub"
 
-	    #exec gcc $pipeFlag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
+	    #exec gcc $pipeFlag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$include -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
-	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver $stub
-	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl -L/sc/lib $stub
-	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
-	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
+	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver $stub
+	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl -L/sc/lib $stub
+	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
+	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
 
 
 	    # -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver
@@ -4599,7 +4652,11 @@ proc compile {fileFragName version} {
 	}
     }
 
-    pkg_mkIndex $buildPath
+    if {$withSubdir} {
+	pkg_mkIndex $buildPath */*.tcl */*.so
+    } else {
+	pkg_mkIndex $buildPath
+    }
 }
 
 proc EndExtension {} {
@@ -4628,15 +4685,8 @@ proc EndExtension {} {
 #  from what's being asked for
 #
 proc extension_already_built {name version code} {
-    variable buildPath
-    variable cvsID
-    variable genCompilerDebug
-    variable srcDir
-
-    set ctFile $buildPath/$name-$version.ct
-
     # if open of the stash file fails, it ain't built
-    if {[catch {open $ctFile} fp] == 1} {
+    if {[catch {open [target_name $name $version .ct]} fp] == 1} {
         #puts ".ct file not there, build required"
         return 0
     }
@@ -4648,12 +4698,9 @@ proc extension_already_built {name version code} {
 	return 0
     }
 
-    # this needs to match whavtever save_extension_code writes
-    set expectControlLine [list $cvsID $genCompilerDebug [file mtime $srcDir]]
-
     # See if this file's control line matches the line in the .ct file.
     # If not, rebuild not built.
-    if {$controlLine != $expectControlLine} {
+    if {$controlLine != [control_line]} {
         #puts "control line does not match, build required"
 	return 0
     }
@@ -4671,26 +4718,37 @@ proc extension_already_built {name version code} {
     return 1
 }
 
+# This is a unique ID that should change whenever anything significant
+# changes in ctables
+proc control_line {} {
+    variable srcDir
+    variable cvsID
+    variable keyCompileVariables
+
+    foreach v $keyCompileVariables {
+	variable $v
+	if [info exists $v] {
+	    lappend compileSettings "$v=[set $v]"
+	} else {
+	    lappend compileSettings "$v?"
+	}
+    }
+    set compileSettings [join $compileSettings ":"]
+
+    return "$cvsID $compileSettings [file mtime $srcDir]"
+}
+
 #
 # save_extension_code - after a successful build, cache the extension
 #  definition so extension_already_built can see if it's necessary to
 #  generate, compile and link the shared library next time we're run
 #
 proc save_extension_code {name version code} {
-    variable buildPath
-    variable cvsID
-    variable leftCurly
-    variable rightCurly
-    variable genCompilerDebug
-    variable srcDir
+    set fp [open [target_name $name $version .ct] w]
 
-    set ctFile $buildPath/$name-$version.ct
-
-    set fp [open $ctFile w]
-
-    # this needs to match whavtever extension_ready_built expects
-    puts $fp [list $cvsID $genCompilerDebug [file mtime $srcDir]]
+    puts $fp [control_line]
     puts $fp $code
+
     close $fp
 }
 
@@ -4698,7 +4756,7 @@ proc save_extension_code {name version code} {
 # install_ch_files - install .h in the target dir if something like it
 #  isn't there already
 #
-proc install_ch_files {targetDir} {
+proc install_ch_files {includeDir} {
     variable srcDir
     variable withSharedTables
 
@@ -4733,7 +4791,7 @@ proc install_ch_files {targetDir} {
 	}
 
 	if [info exists fullName] {
-            file copy -force $fullName $targetDir
+            file copy -force $fullName $includeDir
 	} else {
 	    return -code error "Can't find $file in $srcDir"
 	}
@@ -4775,8 +4833,7 @@ proc CExtension {name version code} {
     }
 
     set ::ctable::sourceCode $code
-    set ::ctable::sourceFile $::ctable::buildPath/$name-$version.c
-
+    set ::ctable::sourceFile [::ctable::target_name $name $version]
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""
@@ -4808,7 +4865,7 @@ proc start_codegen {} {
 	return
     }
 
-    ::ctable::install_ch_files $::ctable::buildPath
+    ::ctable::install_ch_files [::ctable::target_path include]
 
     set ::ctable::ofp [open $::ctable::sourceFile w]
 

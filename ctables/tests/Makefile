@@ -5,7 +5,7 @@
 #
 
 all:
-	-rm build/*
+	-rm -r build
 	tclsh8.4 serious-tests.tcl
 	tclsh8.4 incr-test.tcl
 	tclsh8.4 all-field-types.tcl
@@ -17,7 +17,7 @@ all:
 	tclsh8.4 trans-tests.tcl
 
 key:
-	-rm -f build/*
+	-rm -r build
 	tclsh8.4 new-tests.tcl
 	mkdir tmpdir
 	mv build/*.so tmpdir
@@ -28,7 +28,8 @@ key:
 	tclsh8.4 key-tests.tcl
 
 master:
-	-rm -f build/* *.dat
+	-rm -r build
+	-rm -f *.dat
 	tclsh8.4 tsv-nokey-tests.tcl
 	tclsh8.4 master.tcl
 	rm -f *.dat
