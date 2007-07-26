@@ -18,7 +18,13 @@ all:
 
 key:
 	-rm -f build/*
-#	tclsh8.4 new-tests.tcl
+	tclsh8.4 new-tests.tcl
+	mkdir tmpdir
+	mv build/*.so tmpdir
+	tclsh8.4 key-tests.tcl
+	rm build/*.so build/topbrandsgenkey*
+	mv tmpdir/* build
+	rmdir tmpdir
 	tclsh8.4 key-tests.tcl
 
 master:

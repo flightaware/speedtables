@@ -27,6 +27,7 @@ namespace eval ctable {
 
     variable genCompilerDebug
     variable showCompilerCommands
+    variable withPipe
     variable memDebug
     variable targetDir
     variable pgTargetDir
@@ -36,9 +37,12 @@ namespace eval ctable {
     # set to 1 to see errorInfo in normal tracebacks
     set errorDebug 1
 
+    # set to 0 to generate without the "-pipe" in the gcc command
+    variable withPipe 1
+
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
-    set showCompilerCommands 0
+    set showCompilerCommands 1
     set memDebug 0
 
     set withSharedTables 1
@@ -2137,7 +2141,6 @@ proc gen_defaults_subr {subr struct} {
 variable deleteRowHelperSource {
 void ${table}_deleteKey(CTable *ctable, struct ${table} *row)
 {
-fprintf(stderr, "${table}_deleteKey(ctable, {\"%s\" ...});\n", row->hashEntry.key);
     if(!row->hashEntry.key)
 	return;
 
@@ -2288,27 +2291,6 @@ proc sanity_check {} {
 
     if {[llength $fieldList] == 0} {
         error "no fields defined in table \"$table\" -- at least one field must be defined in a table"
-    }
-
-    # If we're enabling shared tables, disable them again if any of the
-    # fields are the key, or there are no indexed fields.
-
-    if {$withSharedTables} {
-        if {[info exists keyFieldName] && "$keyFieldName" != "_key"} {
-	    set withSharedTables 0
-	}
-	set nIndexed 0
-        foreach fieldName $fieldList {
-	    upvar ::ctable::fields::$fieldName field
-
-            # if the "indexed" field doesn't exist or is 0, skip it
-            if {[info exists field(indexed)] && $field(indexed)} {
-		incr nIndexed
-	    }
-        }
-	if {!$nIndexed} {
-	    set withSharedTables 0
-	}
     }
 }
 
@@ -4538,10 +4520,17 @@ proc compile {fileFragName version} {
     variable memDebug
     variable targetDir
     variable pgTargetDir
+    variable withPipe
 
     set buildFragName $buildPath/$fileFragName-$version
     set sourceFile $buildFragName.c
     set objFile $buildFragName.o
+
+    if {$withPipe} {
+	set pipeFlag "-pipe"
+    } else {
+	set pipeFlag ""
+    }
 
     # add -pg for profiling with gprof
 
@@ -4567,7 +4556,9 @@ proc compile {fileFragName version} {
 		set memDebugString ""
 	    }
 
-	    myexec "gcc -pipe $optflag $dbgflag -fPIC -I$targetDir/include -I$targetDir/include/tcl8.4 -I$pgTargetDir/include -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
+	    myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$targetDir/include -I$targetDir/include/tcl8.4 -I$pgTargetDir/include -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -S"
+
+	    myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$targetDir/include -I$targetDir/include/tcl8.4 -I$pgTargetDir/include -I$buildPath -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
 
 	    myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -R$pgTargetDir/lib/pgtcl$pgtcl_ver -L$pgTargetDir/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgTargetDir/lib -lpq -L$targetDir/lib $stub"
 	    #myexec "ld -Bshareable $dbgflag -x -o $buildPath/lib${fileFragName}.so $objFile -L$targetDir/lib $stub"
@@ -4589,16 +4580,16 @@ proc compile {fileFragName version} {
 		set lib "-ltcl8.4"
 	    }
 
-	    myexec "gcc -pipe -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$targetDir/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
+	    myexec "gcc $pipeFlag -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$targetDir/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
 
-	    myexec "gcc -pipe $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub"
+	    myexec "gcc $pipeFlag $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub"
 
-	    #exec gcc -pipe $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
+	    #exec gcc $pipeFlag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$buildPath -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
-	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver $stub
-	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl -L/sc/lib $stub
-	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
-	    #exec gcc -pipe $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
+	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver $stub
+	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl -L/sc/lib $stub
+	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
+	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $buildPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
 
 
 	    # -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver

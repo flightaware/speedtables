@@ -904,11 +904,13 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     enum skipEnd_e	   skipEnd = 0;
     enum skipNext_e	   skipNext = 0;
 
-    int			   count;
+    int			   myCount;
 
     int			   inIndex = 0;
     Tcl_Obj		 **inListObj = NULL;
     int			   inCount = 0;
+
+    int			   canUseHash = 1;
 
     search->matchCount = 0;
     search->alreadySearched = -1;
@@ -949,6 +951,13 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     //
     // If we can use a hash table, we use it, because it's either JUST
     // a simple hash lookup, or it's "in" which has to be handled here.
+    //
+    // If we're doing a client search, we don't have access to the
+    // hashtable, so we can't do a hash search.
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_READER)
+	canUseHash = 0;
+#endif
 
     if (search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
 	int index = 0;
@@ -975,7 +984,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 	    // If it's the key, then see if it's something we can walk
 	    // using a hash.
-	    if(field == creator->keyField) {
+	    if(field == creator->keyField && canUseHash) {
 		walkType = hashTypes[comparisonType];
 
 		if (walkType != WALK_DEFAULT) {
@@ -1061,11 +1070,16 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     // buffer results if:
     //   We're not countOnly, and...
     //     We're searching, or...
+    //     We're a reader table, or...
     //     We explicitly requested bufering.
     if(search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) {
 	search->bufferResults = 0;
     } else if(search->sortControl.nFields > 0) {
 	search->bufferResults = 1;
+#ifdef WITH_SHARED_TABLES
+    } else if(ctable->share_type == CTABLE_SHARED_READER) {
+	search->bufferResults = 1;
+#endif
     } else if(search->bufferResults == -1) {
     	search->bufferResults = 0;
     }
@@ -1080,7 +1094,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     }
 
     if (walkType == WALK_DEFAULT) {
-	// walk the hash table 
+	// walk the hash table links.
 	CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
 	    compareResult = ctable_SearchCompareRow (interp, ctable, search, row);
 	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
@@ -1168,7 +1182,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	}
 
 	// Count is only to make sure we blow up on infinite loops
-	for(count = 0; count < ctable->count; count++) {
+	for(myCount = 0; myCount < ctable->count; myCount++) {
 	    if(skipNext == SKIP_NEXT_IN_LIST) {
 		// We're looking at a list of entries rather than a range,
 		// so we have to loop here searching for each in turn instead

@@ -48,6 +48,7 @@ if {"[lindex [t get $first_key rank] 0]" != "3"} {
 t search+ -compare {{in id {1}}} -key k -array a -code {lappend list "$k: [array get a]" }
 
 if {![info exists list]} {
+   puts "t count -> [t count]"
    dump_table t
    error "search+ test on 'in id {1}' no list, expected {1: rank 3 name first id 1}"
 }
