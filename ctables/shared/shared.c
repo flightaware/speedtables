@@ -860,10 +860,10 @@ void shmpanic(char *s)
     abort();
 }
 
-#ifdef WITH_TCL
-int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, int *ptr)
+// parse a string of type "nnnnK" or "mmmmG" to bytes;
+
+int parse_size(char *s, size_t *ptr)
 {
-    char *s = Tcl_GetString(obj);
     size_t size = 0;
 
     while(isdigit(*s)) {
@@ -876,14 +876,21 @@ int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, int *ptr)
 	case 'K': size *= 1024;
 	    s++;
     }
-    if(*s) {
-	Tcl_ResetResult(interp);
-	Tcl_AppendResult(interp, "Bad size, must be an integer optionally followed by 'k', 'm', or 'g': ", Tcl_GetString(obj), NULL);
-	return TCL_ERROR;
-    }
-
+    if(*s)
+	return 0;
     *ptr = size;
-    return TCL_OK;
+    return 1;
+}
+
+#ifdef WITH_TCL
+int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr)
+{
+    if(parse_size(Tcl_GetString(obj), ptr))
+	return TCL_OK;
+
+    Tcl_ResetResult(interp);
+    Tcl_AppendResult(interp, "Bad size, must be an integer optionally followed by 'k', 'm', or 'g': ", Tcl_GetString(obj), NULL);
+    return TCL_ERROR;
 }
 
 void TclShmError(Tcl_Interp *interp, char *name)

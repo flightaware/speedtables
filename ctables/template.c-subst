@@ -70,6 +70,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int share_type = CTABLE_SHARED_NONE;
 	    char *share_file = NULL;
 	    char *share_name = NULL;
+	    char *raw_size = NULL;
 	    shm_t *share = NULL;
 	    size_t size = 0;
 	    CTable *share_ctable = NULL;
@@ -90,50 +91,81 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    if(!share_name) share_name = commandName;
 
 	    if (objc >= 5) {
+		int	  i;
+	        int	  listObjc;
+	        Tcl_Obj **listObjv;
+
 		if(Tcl_GetIndexFromObj(interp, objv[3], types, "type", TCL_EXACT, &typeIndex) != TCL_OK)
 		    goto createError;
 
-		share_type = share_types[typeIndex];
-		if(share_type == CTABLE_SHARED_MASTER) {
-		    if(objc > 6) {
-			Tcl_WrongNumArgs (interp, 2, objv, "name master filename ?size?");
+		if(objc == 5) {
+            	    // If there's precisely one element in the list, get a new list
+            	    // vector from the first element
+            	    if (Tcl_ListObjGetElements (interp, objv[4], &listObjc, &listObjv) == TCL_ERROR) {
+			Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
 			goto createError;
-		    } else if(objc == 6) {
-			if (TclGetSizeFromObj(interp, objv[5], &size) != TCL_OK) {
-			    Tcl_AppendResult(interp, " reading 'size'", NULL);
+		    }
+                } else {
+                    // new list vector is the old list vector
+                    listObjc = objc - 4;
+                    listObjv = (Tcl_Obj **)objv + 4;
+                }
+
+		if(listObjc & 1) {
+		    Tcl_AppendResult(interp, "Odd number of elements in key-value list.", NULL);
+		    goto createError;
+		}
+
+		// Pull meaningful keys out of key-value list.
+		for(i = 0; i < listObjc; i+=2) {
+		    char *key = Tcl_GetString(listObjv[i]);
+
+		    if(strcmp(key, "file") == 0)
+			share_file = Tcl_GetString(listObjv[i+1]);
+		    else if(strcmp(key, "name") == 0)
+			share_name = Tcl_GetString(listObjv[i+1]);
+		    else if(strcmp(key, "size") == 0)
+			raw_size = Tcl_GetString(listObjv[i+1]);
+		}
+
+		share_type = share_types[typeIndex];
+
+		if(share_type == CTABLE_SHARED_MASTER) {
+
+		    if(raw_size) {
+			if (!parse_size(raw_size, &size)) {
+			    Tcl_AppendResult(interp, "Bad size, must be an integer optionally followed by 'k', 'm', or 'g': ", raw_size, NULL);
 			    goto createError;
 			}
-		    }
-
-		    share_file = Tcl_GetString(objv[4]);
-		    if(!size) {
+		    } else {
 			size = DEFAULT_SHARED_SIZE;
 		    }
+
 		    if(doCreateOrAttach(interp, share_name, share_file, size, &share) != TCL_OK)
 			goto createError;
+
 		} else {
-		    int i;
-		    for(i = 5; i < objc; i+=2) {
-			if(strcmp(Tcl_GetString(objv[i]), "file") == 0)
-			    share_file = Tcl_GetString(objv[i+1]);
-			else if(strcmp(Tcl_GetString(objv[i]), "name") == 0)
-			    share_name = Tcl_GetString(objv[i+1]);
-		    }
+
 		    if(doCreateOrAttach(interp, share_name, share_file, ATTACH_ONLY, &share) != TCL_OK)
 			goto createError;
+
 		    share_ctable = (CTable *)get_symbol(share, share_name, SYM_TYPE_DATA);
 		    if(!share_ctable) {
 		        Tcl_AppendResult(interp, "No data in ", share_file, " tagged with ", share_name, NULL);
 		        goto createError;
 		    }
+
 		}
+	    } else if(objc != 3) {
+		Tcl_WrongNumArgs (interp, 2, objv, "name ?type arglist?");
+		goto createError;
 	    }
-	    else
-#endif
+#else
 	    if (objc != 3) {
 		Tcl_WrongNumArgs (interp, 2, objv, "name");
 		goto createError;
 	    }
+#endif
 
 #ifdef WITH_SHARED_TABLES
 	    if(share_type == CTABLE_SHARED_MASTER) {

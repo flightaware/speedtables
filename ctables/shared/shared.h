@@ -170,6 +170,7 @@ int add_symbol(shm_t *shm, char *name, char *value, int type);
 int set_symbol(shm_t *shm, char *name, char *value, int type);
 char *get_symbol(shm_t *shm, char *name, int wanted);
 int shmattachpid(shm_t *info, int pid);
+int parse_size(char *s, size_t *ptr);
 
 #define SYM_TYPE_STRING 1
 #define SYM_TYPE_DATA 0
@@ -178,7 +179,7 @@ int shmattachpid(shm_t *info, int pid);
 #ifdef WITH_TCL
 #define ATTACH_ONLY ((size_t)-1)
 
-int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, int *ptr);
+int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr);
 void TclShmError(Tcl_Interp *interp, char *name);
 int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, shm_t **sharePtr);
 int doDetach(Tcl_Interp *interp, shm_t *share);

@@ -8,7 +8,7 @@ set suffix _m
 
 source top-brands-nokey-def.tcl
 
-top_brands_nokey_m create m master sharefile.dat
+top_brands_nokey_m create m master file sharefile.dat
 
 proc dump_table {} {
     m search -key k -array_get a -code { puts "$k => $a" }
