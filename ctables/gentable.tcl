@@ -42,7 +42,7 @@ namespace eval ctable {
 
     # set to 1 to build with debugging and link to tcl debugging libraries
     set genCompilerDebug 0
-    set showCompilerCommands 1
+    set showCompilerCommands 0
     set memDebug 0
 
     set withSharedTables 1
