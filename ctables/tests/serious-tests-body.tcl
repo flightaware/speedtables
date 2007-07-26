@@ -22,6 +22,24 @@ proc search_test {name searchFields expect} {
     }
 }
 
+proc search_unsorted_test {name searchFields expect} {
+    puts -nonewline "running $name..."; flush stdout
+    set result ""
+    set cmd [linsert $searchFields 0 t search -key key -get data -fields "" -code {lappend result $key}]
+    #puts $cmd
+    eval $cmd
+
+    if {"[lsort $result]" != "[lsort $expect]"} {
+	puts "error in test: $name"
+	puts "got '$result'"
+	puts "expected '$expect'"
+	puts "command '$cmd'"
+	puts ""
+    } else {
+	puts "ok"
+    }
+}
+
 proc search+_test {name searchFields expect} {
     puts -nonewline "running search+ test $name..."; flush stdout
     set result ""
@@ -41,13 +59,13 @@ proc search+_test {name searchFields expect} {
 }
 
 
-search_test "case-insensitive match" {-compare {{match name *VENTURE*}}} {jonas_jr rusty jonas dean hank}
+search_unsorted_test "case-insensitive match" {-compare {{match name *VENTURE*}}} {jonas_jr rusty jonas dean hank}
 
-search_test "case-sensitive match" {-compare {{match_case name *VENTURE*}}} {}
+search_unsorted_test "case-sensitive match" {-compare {{match_case name *VENTURE*}}} {}
 
-search_test "case-sensitive match 2" {-compare {{match_case name *Tri*}}} {triana}
+search_unsorted_test "case-sensitive match 2" {-compare {{match_case name *Tri*}}} {triana}
 
-search_test "numeric expression, age < 10" {-compare {{< age 10}}} {carr thundercleese ur inignot frylock shake meatwad}
+search_unsorted_test "numeric expression, age < 10" {-compare {{< age 10}}} {carr thundercleese ur inignot frylock shake meatwad}
 
 search_test "sort ascending by age, age < 10" {-sort age -compare {{< age 10}}} {ur inignot carr meatwad frylock shake thundercleese}
 
@@ -64,9 +82,9 @@ search_test "sorted search with offset 0 and limit 10" {-sort name -offset 0 -li
 
 search_test "sorted search with offset 5 and limit 5" {-sort name -offset 5 -limit 5} {carl clarence rick dad dean}
 
-search_test "unsorted search with offset 5 and limit 10" {-offset 5 -limit 10} {clarence thundercleese mom zorak brak dad ur inignot carl frylock}
+search_unsorted_test "unsorted search with offset 5 and limit 10" {-offset 5 -limit 10} {clarence thundercleese mom zorak brak dad ur inignot carl frylock}
 
-search_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {clarence thundercleese mom zorak brak}
+search_unsorted_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {clarence thundercleese mom zorak brak}
 
 search_test "search where alive is false" {-compare {{false alive}}} {jonas}
 
@@ -90,17 +108,17 @@ t index create show
 # not accelerated
 search+_test "sorted search+ with offset 0 and limit 10" {-sort name -offset 0 -limit 10} {angel baron brak brock carr carl clarence rick dad dean}
 
-search_test "search >=" {-compare {{>= show M}}} {rick carr angel hoop stroker clarence thundercleese mom zorak brak dad baron phantom_limb 28 21 the_monarch doctor_girlfriend jonas_jr rusty triana orpheus jonas dean hank brock}
+search_unsorted_test "search >=" {-compare {{>= show M}}} {rick carr angel hoop stroker clarence thundercleese mom zorak brak dad baron phantom_limb 28 21 the_monarch doctor_girlfriend jonas_jr rusty triana orpheus jonas dean hank brock}
 
 search+_test "search+ >=" {-compare {{>= show M}}} {rick carr angel hoop stroker clarence thundercleese mom zorak brak dad baron phantom_limb 28 21 the_monarch doctor_girlfriend jonas_jr rusty triana orpheus jonas dean hank brock}
 
-search_test "search <" {-compare {{< show M}}} {ur inignot carl frylock shake meatwad}
+search_unsorted_test "search <" {-compare {{< show M}}} {ur inignot carl frylock shake meatwad}
 
 search+_test "search+ <" {-compare {{< show M}}} {ur inignot carl frylock shake meatwad}
 
 search+_test "using 'in'" {-compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
-search_test "using index and 'in'" {-index show -compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
+search_unsorted_test "using index and 'in'" {-index show -compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
 puts -nonewline "testing 'fields'..."
 if {[t fields] != {id name home show dad alive gender age coolness}} {

@@ -1008,6 +1008,10 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 		}
 	    }
 
+	    // Do we have an index on this puppy?
+	    if(!ctable->skipLists[field])
+		continue;
+
 	    score = skipTypes[comparisonType].score;
 
 	    // Prefer to avoid sort
