@@ -264,84 +264,106 @@ void shminitmap(shm_t   *shm)
     shmdealloc(shm, (char *)&block[1]);
 }
 
-pool *initpool(char *memory, size_t blocksize, int blocks)
+pool_t *makepool(size_t blocksize, int blocks, shm_t *share)
 {
-    pool *new = (pool *)malloc(sizeof *new);
-    if(!new) {
+    pool_t *pool = (pool_t *)malloc(sizeof *pool);
+    if(!pool) {
 	shared_errno = SH_PRIVATE_MEMORY;
 	return NULL;
     }
-    new->start = memory;
-    new->blocks = blocks;
-    new->blocksize = blocksize;
-    new->avail = blocks;
-    new->brk = new->start;
-    new->freelist = NULL;
-    new->next = NULL;
-    return new;
-}
-
-int shmaddpool(shm_t   *shm, size_t blocksize, int blocks)
-{
-    char *memory;
-    pool *pool;
 
     // align size
     if(blocksize % CELLSIZE)
 	blocksize += CELLSIZE - blocksize % CELLSIZE;
-    
-    memory = _shmalloc(shm, blocksize*blocks);
-    if(!memory) return 0;
 
-    pool = initpool(memory, blocksize, blocks);
+    pool->share = share;
+    pool->start = NULL;
+    pool->blocks = blocks;
+    pool->blocksize = blocksize;
+    pool->avail = 0;
+    pool->brk = NULL;
+    pool->freelist = NULL;
+    pool->next = NULL;
+
+    return pool;
+}
+
+// Find a pool that's got a free chunk of the required size
+pool_t *findpool(pool_t **poolhead, size_t blocksize)
+{
+    pool_t *pool = *poolhead;
+    pool_t *first = NULL;
+
+    // align size
+    if(blocksize % CELLSIZE)
+	blocksize += CELLSIZE - blocksize % CELLSIZE;
+
+    while(pool) {
+	if(pool->blocksize == blocksize) {
+	    if(pool->avail)
+		return pool;
+	    if(!first) first = pool;
+	}
+	pool = pool->next;
+    }
+
+    if(!first) return NULL;
+
+    pool = makepool(blocksize, first->blocks, first->share);
+    pool->next = *poolhead;
+    *poolhead = pool;
+
+    if(pool->share) {
+        pool->start = _shmalloc(first->share, blocksize*first->blocks);
+    } else {
+	if(!(pool->start = malloc(blocksize * first->blocks)))
+	    shared_errno = SH_PRIVATE_MEMORY;
+    }
+    if(!pool->start) return NULL;
+
+    // initialise empty pool
+    pool->avail = pool->blocks;
+    pool->brk = pool->start;
+
+    return pool;
+}
+
+int shmaddpool(shm_t *shm, size_t blocksize, int blocks)
+{
+    pool_t *pool = makepool(blocksize, blocks, shm);
+    if(!pool) return 0;
+
     pool->next = shm->pools;
     shm->pools = pool;
+
     return 1;
 }
 
-pool *mallocpool(size_t blocksize, int blocks)
+pool_t *mallocpool(size_t blocksize, int blocks)
 {
-    char *memory;
-
-    // align size
-    if(blocksize % CELLSIZE)
-	blocksize += CELLSIZE - blocksize % CELLSIZE;
-
-    memory = (char *)malloc(blocksize * blocks);
-    if(!memory) {
-	shared_errno = SH_PRIVATE_MEMORY;
-	return NULL;
-    }
-    return initpool(memory, blocksize, blocks);
+    return makepool(blocksize, blocks, NULL);
 }
 
-char *palloc(pool *pool, size_t wanted)
+char *palloc(pool_t **poolhead, size_t wanted)
 {
+    pool_t *pool;
     char *block;
 
-IFDEBUG(fprintf(stderr, "palloc(0x%lX, %ld);\n", (long)pool, (long)wanted);)
-    // align size
-    if(wanted % CELLSIZE)
-	wanted += CELLSIZE - wanted % CELLSIZE;
-
-    while(pool && (pool->avail <= 0 || pool->blocksize != wanted))
-	pool = pool->next;
-
-    if(pool == NULL)
+    // find (or allocate) a pool that's got a free block of the right size
+    pool = findpool(poolhead, wanted);
+    if(!pool)
 	return NULL;
 
-IFDEBUG(fprintf(stderr, "    alloc from 0x%lx\n", (long)pool);)
-    if(pool->freelist) {
-IFDEBUG(fprintf(stderr, "          from freelist 0x%lX\n", (long)pool->freelist);)
+    if(pool->freelist) { // use a free block, if available
 	block = pool->freelist;
 	pool->freelist = *(char **)block;
-    } else {
-IFDEBUG(fprintf(stderr, "          from avail 0x%lX\n", (long)pool->brk);)
+    } else { // use the next unused block
 	block = pool->brk;
 	pool->brk += pool->blocksize;
     }
+
     pool->avail--;
-IFDEBUG(fprintf(stderr, "done\n");)
+
     return block;
 }
 
@@ -466,30 +488,27 @@ IFDEBUG(fprintf(stderr, "shmalloc(shm, 0x%lX);\n", (long)size);)
     if(size % CELLSIZE)
 	size += CELLSIZE - size % CELLSIZE;
 
-    if(!(block = palloc(shm->pools, size)))
+    
+    if(!(block = palloc(&shm->pools, size)))
 	block = _shmalloc(shm, size);
     return block;
 }
 
-void shmfree(shm_t   *shm, char *block)
+void shmfree(shm_t *shm, char *block)
 {
-    pool *pool = shm->garbage_pool;
     garbage *entry;
 
 IFDEBUG(fprintf(stderr, "shmfree(shm, 0x%lX);\n", (long)block);)
-    entry = (garbage *)palloc(pool, sizeof *entry);
 
-    if(!entry) {
-	pool = mallocpool(sizeof *entry, GARBAGE_POOL_SIZE);
-	if(!pool)
-	    shmpanic("Can't allocate memory for garbage pool");
-
-	pool->next = shm->garbage_pool;
-	shm->garbage_pool = pool;
-	entry = (garbage *)palloc(pool, sizeof *entry);
-	if(!entry)
-	    shmpanic("Can't allocate entry from garbage pool!");
+    if(!shm->garbage_pool) {
+	shm->garbage_pool = makepool(sizeof *entry, GARBAGE_POOL_SIZE, NULL);
+	if(!shm->garbage_pool)
+	    shmpanic("Can't create garbage pool");
     }
+
+    entry = (garbage *)palloc(&shm->garbage_pool, sizeof *entry);
+    if(!entry)
+	shmpanic("Can't allocate memory in garbage pool");
 
     entry->cycle = shm->map->cycle;
     entry->block = block;
@@ -498,7 +517,7 @@ IFDEBUG(fprintf(stderr, "shmfree(shm, 0x%lX);\n", (long)block);)
 }
 
 // Attempt to put a pending freed block back in a pool
-int shmdepool(pool *pool, char *block)
+int shmdepool(pool_t *pool, char *block)
 {
     while(pool) {
 	size_t offset = block - pool->start;
@@ -709,7 +728,7 @@ void read_unlock(shm_t   *shm)
 
 void garbage_collect(shm_t   *shm)
 {
-    pool	*pool = shm->garbage_pool;
+    pool_t	*pool = shm->garbage_pool;
     garbage	*garbp = shm->garbage;
     garbage	*garbo = NULL;
     cell_t	 horizon = shm->horizon;
