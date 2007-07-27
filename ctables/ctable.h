@@ -317,7 +317,9 @@ typedef struct ctableTable {
     int					 share_type;
     char				*share_file;
     shm_t                               *share;
-    struct ctableTable			*share_ctable;
+// reader-only
+    volatile struct ctableTable		*share_ctable;
+    volatile reader			*my_reader;
 #endif
     Tcl_Command                          commandInfo;
     long                                 count;

@@ -1,6 +1,11 @@
 
 $Id$
 
+7/27/2007 peter
+    * Changing the order of operations in linked list handling to ensure that
+      there are no "next link" pointers pointing into incompletely populated
+      structures.
+
 7/23/2007 peter
     * Got all the shared library stuff working on the master side, so far
       as I can tell without looking from the reader side. That's the next

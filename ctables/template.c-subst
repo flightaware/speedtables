@@ -62,18 +62,19 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
     switch ((enum options) optIndex) {
 
         case OPT_CREATE: {
-	    int i;
-	    int baseNameLength = 0;
-	    char      *commandName;
+	    int			 i;
+	    int			 baseNameLength = 0;
+	    char		*commandName;
 #ifdef WITH_SHARED_TABLES
-	    int typeIndex = -1;
-	    int share_type = CTABLE_SHARED_NONE;
-	    char *share_file = NULL;
-	    char *share_name = NULL;
-	    char *raw_size = NULL;
-	    shm_t *share = NULL;
-	    size_t size = 0;
-	    CTable *share_ctable = NULL;
+	    int			 typeIndex = -1;
+	    int			 share_type = CTABLE_SHARED_NONE;
+	    char		*share_file = NULL;
+	    char		*share_name = NULL;
+	    char		*raw_size = NULL;
+	    shm_t		*share = NULL;
+	    size_t		 share_size = 0;
+	    CTable		*share_ctable = NULL;
+	    volatile reader	*share_reader = NULL;
 #endif
 
 	    commandName = Tcl_GetString(objv[2]);
@@ -133,15 +134,15 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		if(share_type == CTABLE_SHARED_MASTER) {
 
 		    if(raw_size) {
-			if (!parse_size(raw_size, &size)) {
+			if (!parse_size(raw_size, &share_size)) {
 			    Tcl_AppendResult(interp, "Bad size, must be an integer optionally followed by 'k', 'm', or 'g': ", raw_size, NULL);
 			    goto createError;
 			}
 		    } else {
-			size = DEFAULT_SHARED_SIZE;
+			share_size = DEFAULT_SHARED_SIZE;
 		    }
 
-		    if(doCreateOrAttach(interp, share_name, share_file, size, &share) != TCL_OK)
+		    if(doCreateOrAttach(interp, share_name, share_file, share_size, &share) != TCL_OK)
 			goto createError;
 
 		} else {
@@ -153,6 +154,12 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		    if(!share_ctable) {
 		        Tcl_AppendResult(interp, "No data in ", share_file, " tagged with ", share_name, NULL);
 		        goto createError;
+		    }
+
+		    share_reader = pid2reader(share->map, getpid());
+		    if(!share_reader) {
+			Tcl_AppendResult(interp, "Not registered with ", share_file, NULL);
+			goto createError;
 		    }
 
 		}
@@ -198,6 +205,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		ctable->share_file = NULL;
 	    ctable->share = share;
 	    ctable->share_ctable = share_ctable;
+	    ctable->my_reader = share_reader;
 
 	    // call out for this, it's a little complex
 	    ${table}_setupDefaultStrings(ctable);

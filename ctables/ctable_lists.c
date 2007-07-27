@@ -69,24 +69,25 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 inline void
 ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 {
+    // make the row's prev point to the address of the head pointer. Do this
+    // first so it'll be in place before the readers can see it.
+    row->_ll_nodes[i].prev = listPtr;
+    row->_ll_nodes[i].head = listPtr;
+
     // make the new row's next point to what the head currently points
     // to, possibly NULL
-
     if ((row->_ll_nodes[i].next = *listPtr) != NULL) {
 
         // it wasn't null, make the node pointed to by head's prev
-	// point to the new row
+	// point to the new row. We can do this now because the row
+	// itself is fully initialised.
 
         (*listPtr)->_ll_nodes[i].prev = &row->_ll_nodes[i].next;
     }
 
-    // in any case, make the head point to the new row,
-    // and make the row's prev point to the address of the head pointer
-
+    // Make the head point to the new row. Do this last, so that
+    // all links in row are intact before it's seen by readers.
     *listPtr = row;
-    row->_ll_nodes[i].prev = listPtr;
-
-    row->_ll_nodes[i].head = listPtr;
 
 // printf ("insert head %lx i %d\n", (long unsigned int)listPtr, i);
 }
@@ -97,6 +98,8 @@ ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 inline void
 ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
 {
+    volatile struct ctable_baseRowStruct **row1prev;
+
     // make row2's head point to row1's head
     row2->_ll_nodes[i].head = row1->_ll_nodes[i].head;
 
@@ -106,11 +109,14 @@ ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
     // make row2's next point to row1
     row2->_ll_nodes[i].next = row1;
 
-    // make row1's prev's *next* point to row2
-    *row1->_ll_nodes[i].prev = row2;
+    // get row1's prev before we overwrite it, because we need to link it last.
+    row1prev = (volatile struct ctable_baseRowStruct **)row1->_ll_nodes[i].prev;
 
-    // make row1's prev point ro row2's next
+    // make row1's prev point to row2's next
     row1->_ll_nodes[i].prev = &row2->_ll_nodes[i].next;
+
+    // make row1's prev's *next* point to row2, and do this last
+    *row1prev = row2;
 }
 
 //
@@ -121,8 +127,10 @@ ctable_ListInsertAfter (ctable_BaseRow *row1, ctable_BaseRow *row2, int i) {
     // make row2's head point to row1's head
     row2->_ll_nodes[i].head = row1->_ll_nodes[i].head;
 
-    // set row2's next pointer to row1's next pointer and see if it's NULL
+    // make row2's prev point to the address of row1's next
+    row2->_ll_nodes[i].prev = &row1->_ll_nodes[i].next;
 
+    // set row2's next pointer to row1's next pointer and see if it's NULL
     if ((row2->_ll_nodes[i].next = row1->_ll_nodes[i].next) != NULL) {
 
         // it wasn't, make row1's next's prev point to the address of
@@ -131,10 +139,8 @@ ctable_ListInsertAfter (ctable_BaseRow *row1, ctable_BaseRow *row2, int i) {
         row1->_ll_nodes[i].next->_ll_nodes[i].prev = &row2->_ll_nodes[i].next;
     }
 
-    // in any case, make row1's next point to row2 and
-    // make row2's prev point to the address of row1's next
-
+    // make row1's next point to row2. This has to be last, so that the whole
+    // structure is in place before a reader can see it.
     row1->_ll_nodes[i].next = row2;
-    row2->_ll_nodes[i].prev = &row1->_ll_nodes[i].next;
 }
 
