@@ -42,7 +42,7 @@ namespace eval ctable {
     variable withPipe 1
 
     # set to 1 to build with debugging and link to tcl debugging libraries
-    set genCompilerDebug 0
+    set genCompilerDebug 1
     set showCompilerCommands 0
     set memDebug 0
 
@@ -2431,6 +2431,10 @@ proc gen_struct {} {
     # Generating this as #ifdef...#endif instead of conditionally generating
     # it here because otherwise the resulting code violates the POLA while
     # debugging.
+
+    emit "#ifdef WITH_SHARED_TABLES"
+    putfield "cell_t" "_row_cycle"
+    emit #endif
 
     putfield "ctable_LinkedListNode"  "_ll_nodes\[$NLINKED_LISTS\]"
 

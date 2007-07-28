@@ -859,6 +859,22 @@ static enum walkType_e hashTypes[] = {
   WALK_DEFAULT, WALK_DEFAULT, WALK_DEFAULT, WALK_HASH_IN  // MATCH_CASE..IN
 };
 
+#ifdef WITH_SHARED_TABLES
+struct restart_t {
+    ctable_BaseRow	  *row1;
+    ctable_BaseRow	  *row2;
+    enum skipStart_e	   skipStart;
+    enum skipEnd_e	   skipEnd;
+    fieldCompareFunction_t compareFunction;
+};
+
+int ctable_SearchRestartNeeded(ctable_BaseRow *row, struct restart_t *restart)
+{
+    // PUNT!
+    return 1;
+}
+#endif
+
 //
 // ctable_PerformSearch - perform the search
 //
@@ -912,12 +928,53 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
     int			   canUseHash = 1;
 
+#ifdef WITH_SHARED_TABLES
+    int			   firstTime = 1;
+
+    if (!firstTime) {
+restart_search:
+	// re-initialise and de-allocate and clean up, we're going through the
+	// while exercise again...
+
+        if (search->tranTable != NULL) {
+	    ckfree ((void *)search->tranTable);
+	    search->tranTable = NULL;
+        }
+
+	row = NULL;
+	row1 = NULL;
+	row2 = NULL;
+	key = NULL;
+	bestScore = 0;
+
+	skipList = NULL;
+        skipField = 0;
+        inOrderWalk = 0;
+
+        compareFunction = NULL;
+        indexNumber = -1;
+        comparisonType = 0;
+
+        sortField = -1;
+
+        walkType = WALK_DEFAULT;
+
+        skipStart = 0;
+        skipEnd = 0;
+        skipNext = 0;
+    
+        inIndex = 0;
+        inListObj = NULL;
+        inCount = 0;
+    }
+#endif
+
     search->matchCount = 0;
     search->alreadySearched = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
 
-    if (search->writingTabsepIncludeFieldNames) {
+    if (!firstTime && search->writingTabsepIncludeFieldNames) {
 	ctable_WriteFieldNames (interp, ctable, search);
     }
 
@@ -1149,6 +1206,18 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
         // past a point, see if we're past the cutoff point and if we are
         // terminate the search.
         //
+#ifdef WITH_SHARED_TABLES
+	struct restart_t restart = {
+		row1, row2, skipStart, skipEnd, compareFunction
+	};
+
+	if(ctable->share_type == CTABLE_SHARED_READER) {
+	    // Save the cycle at the time we started the search
+	    search->cycle = ctable->share->map->cycle;
+	} else {
+	    search->cycle = LOST_HORIZON;
+	}
+#endif
 
 	// Find the row to start walking on
 	switch(skipStart) {
@@ -1213,6 +1282,18 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
             if ((row = jsw_srow (skipList)) == NULL)
 		goto search_complete;
 
+#ifdef WITH_SHARED_TABLES
+	    // If we're a reader and this row has changed since we started
+	    // then check if it changed the skiplist we're following, if so...
+	    // go back and restart the search
+	    if(search->cycle != LOST_HORIZON) {
+		if(row->_row_cycle - search->cycle > 0) {
+		    if(ctable_SearchRestartNeeded(row, &restart))
+			goto restart_search;
+		}
+	    }
+#endif
+
 	    // if at end or past any terminating condition, break
 	    switch(skipEnd) {
 	        case SKIP_END_GE_ROW1: {
@@ -1241,6 +1322,19 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	    // searching, switch this to use the safe foreach routine instead
 
             CTABLE_LIST_FOREACH (row, walkRow, indexNumber) {
+
+#ifdef WITH_SHARED_TABLES
+		// If we're a reader and this row has changed since we started
+		// then check if it changed the list we're following, if so...
+		// go back and restart the search
+	        if(search->cycle != LOST_HORIZON) {
+		    if(row->_row_cycle - search->cycle > 0) {
+		        if(ctable_SearchRestartNeeded(row, &restart))
+			    goto restart_search;
+		    }
+	        }
+#endif
+
 	        compareResult = ctable_SearchCompareRow (interp, ctable, search, walkRow);
 	        if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
 

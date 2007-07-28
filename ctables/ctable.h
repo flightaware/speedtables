@@ -64,6 +64,9 @@ typedef struct {
 typedef struct ctable_baseRowStruct {
     // hashEntry absolutely must be the first thing defined in the base row
     ctable_HashEntry     hashEntry;
+#ifdef WITH_SHARED_TABLES
+    cell_t		_row_cycle;
+#endif
     // _ll_nodes absolutely must be the last thing defined in the base row
     ctable_LinkedListNode _ll_nodes[];
 } ctable_BaseRow;
@@ -240,6 +243,10 @@ typedef struct {
     // we use tran table to accumulate matching rows for sorting when
     // searching with sorting, and for completing a transaction after searching
     ctable_BaseRow                     **tranTable;
+
+#ifdef WITH_SHARED_TABLES
+    cell_t				 cycle;
+#endif
 } CTableSearch;
 
 typedef struct {
