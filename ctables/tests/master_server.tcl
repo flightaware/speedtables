@@ -11,7 +11,7 @@ set suffix _m
 source top-brands-nokey-def.tcl
 
 
-top_brands_nokey_m create m master sharefile.dat
+top_brands_nokey_m create m master file sharefile.dat
 
 proc suck_in_top_brands_nokeys {} {
     set fp [open top-brands.tsv]
@@ -26,7 +26,7 @@ proc suck_in_top_brands_nokeys {} {
 suck_in_top_brands_nokeys
 
 
-::ctable_server::register ctable://*/master m
+::ctable_server::register ctable://*:1616/master m
 
 puts "running, waiting for connections"
 
