@@ -27,6 +27,10 @@ keytest:
 mastertest:
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make master"
 
+readertest:
+	chmod +x tests/master_server.tcl tests/reader.tcl
+	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make reader"
+
 install:
 	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c $(INSTDIR)

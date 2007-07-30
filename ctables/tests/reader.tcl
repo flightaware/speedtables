@@ -10,9 +10,14 @@ set suffix _m
 
 source top-brands-nokey-def.tcl
 
-::ctable_client::remote_ctable ctable://localhost:1616/master m
+remote_ctable ctable://localhost:1616/master m
 
 set params [m attach [pid]]
+puts "params=[list $params]"
 
 top_brands_nokey_m create r reader $params
+
+puts "created reader r"
+
+r search -key k -array_get a -code {puts "$k : $a"}
 

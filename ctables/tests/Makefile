@@ -34,3 +34,8 @@ master:
 	tclsh8.4 master.tcl
 	rm -f *.dat
 
+reader:
+	-rm -r build
+	-rm -f *.dat
+	sh master+reader.sh
+	rm -f *.dat

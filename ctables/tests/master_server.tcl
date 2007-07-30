@@ -23,8 +23,15 @@ proc suck_in_top_brands_nokeys {} {
     return $lastKey
 }
 
+m index create id
+m index create rank
+m index create name
+m index create value
+
 suck_in_top_brands_nokeys
 
+puts "Contents"
+m search -key k -array_get a -code {puts "$k : $a"}
 
 ::ctable_server::register ctable://*:1616/master m
 
