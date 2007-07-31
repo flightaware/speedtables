@@ -318,6 +318,7 @@ typedef struct ctableTable {
 
     int                                  autoRowNumber;
 #ifdef WITH_SHARED_TABLES
+    int					 was_locked;
     char				*emptyString;
     char			       **defaultStrings;
 

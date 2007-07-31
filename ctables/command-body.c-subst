@@ -6,7 +6,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
 
     CTABLE_LIST_FOREACH_SAFE (ctable->ll_head, row, nextRow, 0) {
 
-	// we say CTABLE_INDEX_PRIVATE to cause the index entries
+	// we say CTABLE_INDEX_FASTDELETE to cause the index entries
 	// to not be deleted, drop all indexes later will do a
 	// much faster job
 
@@ -15,16 +15,16 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
 	// gotta free key strings here or they don't get freed.  slight kludge.
 	// gotta do it before ${table}_delete because afterwards, the row
 	// is already deleted.
+
+	// Remove the freed key, because it *is* possible for a private table
+	// to have a valid key. Alternatively, we could remove this free and
+	// depend on ${table}_delete doing it.
 #ifdef WITH_SHARED_TABLES
 	if(ctable->share_type == CTABLE_SHARED_MASTER)
 	    shmfree(ctable->share, row->hashEntry.key);
 	else
 #endif
             ckfree (row->hashEntry.key);
-
-	// Remove the freed key, because it *is* possible for a private table
-	// to have a valid key. Alternatively, we could remove this free and
-	// depend on ${table}_delete doing it.
 	row->hashEntry.key = NULL;
 
 	${table}_delete(ctable, (struct ${table} *)row, CTABLE_INDEX_FASTDELETE);
@@ -44,6 +44,23 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
     return TCL_OK;
 }
 
+#ifdef WITH_SHARED_TABLES
+  static inline void begin_write(CTable *ctable)
+  {
+    write_lock(ctable->share);
+    ctable->was_locked = 1;
+  }
+  static inline void end_write(CTable *ctable)
+  {
+    if(ctable->was_locked)
+      write_unlock(ctable->share);
+  }
+#else
+# define begin_write(ct)
+# define end_write(ct)
+#endif
+
+
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     CTable *ctable = (CTable *)cData;
@@ -52,6 +69,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     ctable_HashEntry *hashEntry;
     Tcl_HashEntry *registeredProcHashEntry;
     int indexCtl;
+    int commandStatus = TCL_OK;
 
     static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "capabilities", "key", "makekey", "methods", "attach", (char *)NULL};
 
@@ -63,13 +81,21 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     static enum options shared_options[] = { OPT_METHODS, OPT_CAPS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, NUM_OPTIONS };
     static int shared_ok[NUM_OPTIONS] = {-1};
 
+    // Read_only options
+    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_CAPS, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, NUM_OPTIONS };
+    static int readonly[NUM_OPTIONS] = {-1};
+
     // First time through, make it a bitmap.
     if(shared_ok[0] == -1) {
 	int i;
-	for(i = 0; i < NUM_OPTIONS; i++)
+	for(i = 0; i < NUM_OPTIONS; i++) {
 	    shared_ok[i] = FALSE;
+	    readonly[i] = FALSE;
+	}
 	for(i = 0; shared_options[i] != NUM_OPTIONS; i++)
 	    shared_ok[shared_options[i]] = TRUE;
+	for(i = 0; readonly_options[i] != NUM_OPTIONS; i++)
+	    readonly[readonly_options[i]] = TRUE;
     }
 #endif
 
@@ -78,6 +104,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	return TCL_ERROR;
     }
 
+    // If it's not a known option, look for registered methods and run one if found
     if (Tcl_GetIndexFromObj (interp, objv[1], options, "option", TCL_EXACT, &optIndex) != TCL_OK) {
 	Tcl_Obj      **calloutObjv;
 	int           i;
@@ -85,6 +112,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	registeredProcHashEntry = Tcl_FindHashEntry (ctable->creator->registeredProcTablePtr, Tcl_GetString (objv[1]));
 
+	//  Not on option or method, return error
 	if (registeredProcHashEntry == (Tcl_HashEntry *) NULL) {
 	    Tcl_HashSearch hashSearch;
 
@@ -97,6 +125,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
+        // perform registered method and return the result
 	calloutObjv = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj *) * objc);
 	calloutObjv[0] = (Tcl_Obj *)Tcl_GetHashValue (registeredProcHashEntry);
 	calloutObjv[1] = objv[0];
@@ -108,12 +137,18 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	return result;
     }
 
+    // fall through to primitives
+
 #ifdef WITH_SHARED_TABLES
     if (ctable->share_type == CTABLE_SHARED_READER) {
-      if (!shared_ok[optIndex]) {
-	Tcl_AppendResult (interp, "Command '", options[optIndex], "' is not possible in a shared reader table.", (char *)NULL);
-	return TCL_ERROR;
-      }
+        if (!shared_ok[optIndex]) {
+	    Tcl_AppendResult (interp, "Command '", options[optIndex], "' is not possible in a shared reader table.", (char *)NULL);
+	    return TCL_ERROR;
+        }
+    } else if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share) {
+	// If this might modify the table, inform the shared memory code.
+	if(!readonly[optIndex])
+	    begin_write(ctable);
     }
 #endif
 
@@ -125,7 +160,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_TYPE: {
           Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
-	  return TCL_OK;
+	  break;
       }
 
       case OPT_FIELDS: {
@@ -145,18 +180,18 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 	  }
 
-	  return TCL_OK;
+	  break;
       }
 
       // return a capabilities list (stub)
       case OPT_CAPS: {
-	  return TCL_OK;
+	  break;
       }
 
       // return the key
       case OPT_KEY: {
 	  Tcl_SetObjResult (interp, ${table}_NameObjList[${table}_keyField]);
-	  return TCL_OK;
+	  break;
       }
 
       case OPT_METHODS: {
@@ -182,7 +217,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 	  }
 
-	  return TCL_OK;
+	  break;
       }
 
       case OPT_FIELD: {
@@ -278,7 +313,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 	Tcl_SetStringObj (Tcl_GetObjResult (interp), ctableTypes[(int)${table}_types[fieldIndex]], -1);
-	return TCL_OK;
+	  break;
       }
 
       case OPT_NEEDSQUOTING: {
@@ -293,7 +328,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), ${table}_needs_quoting[fieldIndex]);
-	return TCL_OK;
+	  break;
       }
 
 
@@ -301,7 +336,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
           CONST char *stats = ctable_HashStats (ctable->keyTablePtr);
 	  Tcl_SetStringObj (Tcl_GetObjResult (interp), stats, -1);
 	  ckfree ((void *)stats);
-	  return TCL_OK;
+	  break;
       }
 
       case OPT_BATCH: {
@@ -310,12 +345,14 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
-	return ctable_RunBatch (interp, ctable, objv[0], objv[2]);
+	commandStatus = ctable_RunBatch (interp, ctable, objv[0], objv[2]);
+	break;
       }
 
       case OPT_SEARCH:
       case OPT_SEARCHPLUS: {
-	return ctable_SetupAndPerformSearch (interp, objv, objc, ctable, CTABLE_SEARCH_INDEX_ANY);
+	commandStatus = ctable_SetupAndPerformSearch (interp, objv, objc, ctable, CTABLE_SEARCH_INDEX_ANY);
+	break;
       }
 
       case OPT_NAMES: {
@@ -340,7 +377,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	          return TCL_ERROR;
 	      }
 	  }
-	  return TCL_OK;
+	  break;
       }
 
       case OPT_RESET: {
@@ -348,15 +385,16 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      return TCL_ERROR;
 	  }
 	  ctable_InitHashTable (ctable->keyTablePtr);
-	  return TCL_OK;
+	  break;
       }
 
       case OPT_DESTROY: {
 	  if (${table}_delete_all_rows (interp, ctable) != TCL_OK) {
+	      end_write(ctable);
 	      return TCL_ERROR;
 	  }
           Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
-	  return TCL_OK;
+	  break;
       }
 
       case OPT_ATTACH: {
@@ -392,7 +430,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	          }
 	      }
 
-	      return TCL_OK;
+	      break;
 	  }
 #endif
 	  Tcl_AppendResult(interp, "Not a shared table.\n", NULL);
@@ -404,7 +442,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	if (hashEntry == (ctable_HashEntry *) NULL) {
 	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 0);
-	    return TCL_OK;
+	    break;
 	}
 
 	row = (struct $table *) hashEntry;
@@ -412,12 +450,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	${table}_delete(ctable, row, CTABLE_INDEX_NORMAL);
 	ctable->count--;
 	Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
-	return TCL_OK;
+	break;
       }
 
       case OPT_COUNT: {
           Tcl_SetIntObj (Tcl_GetObjResult (interp), ctable->count);
-	  return TCL_OK;
+	  break;
       }
 
       case OPT_EXISTS: {
@@ -428,7 +466,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	} else {
 	    Tcl_SetBooleanObj (Tcl_GetObjResult (interp), 1);
 	}
-	return TCL_OK;
+	break;
       }
 
       case OPT_MAKEKEY:
@@ -471,7 +509,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		return TCL_ERROR;
 	    }
 	    Tcl_SetObjResult (interp, keyObj);
-	    return TCL_OK;
+	    break;
 	}
 
 	if(keyObj) {
@@ -715,7 +753,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      Tcl_SetObjResult (interp, Tcl_NewStringObj (key, -1));
 	  }
 
-	  return TCL_OK;
+	  break;
 #else
         Tcl_SetStringObj (Tcl_GetObjResult (interp), "this version of ctables was built without postgresql support", -1);
         return TCL_ERROR;
@@ -810,11 +848,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #endif
 
 	if (optIndex == OPT_WRITE_TABSEP) {
-	    return ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys);
+	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys);
 	} else {
-	    return ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys);
 	}
 
+	break;
       }
 
       case OPT_INDEX: {
@@ -978,7 +1017,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 	}
 
-	return TCL_OK;
+	break;
       }
 
       case OPT_GET: {
@@ -996,7 +1035,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	if (objc == 3) {
 	    Tcl_SetObjResult (interp, ${table}_genlist (interp, row));
-	    return TCL_OK;
+	    break;
 	}
 
 	for (i = 3; i < objc; i++) {
@@ -1017,12 +1056,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	row = ${table}_find (ctable, Tcl_GetString (objv[2]));
 	if (row == (struct $table *) NULL) {
-	    return TCL_OK;
+	    break;
 	}
 
 	if (objc == 3) {
 	    Tcl_SetObjResult (interp,  ${table}_gen_keyvalue_list (interp, row));
-	    return TCL_OK;
+	    break;
 	}
 
 	for (i = 3; i < objc; i++) {
@@ -1043,12 +1082,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	row = ${table}_find (ctable, Tcl_GetString (objv[2]));
 	if (row == (struct $table *) NULL) {
-	    return TCL_OK;
+	    break;
 	}
 
 	if (objc == 3) {
 	    Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (interp, row));
-	    return TCL_OK;
+	    break;
 	}
 
 	for (i = 3; i < objc; i++) {
@@ -1097,10 +1136,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		  return TCL_RETURN;
 	      }
 	  }
-	  return TCL_OK;
+	  break;
       }
     }
 
-    return TCL_OK;
+#ifdef WITH_SHARED_TABLES
+    end_write(ctable);
+#endif
+    return commandStatus;
 }
 

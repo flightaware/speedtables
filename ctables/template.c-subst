@@ -235,6 +235,8 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	        ctable_InitHashTable (ctable->keyTablePtr);
 #ifdef WITH_SHARED_TABLES
 	    }
+
+	    ctable->was_locked = 0;
 #endif
 
 	    ctable->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) ctable, NULL);
