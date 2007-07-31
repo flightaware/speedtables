@@ -1,7 +1,7 @@
 /*
  * $Id$
  */
-#define VERBOSE_DEBUG
+//#define VERBOSE_DEBUG
 
 #ifdef VERBOSE_DEBUG
 #define IFDEBUG(x) x				/* Debug code included*/

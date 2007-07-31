@@ -502,6 +502,9 @@ void shmfree(shm_t *shm, char *block)
 
 IFDEBUG(fprintf(stderr, "shmfree(shm, 0x%lX);\n", (long)block);)
 
+    if(block < (char *)shm->map || block >= ((char *)shm->map)+shm->map->mapsize)
+	shmpanic("Trying to free pointer outside mapped memory!");
+
     if(!shm->garbage_pool) {
 	shm->garbage_pool = makepool(sizeof *entry, GARBAGE_POOL_SIZE, NULL);
 	if(!shm->garbage_pool)
@@ -577,6 +580,9 @@ int shmdealloc(shm_t *shm, char *memory)
     size_t size;
     freeblock *block;
 IFDEBUG(fprintf(stderr, "shmdealloc(shm=0x%lX, memory=0x%lX);\n", (long)shm, (long)memory);)
+
+    if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
+	shmpanic("Trying to dealloc pointer outside mapped memory!");
 
     // Try and free it back into a pool.
     if(shmdepool(shm->pools, memory)) return 1;
