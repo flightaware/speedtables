@@ -1,10 +1,14 @@
 /*
  * $Id$
  */
-//#define VERBOSE_DEBUG
 
-#ifdef VERBOSE_DEBUG
+#ifdef SHM_DEBUG_TRACE
 #define IFDEBUG(x) x				/* Debug code included*/
+#ifdef SHM_DEBUG_TRACE_FILE
+FILE *SHM_DEBUG_FP;
+#else
+#define SHM_DEBUG_FP stderr
+#endif
 #else
 #define IFDEBUG(x)				/* Debug code elided */
 #endif

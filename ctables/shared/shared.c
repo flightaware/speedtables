@@ -20,6 +20,25 @@
 
 static shm_t   *share_list;
 
+#ifdef SHM_DEBUG_TRACE
+# ifdef SHM_DEBUG_TRACE_FILE
+    static void init_debug(void)
+    {
+        time_t now;
+        SHM_DEBUG_FP = fopen(SHM_DEBUG_TRACE_FILE, "a");
+        if(!SHM_DEBUG_FP) {
+	    perror(SHM_DEBUG_TRACE_FILE);
+	    SHM_DEBUG_FP = stderr;
+	    return;
+        }
+        now = time(NULL);
+        fprintf(SHM_DEBUG_FP, "\n# TRACE BEGINS %s\n", ctime(&now));
+    }
+# else
+#   define init_debug()
+# endif
+#endif
+
 int shared_errno;
 char *shared_errmsg[] = {
 	"unknown",				// SH_ERROR_0
@@ -54,6 +73,7 @@ int open_new(char *file, size_t size)
     size_t	 nbytes;
     int		 fd = open(file, O_RDWR|O_CREAT, 0666);
 
+IFDEBUG(debug_init();)
     if(fd == -1) {
 	shared_errno = SH_NEW_FILE;
 	return -1;
@@ -89,6 +109,7 @@ shm_t   *map_file(char *file, char *addr, size_t default_size)
     int      fd;
     shm_t   *p;
 
+IFDEBUG(debug_init();)
     fd = open(file, O_RDWR, 0);
 
     if(fd == -1) {
@@ -215,6 +236,7 @@ void unmap_all(void)
 
 int shmcheckmap(volatile mapheader *map)
 {
+IFDEBUG(init_debug();)
     if(map->magic != MAP_MAGIC) return 0;
     if(map->headersize != sizeof *map) return 0;
     return 1;
@@ -226,6 +248,7 @@ void shminitmap(shm_t   *shm)
     cell_t		*block;
     cell_t 		 freesize;
 
+IFDEBUG(init_debug();)
     // COMPLETELY initialise map.
     map->magic = MAP_MAGIC;
     map->headersize = sizeof *map;
@@ -370,8 +393,8 @@ char *palloc(pool_t **poolhead, size_t wanted)
 void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
 {
     volatile freeblock *next = block->next, *prev = block->prev;
-IFDEBUG(fprintf(stderr, "remove_from_freelist(shm, 0x%lX);\n", (long)block);)
-IFDEBUG(fprintf(stderr, "    prev = 0x%lX, next=0x%lX\n", (long)prev, (long)next);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "remove_from_freelist(shm, 0x%lX);\n", (long)block);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    prev = 0x%lX, next=0x%lX\n", (long)prev, (long)next);)
     if(!block->next)
 	shmpanic("Freeing freed block (next == NULL)!");
     if(!block->prev)
@@ -385,7 +408,7 @@ IFDEBUG(fprintf(stderr, "    prev = 0x%lX, next=0x%lX\n", (long)prev, (long)next
 	    shmpanic("Corrupt free list (half-closed list)!");
 	if(block != shm->freelist)
 	    shmpanic("Corrupt free list (closed list != freelist)!");
-IFDEBUG(fprintf(stderr, "    last free, empty freelist\n");)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    last free, empty freelist\n");)
 	shm->freelist = NULL;
 	return;
     }
@@ -399,13 +422,13 @@ IFDEBUG(fprintf(stderr, "    last free, empty freelist\n");)
     if(next->prev != block)
 	shmpanic("Corrunpt free list (next->prev != block)!");
 	
-IFDEBUG(fprintf(stderr, "    set 0x%lX->next = 0x%lX\n", (long)prev, (long)next);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    set 0x%lX->next = 0x%lX\n", (long)prev, (long)next);)
     prev->next = next;
-IFDEBUG(fprintf(stderr, "    set 0x%lX->prev = 0x%lX\n", (long)next, (long)prev);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    set 0x%lX->prev = 0x%lX\n", (long)next, (long)prev);)
     next->prev = prev;
 
     if(shm->freelist == block) {
-IFDEBUG(fprintf(stderr, "    set freelist = 0x%lX\n", (long)next);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    set freelist = 0x%lX\n", (long)next);)
 	shm->freelist = next;
     }
 }
@@ -413,25 +436,25 @@ IFDEBUG(fprintf(stderr, "    set freelist = 0x%lX\n", (long)next);)
 void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
 {
     volatile freeblock *next, *prev;
-IFDEBUG(fprintf(stderr, "insert_in_freelist(shm, 0x%lX);\n", (long)block);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "insert_in_freelist(shm, 0x%lX);\n", (long)block);)
 
     if(!shm->freelist) {
-IFDEBUG(fprintf(stderr, "    empty freelist, set all to block\n");)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    empty freelist, set all to block\n");)
 	shm->freelist = block->next = block->prev = block;
 	return;
     }
     next = block->next = shm->freelist;
     prev = block->prev = shm->freelist->prev;
-IFDEBUG(fprintf(stderr, "    insert between 0x%lX and 0x%lX\n", (long)prev, (long)next);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    insert between 0x%lX and 0x%lX\n", (long)prev, (long)next);)
     next->prev = prev->next = block;
-IFDEBUG(fprintf(stderr, "    done\n");)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    done\n");)
 }
 
 char *_shmalloc(shm_t   *shm, size_t nbytes)
 {
     volatile freeblock *block = shm->freelist;
     size_t 		needed = nbytes + 2 * CELLSIZE;
-IFDEBUG(fprintf(stderr, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
 
     // align size
     if(nbytes % CELLSIZE)
@@ -453,7 +476,7 @@ IFDEBUG(fprintf(stderr, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
 		left = 0;
 	    }
 
-IFDEBUG(fprintf(stderr, "    removing block size %d\n", used);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    removing block size %d\n", used);)
 	    remove_from_freelist(shm, block);
 	    setfree(block, used, FALSE);
 
@@ -465,12 +488,12 @@ IFDEBUG(fprintf(stderr, "    removing block size %d\n", used);)
 		setfree(new_block, left, TRUE);
 		new_block->next = new_block->prev = NULL;
 
-IFDEBUG(fprintf(stderr, "    adding new block 0s%lX size %d\n", (long)new_block, left);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    adding new block 0s%lX size %d\n", (long)new_block, left);)
 		// add it into the free list
 		insert_in_freelist(shm, new_block);
 	    }
 
-IFDEBUG(fprintf(stderr, "      return block2data(0x%lX) ==> 0x%lX\n", (long)block, (long)block2data(block));)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "      return block2data(0x%lX) ==> 0x%lX\n", (long)block, (long)block2data(block));)
 
 	    return block2data(block);
 	}
@@ -484,7 +507,7 @@ IFDEBUG(fprintf(stderr, "      return block2data(0x%lX) ==> 0x%lX\n", (long)bloc
 char *shmalloc(shm_t   *shm, size_t size)
 {
     char *block;
-IFDEBUG(fprintf(stderr, "shmalloc(shm, 0x%lX);\n", (long)size);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, 0x%lX);\n", (long)size);)
 
     // align size
     if(size % CELLSIZE)
@@ -500,7 +523,7 @@ void shmfree(shm_t *shm, char *block)
 {
     garbage *entry;
 
-IFDEBUG(fprintf(stderr, "shmfree(shm, 0x%lX);\n", (long)block);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
 
     if(block < (char *)shm->map || block >= ((char *)shm->map)+shm->map->mapsize)
 	shmpanic("Trying to free pointer outside mapped memory!");
@@ -550,7 +573,7 @@ int shmdepool(pool_t *pool, char *block)
 // ends... positive if free, negative if not.
 void setfree(volatile freeblock *block, size_t size, int is_free)
 {
-IFDEBUG(fprintf(stderr, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)size, is_free);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)size, is_free);)
     volatile cell_t *cell = (cell_t *)block;
     *cell = is_free ? size : -size;
     cell = (cell_t *) &((char *)cell)[size]; // point to next block;
@@ -579,7 +602,7 @@ int shmdealloc(shm_t *shm, char *memory)
 {
     size_t size;
     freeblock *block;
-IFDEBUG(fprintf(stderr, "shmdealloc(shm=0x%lX, memory=0x%lX);\n", (long)shm, (long)memory);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc(shm=0x%lX, memory=0x%lX);\n", (long)shm, (long)memory);)
 
     if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
 	shmpanic("Trying to dealloc pointer outside mapped memory!");
@@ -589,10 +612,10 @@ IFDEBUG(fprintf(stderr, "shmdealloc(shm=0x%lX, memory=0x%lX);\n", (long)shm, (lo
 
     // step back to block header
     block = data2block(memory);
-IFDEBUG(fprintf(stderr, "  block=0x%lX\n", (long)memory);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "  block=0x%lX\n", (long)memory);)
 
     size = block->size;
-IFDEBUG(fprintf(stderr, "  size=%ld\n", (long)size);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "  size=%ld\n", (long)size);)
 
     // negative size means it's allocated, positive it's free
     if(((int)size) > 0)
@@ -605,7 +628,7 @@ IFDEBUG(fprintf(stderr, "  size=%ld\n", (long)size);)
 	freeblock *prev = prevblock(block);
         size_t new_size = prev->size;
 
-IFDEBUG(fprintf(stderr, "    merge prev block 0x%lX size %d\n", (long)prev, new_size);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    merge prev block 0x%lX size %d\n", (long)prev, new_size);)
 	// remove it from the free list
 	remove_from_freelist(shm, prev);
 
@@ -623,7 +646,7 @@ IFDEBUG(fprintf(stderr, "    merge prev block 0x%lX size %d\n", (long)prev, new_
 	freeblock *next = nextblock(block);
 	size_t new_size = next->size;
 
-IFDEBUG(fprintf(stderr, "    merge next block 0x%lX\n", (long)next);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "    merge next block 0x%lX\n", (long)next);)
 	// remove next from the free list
 	remove_from_freelist(shm, next);
 
@@ -639,7 +662,7 @@ IFDEBUG(fprintf(stderr, "    merge next block 0x%lX\n", (long)next);)
     block->next = block->prev = NULL;
 
     insert_in_freelist(shm, block);
-IFDEBUG(fprintf(stderr, "  deallocated 0x%lX size %ld\n", (long)block, (long)size);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "  deallocated 0x%lX size %ld\n", (long)block, (long)size);)
     return 1;
 }
 
