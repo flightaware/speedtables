@@ -1,6 +1,13 @@
 
 $Id$
 
+7/31/2007 peter
+    * Parameterized shared memory debug trace.
+    * Updated package version to 1.4 - long past time.
+
+7/30/2007 peter
+    * Tested reader side without concurrent updates.
+
 7/27/2007 peter
     * Changing the order of operations in linked list handling to ensure that
       there are no "next link" pointers pointing into incompletely populated
