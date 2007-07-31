@@ -470,6 +470,8 @@ IFDEBUG(fprintf(stderr, "    adding new block 0s%lX size %d\n", (long)new_block,
 		insert_in_freelist(shm, new_block);
 	    }
 
+IFDEBUG(fprintf(stderr, "      return block2data(0x%lX) ==> 0x%lX\n", (long)block, (long)block2data(block));)
+
 	    return block2data(block);
 	}
 
@@ -570,19 +572,21 @@ IFDEBUG(fprintf(stderr, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)size, i
 //    char data[size-8];
 //    int32 -size;
 
-int shmdealloc(shm_t   *shm, char *memory)
+int shmdealloc(shm_t *shm, char *memory)
 {
     size_t size;
     freeblock *block;
-IFDEBUG(fprintf(stderr, "shmdealloc(shm, 0x%lX);\n", (long)memory);)
+IFDEBUG(fprintf(stderr, "shmdealloc(shm=0x%lX, memory=0x%lX);\n", (long)shm, (long)memory);)
 
     // Try and free it back into a pool.
     if(shmdepool(shm->pools, memory)) return 1;
 
     // step back to block header
     block = data2block(memory);
+IFDEBUG(fprintf(stderr, "  block=0x%lX\n", (long)memory);)
 
     size = block->size;
+IFDEBUG(fprintf(stderr, "  size=%ld\n", (long)size);)
 
     // negative size means it's allocated, positive it's free
     if(((int)size) > 0)
@@ -629,6 +633,7 @@ IFDEBUG(fprintf(stderr, "    merge next block 0x%lX\n", (long)next);)
     block->next = block->prev = NULL;
 
     insert_in_freelist(shm, block);
+IFDEBUG(fprintf(stderr, "  deallocated 0x%lX size %ld\n", (long)block, (long)size);)
     return 1;
 }
 

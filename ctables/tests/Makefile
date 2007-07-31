@@ -32,6 +32,7 @@ master:
 	-rm -f *.dat
 	tclsh8.4 tsv-nokey-tests.tcl
 	tclsh8.4 master.tcl
+	tclsh8.4 master2.tcl
 	rm -f *.dat
 
 reader:

@@ -334,6 +334,7 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
         // Save new key
         if(ctable->share_type == CTABLE_SHARED_MASTER) {
 	    key = shmalloc(ctable->share, strlen(value)+1);
+fprintf(stderr, "key = 0x%lX (%s)\n", (long)key, value);
 	    if(!key)
 	        ${table}_shmpanic(ctable);
 	    strcpy(key, value);
@@ -356,7 +357,8 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
 	    /* Don't need to "shmfree" because the key was never made
 	     * visible to any readers.
 	     */
-	    shmdealloc(ctable->share, (void *)key);
+fprintf(stderr, "shmdealloc(ctable->share=0x%lX, 0x%lX)\n", (long)ctable->share, (long)key);
+	    shmdealloc(ctable->share, (char *)key);
 	}
 #endif
 	return TCL_ERROR;
@@ -1368,6 +1370,7 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) 
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
         key_value = (char *)shmalloc(ctable->share, strlen(key)+1);
+fprintf(stderr, "key_value = 0x%lX (%s)\n", (long)key_value, key);
 	if(!key_value)
 	    ${table}_shmpanic(ctable);
 	strcpy(key_value, key);
@@ -1385,7 +1388,8 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *newPtr) 
 	/* Don't need to "shmfree" because the key was never made visible to
 	 * any readers.
 	 */
-	shmdealloc(ctable->share, key);
+fprintf(stderr, "shmdealloc(ctable->share=0x%lX, 0x%lX)\n", (long)ctable->share, (long)key_value);
+	shmdealloc(ctable->share, key_value);
     }
 #endif
 

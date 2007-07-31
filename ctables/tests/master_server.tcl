@@ -35,7 +35,15 @@ m search -key k -array_get a -code {puts "$k : $a"}
 
 ::ctable_server::register ctable://*:1616/master m
 
+proc random_changes {} {
+  set names [m names]
+  set i [expr {int(rand() * [llength $names])}]
+  set key [lindex $names $i]
+  m set $key value [expr {int(rand() * 100) + 100}]
+  after 1 random_changes
+}
 puts "running, waiting for connections"
+after 1 random_changes
 
 if !$tcl_interactive { vwait die }
 
