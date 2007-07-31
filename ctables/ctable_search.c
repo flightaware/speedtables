@@ -931,7 +931,14 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 #ifdef WITH_SHARED_TABLES
     int			   firstTime = 1;
 
-    if (!firstTime) {
+    if (firstTime) {
+	if (ctable->share_type == CTABLE_SHARED_READER) {
+	    // make sure the dummy ctable is up to date.
+            ctable->count = ctable->share_ctable->count;
+	    ctable->skipLists = ctable->share_ctable->skipLists;
+	    ctable->ll_head = ctable->share_ctable->ll_head;
+	}
+    } else {
 restart_search:
 	// re-initialise and de-allocate and clean up, we're going through the
 	// while exercise again...
@@ -1012,8 +1019,11 @@ restart_search:
     // If we're doing a client search, we don't have access to the
     // hashtable, so we can't do a hash search.
 #ifdef WITH_SHARED_TABLES
-    if(ctable->share_type == CTABLE_SHARED_READER)
+    // fprintf(stderr, "ctable->share_type=%d\n", ctable->share_type);
+    if(ctable->share_type == CTABLE_SHARED_READER) {
+	// fprintf(stderr, "READER TABLE\n");
 	canUseHash = 0;
+    }
 #endif
 
     if (search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
@@ -1028,6 +1038,10 @@ restart_search:
 	    }
 	}
 
+/*
+        if(ctable->share_type == CTABLE_SHARED_READER)
+	    fprintf(stderr, "search->reqIndexField=%d\n", search->reqIndexField);
+*/
 	// Look for the best usable search field starting with the requested
 	// one
 	for(try = 0; try < search->nComponents; try++, index++) {
@@ -1065,9 +1079,14 @@ restart_search:
 		}
 	    }
 
+/*
+            if(ctable->share_type == CTABLE_SHARED_READER)
+	        fprintf(stderr, "ctable->skipLists[%d]=0x%lX\n", field, (long)ctable->skipLists[field]);
+*/
 	    // Do we have an index on this puppy?
-	    if(!ctable->skipLists[field])
+	    if(!ctable->skipLists[field]) {
 		continue;
+	    }
 
 	    score = skipTypes[comparisonType].score;
 

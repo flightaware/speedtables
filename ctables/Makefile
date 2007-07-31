@@ -31,6 +31,9 @@ readertest:
 	chmod +x tests/master_server.tcl tests/reader.tcl
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make reader"
 
+debug:
+	( cd tests ; gdb /usr/local/bin/tclsh8.4 -c tclsh8.4.core )
+
 install:
 	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c $(INSTDIR)
