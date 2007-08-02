@@ -32,9 +32,12 @@ readertest:
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make reader"
 
 debug:
-	( cd tests ; gdb /usr/local/bin/tclsh8.4 -c tclsh8.4.core )
+	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; gdb /usr/local/bin/tclsh8.4 -c tclsh8.4.core"
+
+mdebug:
+	sh -c "export TCLLIBPATH=${WORKDIR}; cd tests; gdb /usr/local/bin/tclsh8.4m -c tclsh8.4m.core"
 
 install:
 	-mkdir -p $(INSTDIR)
-	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c $(INSTDIR)
+	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c shared/*.[ch] $(INSTDIR)
 

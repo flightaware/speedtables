@@ -10,8 +10,11 @@ set suffix _m
 
 source top-brands-nokey-def.tcl
 
-
 top_brands_nokey_m create m master file sharefile.dat
+
+# memory active memdebug_start.txt
+# memory onexit memdebug_end.txt
+# memory trace on
 
 proc suck_in_top_brands_nokeys {} {
     set fp [open top-brands.tsv]

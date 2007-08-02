@@ -142,6 +142,11 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			share_size = DEFAULT_SHARED_SIZE;
 		    }
 
+#ifdef SHARE_BASE
+		    if(SHARE_BASE != NULL && set_share_base == NULL)
+			setShareBase(set_share_base = SHARE_BASE);
+#endif
+
 		    if(doCreateOrAttach(interp, share_name, share_file, share_size, &share) != TCL_OK)
 			goto createError;
 

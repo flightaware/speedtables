@@ -111,6 +111,11 @@ ${extension}_Init(Tcl_Interp *interp)
 	return TCL_ERROR;
     }
 
+#ifdef TCL_MEM_DEBUG
+    /* Init memory if needed */
+    Tcl_InitMemory(interp);
+#endif
+
     if (Tcl_PkgRequire(interp, "Tcl", "8.1", 0) == NULL) {
 	return TCL_ERROR;
     }

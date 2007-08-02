@@ -73,7 +73,7 @@ int open_new(char *file, size_t size)
     size_t	 nbytes;
     int		 fd = open(file, O_RDWR|O_CREAT, 0666);
 
-IFDEBUG(debug_init();)
+IFDEBUG(init_debug();)
     if(fd == -1) {
 	shared_errno = SH_NEW_FILE;
 	return -1;
@@ -81,7 +81,12 @@ IFDEBUG(debug_init();)
 
     if(nulbufsize > size)
 	nulbufsize = (size + 1023) & ~1023;
+#ifdef WITH_TCL
+    buffer = ckalloc(nulbufsize);
+    bzero(buffer, nulbufsize);
+#else
     buffer = calloc(nulbufsize/1024, 1024);
+#endif
 
     while(size > 0) {
 	if(nulbufsize > size) nulbufsize = size;
@@ -93,7 +98,11 @@ IFDEBUG(debug_init();)
 	size -= nbytes;
     }
 
+#ifdef WITH_TCL
+    ckfree(buffer);
+#else
     free(buffer);
+#endif
 
     return fd;
 }
@@ -109,7 +118,7 @@ shm_t   *map_file(char *file, char *addr, size_t default_size)
     int      fd;
     shm_t   *p;
 
-IFDEBUG(debug_init();)
+IFDEBUG(init_debug();)
     fd = open(file, O_RDWR, 0);
 
     if(fd == -1) {
@@ -149,13 +158,17 @@ IFDEBUG(debug_init();)
 	return NULL;
     }
 
-    p = (shm_t   *)malloc(sizeof (*p));
+#ifdef WITH_TCL
+    p = (shm_t*)ckalloc(sizeof(*p));
+#else
+    p = (shm_t*)malloc(sizeof (*p));
     if(!p) {
 	shared_errno = SH_PRIVATE_MEMORY;
 	munmap(map, size);
 	close(fd);
 	return NULL;
     }
+#endif
 
     // Completely initialise all fields!
     p->next = share_list;
@@ -208,7 +221,11 @@ int unmap_file(shm_t   *info)
     map = (char *)info->map;
     size = info->size;
     fd = info->fd;
+#ifdef WITH_TCL
+    ckfree((char *)info);
+#else
     free(info);
+#endif
 
     munmap(map, size);
     close(fd);
@@ -227,7 +244,11 @@ void unmap_all(void)
 
 	share_list = share_list->next;
 
+#ifdef WITH_TCL
+	ckfree((char *)p);
+#else
 	free(p);
+#endif
 
 	munmap(map, size);
 	close(fd);
@@ -289,11 +310,16 @@ IFDEBUG(init_debug();)
 
 pool_t *makepool(size_t blocksize, int blocks, shm_t *share)
 {
-    pool_t *pool = (pool_t *)malloc(sizeof *pool);
+    pool_t *pool;
+#ifdef WITH_TCL
+    pool = (pool_t *)ckalloc(sizeof *pool);
+#else
+    pool = (pool_t *)malloc(sizeof *pool);
     if(!pool) {
 	shared_errno = SH_PRIVATE_MEMORY;
 	return NULL;
     }
+#endif
 
     // align size
     if(blocksize % CELLSIZE)
@@ -339,8 +365,12 @@ pool_t *findpool(pool_t **poolhead, size_t blocksize)
     if(pool->share) {
         pool->start = _shmalloc(first->share, blocksize*first->blocks);
     } else {
+#ifdef WITH_TCL
+	pool->start = ckalloc(blocksize * first->blocks);
+#else
 	if(!(pool->start = malloc(blocksize * first->blocks)))
 	    shared_errno = SH_PRIVATE_MEMORY;
+#endif
     }
     if(!pool->start) return NULL;
 
@@ -584,7 +614,6 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)s
 // attempt to free a block
 // first, try to free it into a pool as an unstructured block
 // then, thread it on the free list
-// TODO: coalesce the free list
 
 // free block structure:
 //    int32 size;
@@ -961,6 +990,13 @@ void TclShmError(Tcl_Interp *interp, char *name)
 
 static int autoshare = 0;
 
+static char *share_base = NULL;
+
+void setShareBase(char *new_base)
+{
+	share_base = new_base;
+}
+
 int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, shm_t **sharePtr)
 {
     shm_t     *share;
@@ -977,7 +1013,7 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 	sharename = namebuf;
     }
 
-    share = map_file(filename, NULL, size);
+    share = map_file(filename, share_base, size);
     if(!share) {
 	TclShmError(interp, filename);
 	return TCL_ERROR;
@@ -989,6 +1025,9 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 	unmap_file(share);
         return TCL_ERROR;
     }
+
+    if((char *)share == share_base)
+	share_base = share_base + size;
 
     share->name = ckalloc(strlen(sharename)+1);
     strcpy(share->name, sharename);

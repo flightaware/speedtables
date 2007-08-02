@@ -186,6 +186,7 @@ int parse_size(char *s, size_t *ptr);
 #ifdef WITH_TCL
 #define ATTACH_ONLY ((size_t)-1)
 
+void setShareBase(char *new_base);
 int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr);
 void TclShmError(Tcl_Interp *interp, char *name);
 int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, shm_t **sharePtr);
