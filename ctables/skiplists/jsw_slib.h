@@ -40,7 +40,7 @@ typedef int   (*cmp_f) ( const ctable_BaseRow *row1, const ctable_BaseRow *row2 
 
   Returns: An empty skip list, or NULL on failure
 */
-jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp);
+jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, void *share );
 
 /* Release all memory used by the skip list */
 void        jsw_sdelete_skiplist ( jsw_skip_t *skip );

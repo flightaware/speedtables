@@ -307,6 +307,10 @@ typedef struct ctableCreatorTable {
     void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
 
     int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
+#ifdef SANITY_CHECKS
+    void (*sanity_check_pointer)(struct ctableTable *ctable, void *ptr, int indexCtl, char *where);
+#endif
 } ctable_CreatorTable;
 
 typedef struct ctableTable {

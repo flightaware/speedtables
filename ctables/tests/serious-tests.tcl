@@ -6,8 +6,8 @@
 
 package require ctable
 
-set ::ctable::genCompilerDebug 0
-set ::ctable::showCompilerCommands 0
+# set ::ctable::genCompilerDebug 0
+# set ::ctable::showCompilerCommands 0
 
 source searchtest-def.tcl
 

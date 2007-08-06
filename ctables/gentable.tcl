@@ -30,6 +30,7 @@ namespace eval ctable {
     variable showCompilerCommands
     variable withPipe
     variable memDebug
+    variable sanityChecks
     variable sysPrefix		;# default /usr/local
     variable pgPrefix		;# default /usr/local
     variable keyCompileVariables
@@ -46,6 +47,9 @@ namespace eval ctable {
     set genCompilerDebug 1
     set showCompilerCommands 0
     set memDebug 0
+
+    # set to 1 to run various sanity checks on rows
+    set sanityChecks 1
 
     set withSharedTables 1
     set withSharedTclExtension 0
@@ -85,6 +89,7 @@ namespace eval ctable {
 	withDirty
 	genCompilerDebug
 	memDebug
+	sanityChecks
     }
 
     set ctableErrorInfo ""
@@ -322,6 +327,31 @@ proc gen_allocate_function {table} {
     }
 }
 
+variable sanitySource {
+void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, char *where)
+{
+#ifdef WITH_SHARED_TABLES
+    if(indexCtl != CTABLE_INDEX_NEW) {
+	if(ctable->share_type == CTABLE_SHARED_MASTER || ctable->share_type == CTABLE_SHARED_READER) {
+	    if(ctable->share == NULL)
+		panic("%s: ctable->share_type = %d but ctable->share = NULL", where);
+	    if((char *)ptr < (char *)ctable->share->map)
+		panic("%s: ctable->share->map = 0x%lX but ptr == 0x%lX", where, (long)ctable->share->map, (long)ptr);
+	    if((char *)ptr - ctable->share->size > (char *)ctable->share->map)
+		panic("%s: ctable->share->size = %ld but ptr is at %ld offset", where, (long)ctable->share->size, (long)((char *)ptr - ctable->share->size));
+	}
+    }
+#endif
+}
+}
+proc gen_sanity_checks {table} {
+    variable sanityChecks
+    variable sanitySource
+    if {$sanityChecks} {
+	emit [string range [subst -nobackslashes -nocommands $sanitySource] 1 end-1]
+    }
+}
+
 variable insertRowSource {
 int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct ${table} *row, int indexCtl)
 {
@@ -358,6 +388,10 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
 
     // Insert existing row with new key
     new = ctable_StoreHashEntry(ctable->keyTablePtr, key, (ctable_HashEntry *)row, flags, &isNew);
+
+#ifdef SANITY_CHECKS
+    ${table}_sanity_check_pointer(ctable, (void *)new, CTABLE_INDEX_NORMAL, "${table}_reinsert_row");
+#endif
 
     if(!isNew) {
 	Tcl_AppendResult (interp, "Duplicate key '", value, "' after setting key field!", (char *)NULL);
@@ -624,6 +658,10 @@ variable keySetSource {
 	    }
 	    case CTABLE_INDEX_NORMAL:
 	    case CTABLE_INDEX_NEW: {
+
+#ifdef SANITY_CHECKS
+		${table}_sanity_check_pointer(ctable, (void *)row, CTABLE_INDEX_NORMAL, "${table}::keySetSource");
+#endif
 		if (${table}_reinsert_row(interp, ctable, value, row, indexCtl) == TCL_ERROR)
 		    return TCL_ERROR;
 		break;
@@ -3232,6 +3270,8 @@ proc gen_code {} {
 
     set rowStruct $table
 
+    gen_sanity_checks $table
+
     gen_allocate_function $table
 
     gen_insert_row_function $table
@@ -3892,6 +3932,7 @@ proc gen_preamble {} {
     variable withPgtcl
     variable withSharedTables
     variable withSharedTclExtension
+    variable sanityChecks
     variable sharedTraceFile
     variable sharedBase
     variable preambleCannedSource
@@ -3901,6 +3942,10 @@ proc gen_preamble {} {
     emit ""
     if {$withPgtcl} {
         emit "#define WITH_PGTCL"
+        emit ""
+    }
+    if {$sanityChecks} {
+	emit "#define SANITY_CHECKS"
         emit ""
     }
     if {$withSharedTables} {
@@ -4375,6 +4420,11 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
     int                                 compType;
     CTableSearchComponent              *component;
 
+
+#ifdef SANITY_CHECKS
+    ${table}_sanity_check_pointer(searchControl->ctable, vPointer, CTABLE_INDEX_NORMAL, "${table}_search_compare");
+#endif
+
     for (i = 0; i < searchControl->nComponents; i++) $leftCurly
       if (i == searchControl->alreadySearched)
 	continue;
@@ -4598,7 +4648,8 @@ proc myexec {command} {
     variable showCompilerCommands
 
     if {$showCompilerCommands} {
-	puts $command
+puts [info level 0]
+	puts $command; flush stdout
     }
 
     eval exec $command

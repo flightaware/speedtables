@@ -1239,6 +1239,10 @@ restart_search:
 	}
 #endif
 
+#ifdef SANITY_CHECKS
+	creator->sanity_check_pointer(ctable, (void *)skipList, CTABLE_INDEX_NORMAL, "ctablePerformSearch");
+#endif
+
 	// Find the row to start walking on
 	switch(skipStart) {
 
@@ -1928,12 +1932,18 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_FieldInfo *f;
     Tcl_Obj *utilityObj;
+    ctable_CreatorTable *creator = ctable->creator;
 
     if (skip == NULL) {
     return TCL_OK;
     }
 
-    f = ctable->creator->fields[field];
+#ifdef SANITY_CHECKS
+    creator->sanity_check_pointer(ctable, (void *)row, CTABLE_INDEX_NORMAL, "ctable_InsertIntoIndex : row");
+    creator->sanity_check_pointer(ctable, (void *)skip, CTABLE_INDEX_NORMAL, "ctable_InsertIntoIndex : skip");
+#endif
+
+    f = creator->fields[field];
 
 # if 0
 // dump info about row being inserted
@@ -2013,7 +2023,12 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
 	return TCL_ERROR;
     }
 
-    skip = jsw_snew (depth, ctable->creator->fields[field]->compareFunction);
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_MASTER)
+        skip = jsw_snew (depth, ctable->creator->fields[field]->compareFunction, ctable->share);
+    else
+#endif
+        skip = jsw_snew (depth, ctable->creator->fields[field]->compareFunction, NULL);
 
     // we plug the list in last
     // we'll have to do a lot more here for concurrent access NB

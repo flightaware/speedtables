@@ -2,6 +2,9 @@
  * $Id$
  */
 
+#ifndef SHM_SHARED_H
+#define SHM_SHARED_H
+
 #ifdef SHM_DEBUG_TRACE
 #define IFDEBUG(x) x				/* Debug code included*/
 #ifdef SHM_DEBUG_TRACE_FILE
@@ -202,3 +205,4 @@ int doDetach(Tcl_Interp *interp, shm_t *share);
 #define nextsize(block) (nextblock(block)->size)
 #define prevblock(block) ((freeblock *)(((char *)block) - abs(prevsize(block))))
 
+#endif

@@ -61,6 +61,10 @@
 
     t->command = ${table}ObjCmd;
 
+#ifdef SANITY_CHECKS
+    t->sanity_check_pointer = ${table}_sanity_check_pointer;
+#endif
+
     // allocate and populate the field info structures
     t->fields = (ctable_FieldInfo **)ckalloc (t->nFields * sizeof (ctable_FieldInfo *));
     for (i = 0; i < t->nFields; i++) {

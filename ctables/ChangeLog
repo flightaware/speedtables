@@ -1,6 +1,10 @@
 
 $Id$
 
+8/6/2007 peter
+    * Separated skiplists into "public" and "private" structures, with
+      hook to clone the private structure of a skiplist
+
 7/31/2007 peter
     * Parameterized shared memory debug trace.
     * Updated package version to 1.4 - long past time.
