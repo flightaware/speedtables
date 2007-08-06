@@ -28,7 +28,7 @@ mastertest:
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make master"
 
 readertest:
-	chmod +x tests/master_server.tcl tests/reader.tcl
+	rm tests/sharedebug.out
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make reader"
 
 debug:

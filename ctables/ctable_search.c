@@ -934,6 +934,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     if (firstTime) {
 	if (ctable->share_type == CTABLE_SHARED_READER) {
 	    // make sure the dummy ctable is up to date.
+fprintf(stderr, "ctable_search pointing 0x%lX to 0x%lX\n", (long)ctable, (long)ctable->share_ctable);
             ctable->count = ctable->share_ctable->count;
 	    ctable->skipLists = ctable->share_ctable->skipLists;
 	    ctable->ll_head = ctable->share_ctable->ll_head;

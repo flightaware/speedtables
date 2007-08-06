@@ -7,4 +7,6 @@ sleep 5
 
 tclsh8.4 ./reader.tcl
 
+sleep 5
+
 kill $master_pid

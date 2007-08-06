@@ -50,8 +50,8 @@ namespace eval ctable {
     set withSharedTables 1
     set withSharedTclExtension 0
     # Either -none, -stderr, or the name of a file
-    #set sharedTraceFile sharedebug.out
-    set sharedTraceFile -none
+    set sharedTraceFile sharedebug.out
+    #set sharedTraceFile -none
 
     # either NULL or an absolute address
     set sharedBase 0xA0000000
