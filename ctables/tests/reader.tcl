@@ -29,9 +29,15 @@ for {set i 0} {$i < 1000} {incr i} {
     set n [expr {int(rand() * $num)}]
     set k [lindex $names $n]
     array set row $orig($k)
-    r search -compare [list [list = id $row(id)]] -key k -array_get a -code {
+    set comp {}
+    lappend comp [list = id $row(id)]
+    puts "Looking for <$comp>"
+    set found 0
+    r search -compare $comp -key k -array_get a -code {
 	puts [format "%4d %4d %s : %s" $i $n $k $a]
+	incr found
     }
+    puts "Found $found"
     after 15
 }
 
