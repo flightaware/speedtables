@@ -934,7 +934,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     if (firstTime) {
 	if (ctable->share_type == CTABLE_SHARED_READER) {
 	    // make sure the dummy ctable is up to date.
-fprintf(stderr, "ctable_search pointing 0x%lX to 0x%lX\n", (long)ctable, (long)ctable->share_ctable);
+// fprintf(stderr, "ctable_search pointing 0x%lX to 0x%lX\n", (long)ctable, (long)ctable->share_ctable);
             ctable->count = ctable->share_ctable->count;
 	    ctable->skipLists = ctable->share_ctable->skipLists;
 	    ctable->ll_head = ctable->share_ctable->ll_head;
@@ -1234,13 +1234,14 @@ restart_search:
 	if(ctable->share_type == CTABLE_SHARED_READER) {
 	    // Save the cycle at the time we started the search
 	    search->cycle = ctable->share->map->cycle;
+// fprintf(stderr, "search->cycle = %d\n", search->cycle);
 	} else {
 	    search->cycle = LOST_HORIZON;
 	}
 #endif
 
 #ifdef SANITY_CHECKS
-	creator->sanity_check_pointer(ctable, (void *)skipList, CTABLE_INDEX_NORMAL, "ctablePerformSearch");
+	creator->sanity_check_pointer(ctable, (void *)skipList, CTABLE_INDEX_NORMAL, "ctablePerformSearch : skipList");
 #endif
 
 	// Find the row to start walking on
@@ -1278,6 +1279,13 @@ restart_search:
 	    }
 	}
 
+#if 0
+#ifdef WITH_SHARED_TABLES
+if(ctable->share_type == CTABLE_SHARED_READER)
+    fprintf(stderr, "Following skiplist 0x%lX\n", (long)skipList);
+#endif
+#endif
+
 	// Count is only to make sure we blow up on infinite loops
 	for(myCount = 0; myCount < ctable->count; myCount++) {
 	    if(skipNext == SKIP_NEXT_IN_LIST) {
@@ -1306,12 +1314,18 @@ restart_search:
             if ((row = jsw_srow (skipList)) == NULL)
 		goto search_complete;
 
+#ifdef SANITY_CHECKS
+	creator->sanity_check_pointer(ctable, (void *)row, CTABLE_INDEX_NORMAL, "ctablePerformSearch : row");
+#endif
+
+	// Find the row to start walking on
 #ifdef WITH_SHARED_TABLES
 	    // If we're a reader and this row has changed since we started
 	    // then check if it changed the skiplist we're following, if so...
 	    // go back and restart the search
-	    if(search->cycle != LOST_HORIZON) {
+	    if(search->cycle != LOST_HORIZON && row->_row_cycle != LOST_HORIZON) {
 		if(row->_row_cycle - search->cycle > 0) {
+// fprintf(stderr, "0x%lX->cycle = %d, restarting search\n", (long)row, row->_row_cycle);
 		    if(ctable_SearchRestartNeeded(row, &restart))
 			goto restart_search;
 		}
@@ -1351,7 +1365,7 @@ restart_search:
 		// If we're a reader and this row has changed since we started
 		// then check if it changed the list we're following, if so...
 		// go back and restart the search
-	        if(search->cycle != LOST_HORIZON) {
+	        if(search->cycle != LOST_HORIZON && row->_row_cycle != LOST_HORIZON) {
 		    if(row->_row_cycle - search->cycle > 0) {
 		        if(ctable_SearchRestartNeeded(row, &restart))
 			    goto restart_search;
