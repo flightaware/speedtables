@@ -245,14 +245,17 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, void *share)
 //
 // you have to delete your own row data
 //
-void jsw_sdelete_skiplist ( jsw_skip_t *skip )
+void jsw_sdelete_skiplist ( jsw_skip_t *skip, int final )
 {
   jsw_node_t *it = skip->public->head->next[0];
   jsw_node_t *save;
 
   while ( it != NULL ) {
     save = it->next[0];
-    free_node ( it, skip->share );
+#ifdef WITH_SHARED_TABLES
+    if(!final || !skip->share)
+#endif
+      free_node ( it, skip->share );
     it = save;
   }
 
@@ -261,9 +264,10 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip )
   ckfree ( (void *)skip->fix );
 
 #ifdef WITH_SHARED_TABLES
-  if(skip->share)
-    shmfree(skip->share, (char *)skip);
-  else
+  if(skip->share) {
+    if(!final)
+      shmfree(skip->share, (char *)skip);
+  } else
 #endif
     ckfree ( (void *)skip );
 }

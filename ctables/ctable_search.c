@@ -1815,26 +1815,28 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 // ctable_DropIndex - delete all the rows in a row's index, free the
 // structure and set the field's pointer to the skip list to NULL
 //
+// "final" means "we're destroying the ctable". This allows us to avoid
+// deleting structures in shared memory that are going away anyway.
 //
 void
-ctable_DropIndex (CTable *ctable, int field) {
+ctable_DropIndex (CTable *ctable, int field, int final) {
     jsw_skip_t *skip = ctable->skipLists[field];
 
     if (skip == NULL) return;
 
     ctable->skipLists[field] = NULL;
-    jsw_sdelete_skiplist (skip);
+    jsw_sdelete_skiplist (skip, final);
 }
 
 //
 // ctable_DropAllIndexes - delete all of a table's indexes
 //
 void
-ctable_DropAllIndexes (CTable *ctable) {
+ctable_DropAllIndexes (CTable *ctable, int final) {
     int field;
 
     for (field = 0; field < ctable->creator->nFields; field++) {
-        ctable_DropIndex (ctable, field);
+        ctable_DropIndex (ctable, field, final);
     }
 }
 
@@ -2094,7 +2096,7 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
 	    // you can't leave them with a partial index or there will
 	    // be heck to pay later when queries don't find all the
 	    // rows, etc
-	    jsw_sdelete_skiplist (skip);
+	    jsw_sdelete_skiplist (skip, 0);
 	    ctable->skipLists[field] = NULL;
 	    utilityObj = Tcl_NewObj();
 	    Tcl_AppendResult (interp, " while creating index", (char *) NULL);

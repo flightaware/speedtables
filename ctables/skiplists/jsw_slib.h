@@ -43,7 +43,7 @@ typedef int   (*cmp_f) ( const ctable_BaseRow *row1, const ctable_BaseRow *row2 
 jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, void *share );
 
 /* Release all memory used by the skip list */
-void        jsw_sdelete_skiplist ( jsw_skip_t *skip );
+void        jsw_sdelete_skiplist ( jsw_skip_t *skip, int final );
 
 /*
   Find a row with the selected key

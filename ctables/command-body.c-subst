@@ -1,8 +1,9 @@
 // $Id$
 
-int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
+int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
     ctable_BaseRow           *row;
     ctable_BaseRow           *nextRow;
+    int indexCtl = final ? CTABLE_INDEX_DESTROY : CTABLE_INDEX_FASTDELETE;
 
     CTABLE_LIST_FOREACH_SAFE (ctable->ll_head, row, nextRow, 0) {
 
@@ -20,14 +21,15 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
 	// to have a valid key. Alternatively, we could remove this free and
 	// depend on ${table}_delete doing it.
 #ifdef WITH_SHARED_TABLES
-	if(ctable->share_type == CTABLE_SHARED_MASTER)
-	    shmfree(ctable->share, row->hashEntry.key);
-	else
+	if(ctable->share_type == CTABLE_SHARED_MASTER) {
+	    if(!final)
+	        shmfree(ctable->share, row->hashEntry.key);
+	} else
 #endif
             ckfree (row->hashEntry.key);
 	row->hashEntry.key = NULL;
 
-	${table}_delete(ctable, (struct ${table} *)row, CTABLE_INDEX_FASTDELETE);
+	${table}_delete(ctable, (struct ${table} *)row, indexCtl);
     }
 
     // reset the linked list of all rows
@@ -36,7 +38,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable) {
     ctable_DeleteHashTable (ctable->keyTablePtr);
 
     // drop all indexes, if any
-    ctable_DropAllIndexes (ctable);
+    ctable_DropAllIndexes (ctable, final);
 
     ctable->count = 0;
     ctable->autoRowNumber = 0;
@@ -381,7 +383,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_RESET: {
-	  if (${table}_delete_all_rows (interp, ctable) != TCL_OK) {
+	  if (${table}_delete_all_rows (interp, ctable, 0) != TCL_OK) {
 	      return TCL_ERROR;
 	  }
 	  ctable_InitHashTable (ctable->keyTablePtr);
@@ -389,7 +391,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_DESTROY: {
-	  if (${table}_delete_all_rows (interp, ctable) != TCL_OK) {
+	  if (${table}_delete_all_rows (interp, ctable, 1) != TCL_OK) {
 	      end_write(ctable);
 	      return TCL_ERROR;
 	  }
@@ -933,7 +935,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		return TCL_ERROR;
 	    }
 
-	    ctable_DropIndex (ctable, fieldNum);
+	    ctable_DropIndex (ctable, fieldNum, 0);
 	    break;
 	  }
 

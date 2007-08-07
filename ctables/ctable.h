@@ -125,7 +125,12 @@ typedef struct ctable_baseRowStruct {
 // _delete.  if fastdelete is set, then the keys have been pre-deleted but
 // otherwise it should be treated as normal
 //
+// CTABLE_INDEX_DESTROY is only used by _delete_all_rows and passed to
+// _delete.  if destroy is set, then nothing in shared memory is deleted
+// because shared memory will be deleted anyway
+//
 // do not change, new and normal and 0 and 1 also expected from find_or_create
+#define CTABLE_INDEX_DESTROY -4
 #define CTABLE_INDEX_FASTDELETE -2
 #define CTABLE_INDEX_PRIVATE -1
 #define CTABLE_INDEX_NORMAL 0
