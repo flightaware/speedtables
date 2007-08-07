@@ -3049,7 +3049,7 @@ proc gen_set_function {table} {
 
     if {$withSharedTables} {
         emit "    if (ctable->share_type == CTABLE_SHARED_MASTER)"
-	emit "        row->_cycle = ctable->share->map->cycle;"
+	emit "        row->_row_cycle = ctable->share->map->cycle;"
     }
 
     emit "    $rightCurly"
@@ -5039,10 +5039,15 @@ proc CTable {name data} {
         ::ctable::boolean _dirty notnull 1 default 0
     }
 
+# This needs to be fixed, because the _cycle field has to be in the header
+# so that the search code in the reader can "see" it. In the meantime, I'm
+# hardcoding '_row_cycle'.
+if 0 {
     if {$::ctable::withSharedTables} {
 	# Create a 'cycle' field
 	::ctable::long _cycle notnull 1 default LOST_HORIZON
     }
+}
 
     ::ctable::gen_struct
 

@@ -1325,7 +1325,7 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 	    // go back and restart the search
 	    if(search->cycle != LOST_HORIZON && row->_row_cycle != LOST_HORIZON) {
 		if(row->_row_cycle - search->cycle > 0) {
-// fprintf(stderr, "0x%lX->cycle = %d, restarting search\n", (long)row, row->_row_cycle);
+fprintf(stderr, "0x%lX->cycle = %d, restarting search\n", (long)row, row->_row_cycle);
 		    if(ctable_SearchRestartNeeded(row, &restart))
 			goto restart_search;
 		}
@@ -1509,32 +1509,32 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	  }
 
 	  case SEARCH_OPT_ARRAY: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE) {
-	      endActionOverload: 
-	        Tcl_AppendResult (interp, "one and only one of -array, -array_with_nulls, -array_get, -array_get_with_nulls, -write_tabsep and -countOnly must be specified", (char *) NULL);
-	        return TCL_ERROR;
-	    }
+	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
+		goto endActionOverload;
 	    search->varNameObj = objv[i++];
 	    search->endAction = CTABLE_SEARCH_ACTION_ARRAY;
 	    break;
 	  }
 
 	  case SEARCH_OPT_ARRAY_WITH_NULLS: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE) goto endActionOverload;
+	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
+		goto endActionOverload;
 	    search->varNameObj = objv[i++];
 	    search->endAction = CTABLE_SEARCH_ACTION_ARRAY_WITH_NULLS;
 	    break;
 	  }
 
 	  case SEARCH_OPT_ARRAYGET_NAMEOBJ: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE) goto endActionOverload;
+	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
+		goto endActionOverload;
 	    search->varNameObj = objv[i++];
 	    search->endAction = CTABLE_SEARCH_ACTION_ARRAY_GET;
 	    break;
 	  }
 
 	  case SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE) goto endActionOverload;
+	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
+		goto endActionOverload;
 	    search->varNameObj = objv[i++];
 	    search->endAction = CTABLE_SEARCH_ACTION_ARRAY_GET_WITH_NULLS;
 	    break;
@@ -1546,7 +1546,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
           }
 
 	  case SEARCH_OPT_GET_NAMEOBJ: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE) goto endActionOverload;
+	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
+		goto endActionOverload;
 	    search->varNameObj = objv[i++];
 	    search->endAction = CTABLE_SEARCH_ACTION_GET;
 	    break;
@@ -1579,7 +1580,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    }
 
 	    if (countOnly) {
-		if (search->endAction != CTABLE_SEARCH_ACTION_NONE) goto endActionOverload;
+		if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
+		    goto endActionOverload;
 		search->endAction = CTABLE_SEARCH_ACTION_COUNT_ONLY;
 	    }
 	    break;
@@ -1614,6 +1616,12 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    }
 
 	    if(do_delete) {
+#ifdef WITH_SHARED_TABLES
+	      if(ctable->share_type == CTABLE_SHARED_READER) {
+		Tcl_AppendResult (interp, "Can't modify read-only tables.", (char *)NULL);
+		return TCL_ERROR;
+	      }
+#endif
 	      if(search->tranType != CTABLE_SEARCH_TRAN_NONE &&
 	         search->tranType != CTABLE_SEARCH_TRAN_DELETE
 	      ) {
@@ -1629,6 +1637,12 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	  }
 
 	  case SEARCH_OPT_UPDATE: {
+#ifdef WITH_SHARED_TABLES
+	    if(ctable->share_type == CTABLE_SHARED_READER) {
+		Tcl_AppendResult (interp, "Can't modify read-only tables.", (char *)NULL);
+		return TCL_ERROR;
+	    }
+#endif
 	    if(search->tranType != CTABLE_SEARCH_TRAN_NONE &&
 	       search->tranType != CTABLE_SEARCH_TRAN_UPDATE
 	    ) {
@@ -1655,7 +1669,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    int        mode;
 	    char      *channelName;
 
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE) goto endActionOverload;
+	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
+		goto endActionOverload;
 
 	    channelName = Tcl_GetString (objv[i++]);
 	    if ((search->tabsepChannel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
@@ -1706,6 +1721,11 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     }
 
     return TCL_OK;
+
+  endActionOverload: 
+
+    Tcl_AppendResult (interp, "one and only one of -array, -array_with_nulls, -array_get, -array_get_with_nulls, -write_tabsep and -countOnly must be specified", (char *) NULL);
+    return TCL_ERROR;
 }
 
 //
