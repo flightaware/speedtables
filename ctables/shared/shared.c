@@ -714,7 +714,7 @@ void write_unlock(shm_t   *shm)
 #endif
     cell_t new_horizon = oldest_reader_cycle(shm);
 
-    if(new_horizon - shm->horizon > 0) {
+    if(new_horizon - shm->horizon > TWILIGHT_ZONE) {
 	shm->horizon = new_horizon;
 	garbage_collect(shm);
     }

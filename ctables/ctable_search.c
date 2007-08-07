@@ -930,14 +930,17 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
 #ifdef WITH_SHARED_TABLES
     int			   firstTime = 1;
+    int			   locked_cycle = LOST_HORIZON;
 
     if (firstTime) {
+	firstTime = 0;
 	if (ctable->share_type == CTABLE_SHARED_READER) {
 	    // make sure the dummy ctable is up to date.
 // fprintf(stderr, "ctable_search pointing 0x%lX to 0x%lX\n", (long)ctable, (long)ctable->share_ctable);
             ctable->count = ctable->share_ctable->count;
 	    ctable->skipLists = ctable->share_ctable->skipLists;
 	    ctable->ll_head = ctable->share_ctable->ll_head;
+	    locked_cycle = read_lock(ctable->share);
 	}
     } else {
 restart_search:
@@ -987,6 +990,10 @@ restart_search:
     }
 
     if (ctable->count == 0) {
+#ifdef WITH_SHARED_TABLES
+        if(locked_cycle != LOST_HORIZON)
+	    read_unlock(ctable->share);
+#endif
         return TCL_OK;
     }
 
@@ -1406,6 +1413,11 @@ fprintf(stderr, "0x%lX->cycle = %d, restarting search\n", (long)row, row->_row_c
     if (actionResult == TCL_OK && (search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY)) {
 	Tcl_SetIntObj (Tcl_GetObjResult (interp), search->matchCount);
     }
+
+#ifdef WITH_SHARED_TABLES
+    if(locked_cycle != LOST_HORIZON)
+	read_unlock(ctable->share);
+#endif
 
     return actionResult;
 }
