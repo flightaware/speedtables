@@ -249,9 +249,6 @@ typedef struct {
     // searching with sorting, and for completing a transaction after searching
     ctable_BaseRow                     **tranTable;
 
-#ifdef WITH_SHARED_TABLES
-    cell_t				 cycle;
-#endif
 } CTableSearch;
 
 typedef struct {

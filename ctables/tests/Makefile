@@ -40,3 +40,10 @@ reader:
 	-rm -f *.dat
 	sh master+reader.sh
 	rm -f *.dat
+
+multireader:
+	-rm -r build
+	-rm -f *.dat
+	sh multireader.sh
+	rm -f *.dat
+

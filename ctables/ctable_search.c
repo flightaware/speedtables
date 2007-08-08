@@ -870,8 +870,51 @@ struct restart_t {
 
 int ctable_SearchRestartNeeded(ctable_BaseRow *row, struct restart_t *restart)
 {
-    // PUNT!
-    return 1;
+    // check to see if we're still following the right skiplist, by seeing
+    // if the value we're following still satisfies the criteria
+    switch(restart->skipEnd) {
+	case SKIP_END_GE_ROW1: {
+	    if (restart->compareFunction (row, restart->row1) >= 0)
+		return 1;
+	    break;
+	}
+	case SKIP_END_GT_ROW1: {
+	    if (restart->compareFunction (row, restart->row1) > 0)
+		return 1;
+	    break;
+	}
+	case SKIP_END_GE_ROW2: {
+	    if (restart->compareFunction (row, restart->row2) >= 0)
+		return 1;
+	    break;
+	}
+	default: {
+	    break;
+	}
+    }
+    switch(restart->skipStart) {
+        case SKIP_START_GE_ROW1: {
+	    if (restart->compareFunction (row, restart->row1) < 0)
+		return 1;
+	    break;
+	}
+	case SKIP_START_GT_ROW1: {
+	    if (restart->compareFunction (row, restart->row1) <= 0)
+		return 1;
+	    break;
+	}
+	case SKIP_START_EQ_ROW1: {
+	    if (restart->compareFunction (row, restart->row1) != 0)
+		return 1;
+	    break;
+	}
+        case SKIP_START_NONE:
+	case SKIP_START_RESET: {
+	    break;
+	}
+    }
+    // Got through here... no restart needed
+    return 0;
 }
 #endif
 
@@ -931,6 +974,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 #ifdef WITH_SHARED_TABLES
     int			   firstTime = 1;
     int			   locked_cycle = LOST_HORIZON;
+    int			   num_restarts = 0;
 
     if (firstTime) {
 	firstTime = 0;
@@ -944,6 +988,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 	}
     } else {
 restart_search:
+	num_restarts++;
 	// re-initialise and de-allocate and clean up, we're going through the
 	// while exercise again...
 
@@ -1234,16 +1279,24 @@ restart_search:
         // terminate the search.
         //
 #ifdef WITH_SHARED_TABLES
-	struct restart_t restart = {
-		row1, row2, skipStart, skipEnd, compareFunction
-	};
+	struct restart_t main_restart;
+	struct restart_t loop_restart;
+	cell_t main_cycle = LOST_HORIZON;
+	cell_t loop_cycle = LOST_HORIZON;
 
 	if(ctable->share_type == CTABLE_SHARED_READER) {
 	    // Save the cycle at the time we started the search
-	    search->cycle = ctable->share->map->cycle;
-// fprintf(stderr, "search->cycle = %d\n", search->cycle);
-	} else {
-	    search->cycle = LOST_HORIZON;
+	    main_cycle = ctable->share->map->cycle;
+#ifdef SANITY_CHECKS
+	    if(main_cycle == LOST_HORIZON)
+		panic("Master is not updating the garbage collect cycle!");
+#endif
+	    // save the main restart condition
+	    main_restart.row1 = row1;
+	    main_restart.row2 = row2;
+	    main_restart.skipStart = skipStart;
+	    main_restart.skipEnd = skipEnd;
+	    main_restart.compareFunction = compareFunction;
 	}
 #endif
 
@@ -1311,6 +1364,13 @@ if(ctable->share_type == CTABLE_SHARED_READER)
                       goto clean_and_return;
                   }
 
+#ifdef WITH_SHARED_TABLES
+		  if(main_cycle != LOST_HORIZON) {
+	            // Save the cycle at the time we started the walk
+	            main_cycle = ctable->share->map->cycle;
+		  }
+#endif
+
 		  // If there's a match for this row, break out of the loop
                   if (jsw_sfind (skipList, row1) != NULL)
 		      break;
@@ -1325,17 +1385,33 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 	creator->sanity_check_pointer(ctable, (void *)row, CTABLE_INDEX_NORMAL, "ctablePerformSearch : row");
 #endif
 
-	// Find the row to start walking on
 #ifdef WITH_SHARED_TABLES
 	    // If we're a reader and this row has changed since we started
 	    // then check if it changed the skiplist we're following, if so...
 	    // go back and restart the search
-	    if(search->cycle != LOST_HORIZON && row->_row_cycle != LOST_HORIZON) {
-		if(row->_row_cycle - search->cycle > 0) {
-fprintf(stderr, "0x%lX->cycle = %d, restarting search\n", (long)row, row->_row_cycle);
-		    if(ctable_SearchRestartNeeded(row, &restart))
-			goto restart_search;
+	    if(main_cycle != LOST_HORIZON) {
+	        // Save the cycle at the time we started the loop
+	        loop_cycle = ctable->share->map->cycle;
+		if(row->_row_cycle != LOST_HORIZON) {
+		    int delta = row->_row_cycle - main_cycle;
+		    if(delta > 0) {
+		        if(ctable_SearchRestartNeeded(row, &main_restart)) {
+if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%d; row->_row_cycle=%d; delta %d\n", getpid(), main_cycle, row->_row_cycle, delta);
+			    goto restart_search;
+			}
+		    }
+#ifdef SANITY_CHECKS
+		} else {
+		    panic("Master is not copying the garbage collect cycle to the row!");
+#endif
 		}
+
+	        // save the loop restart condition - exact match for this field
+	        loop_restart.row1 = row;
+	        loop_restart.row2 = row;
+	        loop_restart.skipStart = SKIP_START_EQ_ROW1;
+	        loop_restart.skipEnd = SKIP_END_NE_ROW1;
+	        loop_restart.compareFunction = compareFunction;
 	    }
 #endif
 
@@ -1372,10 +1448,19 @@ fprintf(stderr, "0x%lX->cycle = %d, restarting search\n", (long)row, row->_row_c
 		// If we're a reader and this row has changed since we started
 		// then check if it changed the list we're following, if so...
 		// go back and restart the search
-	        if(search->cycle != LOST_HORIZON && row->_row_cycle != LOST_HORIZON) {
-		    if(row->_row_cycle - search->cycle > 0) {
-		        if(ctable_SearchRestartNeeded(row, &restart))
-			    goto restart_search;
+	        if(loop_cycle != LOST_HORIZON) {
+		    if(row->_row_cycle != LOST_HORIZON) {
+		        int delta = row->_row_cycle - main_cycle;
+		        if(delta > 0) {
+		            if(ctable_SearchRestartNeeded(row, &loop_restart)) {
+if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%d; row->_row_cycle=%d; delta=%d\n", getpid(), loop_cycle, row->_row_cycle, delta);
+			        goto restart_search;
+			    }
+		        }
+#ifdef SANITY_CHECKS
+		    } else {
+		        panic("Master is not copying the garbage collect cycle to the row!");
+#endif
 		    }
 	        }
 #endif
@@ -1417,6 +1502,8 @@ fprintf(stderr, "0x%lX->cycle = %d, restarting search\n", (long)row, row->_row_c
 #ifdef WITH_SHARED_TABLES
     if(locked_cycle != LOST_HORIZON)
 	read_unlock(ctable->share);
+
+if(num_restarts) fprintf(stderr, "%d: Restarted search %d times\n", getpid(), num_restarts);
 #endif
 
     return actionResult;

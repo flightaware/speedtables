@@ -31,6 +31,10 @@ readertest:
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make reader"
 
+multitest:
+	rm -f tests/sharedebug.out
+	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make multireader"
+
 debug:
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; gdb /usr/local/bin/tclsh8.4 -c tclsh8.4.core"
 

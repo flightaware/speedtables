@@ -179,7 +179,6 @@ proc cquote {string} {
 variable specialFieldNames {
     _key
     _dirty
-    _cycle
 }
 
 #
@@ -638,7 +637,6 @@ variable numberSetSource {
 [gen_ctable_remove_from_index $fieldName]
 	row->$fieldName = value;
 [gen_ctable_insert_into_index $fieldName]
-        [gen_if_equal $fieldName _cycle "return TCL_OK; // Don't set dirty for meta-fields"]
 	break;
       }
 }
@@ -3038,6 +3036,7 @@ proc put_init_extension_source {extension extensionVersion} {
 proc gen_set_function {table} {
     variable withDirty
     variable withSharedTables
+    variable sanityChecks
     variable fieldObjSetSource
     variable fieldSetSource
     variable fieldSetSwitchSource
@@ -3046,16 +3045,21 @@ proc gen_set_function {table} {
 
     emit [string range [subst -nobackslashes -nocommands $fieldSetSource] 1 end-1]
 
+    if {$withSharedTables} {
+        emit "    if (ctable->share_type == CTABLE_SHARED_MASTER) $leftCurly"
+	if {$sanityChecks} {
+	    emit "        if(ctable->share->map->cycle == LOST_HORIZON)"
+	    emit "            panic(\"map->cycle not updated?\");"
+	}
+	emit "        row->_row_cycle = ctable->share->map->cycle;"
+	emit "    $rightCurly"
+    }
+
     emit [string range [subst -nobackslashes -nocommands $fieldSetSwitchSource] 1 end-1]
     gen_sets
 
     if {$withDirty} {
 	emit "    row->_dirty = 1;"
-    }
-
-    if {$withSharedTables} {
-        emit "    if (ctable->share_type == CTABLE_SHARED_MASTER)"
-	emit "        row->_row_cycle = ctable->share->map->cycle;"
     }
 
     emit "    $rightCurly"
@@ -5044,16 +5048,6 @@ proc CTable {name data} {
         # Create a 'dirty' field
         ::ctable::boolean _dirty notnull 1 default 0
     }
-
-# This needs to be fixed, because the _cycle field has to be in the header
-# so that the search code in the reader can "see" it. In the meantime, I'm
-# hardcoding '_row_cycle'.
-if 0 {
-    if {$::ctable::withSharedTables} {
-	# Create a 'cycle' field
-	::ctable::long _cycle notnull 1 default LOST_HORIZON
-    }
-}
 
     ::ctable::gen_struct
 
