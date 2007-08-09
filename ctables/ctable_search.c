@@ -1414,7 +1414,9 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 		    int delta = row->_row_cycle - main_cycle;
 		    if(delta > 0) {
 		        if(ctable_SearchRestartNeeded(row, &main_restart)) {
+#if 0
 if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%d; row->_row_cycle=%d; delta %d\n", getpid(), main_cycle, row->_row_cycle, delta);
+#endif
 			    goto restart_search;
 			}
 		    }
@@ -1471,7 +1473,9 @@ if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%d; row->_ro
 		        int delta = row->_row_cycle - main_cycle;
 		        if(delta > 0) {
 		            if(ctable_SearchRestartNeeded(row, &loop_restart)) {
+#if 0
 if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%d; row->_row_cycle=%d; delta=%d\n", getpid(), loop_cycle, row->_row_cycle, delta);
+#endif
 			        goto restart_search;
 			    }
 		        }
@@ -1524,7 +1528,9 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%d; row->_ro
     if(skipListCopy)
 	jsw_free_private_copy(skipListCopy);
 
+#if 0
 if(num_restarts) fprintf(stderr, "%d: Restarted search %d times\n", getpid(), num_restarts);
+#endif
 #endif
 
     return actionResult;
