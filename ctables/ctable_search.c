@@ -948,6 +948,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     int			   bestScore = 0;
 
     jsw_skip_t   	  *skipList = NULL;
+    jsw_skip_t   	  *skipListCopy = NULL;
     int           	   skipField = 0;
     int			   inOrderWalk = 0;
 
@@ -988,6 +989,12 @@ restart_search:
 	    ckfree ((void *)search->tranTable);
 	    search->tranTable = NULL;
         }
+
+        if(skipListCopy) {
+	    jsw_free_private_copy(skipListCopy);
+	    skipListCopy = NULL;
+	}
+
 
         if (ctable->share_type == CTABLE_SHARED_READER) {
 	    read_unlock(ctable->share);
@@ -1290,6 +1297,10 @@ restart_search:
 	cell_t main_cycle = LOST_HORIZON;
 	cell_t loop_cycle = LOST_HORIZON;
 
+#ifdef SANITY_CHECKS
+	creator->sanity_check_pointer(ctable, (void *)skipList, CTABLE_INDEX_NORMAL, "ctablePerformSearch : skipList");
+#endif
+
 	if(ctable->share_type == CTABLE_SHARED_READER) {
 	    // Save the cycle at the time we started the search
 	    main_cycle = ctable->share->map->cycle;
@@ -1303,11 +1314,12 @@ restart_search:
 	    main_restart.skipStart = skipStart;
 	    main_restart.skipEnd = skipEnd;
 	    main_restart.compareFunction = compareFunction;
-	}
-#endif
 
-#ifdef SANITY_CHECKS
-	creator->sanity_check_pointer(ctable, (void *)skipList, CTABLE_INDEX_NORMAL, "ctablePerformSearch : skipList");
+	    // clone the skiplist
+	    skipListCopy = jsw_private_copy(skipList, getpid());
+	    if(skipListCopy)
+		skipList = skipListCopy;
+	}
 #endif
 
 	// Find the row to start walking on
@@ -1508,6 +1520,9 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%d; row->_ro
 #ifdef WITH_SHARED_TABLES
     if(locked_cycle != LOST_HORIZON)
 	read_unlock(ctable->share);
+
+    if(skipListCopy)
+	jsw_free_private_copy(skipListCopy);
 
 if(num_restarts) fprintf(stderr, "%d: Restarted search %d times\n", getpid(), num_restarts);
 #endif

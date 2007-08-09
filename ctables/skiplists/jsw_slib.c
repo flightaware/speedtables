@@ -30,17 +30,19 @@ typedef struct jsw_node {
   struct jsw_node        *next[];   /* Dynamic array of next links */
 } jsw_node_t;
 
+// dynamic shared elements
 typedef struct jsw_pub {
   jsw_node_t  *head; /* Full height header node */
-  size_t       maxh; /* Tallest possible column */
   size_t       curh; /* Tallest available column */
   size_t       size; /* Number of row at level 0 */
 } jsw_pub_t;
 
+// statically defined and private elements
 struct jsw_skip {
   int          id; /* 0 for owner, pid for shared reader */
   jsw_pub_t   *public; /* shared data */
   jsw_node_t  *curl; /* Current link for traversal */
+  size_t       maxh; /* Tallest possible column */
   cmp_f        cmp;  /* User defined row compare function */
 #ifdef WITH_SHARED_TABLES
   shm_t       *share; /* Shared memory this table belongs to */
@@ -143,14 +145,15 @@ static jsw_node_t *locate ( jsw_skip_t *skip, ctable_BaseRow *row )
   jsw_node_t *p = skip->public->head;
   cmp_f       cmp = skip->cmp;
   size_t i;
+  jsw_node_t *next;
 
   for ( i = skip->public->curh; i < (size_t)-1; i-- ) {
-    while ( p->next[i] != NULL ) {
-      if ( cmp ( row, p->next[i]->row ) <= 0 ) {
+    while ( (next = p->next[i]) != NULL ) {
+      if ( cmp ( row, next->row ) <= 0 ) {
         break;
       }
 
-      p = p->next[i];
+      p = next;
     }
 
     skip->fix[i] = p;
@@ -170,13 +173,15 @@ jsw_skip_t *jsw_private ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share, 
     // If this is a new skiplist, initialize skiplist structure
     skip->id = id;
     skip->fix = NULL;
+    skip->curl = NULL;
   } else if(skip->id != id) {
     // If this isn't my skiplist, allocate new skiplist structure
     new_skip = (jsw_skip_t *)ckalloc(sizeof *skip);
 
-    new_skip->public = skip->public;
+    new_skip->curl = skip->curl;
     new_skip->id = id;
     new_skip->fix = NULL;
+    new_skip->public = skip->public;
 
     skip = new_skip;
   }
@@ -187,9 +192,30 @@ jsw_skip_t *jsw_private ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share, 
   }
 
   // Fill in static private data
+  skip->maxh = max;
   skip->share = share;
   skip->cmp = cmp;
   return skip;
+}
+
+//
+// free private copy of skiplist only
+//
+void jsw_free_private_copy(jsw_skip_t *skip)
+{
+    if(skip->fix)
+	ckfree((void *)skip->fix);
+    ckfree((void *)skip);
+}
+
+//
+// clone skiplist if needed
+//
+jsw_skip_t *jsw_private_copy(jsw_skip_t *skip, int id)
+{
+    if(skip->id != id)
+	return jsw_private(skip, skip->maxh, skip->cmp, skip->share, id);
+    return NULL;
 }
 
 //
@@ -208,13 +234,11 @@ void jsw_sinit ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share)
 
   skip->public->head = new_node ( NULL, ++max, share );
 
-  skip->curl = NULL;
-
-  skip->public->maxh = max;
   skip->public->curh = 0;
   skip->public->size = 0;
 
   // We're creating this skiplist, our "id" is zero
+  // (now fills in skip->maxh, skip->curl)
   jsw_private(skip, max, cmp, share, 0);
 
   jsw_seed ( jsw_time_seed() );
@@ -323,10 +347,11 @@ void *jsw_findlast ( jsw_skip_t *skip)
 {
   jsw_node_t *p = skip->public->head;
   size_t i;
+  jsw_node_t *next;
 
   for ( i = skip->public->curh; i < (size_t)-1; i-- ) {
-    while ( p->next[i] != NULL ) {
-      p = p->next[i];
+    while ( (next = p->next[i]) != NULL ) {
+      p = next;
     }
   }
 
@@ -351,7 +376,7 @@ int jsw_sinsert ( jsw_skip_t *skip, ctable_BaseRow *row )
     return 0;
   } else {
     // it's new
-    size_t h = rlevel ( skip->public->maxh );
+    size_t h = rlevel ( skip->maxh );
     jsw_node_t *it;
 
     it = new_node ( row, h, skip->share );
@@ -403,7 +428,7 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, ctable_BaseRow *row , int nodeIdx, in
     // no matching skip list entry
 
     // dups are allowed, insert the dup
-    size_t h = rlevel ( skip->public->maxh );
+    size_t h = rlevel ( skip->maxh );
     jsw_node_t *it;
 
 // printf("h %d\n", (int)h);
@@ -559,6 +584,8 @@ ctable_BaseRow *jsw_srow ( jsw_skip_t *skip )
 inline int
 jsw_snext ( jsw_skip_t *skip )
 {
-  return ( skip->curl = skip->curl->next[0] ) != NULL;
+  jsw_node_t *curl = skip->curl;
+  jsw_node_t *next = curl->next[0];
+  return ( skip->curl = next ) != NULL;
 }
 
