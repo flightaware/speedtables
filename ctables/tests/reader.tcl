@@ -11,7 +11,10 @@ set verbose 0
 
 source top-brands-nokey-def.tcl
 
+puts "starting"
+
 remote_ctable ctable://localhost:1616/master m
+puts "opened master"
 
 set params [m attach [pid]]
 puts "params=[list $params]"

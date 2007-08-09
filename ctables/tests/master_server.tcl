@@ -28,7 +28,7 @@ m index create rank
 m index create name
 m index create value
 
-suck_in_top_brands_nokeys
+set ::lastKey [suck_in_top_brands_nokeys]
 
 # puts "Contents"
 # m search -key k -array_get a -code {puts "$k : $a"}
@@ -40,17 +40,63 @@ if {[llength $argv] > 1} { set count [lindex $argv 1] }
 
 ::ctable_server::register ctable://*:1616/master m
 
+array set ::int_columns {
+	rank	{	1	10	}
+	value	{	100	200	}
+}
+
+set words {
+  limburger gujeroo farenheit pleonasm lagrange elevator proximity
+  pantechnicon foreign ramification sexton tangent tangelo boreal
+  hyperactive desdemona cataract jubilant texas myrmidon agilent
+  cadbury yellowcake uranium feathered waratah bunyip bandicoot
+  princeton stanford ankh lamnington parsimony nathaniel misspelling
+}
+set nwords [llength $words]
+
 proc random_changes {delay count} {
-  set names [m names]
+  set names [lsort -decreasing [m names]]
+  set inames [array names ::int_columns]
   for {set loop 0} {$loop < $count} {incr loop} {
-    set i [expr {int(rand() * [llength $names])}]
-    set key [lindex $names $i]
-    m set $key value [expr {int(rand() * 100) + 100}]
+    if {int(rand() * 2)} {
+      set i [expr {int(rand() * [llength $names])}]
+      set key [lindex $names $i]
+      set j [expr {int(rand() * [llength $inames])}]
+      set col [lindex $inames $j]
+      foreach {max min} $::int_columns($col) break
+      set val  [expr {int(rand() * ($max-$min)) + $min}]
+      m set $key $col $val
+    } else {
+      incr ::lastKey
+      set key $::lastKey
+      array unset a
+      foreach col {id name} {
+	set a($col) [lindex $::words [expr {int(rand() * $::nwords)}]]
+      }
+      m search -compare [list [list = id $a(id)]] -key k -code {
+	if {int(rand() * 2)} {
+	  set key $k
+	  unset a(id)
+	} else {
+	  append a(id) - $key
+	}
+      }
+      set a(rank) 10
+      set a(value) 0
+      set list [array get a]
+      m set $key $list
+    }
   }
   after $delay random_changes $delay $count
 }
+
+proc status {} {
+  puts "[clock format [clock seconds]] [pid]: created $::lastKey rows"
+  after 10000 status
+}
 puts "running, delay = $delay, count=$count, waiting for connections"
 after $delay random_changes $delay $count
+after 10000 status
 
 if !$tcl_interactive { vwait die }
 
