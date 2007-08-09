@@ -49,13 +49,17 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
 #ifdef WITH_SHARED_TABLES
   static inline void begin_write(CTable *ctable)
   {
-    write_lock(ctable->share);
-    ctable->was_locked = 1;
+    if(ctable->share_type == CTABLE_SHARED_MASTER) {
+      write_lock(ctable->share);
+      ctable->was_locked = 1;
+    }
   }
   static inline void end_write(CTable *ctable)
   {
-    if(ctable->was_locked)
+    if(ctable->was_locked && ctable->share_type == CTABLE_SHARED_MASTER) {
       write_unlock(ctable->share);
+      ctable->was_locked = 0;
+    }
   }
 #else
 # define begin_write(ct)

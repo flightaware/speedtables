@@ -45,7 +45,8 @@ typedef uint32_t cell_t;
 
 // How long to leave garbage uncollected after it falls below the horizon
 // (measured in lock cycles)
-#define TWILIGHT_ZONE 1024
+//#define TWILIGHT_ZONE 1024
+#define TWILIGHT_ZONE 64
 
 // How often to check for GC (1 in every LAZY_GC write cycles
 #define LAZY_GC 10

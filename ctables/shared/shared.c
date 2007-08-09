@@ -705,16 +705,27 @@ int write_lock(shm_t   *shm)
     return map->cycle;
 }
 
+#ifdef LAZY_GC
+static int garbage_strike = 0;
+#endif
 void write_unlock(shm_t   *shm)
 {
+    cell_t new_horizon;
+    int    age;
 #ifdef LAZY_GC
-    static garbage_strike = 0;
     if(++garbage_strike < LAZY_GC) return;
     garbage_strike = 0;
 #endif
-    cell_t new_horizon = oldest_reader_cycle(shm);
 
-    if(new_horizon - shm->horizon > TWILIGHT_ZONE) {
+    new_horizon = oldest_reader_cycle(shm);
+
+    // If no active readers, then work back from current time
+    if(new_horizon == LOST_HORIZON)
+	new_horizon = shm->map->cycle;
+
+    age = new_horizon - shm->horizon;
+
+    if(age > TWILIGHT_ZONE) {
 	shm->horizon = new_horizon;
 	garbage_collect(shm);
     }
@@ -774,8 +785,10 @@ int read_lock(shm_t   *shm)
 
     if(!self)
 	shm->self = self = pid2reader(map, getpid());
-    if(!self)
-	return 0;
+    if(!self) {
+	fprintf(stderr, "Can't find reader slot for pid=%d!\n", getpid());
+	return LOST_HORIZON;
+    }
     return self->cycle = map->cycle;
 }
 
@@ -795,6 +808,8 @@ void garbage_collect(shm_t   *shm)
     garbage	*garbp = shm->garbage;
     garbage	*garbo = NULL;
     cell_t	 horizon = shm->horizon;
+    int		 collected = 0;
+    int		 skipped = 0;
 
     if(horizon != LOST_HORIZON) {
 	horizon -= TWILIGHT_ZONE;
@@ -803,7 +818,8 @@ void garbage_collect(shm_t   *shm)
     }
 
     while(garbp) {
-	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || horizon - garbp->cycle > 0) {
+	int delta = horizon - garbp->cycle;
+	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || delta > 0) {
 	    garbage *next = garbp->next;
 	    shmdealloc(shm, garbp->block);
 	    shmdepool(pool, (char *)garbp);
@@ -813,19 +829,23 @@ void garbage_collect(shm_t   *shm)
 		garbo->next = garbp;
 	    else
 		shm->garbage = garbp;
+
+	    collected++;
 	} else {
 	    garbo = garbp;
 	    garbp = garbp->next;
+	    skipped++;
 	}
     }
+fprintf(stderr, "%d: garbage_collect(0x%lX): collected %d, skipped %d\n", getpid(), (long)shm, collected, skipped);
 }
 
 cell_t oldest_reader_cycle(shm_t   *shm)
 {
     volatile reader_block *r = shm->map->readers;
     cell_t cycle = LOST_HORIZON;
-    unsigned oldest_age = 0;
-    unsigned age;
+    int oldest_age = 0;
+    int age;
 
     while(r) {
 	int count = 0;
