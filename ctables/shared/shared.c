@@ -786,7 +786,7 @@ int read_lock(shm_t   *shm)
     if(!self)
 	shm->self = self = pid2reader(map, getpid());
     if(!self) {
-	fprintf(stderr, "Can't find reader slot for pid=%d!\n", getpid());
+	fprintf(stderr, "%d: Can't find reader slot!\n", getpid());
 	return LOST_HORIZON;
     }
     return self->cycle = map->cycle;
@@ -837,13 +837,15 @@ void garbage_collect(shm_t   *shm)
 	    skipped++;
 	}
     }
-fprintf(stderr, "%d: garbage_collect(0x%lX): collected %d, skipped %d\n", getpid(), (long)shm, collected, skipped);
+//fprintf(stderr, "%d: garbage_collect: cycle %d, horizon %d, collected %d, skipped %d\n", getpid(), shm->map->cycle, shm->horizon, collected, skipped);
 }
 
 cell_t oldest_reader_cycle(shm_t   *shm)
 {
     volatile reader_block *r = shm->map->readers;
-    cell_t cycle = LOST_HORIZON;
+    cell_t new_cycle = LOST_HORIZON;
+    cell_t map_cycle = shm->map->cycle;
+    cell_t rdr_cycle = LOST_HORIZON;
     int oldest_age = 0;
     int age;
 
@@ -853,18 +855,23 @@ cell_t oldest_reader_cycle(shm_t   *shm)
         for(i = 0; count < r->count && i < READERS_PER_BLOCK; i++) {
 	    if(r->readers[i].pid) {
 		count++;
-		if(cycle == LOST_HORIZON)
+
+		rdr_cycle = r->readers[i].cycle;
+
+		if(rdr_cycle == LOST_HORIZON)
 		    continue;
-		age = shm->map->cycle - r->readers[i].cycle;
-		if(age >= oldest_age) {
+
+		age = map_cycle - rdr_cycle;
+
+		if(new_cycle == LOST_HORIZON || age >= oldest_age) {
 		    oldest_age = age;
-		    cycle = r->readers[i].cycle;
+		    new_cycle = rdr_cycle;
 		}
 	    }
 	}
 	r = r->next;
     }
-    return cycle;
+    return new_cycle;
 }
 
 // Add a symbol to the internal namelist. This will allow the master to

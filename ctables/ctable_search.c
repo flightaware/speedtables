@@ -978,14 +978,6 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
     if (firstTime) {
 	firstTime = 0;
-	if (ctable->share_type == CTABLE_SHARED_READER) {
-	    // make sure the dummy ctable is up to date.
-// fprintf(stderr, "ctable_search pointing 0x%lX to 0x%lX\n", (long)ctable, (long)ctable->share_ctable);
-            ctable->count = ctable->share_ctable->count;
-	    ctable->skipLists = ctable->share_ctable->skipLists;
-	    ctable->ll_head = ctable->share_ctable->ll_head;
-	    locked_cycle = read_lock(ctable->share);
-	}
     } else {
 restart_search:
 	num_restarts++;
@@ -996,6 +988,11 @@ restart_search:
 	    ckfree ((void *)search->tranTable);
 	    search->tranTable = NULL;
         }
+
+        if (ctable->share_type == CTABLE_SHARED_READER) {
+	    read_unlock(ctable->share);
+	    locked_cycle = LOST_HORIZON;
+	}
 
 	row = NULL;
 	row1 = NULL;
@@ -1022,6 +1019,15 @@ restart_search:
         inIndex = 0;
         inListObj = NULL;
         inCount = 0;
+    }
+
+    if (ctable->share_type == CTABLE_SHARED_READER) {
+	// make sure the dummy ctable is up to date.
+        ctable->count = ctable->share_ctable->count;
+	ctable->skipLists = ctable->share_ctable->skipLists;
+	ctable->ll_head = ctable->share_ctable->ll_head;
+
+	locked_cycle = read_lock(ctable->share);
     }
 #endif
 

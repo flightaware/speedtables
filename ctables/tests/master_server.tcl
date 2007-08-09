@@ -33,17 +33,24 @@ suck_in_top_brands_nokeys
 # puts "Contents"
 # m search -key k -array_get a -code {puts "$k : $a"}
 
+set delay 30
+set count 1
+if {[llength $argv] > 0} { set delay [lindex $argv 0] }
+if {[llength $argv] > 1} { set count [lindex $argv 1] }
+
 ::ctable_server::register ctable://*:1616/master m
 
-proc random_changes {} {
+proc random_changes {delay count} {
   set names [m names]
-  set i [expr {int(rand() * [llength $names])}]
-  set key [lindex $names $i]
-  m set $key value [expr {int(rand() * 100) + 100}]
-  after 30 random_changes
+  for {set loop 0} {$loop < $count} {incr loop} {
+    set i [expr {int(rand() * [llength $names])}]
+    set key [lindex $names $i]
+    m set $key value [expr {int(rand() * 100) + 100}]
+  }
+  after $delay random_changes $delay $count
 }
-puts "running, waiting for connections"
-after 30 random_changes
+puts "running, delay = $delay, count=$count, waiting for connections"
+after $delay random_changes $delay $count
 
 if !$tcl_interactive { vwait die }
 

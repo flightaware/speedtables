@@ -4,7 +4,7 @@
 echo "Starting ./master_server.tcl"
 tclsh8.4 ./master_server.tcl &
 master_pid=$!
-trap 'kill $master_pid' 0 2
+trap 'kill $master_pid >/dev/null' 0 2
 sleep 5
 echo "Started ./master_server.tcl"
 

@@ -47,3 +47,9 @@ multireader:
 	sh multireader.sh
 	rm -f *.dat
 
+speedreader:
+	-rm -r build
+	-rm -f *.dat
+	sh multireader.sh 1 10000000 1 10
+	rm -f *.dat
+
