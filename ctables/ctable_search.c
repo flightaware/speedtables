@@ -1559,6 +1559,12 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->reqIndexField = indexField;
     search->bufferResults = -1; // -1 is "if sorting only"
 
+    search->matchCount = 0;
+    search->alreadySearched = -1;
+    search->tranTable = NULL;
+    search->offsetLimit = search->offset + search->limit;
+
+
     for (i = 2; i < objc; ) {
 	if (Tcl_GetIndexFromObj (interp, objv[i++], searchOptions, "search option", TCL_EXACT, &searchTerm) != TCL_OK) {
 	    return TCL_ERROR;
