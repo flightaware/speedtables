@@ -32,7 +32,6 @@ typedef struct jsw_node {
 
 typedef struct jsw_pub {
   jsw_node_t  *head; /* Full height header node */
-  jsw_node_t  *curl; /* Current link for traversal */
   size_t       maxh; /* Tallest possible column */
   size_t       curh; /* Tallest available column */
   size_t       size; /* Number of row at level 0 */
@@ -41,6 +40,7 @@ typedef struct jsw_pub {
 struct jsw_skip {
   int          id; /* 0 for owner, pid for shared reader */
   jsw_pub_t   *public; /* shared data */
+  jsw_node_t  *curl; /* Current link for traversal */
   cmp_f        cmp;  /* User defined row compare function */
 #ifdef WITH_SHARED_TABLES
   shm_t       *share; /* Shared memory this table belongs to */
@@ -208,7 +208,8 @@ void jsw_sinit ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share)
 
   skip->public->head = new_node ( NULL, ++max, share );
 
-  skip->public->curl = NULL;
+  skip->curl = NULL;
+
   skip->public->maxh = max;
   skip->public->curh = 0;
   skip->public->size = 0;
@@ -281,7 +282,7 @@ void *jsw_sfind ( jsw_skip_t *skip, ctable_BaseRow *row )
 {
   jsw_node_t *p = locate ( skip, row )->next[0];
 
-  skip->public->curl = p;
+  skip->curl = p;
 
   if ( p != NULL && skip->cmp ( row, p->row ) == 0 )
     return p;
@@ -309,7 +310,7 @@ void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, ctable_BaseRow *row )
 
 //printf(" *%d* ", cmp (p->row, row));
 //printf("skip->curl %8lx\n", (long unsigned int)p);
-  skip->public->curl = p;
+  skip->curl = p;
 
   return p;
 }
@@ -329,7 +330,7 @@ void *jsw_findlast ( jsw_skip_t *skip)
     }
   }
 
-  skip->public->curl = p;
+  skip->curl = p;
   return p;
 }
 
@@ -504,7 +505,7 @@ jsw_dump_node (const char *s, jsw_skip_t *skip, jsw_node_t *p, int indexNumber) 
 
 void
 jsw_dump (const char *s, jsw_skip_t *skip, int indexNumber) {
-    jsw_node_t *p = skip->public->curl;
+    jsw_node_t *p = skip->curl;
 
     jsw_dump_node (s, skip, p, indexNumber);
 }
@@ -530,7 +531,7 @@ size_t jsw_ssize ( jsw_skip_t *skip )
 //
 void jsw_sreset ( jsw_skip_t *skip )
 {
-  skip->public->curl = skip->public->head->next[0];
+  skip->curl = skip->public->head->next[0];
 }
 
 //
@@ -539,7 +540,7 @@ void jsw_sreset ( jsw_skip_t *skip )
 //
 void jsw_sreset_head ( jsw_skip_t *skip )
 {
-  skip->public->curl = skip->public->head;
+  skip->curl = skip->public->head;
 }
 
 //
@@ -548,7 +549,7 @@ void jsw_sreset_head ( jsw_skip_t *skip )
 inline
 ctable_BaseRow *jsw_srow ( jsw_skip_t *skip )
 {
-  return skip->public->curl == NULL ? NULL : skip->public->curl->row;
+  return skip->curl == NULL ? NULL : skip->curl->row;
 }
 
 //
@@ -558,6 +559,6 @@ ctable_BaseRow *jsw_srow ( jsw_skip_t *skip )
 inline int
 jsw_snext ( jsw_skip_t *skip )
 {
-  return ( skip->public->curl = skip->public->curl->next[0] ) != NULL;
+  return ( skip->curl = skip->curl->next[0] ) != NULL;
 }
 

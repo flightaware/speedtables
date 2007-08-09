@@ -24,6 +24,9 @@ do
   readers=`expr $readers - 1`
 done
 
+# Wait for all the readers to start up
+sleep 5
+
 # Master will not actually shut down until the last reader is finished
 tclsh8.4 ./shutdown_master.tcl
 
