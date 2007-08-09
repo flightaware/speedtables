@@ -86,7 +86,10 @@ proc remote_ctable_cache_connect {cttpUrl} {
     set ctableSockets($cttpUrl) $sock
 
     if {[gets $sock line] < 0} {
-	error "failed to get hello from ctable server"
+	after 500
+	if {[gets sock line] < 0} {
+	    error "unexpected EOF from ctable server"
+	}
     }
 
     if {[lindex $line 0] != "ctable_server"} {
