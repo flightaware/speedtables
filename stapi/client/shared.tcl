@@ -24,7 +24,7 @@ namespace eval ::stapi {
     if {"$address" == ""} {
       set host localhost
       set port ""
-    } elseif {![regexp {^(.*):(.*)$} $address _ host port {
+    } elseif {![regexp {^(.*):(.*)$} $address _ host port]} {
       set host localhost
       set port $address
     }

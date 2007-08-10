@@ -24,7 +24,7 @@ namespace eval ::stapi::display {
 }
 
 proc stapi_display_test {} {
-  if [catch {::stapi::display::display_test stapi_test {isbn} err] {
+  if [catch {::stapi::display::display_test stapi_test {isbn}} err] {
     ::stapi::display::dumper $::errorInfo
   }
 }

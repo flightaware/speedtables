@@ -2,7 +2,7 @@
 V=""
 V=-verbose
 
-CLIENT=client/client.tcl client/pgsql.tcl client/optimizer.tcl client/extend.tcl
+CLIENT=client/client.tcl client/pgsql.tcl client/optimizer.tcl client/extend.tcl client/shared.tcl
 SERVER=server/server.tcl server/lock.tcl
 DISPLAY=display/display.tcl display/test.tcl
 COMMON=debug.tcl pgsql.tcl stapi.tcl copy.tcl
