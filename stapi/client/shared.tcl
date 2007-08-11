@@ -1,5 +1,6 @@
 # $Id$
 
+package require ctable_client
 package require st_client
 
 namespace eval ::stapi {
@@ -8,14 +9,14 @@ namespace eval ::stapi {
   #   -build dir
   #      Specify path to ctable build directory
   #
-  variable ctable_serial 0
+  variable shared_serial 0
   variable shared_build_dir ""
 
   proc connect_shared {table_path {address ""} args} {
     variable shared_serial
     variable shared_build_dir
 
-    if {[info exists shared_build_dir] && "$shared_build_dir" != ""]} {
+    if {[info exists shared_build_dir] && "$shared_build_dir" != ""} {
       set opts(-build) $shared_build_dir
     }
 
@@ -42,11 +43,11 @@ namespace eval ::stapi {
     set uri ctable://$address/$table_path
 
     set ns ::stapi::shared[incr shared_serial]
-    namespace eval $::ns [list proc handler {args} [info body shared_handler]]
+    namespace eval $ns [list proc handler {args} [info body shared_handler]]
 
     remote_ctable $uri ${ns}::master
     set handle [${ns}::master attach [pid]]
-    set table [${ns}::master type]
+    array set prop [${ns}::master getprop]
 
     if [info exist opts(-build)] {
       if {[lsearch $::auto_path $opts(-build)] == -1} {
@@ -54,11 +55,11 @@ namespace eval ::stapi {
       }
     }
 
-    namespace eval :: [list package require [string totitle $table]]
-    $table create ${ns}::shared reader $handle
+    namespace eval :: [list package require [string totitle $prop(extension)]]
+    $prop(type) create ${ns}::reader reader $handle
 
     set ${ns}::handle $handle
-    set ${ns}::table $table
+    set ${ns}::table $prop(type)
     return ${ns}::handler
   }
   register shared connect_shared
