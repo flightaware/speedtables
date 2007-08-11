@@ -88,18 +88,18 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     int indexCtl;
     int commandStatus = TCL_OK;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "capabilities", "key", "makekey", "methods", "attach", "getprop", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_CAPS, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, NUM_OPTIONS
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
     // Options allowed in shared tables
-    static enum options shared_options[] = { OPT_METHODS, OPT_CAPS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, NUM_OPTIONS };
+    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, NUM_OPTIONS };
     static int shared_ok[NUM_OPTIONS] = {-1};
 
     // Read_only options
-    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_CAPS, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, NUM_OPTIONS };
+    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, NUM_OPTIONS };
     static int readonly[NUM_OPTIONS] = {-1};
 
     // First time through, make it a bitmap.
@@ -229,11 +229,6 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 	  }
 
-	  break;
-      }
-
-      // return a capabilities list (stub)
-      case OPT_CAPS: {
 	  break;
       }
 

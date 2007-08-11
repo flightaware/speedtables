@@ -6,6 +6,8 @@ $Id$
     * Added method "getprop" to get various fixed properties of the ctable
       as a whole. Need to see about deprecating some of the commands like
       'key' and 'name' that are currently used for introspection.
+    * Never used capabilities. Will remove that method and create properties
+      when that's necessary.
 
 8/6/2007 peter
     * Separated skiplists into "public" and "private" structures, with
