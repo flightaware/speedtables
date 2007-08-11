@@ -168,6 +168,17 @@
 
 	 Use a ctable server via remote_ctable.
 
+    package require st_shared
+    shared://port/[dir/]table[/stuff][?stuff]
+
+	Use a ctable server on localhost, using shared memory for
+	the "search" method.
+
+	ctable must be on localhost.
+
+	The ctable built by the server must be in auto_path, or in
+	the directory defined by the "-build" option.
+	
     package require st_client_pgtcl
     sql://connection/table[/col[:type]/col...][?param&param...]
 
@@ -206,7 +217,6 @@
 
 	    key
 	    makekey
-	    perform
 
 ::stapi::register method transport_handler
 
@@ -243,31 +253,13 @@ package, so the wrapper object is only created when needed.
 
         $ctable set [$ctable makekey $list] $list
 
-    $ctable perform array ?-name value?...
-    ::stapi::extend::perform array ?-name value?...
-
-      Perform a canned search, comparable to
-
-        eval $ctable search [array get array] ?-name value?...
-
-      Or
-
-        eval $ctable search+ [array get array] ?-name value?...
-
-      The ?-name value? arguments override any values in the array.
-
-      In the second form, the ctable is expected to be in a "-handle"
-      argument, either in the array or the additional arguments.
-
-      The search is extended as described below.
-
   In addition, the following methods are modified:
 
     $ctable search ?-name value?
 
       -compare list
 
-        The list is passed through an optimizer that rearranges the
+        The list may be passed through an optimizer that rearranges the
 	comparisons for more efficiency.
 
 	Also, the additional comparisons are recognised:

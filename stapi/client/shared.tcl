@@ -44,9 +44,9 @@ namespace eval ::stapi {
     set ns ::stapi::shared[incr shared_serial]
     namespace eval $::ns [list proc handler {args} [info body shared_handler]]
 
-    remote_ctable $uri ${ns}::remote
-    set handle [${ns}::remote attach [pid]]
-    set table [${ns}::remote type]
+    remote_ctable $uri ${ns}::master
+    set handle [${ns}::master attach [pid]]
+    set table [${ns}::master type]
 
     if [info exist opts(-build)] {
       if {[lsearch $::auto_path $opts(-build)] == -1} {
@@ -63,13 +63,21 @@ namespace eval ::stapi {
   }
   register shared connect_shared
 
+  # Simple handler, most commands are passed straight to the master.
   proc shared_handler {args} {
-    set command remote
-    set method [lindex $list 0]
-    if {[string match $command {search*}]} {
-      set command local
+    set method [lindex $args 0]
+    switch -glob -- [lindex $args 0] {
+      search* {
+	uplevel 1 [namespace which reader] $args
+      }
+      destroy {
+	master destroy
+	reader destroy
+      }
+      default {
+	uplevel 1 [namespace which master] $args
+      }
     }
-    uplevel 1 [namespace which $command] $list
   }
 }
 
