@@ -5,6 +5,17 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
     ctable_BaseRow           *nextRow;
     int indexCtl = final ? CTABLE_INDEX_DESTROY : CTABLE_INDEX_FASTDELETE;
 
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_READER) {
+	if(final) {
+	    return TCL_OK;
+	} else {
+	    Tcl_AppendResult(interp, "Can't reset read-only shared table.", NULL);
+	    return TCL_ERROR;
+	}
+    }
+#endif
+
     CTABLE_LIST_FOREACH_SAFE (ctable->ll_head, row, nextRow, 0) {
 
 	// we say CTABLE_INDEX_FASTDELETE to cause the index entries
@@ -431,6 +442,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      end_write(ctable);
 	      return TCL_ERROR;
 	  }
+#ifdef WITH_SHARED_TABLES
+	  if(ctable->share)
+	      unmap_file(ctable->share);
+#endif
           Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
 	  break;
       }
