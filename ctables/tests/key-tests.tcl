@@ -16,6 +16,10 @@ if {"[t key]" != "id"} {
     error "Key should be 'id'"
 }
 
+if {"[lindex [t info key] 0]" != "id"} {
+    error "Info Key should be 'id'"
+}
+
 if {"[t makekey {id 1 rank 1 name first}]" != "1"} {
     error "Key value should be '1'"
 }

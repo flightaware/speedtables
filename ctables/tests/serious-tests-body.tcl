@@ -128,11 +128,25 @@ puts "ok"
 
 puts -nonewline "testing 'methods'..."
 set methlab [
-  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach capabilities key makekey methods attach
+  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach capabilities key makekey methods attach info
 ]
 set methods [t methods]
 if {"$methods" != "$methlab"} {
     error "t methods expected to return [list $methlab]\n\treturned [list $methods]"
+}
+puts "ok"
+
+puts -nonewline "testing 'info'..."
+set infolist "type anim_characters extension animinfo key _key"
+set info [t info]
+if {"$info" != "$infolist"} {
+    error "t info expected to return [list $infolist]\n\nreturned [list $info]"
+}
+foreach {n v} [t info] {
+    set i [lindex [t info $n] 0]
+    if {"$i" != "$v"} {
+	error "t info \"$n\" expected to return '$v', returned '$i'"
+    }
 }
 puts "ok"
 

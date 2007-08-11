@@ -2399,8 +2399,6 @@ proc gen_obj_is_null_subr {} {
 proc sanity_check {} {
     variable fieldList
     variable table
-    variable keyFieldName
-    variable withSharedTables
 
     if {[llength $fieldList] == 0} {
         error "no fields defined in table \"$table\" -- at least one field must be defined in a table"
@@ -3270,6 +3268,10 @@ proc gen_code {} {
     variable leftCurly
     variable rightCurly
     variable cmdBodySource
+
+    # Used in cmdBodySubst:
+    variable extension
+    variable keyFieldName
 
     #set pointer "${table}_ptr"
     set pointer p

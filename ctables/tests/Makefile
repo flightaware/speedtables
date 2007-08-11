@@ -41,6 +41,12 @@ reader:
 	sh master+reader.sh
 	rm -f *.dat
 
+stapi:
+	-rm -r build
+	-rm -f *.dat
+	sh stapi.sh
+	rm -f *.dat
+
 multireader:
 	-rm -r build
 	-rm -f *.dat
