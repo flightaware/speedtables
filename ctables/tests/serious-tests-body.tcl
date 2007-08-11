@@ -128,7 +128,7 @@ puts "ok"
 
 puts -nonewline "testing 'methods'..."
 set methlab [
-  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach capabilities key makekey methods attach info
+  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach capabilities key makekey methods attach getprop
 ]
 set methods [t methods]
 if {"$methods" != "$methlab"} {
@@ -136,17 +136,28 @@ if {"$methods" != "$methlab"} {
 }
 puts "ok"
 
-puts -nonewline "testing 'info'..."
-set infolist "type anim_characters extension animinfo key _key"
-set info [t info]
-if {"$info" != "$infolist"} {
-    error "t info expected to return [list $infolist]\n\nreturned [list $info]"
+puts -nonewline "testing 'getprop'..."
+set proplist "type anim_characters extension animinfo key _key"
+set prop [t getprop]
+if {"$prop" != "$proplist"} {
+    error "t getprop expected to return [list $proplist]\n\nreturned [list $prop]"
 }
-foreach {n v} [t info] {
-    set i [lindex [t info $n] 0]
+foreach {n v} $proplist {
+    set i [lindex [t getprop $n] 0]
     if {"$i" != "$v"} {
-	error "t info \"$n\" expected to return '$v', returned '$i'"
+	error "t getprop \"$n\" expected to return '$v', returned '$i'"
     }
+}
+puts "ok"
+
+puts -nonewline "testing 'getprop' with invalid property..."
+if {[catch {t getprop rumplestiltskin} result] == 1} {
+    if {$result == "Unknown property 'rumplestiltskin'."} {
+    } else {
+	error "t getprop rumplestiltskin got '$result'"
+    }
+} else {
+    error "should have gotten an error"
 }
 puts "ok"
 
@@ -160,7 +171,7 @@ puts -nonewline "testing 'fields' with wrong # args..."
 if {[catch {t fields bork} result] == 1} {
     if {$result == "wrong # args: should be \"t fields\""} {
     } else {
-        puts $result
+	error "t fields bork got '$result'"
     }
 } else {
     error "should have gotten an error"

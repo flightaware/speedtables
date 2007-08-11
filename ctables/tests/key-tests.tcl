@@ -16,8 +16,8 @@ if {"[t key]" != "id"} {
     error "Key should be 'id'"
 }
 
-if {"[lindex [t info key] 0]" != "id"} {
-    error "Info Key should be 'id'"
+if {"[lindex [t getprop key] 0]" != "id"} {
+    error "'t getprop key' should be 'id'"
 }
 
 if {"[t makekey {id 1 rank 1 name first}]" != "1"} {
