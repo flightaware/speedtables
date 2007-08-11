@@ -142,6 +142,7 @@ typedef struct _shm_t {
     int			 fd;
     int                  creator;
     char	        *name;
+    char		*filename;
 // server-only fields:
     pool_t		*pools;
     volatile freeblock	*freelist;

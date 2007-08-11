@@ -160,8 +160,16 @@ IFDEBUG(init_debug();)
 
 #ifdef WITH_TCL
     p = (shm_t*)ckalloc(sizeof(*p));
+    p->filename = ckalloc(strlen(file)+1);
 #else
     p = (shm_t*)malloc(sizeof (*p));
+    if(p) {
+	p->filename = (char *)malloc(strlen(file)+1);
+	if(!p->filename) {
+	    free(p);
+	    p = NULL;
+	}
+    }
     if(!p) {
 	shared_errno = SH_PRIVATE_MEMORY;
 	munmap(map, size);
@@ -169,6 +177,7 @@ IFDEBUG(init_debug();)
 	return NULL;
     }
 #endif
+    strcpy(p->filename, file);
 
     // Completely initialise all fields!
     p->next = share_list;
@@ -222,8 +231,10 @@ int unmap_file(shm_t   *info)
     size = info->size;
     fd = info->fd;
 #ifdef WITH_TCL
+    ckfree(info->filename);
     ckfree((char *)info);
 #else
+    free(info->filename);
     free(info);
 #endif
 
@@ -1200,6 +1211,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	     || TCL_OK != APPSTRING(interp, list, share->name)
 	     || TCL_OK != APPSTRING(interp, list, "creator")
 	     || TCL_OK != APPBOOL(interp, list, share->creator)
+	     || TCL_OK != APPSTRING(interp, list, "filename")
+	     || TCL_OK != APPSTRING(interp, list, share->filename)
 	    ) {
 		return TCL_ERROR;
 	    }
