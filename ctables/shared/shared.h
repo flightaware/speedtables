@@ -195,6 +195,7 @@ int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr);
 void TclShmError(Tcl_Interp *interp, char *name);
 int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, shm_t **sharePtr);
 int doDetach(Tcl_Interp *interp, shm_t *share);
+int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 #endif
 
 // shift between the data inside a variable sized block, and the block itself

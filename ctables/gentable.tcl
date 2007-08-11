@@ -4811,12 +4811,17 @@ proc compile {fileFragName version} {
 proc EndExtension {} {
     variable tables
     variable extension
+    variable withSharedTables
     variable extensionVersion
     variable rightCurly
     variable ofp
     variable memDebug
 
     put_init_extension_source [string totitle $extension] $extensionVersion
+
+    if {$withSharedTables} {
+	emit "    Shared_Init(interp);"
+    }
 
     foreach name $tables {
 	put_init_command_source $name

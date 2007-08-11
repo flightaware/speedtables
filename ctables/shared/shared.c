@@ -1081,17 +1081,15 @@ int doDetach(Tcl_Interp *interp, shm_t *share)
 
     return TCL_OK;
 }
-#endif
 
-#ifdef SHARED_TCL_EXTENSION
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-    int   	 cmdIndex;
-    char	*sharename;
-    shm_t	*share;
+    int   	 cmdIndex  = -1;
+    char	*sharename = NULL;
+    shm_t	*share     = NULL;
 
-    static CONST char *commands[] = {"create", "attach", "detach", "names", "get", "set", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET};
+    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "set", "info", (char *)NULL};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET, CMD_INFO};
 
     static CONST struct {
 	int need_share;
@@ -1100,17 +1098,14 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     } template[] = {
 	{0, 5, "filename size"},
 	{0, 4, "filename"},
+	{0, 2, ""},
 	{1, 3, ""},
-	{1, 0, "names"},
+	{1, -3, "names"},
 	{1, -4, "name ?name?..."},
 	{1, -5, "name value ?name value?..."},
+	{1, 3, ""}
     };
 
-    if(objc < 3) {
-	Tcl_WrongNumArgs (interp, 1, objv, "command sharename ?args...?");
-        return TCL_ERROR;
-    }
-     
     if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
 	return TCL_ERROR;
     }
@@ -1123,14 +1118,22 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	return TCL_ERROR;
     }
 
-    sharename = Tcl_GetString(objv[2]);
+    if(objc > 2) {
+        sharename = Tcl_GetString(objv[2]);
 
-    share = share_list;
-    while(share) {
-	if(strcmp(share->name, sharename) == 0) {
-	    break;
-	}
-	share = share->next;
+        share = share_list;
+        while(share) {
+	    if(sharename[0]) {
+		if (strcmp(share->name, sharename) == 0)
+	            break;
+	    } else {
+		if(share == (shm_t *)cData)
+		    break;
+	    }
+	    share = share->next;
+        }
+	if(share && !sharename[0])
+	    sharename = share->name;
     }
 
     if(template[cmdIndex].need_share) {
@@ -1141,6 +1144,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     }
 
     switch (cmdIndex) {
+
         case CMD_CREATE: {
 	    char      *filename;
 	    size_t     size;
@@ -1159,6 +1163,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 	    return doCreateOrAttach(interp, sharename, filename, size, NULL);
 	}
+
         case CMD_ATTACH: {
 	    if(share) {
 	         Tcl_AppendResult(interp, "Share already exists: ", sharename);
@@ -1168,9 +1173,40 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    return doCreateOrAttach(
 		interp, sharename, Tcl_GetString(objv[3]), ATTACH_ONLY, NULL);
 	}
+
         case CMD_DETACH: {
 	    return doDetach(interp, share);
 	}
+
+	case CMD_LIST: {
+	    share = share_list;
+	    while(share) {
+		Tcl_AppendElement(interp, share->name);
+		share = share->next;
+	    }
+	    return TCL_OK;
+	}
+
+	case CMD_INFO: {
+	    Tcl_Obj *list = Tcl_NewObj();
+
+#define APPSTRING(i,l,s) Tcl_ListObjAppendElement(i,l,Tcl_NewStringObj(s,-1))
+#define APPINT(i,l,n) Tcl_ListObjAppendElement(i,l,Tcl_NewIntObj(n))
+#define APPBOOL(i,l,n) Tcl_ListObjAppendElement(i,l,Tcl_NewBooleanObj(n))
+
+	    if( TCL_OK != APPSTRING(interp, list, "size")
+	     ||	TCL_OK != APPINT(interp, list, share->size)
+	     || TCL_OK != APPSTRING(interp, list, "name")
+	     || TCL_OK != APPSTRING(interp, list, share->name)
+	     || TCL_OK != APPSTRING(interp, list, "creator")
+	     || TCL_OK != APPBOOL(interp, list, share->creator)
+	    ) {
+		return TCL_ERROR;
+	    }
+	    Tcl_SetObjResult(interp, list);
+	    return TCL_OK;
+	}
+
 	case CMD_NAMES: {
 	    if (objc == 3) {
 	        volatile symbol *sym = share->map->namelist;
@@ -1188,6 +1224,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    }
 	    return TCL_OK;
 	}
+
 	case CMD_GET: {
 	    int   i;
 	    for (i = 3; i < objc; i++) {
@@ -1202,6 +1239,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    }
 	    return TCL_OK;
 	}
+
 	case CMD_SET: {
 	    int   i;
 
@@ -1231,11 +1269,17 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 int
 Shared_Init(Tcl_Interp *interp)
 {
+#ifdef SHARED_TCL_EXTENSION
     if (NULL == Tcl_InitStubs (interp, TCL_VERSION, 0))
         return TCL_ERROR;
+#endif
 
     Tcl_CreateObjCommand(interp, "share", (Tcl_ObjCmdProc *) shareCmd, (ClientData)NULL, (Tcl_CmdDeleteProc *)NULL);
 
+#ifdef SHARED_TCL_EXTENSION
     return Tcl_PkgProvide(interp, "Shared", "1.0");
+#else
+    return TCL_OK;
+#endif
 }
 #endif

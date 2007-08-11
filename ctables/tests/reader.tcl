@@ -21,6 +21,9 @@ top_brands_nokey_m create r reader $params
 
 puts "created reader r"
 
+puts "r share info -> [r share info]"
+puts "r share names -> [r share names]"
+
 r search -key k -array_get a -code {
     set orig($k) $a
     set curr($k) $a
