@@ -1,6 +1,12 @@
 
 $Id$
 
+8/11/2007 peter
+    * Shared tables work, all tests good.
+    * Added method "getprop" to get various fixed properties of the ctable
+      as a whole. Need to see about deprecating some of the commands like
+      'key' and 'name' that are currently used for introspection.
+
 8/6/2007 peter
     * Separated skiplists into "public" and "private" structures, with
       hook to clone the private structure of a skiplist
