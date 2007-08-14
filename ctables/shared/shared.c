@@ -18,6 +18,10 @@
 
 #include "shared.h"
 
+#ifndef max
+#define max(a,b) (((a)>(b))?(a):(b))
+#endif
+
 static shm_t   *share_list;
 
 #ifdef SHM_DEBUG_TRACE
@@ -1184,18 +1188,18 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET, CMD_INFO};
 
     static CONST struct {
-	int need_share;
-	int nargs;
-	char *args;
+	int need_share;		// if a missing share is an error
+	int nargs;		// >0 number args, <0 -minimum number
+	char *args;		// String for Tcl_WrongNumArgs
     } template[] = {
-	{0, 5, "filename size"},
-	{0, 4, "filename"},
-	{0, 2, ""},
-	{1, 3, ""},
+	{0,  5, "filename size"},
+	{0,  4, "filename"},
+	{0, -2, "?share?"},
+	{1,  3, ""},
 	{1, -3, "names"},
 	{1, -4, "name ?name?..."},
 	{1, -5, "name value ?name value?..."},
-	{1, 3, ""}
+	{1,  3, ""}
     };
 
     if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
@@ -1206,7 +1210,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	(template[cmdIndex].nargs > 0 && objc != template[cmdIndex].nargs) ||
 	(template[cmdIndex].nargs < 0 && objc < -template[cmdIndex].nargs)
     ) {
-	Tcl_WrongNumArgs (interp, 3, objv, template[cmdIndex].args);
+	int nargs = abs(template[cmdIndex].nargs);
+	Tcl_WrongNumArgs (interp, max(nargs,3), objv, template[cmdIndex].args);
 	return TCL_ERROR;
     }
 
@@ -1270,15 +1275,25 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    return doDetach(interp, share);
 	}
 
+	// list shares, or list objects in share
 	case CMD_LIST: {
-	    share = share_list;
-	    while(share) {
-		Tcl_AppendElement(interp, share->name);
-		share = share->next;
+	    if(share) {
+		object_t *object = share->objects;
+		while(object) {
+		    Tcl_AppendElement(interp, object->name);
+		    object = object->next;
+		}
+	    } else {
+	        share = share_list;
+	        while(share) {
+		    Tcl_AppendElement(interp, share->name);
+		    share = share->next;
+	        }
 	    }
 	    return TCL_OK;
 	}
 
+	// Return miscellaneous info about the share as a name-value list
 	case CMD_INFO: {
 	    Tcl_Obj *list = Tcl_NewObj();
 
@@ -1301,14 +1316,15 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    return TCL_OK;
 	}
 
+	// Return a list of names
 	case CMD_NAMES: {
-	    if (objc == 3) {
+	    if (objc == 3) { // No args, all names
 	        volatile symbol *sym = share->map->namelist;
 	        while(sym) {
 		    Tcl_AppendElement(interp, (char *)sym->name);
 		    sym = sym->next;
 	        }
-	    } else {
+	    } else { // Otherwise, just the names defined here
 		int i;
 		for (i = 3; i < objc; i++) {
 		    char *name = Tcl_GetString(objv[i]);
