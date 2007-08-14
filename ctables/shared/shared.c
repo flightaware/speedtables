@@ -212,6 +212,7 @@ IFDEBUG(init_debug();)
     p->garbage_pool = NULL;
     p->horizon = LOST_HORIZON;
     p->self = NULL;
+    p->objects = NULL;
 
     share_list = p;
 
