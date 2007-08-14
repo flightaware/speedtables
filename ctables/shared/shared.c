@@ -47,6 +47,7 @@ char *shared_errmsg[] = {
 	"When mapping file",			// SH_MAP_FILE
 	"Opening existing mapped file",		// SH_OPEN_FILE
 	"Map doesn't exist",			// SH_NO_MAP
+	"Map has a different address",		// SH_ALREADY_MAPPED
 	NULL
 };
 
@@ -108,15 +109,35 @@ IFDEBUG(init_debug();)
 }
 
 // map_file - map a file at addr. If the file doesn't exist, create it first
-// with size default_size. Return map info structure or NULL on failure. Errno
+// with size default_size. Return share or NULL on failure. Errno
 // WILL be meaningful after a failure.
+//
+// If the file has already been mapped, return the share associated with the
+// file. The file check is purely by name, if multiple different names are
+// used by the same process for the same file the result is undefined.
+//
+// If the file is already mapped, but at a different address, this is an error
+//this is an error
+//
 shm_t   *map_file(char *file, char *addr, size_t default_size)
 {
     char    *map;
     int      flags = MAP_SHARED|MAP_NOSYNC;
     size_t   size;
     int      fd;
-    shm_t   *p;
+    shm_t   *p = share_list;
+
+    // Look for an already mapped share
+    while(p) {
+	if(p->filename == file) {
+	    if((addr != NULL && addr != (char *)p->map)) {
+		shared_errno = SH_ALREADY_MAPPED;
+		return NULL;
+	    }
+	    return p;
+	}
+	p = p->next;
+    }
 
 IFDEBUG(init_debug();)
     fd = open(file, O_RDWR, 0);
@@ -146,7 +167,6 @@ IFDEBUG(init_debug();)
 	    }
 	    lseek(fd, 0L, SEEK_SET);
 	}
-
     }
 
     if(addr) flags |= MAP_FIXED;
@@ -199,24 +219,28 @@ IFDEBUG(init_debug();)
 }
 
 // unmap_file - Unmap the open and mapped associated with the memory mapped
-// at address "map", return 0 if there is no memory we know about mapped
-// there. Errno is not meaningful after failure.
-int unmap_file(shm_t   *info)
+// for share. Return 0 on error. Errno is not meaningful after faillure,
+// shared_errno is.
+int unmap_file(shm_t   *share)
 {
     char	*map;
     size_t	 size;
     int		 fd;
 
+    // If there's anyone still using the share, it's a no-op
+    if(share->objects)
+	return 1;
+
     // remove from list
     if(!share_list) {
 	shared_errno = -SH_NO_MAP;
 	return 0;
-    } else if(share_list == info) {
-	share_list = info->next;
+    } else if(share_list == share) {
+	share_list = share->next;
     } else {
 	shm_t   *p = share_list;
 
-	while(p && p->next != info)
+	while(p && p->next != share)
 	    p = p->next;
 
 	if(!p) {
@@ -224,18 +248,18 @@ int unmap_file(shm_t   *info)
 	    return 0;
 	}
 
-	p->next = info->next;
+	p->next = share->next;
     }
 
-    map = (char *)info->map;
-    size = info->size;
-    fd = info->fd;
+    map = (char *)share->map;
+    size = share->size;
+    fd = share->fd;
 #ifdef WITH_TCL
-    ckfree(info->filename);
-    ckfree((char *)info);
+    ckfree(share->filename);
+    ckfree((char *)share);
 #else
-    free(info->filename);
-    free(info);
+    free(share->filename);
+    free(share);
 #endif
 
     munmap(map, size);
@@ -266,6 +290,7 @@ void unmap_all(void)
     }
 }
 
+// Verify that a map file has already been configured.
 int shmcheckmap(volatile mapheader *map)
 {
 IFDEBUG(init_debug();)
@@ -757,9 +782,9 @@ volatile reader *pid2reader(volatile mapheader *map, int pid)
     return NULL;
 }
 
-int shmattachpid(shm_t   *info, int pid)
+int shmattachpid(shm_t   *share, int pid)
 {
-    volatile mapheader *map = info->map;
+    volatile mapheader *map = share->map;
     volatile reader_block *b = map->readers;
 
     if(pid2reader(map, pid)) return 1;
@@ -778,7 +803,7 @@ int shmattachpid(shm_t   *info, int pid)
 	}
 	b = b->next;
     }
-    b = (reader_block *)shmalloc(info, sizeof *b);
+    b = (reader_block *)shmalloc(share, sizeof *b);
     if(!b) {
 	return 0;
     }
@@ -974,6 +999,51 @@ char *get_symbol(shm_t *shm, char *name, int wanted)
     return NULL;
 }
 
+// Attach to an object (represented by an arbitrary string) in the shared
+// memory file
+int use_name(shm_t *share, char *name)
+{
+    object_t *ob = share->objects;
+    while(ob) {
+	if(strcmp(ob->name, name) == 0) return 1;
+	ob = ob->next;
+    }
+#ifdef WITH_TCL
+    ob = (object_t *)ckalloc(sizeof *ob + strlen(name) + 1);
+#else
+    if(!(ob = (object_t *)malloc(sizeof *ob + strlen(name) + 1)) {
+	shared_errno = SH_PRIVATE_MEMORY;
+	return 0;
+    }
+#endif
+    ob->next = share->objects;
+    strcpy(ob->name, name);
+    share->objects = ob;
+    return 1;
+}
+
+// Detach from an object (represented by a string) in the shared memory file
+void release_name(shm_t *share, char *name)
+{
+    object_t *ob = share->objects;
+    object_t *prev = NULL;
+    while(ob) {
+	if(strcmp(ob->name, name) == 0) {
+	    if(prev) prev->next = ob->next;
+	    else share->objects = ob->next;
+#ifdef WITH_TCL
+	    ckfree((char *)ob);
+#else
+	    free(ob);
+#endif
+	    return;
+	}
+	prev = ob;
+	ob = ob->next;
+    }
+}
+
+// Fatal error
 void shmpanic(char *s)
 {
     fprintf(stderr, "PANIC: %s\n", s);
@@ -1039,6 +1109,7 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 {
     shm_t     *share;
     int	       creator = 1;
+    int	       new_share = 1;
 
     if(size == ATTACH_ONLY) {
 	creator = 0;
@@ -1056,6 +1127,10 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 	TclShmError(interp, filename);
 	return TCL_ERROR;
     }
+    if(share->name) { // pre-existing share
+	creator = 0;
+	new_share = 0;
+    }
     if(creator) {
 	shminitmap(share);
     } else if(!shmcheckmap(share->map)) {
@@ -1067,19 +1142,24 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
     if((char *)share == share_base)
 	share_base = share_base + size;
 
-    share->name = ckalloc(strlen(sharename)+1);
-    strcpy(share->name, sharename);
+    if(new_share) {
+        share->name = ckalloc(strlen(sharename)+1);
+        strcpy(share->name, sharename);
+    }
 
     if(sharePtr)
 	*sharePtr = share;
     else
-        Tcl_AppendResult(interp, sharename, NULL);
+        Tcl_AppendResult(interp, share->name, NULL);
 
     return TCL_OK;
 }
 
 int doDetach(Tcl_Interp *interp, shm_t *share)
 {
+    if(share->objects)
+	return TCL_OK;
+
     if(share->name) {
 	ckfree(share->name);
 	share->name = NULL;

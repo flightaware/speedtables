@@ -189,6 +189,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		ctable->skipLists = NULL; // to tell if we can safely dealloc
 		ctable->defaultStrings = NULL;
 		ctable->share_file = NULL;
+		ctable->share_name = NULL;
 		if(!add_symbol(share, share_name, (char *)ctable, SYM_TYPE_DATA)) {
 		    Tcl_AppendResult(interp, "Can not save ctable name in share", NULL);
 		    goto createError;
@@ -198,18 +199,32 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	        ctable = (CTable *)ckalloc (sizeof(CTable));
 
 	    ctable->creator = creator;
+
 	    ctable->keyTablePtr = (ctable_HashTable *)ckalloc (sizeof (ctable_HashTable));
+
 	    ctable->count = 0;
+
 	    ctable->autoRowNumber = 0;
+
 #ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
+
+	    if(share_name) {
+	        ctable->share_name = ckalloc(strlen(share_name) + 1);
+	        strcpy(ctable->share_name, share_name);
+	    } else
+		ctable->share_name = NULL;
+
 	    if(share_file) {
 	        ctable->share_file = ckalloc(strlen(share_file)+1);
 		strcpy(ctable->share_file, share_file);
 	    } else
 		ctable->share_file = NULL;
+
 	    ctable->share = share;
+
 	    ctable->share_ctable = share_ctable;
+
 	    ctable->my_reader = share_reader;
 
 	    // call out for this, it's a little complex
@@ -242,6 +257,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 	    ctable->was_locked = 0;
+
+	    // OK, we're finished allocating this guy, make sure he's reserved.
+	    if(ctable->share)
+		use_name(ctable->share, share_name);
 #endif
 
 	    ctable->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) ctable, NULL);
@@ -265,6 +284,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	    if(ctable) {
 		if(ctable->share_file) ckfree(ctable->share_file);
+		if(ctable->share_name) ckfree(ctable->share_name);
 	    }
 
 	    if(share_type == CTABLE_SHARED_MASTER) {

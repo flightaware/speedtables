@@ -63,7 +63,8 @@ enum shared_error_e {
 	SH_PRIVATE_MEMORY,
 	SH_MAP_FILE,
 	SH_OPEN_FILE,
-	SH_NO_MAP
+	SH_NO_MAP,
+	SH_ALREADY_MAPPED
 };
 extern void shared_perror(char *text);
 
@@ -135,6 +136,15 @@ typedef struct {
     char			  data[];
 } busyblock;
 
+// Object in shared memory for the object list.
+// File is unmapped when the last object used by this process is released
+//
+// Every object has a name in the shared memory symbol table.
+typedef struct _object_t {
+    struct _object_t  *next;
+    char               name[];
+} object_t;
+
 typedef struct _shm_t {
     struct _shm_t	*next;
     volatile mapheader	*map;
@@ -143,6 +153,7 @@ typedef struct _shm_t {
     int                  creator;
     char	        *name;
     char		*filename;
+    object_t		*objects;
 // server-only fields:
     pool_t		*pools;
     volatile freeblock	*freelist;
@@ -182,6 +193,8 @@ int add_symbol(shm_t *shm, char *name, char *value, int type);
 int set_symbol(shm_t *shm, char *name, char *value, int type);
 char *get_symbol(shm_t *shm, char *name, int wanted);
 int shmattachpid(shm_t *info, int pid);
+int use_name(shm_t *share, char *symbol);
+void release_name(shm_t *share, char *symbol);
 int parse_size(char *s, size_t *ptr);
 
 #define SYM_TYPE_STRING 1

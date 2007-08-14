@@ -472,8 +472,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      return TCL_ERROR;
 	  }
 #ifdef WITH_SHARED_TABLES
-	  if(ctable->share)
+	  if(ctable->share) {
+	      // abandon reservetion for name
+	      release_name(ctable->share, ctable->share_name);
+	      // unmap file (if all reservations abandoned)
 	      unmap_file(ctable->share);
+	  }
 #endif
           Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
 	  break;
@@ -504,7 +508,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      resultList[0] = "file";
 	      resultList[1] = ctable->share_file;
 	      resultList[2] = "name";
-	      resultList[3] = ctable->share->name;
+	      resultList[3] = ctable->share_name;
 
 	      for(i = 0; i < 4; i++) {
 	          if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (resultList[i], -1)) == TCL_ERROR) {

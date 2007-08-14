@@ -329,6 +329,7 @@ typedef struct ctableTable {
     char			       **defaultStrings;
 
     int					 share_type;
+    char				*share_name;
     char				*share_file;
     shm_t                               *share;
 // reader-only
