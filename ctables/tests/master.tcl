@@ -1,6 +1,4 @@
 #
-# make sure the auto row ID thing is working when read_tabsepping with nokeys
-#
 # $Id$
 #
 
@@ -64,3 +62,4 @@ check_value "After reset, expected %s for row 99's id, got %s" [m get 99 id] "po
 check_value "After reset, expected empty%s row 299 but got %s" "" [m get 299 id]
 
 check_value "Expected %s got %s" "file sharefile.dat name m" [m attach 666]
+

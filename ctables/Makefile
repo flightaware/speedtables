@@ -39,6 +39,10 @@ speedtest:
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make speedreader"
 
+perftest:
+	rm -f tests/sharedebug.out
+	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make speed"
+
 stapitest:
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make stapi"

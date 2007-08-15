@@ -471,7 +471,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      end_write(ctable);
 	      return TCL_ERROR;
 	  }
+          Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
 #ifdef WITH_SHARED_TABLES
+	  // We'll never need "ctable" again, so now we can trash it.
 	  if(ctable->share) {
 	      // abandon reservetion for name
 	      release_name(ctable->share, ctable->share_name);
@@ -479,8 +481,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      unmap_file(ctable->share);
 	  }
 #endif
-          Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
-	  break;
+	  // return here so we don't risk touching ctable again.
+	  return TCL_OK;
       }
 
       case OPT_ATTACH: {

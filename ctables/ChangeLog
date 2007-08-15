@@ -1,6 +1,15 @@
 
 $Id$
 
+8/15/2007
+    * Added ability to set share modes: sync/nosync(default) and
+      core(default)/nocore.
+    * Move pool blocks containing newly freed chunks to the start of the
+      pool list.
+    * Try and re-use existing pool blocks that might not have shared memory
+      allocated yet.
+    * Handle "out of shared memory" better.
+
 8/11/2007 peter
     * Shared tables work, all tests good.
     * Added method "getprop" to get various fixed properties of the ctable

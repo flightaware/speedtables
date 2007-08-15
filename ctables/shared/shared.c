@@ -50,8 +50,9 @@ char *shared_errmsg[] = {
 	"In private memory",			// SH_PRIVATE_MEMORY
 	"When mapping file",			// SH_MAP_FILE
 	"Opening existing mapped file",		// SH_OPEN_FILE
-	"Map doesn't exist",			// SH_NO_MAP
-	"Map has a different address",		// SH_ALREADY_MAPPED
+	"Map or file doesn't exist",		// SH_NO_MAP
+	"Existing map is inconsistent",		// SH_ALREADY_MAPPED
+	"Map or file is too small",		// SH_TOO_SMALL
 	NULL
 };
 
@@ -68,6 +69,10 @@ void shared_perror(char *text) {
 		perror(text);
 	}
 }
+
+#define DEFAULT_FLAGS (MAP_SHARED|MAP_NOSYNC)
+#define REQUIRED_FLAGS MAP_SHARED
+#define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE|MAP_STACK)
 
 // open_new - open a new large, empty, mappable file. Return open file
 // descriptor or -1. Errno WILL be set on failure.
@@ -123,19 +128,29 @@ IFDEBUG(init_debug();)
 // If the file is already mapped, but at a different address, this is an error
 //this is an error
 //
-shm_t   *map_file(char *file, char *addr, size_t default_size)
+shm_t   *map_file(char *file, char *addr, size_t default_size, int flags)
 {
     char    *map;
-    int      flags = MAP_SHARED|MAP_NOSYNC;
     size_t   size;
     int      fd;
     shm_t   *p = share_list;
+
+    if(!flags)
+	flags = DEFAULT_FLAGS;
+    else {
+	flags |= REQUIRED_FLAGS;
+	flags &= ~(FORBIDDEN_FLAGS);
+    }
 
     // Look for an already mapped share
     while(p) {
 	if(p->filename == file) {
 	    if((addr != NULL && addr != (char *)p->map)) {
-		shared_errno = SH_ALREADY_MAPPED;
+		shared_errno = -SH_ALREADY_MAPPED;
+		return NULL;
+	    }
+	    if(default_size && default_size > p->size) {
+		shared_errno = -SH_TOO_SMALL;
 		return NULL;
 	    }
 	    return p;
@@ -147,6 +162,11 @@ IFDEBUG(init_debug();)
     fd = open(file, O_RDWR, 0);
 
     if(fd == -1) {
+	if(!size || !addr) {
+	    shared_errno = -SH_NO_MAP;
+	    return 0;
+	}
+
 	fd = open_new(file, default_size);
 
 	if(fd == -1)
@@ -161,20 +181,37 @@ IFDEBUG(init_debug();)
 	    return NULL;
 	}
 
-	size = (size_t) sb.st_size;
-
 	if(addr == 0) {
 	    mapheader tmp;
 	    if(read(fd, &tmp, sizeof (mapheader)) == sizeof (mapheader)) {
 		if(shmcheckmap(&tmp))
-			addr = tmp.addr;
+		    addr = tmp.addr;
 	    }
 	    lseek(fd, 0L, SEEK_SET);
+	}
+
+	if(default_size > (size_t) sb.st_size) {
+	    close(fd);
+
+	    fd = open_new(file, default_size);
+
+	    if(fd == -1) {
+		shared_errno = SH_TOO_SMALL;
+	        return 0;
+	    }
+
+	    size = default_size;
+	} else {
+	    if(default_size)
+	        size = default_size;
+	    else
+		size = (size_t) sb.st_size;
 	}
     }
 
     if(addr) flags |= MAP_FIXED;
     map = mmap(addr, size, PROT_READ|PROT_WRITE, flags, fd, (off_t) 0);
+IFDEBUG(fprintf(stderr, "mmap(0x%lX, %d, rw, %d, %d, 0) = 0x%lX;\n", (long)addr, size, flags, fd, (long)map);)
 
     if(map == MAP_FAILED) {
 	shared_errno = SH_MAP_FILE;
@@ -207,6 +244,7 @@ IFDEBUG(init_debug();)
     p->next = share_list;
     p->map = (mapheader *)map;
     p->size = size;
+    p->flags = flags;
     p->fd = fd;
     p->name = NULL;
     p->creator = 0;
@@ -383,6 +421,7 @@ pool_t *findpool(pool_t **poolhead, size_t blocksize)
 {
     pool_t *pool = *poolhead;
     pool_t *first = NULL;
+    int count = 0;
 
     // align size
     if(blocksize % CELLSIZE)
@@ -395,13 +434,22 @@ pool_t *findpool(pool_t **poolhead, size_t blocksize)
 	    if(!first) first = pool;
 	}
 	pool = pool->next;
+	count++;
+        if(count > 1000)
+		shmpanic("too many loops in the pool!");
     }
 
     if(!first) return NULL;
 
-    pool = makepool(blocksize, first->blocks, first->share);
-    pool->next = *poolhead;
-    *poolhead = pool;
+    if(first->start) {
+IFDEBUG(fprintf(stderr, "makepool(%d, %d, 0x%lX) after %d tries\n", blocksize, first->blocks, (long)first->share, count);)
+         pool = makepool(blocksize, first->blocks, first->share);
+         pool->next = *poolhead;
+         *poolhead = pool;
+    } else {
+IFDEBUG(fprintf(stderr, "trying to use empty pool after %d tries\n", count);)
+	pool = first;
+    }
 
     if(pool->share) {
         pool->start = _shmalloc(first->share, blocksize*first->blocks);
@@ -413,7 +461,10 @@ pool_t *findpool(pool_t **poolhead, size_t blocksize)
 	    shared_errno = SH_PRIVATE_MEMORY;
 #endif
     }
-    if(!pool->start) return NULL;
+    if(!pool->start) {
+IFDEBUG(fprintf(stderr, "pool full!\n");)
+	return NULL;
+    }
 
     // initialise empty pool
     pool->avail = pool->blocks;
@@ -531,6 +582,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
     if(nbytes % CELLSIZE)
 	nbytes += CELLSIZE - nbytes % CELLSIZE;
 
+    // really a do-while loop, null check should never fail
     while(block) {
 	int space = block->size;
 
@@ -568,6 +620,9 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "      return block2data(0x%lX) ==> 0x%lX\n", (lon
 
 	    return block2data(block);
 	}
+
+	if(block == block->next)
+	    break;
 
 	block = block->next;
     }
@@ -616,11 +671,15 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
 }
 
 // Attempt to put a pending freed block back in a pool
-int shmdepool(pool_t *pool, char *block)
+int shmdepool(pool_t **head, char *block)
 {
+    pool_t *pool = *head;
+    pool_t *prev = NULL;
+
     while(pool) {
 	size_t offset = block - pool->start;
 	if(offset < 0 || offset > (pool->blocks * pool->blocksize)) {
+	    prev = pool;
 	    pool = pool->next;
 	    continue;
 	}
@@ -634,6 +693,15 @@ int shmdepool(pool_t *pool, char *block)
 	*((char **)block) = pool->freelist;
 	pool->freelist = block;
 	pool->avail++;
+
+	// Move the pool with the free block to the beginning of the free
+	// pool list, if it's not already there. This means that free blocks
+	// will tend to be found quickly.
+	if(prev) {
+	    prev->next = pool->next;
+	    pool->next = *head;
+	    *head = pool;
+	}
 
 	return 1;
     }
@@ -678,7 +746,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc(shm=0x%lX, memory=0x%lX);\n", (long)sh
 	shmpanic("Trying to dealloc pointer outside mapped memory!");
 
     // Try and free it back into a pool.
-    if(shmdepool(shm->pools, memory)) return 1;
+    if(shmdepool(&shm->pools, memory)) return 1;
 
     // step back to block header
     block = data2block(memory);
@@ -845,7 +913,6 @@ void read_unlock(shm_t   *shm)
 
 void garbage_collect(shm_t   *shm)
 {
-    pool_t	*pool = shm->garbage_pool;
     garbage	*garbp = shm->garbage;
     garbage	*garbo = NULL;
     cell_t	 horizon = shm->horizon;
@@ -863,7 +930,7 @@ void garbage_collect(shm_t   *shm)
 	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || delta > 0) {
 	    garbage *next = garbp->next;
 	    shmdealloc(shm, garbp->block);
-	    shmdepool(pool, (char *)garbp);
+	    shmdepool(&shm->garbage_pool, (char *)garbp);
 	    garbp = next;
 
 	    if(garbo)
@@ -1077,6 +1144,45 @@ int parse_size(char *s, size_t *ptr)
     return 1;
 }
 
+int parse_flags(char *s)
+{
+    char *word;
+    int   flags = DEFAULT_FLAGS;
+
+    while(*s) {
+        while(isspace(*s)) s++;
+
+	word = s;
+	while(*s && !isspace(*s)) s++;
+	if(*s) *s++ = 0;
+
+	     if(strcmp(word, "nocore") == 0) flags |= MAP_NOCORE;
+	else if(strcmp(word, "core") == 0) flags &= ~MAP_NOCORE;
+	else if(strcmp(word, "nosync") == 0) flags |= MAP_NOSYNC;
+	else if(strcmp(word, "sync") == 0) flags &= MAP_NOSYNC;
+    }
+    return flags;
+}
+
+char *flags2string(int flags)
+{
+    static char buffer[32]; // only has to hold "nocore nosync shared"
+
+    if(flags & MAP_NOCORE)
+	strcat(buffer, "nocore ");
+    else
+	strcat(buffer, "core ");
+
+    if(flags & MAP_NOSYNC)
+	strcat(buffer, "nosync ");
+    else
+	strcat(buffer, "sync ");
+
+    strcat(buffer, "shared");
+
+    return buffer;
+}
+
 #ifdef WITH_TCL
 int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr)
 {
@@ -1110,7 +1216,7 @@ void setShareBase(char *new_base)
 	share_base = new_base;
 }
 
-int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, shm_t **sharePtr)
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, int flags, shm_t **sharePtr)
 {
     shm_t     *share;
     int	       creator = 1;
@@ -1127,7 +1233,7 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 	sharename = namebuf;
     }
 
-    share = map_file(filename, share_base, size);
+    share = map_file(filename, share_base, size, flags);
     if(!share) {
 	TclShmError(interp, filename);
 	return TCL_ERROR;
@@ -1192,7 +1298,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	int nargs;		// >0 number args, <0 -minimum number
 	char *args;		// String for Tcl_WrongNumArgs
     } template[] = {
-	{0,  5, "filename size"},
+	{0, -5, "filename size ?flags?"},
 	{0,  4, "filename"},
 	{0, -2, "?share?"},
 	{1,  3, ""},
@@ -1245,6 +1351,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         case CMD_CREATE: {
 	    char      *filename;
 	    size_t     size;
+	    int	       flags = DEFAULT_FLAGS;
 
 	    if(share) {
 	         Tcl_AppendResult(interp, "Share already exists: ", sharename, NULL);
@@ -1258,7 +1365,14 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 		return TCL_ERROR;
 	    }
 
-	    return doCreateOrAttach(interp, sharename, filename, size, NULL);
+	    if(objc > 6) {
+		Tcl_WrongNumArgs (interp, 3, objv, template[cmdIndex].args);
+		return TCL_ERROR;
+	    } else if(objc == 6) {
+		flags = parse_flags(Tcl_GetString(objv[5]));
+	    }
+
+	    return doCreateOrAttach(interp, sharename, filename, size, flags, NULL);
 	}
 
         case CMD_ATTACH: {
@@ -1268,7 +1382,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    }
 
 	    return doCreateOrAttach(
-		interp, sharename, Tcl_GetString(objv[3]), ATTACH_ONLY, NULL);
+		interp, sharename, Tcl_GetString(objv[3]), ATTACH_ONLY, 0, NULL);
 	}
 
         case CMD_DETACH: {
@@ -1303,6 +1417,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 	    if( TCL_OK != APPSTRING(interp, list, "size")
 	     ||	TCL_OK != APPINT(interp, list, share->size)
+	     || TCL_OK != APPSTRING(interp, list, "flags")
+	     || TCL_OK != APPSTRING(interp, list, flags2string(share->flags))
 	     || TCL_OK != APPSTRING(interp, list, "name")
 	     || TCL_OK != APPSTRING(interp, list, share->name)
 	     || TCL_OK != APPSTRING(interp, list, "creator")

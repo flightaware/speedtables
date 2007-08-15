@@ -1,6 +1,4 @@
 #
-# make sure the auto row ID thing is working when read_tabsepping with nokeys
-#
 # $Id$
 #
 

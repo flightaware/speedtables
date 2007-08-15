@@ -35,6 +35,11 @@ master:
 	tclsh8.4m master2.tcl
 	rm -f *.dat
 
+speed:
+	-rm -r build
+	-rm -f *.dat
+	tclsh8.4 masterspeed.tcl
+
 reader:
 	-rm -r build
 	-rm -f *.dat

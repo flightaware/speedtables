@@ -64,7 +64,8 @@ enum shared_error_e {
 	SH_MAP_FILE,
 	SH_OPEN_FILE,
 	SH_NO_MAP,
-	SH_ALREADY_MAPPED
+	SH_ALREADY_MAPPED,
+	SH_TOO_SMALL,
 };
 extern void shared_perror(char *text);
 
@@ -149,6 +150,7 @@ typedef struct _shm_t {
     struct _shm_t	*next;
     volatile mapheader	*map;
     size_t		 size;
+    int			 flags;
     int			 fd;
     int                  creator;
     char	        *name;
@@ -165,7 +167,7 @@ typedef struct _shm_t {
 } shm_t;
 
 int open_new(char *file, size_t size);
-shm_t *map_file(char *file, char *addr, size_t default_size);
+shm_t *map_file(char *file, char *addr, size_t default_size, int flags);
 int unmap_file(shm_t *shm);
 void shminitmap(shm_t *shm);
 int shmcheckmap(volatile mapheader *map);
@@ -178,7 +180,7 @@ void insert_in_freelist(shm_t *shm, volatile freeblock *block);
 char *_shmalloc(shm_t *map, size_t size);
 char *shmalloc(shm_t *map, size_t size);
 void shmfree(shm_t *map, char *block);
-int shmdepool(pool_t *pool, char *block);
+int shmdepool(pool_t **head, char *block);
 void setfree(volatile freeblock *block, size_t size, int is_free);
 int shmdealloc(shm_t *shm, char *data);
 int write_lock(shm_t *shm);
@@ -196,6 +198,8 @@ int shmattachpid(shm_t *info, int pid);
 int use_name(shm_t *share, char *symbol);
 void release_name(shm_t *share, char *symbol);
 int parse_size(char *s, size_t *ptr);
+int parse_flags(char *s);
+char *flags2string(int flags);
 
 #define SYM_TYPE_STRING 1
 #define SYM_TYPE_DATA 0
@@ -207,7 +211,7 @@ int parse_size(char *s, size_t *ptr);
 void setShareBase(char *new_base);
 int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr);
 void TclShmError(Tcl_Interp *interp, char *name);
-int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, shm_t **sharePtr);
+int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, int flags, shm_t **sharePtr);
 int doDetach(Tcl_Interp *interp, shm_t *share);
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 #endif

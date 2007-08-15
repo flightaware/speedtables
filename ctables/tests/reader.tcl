@@ -23,6 +23,7 @@ puts "created reader r"
 
 puts "r share info -> [r share info]"
 puts "r share names -> [r share names]"
+puts "r share list -> [r share list]"
 
 r search -key k -array_get a -code {
     set orig($k) $a
