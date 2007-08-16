@@ -41,7 +41,7 @@ speedtest:
 
 perftest:
 	rm -f tests/sharedebug.out
-	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make speed"
+	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make readerperf"
 
 stapitest:
 	rm -f tests/sharedebug.out
