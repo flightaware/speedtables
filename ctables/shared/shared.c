@@ -43,6 +43,17 @@ static shm_t   *share_list;
 # endif
 #endif
 
+#ifndef WITH_TCL
+char *ckalloc(size_t size)
+{
+    char *p = malloc(size);
+    if(!p)
+	shmpanic("Out of memory!");
+    return p;
+}
+# define ckfree(p) free(p)
+#endif
+
 int shared_errno;
 char *shared_errmsg[] = {
 	"unknown",				// SH_ERROR_0
@@ -91,12 +102,14 @@ IFDEBUG(init_debug();)
 
     if(nulbufsize > size)
 	nulbufsize = (size + 1023) & ~1023;
-#ifdef WITH_TCL
-    buffer = ckalloc(nulbufsize);
-    bzero(buffer, nulbufsize);
-#else
+
+    // Use calloc because it is more efficient than bzeroing in some
+    // systems, and this is a BIG allocation
     buffer = calloc(nulbufsize/1024, 1024);
-#endif
+    if(!buffer) {
+	close(fd);
+	return -1;
+    }
 
     while(size > 0) {
 	if(nulbufsize > size) nulbufsize = size;
@@ -108,11 +121,7 @@ IFDEBUG(init_debug();)
 	size -= nbytes;
     }
 
-#ifdef WITH_TCL
-    ckfree(buffer);
-#else
     free(buffer);
-#endif
 
     return fd;
 }
@@ -219,25 +228,8 @@ IFDEBUG(fprintf(stderr, "mmap(0x%lX, %d, rw, %d, %d, 0) = 0x%lX;\n", (long)addr,
 	return NULL;
     }
 
-#ifdef WITH_TCL
     p = (shm_t*)ckalloc(sizeof(*p));
     p->filename = ckalloc(strlen(file)+1);
-#else
-    p = (shm_t*)malloc(sizeof (*p));
-    if(p) {
-	p->filename = (char *)malloc(strlen(file)+1);
-	if(!p->filename) {
-	    free(p);
-	    p = NULL;
-	}
-    }
-    if(!p) {
-	shared_errno = SH_PRIVATE_MEMORY;
-	munmap(map, size);
-	close(fd);
-	return NULL;
-    }
-#endif
     strcpy(p->filename, file);
 
     // Completely initialise all fields!
@@ -297,13 +289,8 @@ int unmap_file(shm_t   *share)
     map = (char *)share->map;
     size = share->size;
     fd = share->fd;
-#ifdef WITH_TCL
     ckfree(share->filename);
     ckfree((char *)share);
-#else
-    free(share->filename);
-    free(share);
-#endif
 
     munmap(map, size);
     close(fd);
@@ -322,11 +309,7 @@ void unmap_all(void)
 
 	share_list = share_list->next;
 
-#ifdef WITH_TCL
 	ckfree((char *)p);
-#else
-	free(p);
-#endif
 
 	munmap(map, size);
 	close(fd);
@@ -387,115 +370,91 @@ IFDEBUG(init_debug();)
     shmdealloc(shm, (char *)&block[1]);
 }
 
-pool_t *makepool(size_t blocksize, int blocks, shm_t *share)
+poolhead_t *makepool(size_t blocksize, int blocks, shm_t *share)
 {
-    pool_t *pool;
-#ifdef WITH_TCL
-    pool = (pool_t *)ckalloc(sizeof *pool);
-#else
-    pool = (pool_t *)malloc(sizeof *pool);
-    if(!pool) {
-	shared_errno = SH_PRIVATE_MEMORY;
-	return NULL;
-    }
-#endif
+    poolhead_t *head = (poolhead_t *)ckalloc(sizeof *head);
 
     // align size
     if(blocksize % CELLSIZE)
 	blocksize += CELLSIZE - blocksize % CELLSIZE;
 
-    pool->share = share;
-    pool->start = NULL;
-    pool->blocks = blocks;
-    pool->blocksize = blocksize;
-    pool->avail = 0;
-    pool->brk = NULL;
-    pool->freelist = NULL;
-    pool->next = NULL;
+    head->share = share;
+    head->blocks = blocks;
+    head->blocksize = blocksize;
+    head->pool = NULL;
+    head->next = NULL;
 
-    return pool;
+    return head;
 }
 
 // Find a pool that's got a free chunk of the required size
-pool_t *findpool(pool_t **poolhead, size_t blocksize)
+pool_t *findpool(poolhead_t *head)
 {
-    pool_t *pool = *poolhead;
-    pool_t *first = NULL;
+    pool_t *pool = head->pool;
     int count = 0;
 
-    // align size
-    if(blocksize % CELLSIZE)
-	blocksize += CELLSIZE - blocksize % CELLSIZE;
-
     while(pool) {
-	if(pool->blocksize == blocksize) {
-	    if(pool->avail)
-		return pool;
-	    if(!first) first = pool;
-	}
+	if(pool->avail)
+	    return pool;
 	pool = pool->next;
 	count++;
         if(count > 1000)
 		shmpanic("too many loops in the pool!");
     }
 
-    if(!first) return NULL;
+    pool = (pool_t *)ckalloc(sizeof *pool);
 
-    if(first->start) {
-IFDEBUG(fprintf(stderr, "makepool(%d, %d, 0x%lX) after %d tries\n", blocksize, first->blocks, (long)first->share, count);)
-         pool = makepool(blocksize, first->blocks, first->share);
-         pool->next = *poolhead;
-         *poolhead = pool;
+    if(head->share) {
+        pool->start = _shmalloc(head->share, head->blocksize*head->blocks);
     } else {
-IFDEBUG(fprintf(stderr, "trying to use empty pool after %d tries\n", count);)
-	pool = first;
+	pool->start = ckalloc(head->blocksize * head->blocks);
     }
 
-    if(pool->share) {
-        pool->start = _shmalloc(first->share, blocksize*first->blocks);
-    } else {
-#ifdef WITH_TCL
-	pool->start = ckalloc(blocksize * first->blocks);
-#else
-	if(!(pool->start = malloc(blocksize * first->blocks)))
-	    shared_errno = SH_PRIVATE_MEMORY;
-#endif
-    }
     if(!pool->start) {
-IFDEBUG(fprintf(stderr, "pool full!\n");)
-	return NULL;
+	ckfree((char *)pool);
     }
 
-    // initialise empty pool
-    pool->avail = pool->blocks;
+    pool->avail = head->blocks;
     pool->brk = pool->start;
+    pool->next = head->pool;
+    pool->freelist = NULL;
+
+    head->pool = pool;
 
     return pool;
 }
 
 int shmaddpool(shm_t *shm, size_t blocksize, int blocks)
 {
-    pool_t *pool = makepool(blocksize, blocks, shm);
-    if(!pool) return 0;
+    poolhead_t *head = makepool(blocksize, blocks, shm);
+    if(!head) return 0;
 
-    pool->next = shm->pools;
-    shm->pools = pool;
+    head->next = shm->pools;
+    shm->pools = head;
 
     return 1;
 }
 
-pool_t *mallocpool(size_t blocksize, int blocks)
-{
-    return makepool(blocksize, blocks, NULL);
-}
-
-char *palloc(pool_t **poolhead, size_t wanted)
+char *palloc(poolhead_t *head, size_t wanted)
 {
     pool_t *pool;
     char *block;
 
-    // find (or allocate) a pool that's got a free block of the right size
-    pool = findpool(poolhead, wanted);
+    // align size
+    if(wanted % CELLSIZE)
+	wanted += CELLSIZE - wanted % CELLSIZE;
+
+    // find a pool list that is the right size;
+    while(head) {
+	if(head->blocksize == wanted)
+	    break;
+	head = head->next;
+    }
+    if(!head)
+	return NULL;
+
+    // find (or allocate) a pool that's got a free block
+    pool = findpool(head);
     if(!pool)
 	return NULL;
 
@@ -504,7 +463,7 @@ char *palloc(pool_t **poolhead, size_t wanted)
 	pool->freelist = *(char **)block;
     } else { // use the next unused block
 	block = pool->brk;
-	pool->brk += pool->blocksize;
+	pool->brk += head->blocksize;
     }
 
     pool->avail--;
@@ -540,9 +499,9 @@ void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
     if(next == NULL)
 	shmpanic("Corrupt free list (next == NULL)!");
     if(prev->next != block)
-	shmpanic("Corrunpt free list (prev->next != block)!");
+	shmpanic("Corrupt free list (prev->next != block)!");
     if(next->prev != block)
-	shmpanic("Corrunpt free list (next->prev != block)!");
+	shmpanic("Corrupt free list (next->prev != block)!");
 	
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    set 0x%lX->next = 0x%lX\n", (long)prev, (long)next);)
     prev->next = next;
@@ -639,8 +598,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld);\n", (long)size);)
     if(size % CELLSIZE)
 	size += CELLSIZE - size % CELLSIZE;
 
-    
-    if(!(block = palloc(&shm->pools, size)))
+    if(!(block = palloc(shm->pools, size)))
 	block = _shmalloc(shm, size);
     return block;
 }
@@ -660,7 +618,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
 	    shmpanic("Can't create garbage pool");
     }
 
-    entry = (garbage *)palloc(&shm->garbage_pool, sizeof *entry);
+    entry = (garbage *)palloc(shm->garbage_pool, sizeof *entry);
     if(!entry)
 	shmpanic("Can't allocate memory in garbage pool");
 
@@ -671,39 +629,41 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
 }
 
 // Attempt to put a pending freed block back in a pool
-int shmdepool(pool_t **head, char *block)
+int shmdepool(poolhead_t *head, char *block)
 {
-    pool_t *pool = *head;
-    pool_t *prev = NULL;
+    while(head) {
+	pool_t *pool = head->pool;
+        pool_t *prev = NULL;
+        while(pool) {
+	    size_t offset = block - pool->start;
+	    if(offset < 0 || offset > (head->blocks * head->blocksize)) {
+	        prev = pool;
+	        pool = pool->next;
+	        continue;
+	    }
 
-    while(pool) {
-	size_t offset = block - pool->start;
-	if(offset < 0 || offset > (pool->blocks * pool->blocksize)) {
-	    prev = pool;
-	    pool = pool->next;
-	    continue;
-	}
+	    if(offset % head->blocksize != 0) // partial free, ignore
+	        return 1;
 
-	if(offset % pool->blocksize != 0) // partial free, ignore
+	    // Thread block into free list. We do not store size in or coalesce
+	    // pool blocks, they're always all the same size, so all we have in
+	    // them is the address of the next free block.
+	    *((char **)block) = pool->freelist;
+	    pool->freelist = block;
+	    pool->avail++;
+
+	    // Move the pool with the free block to the beginning of the free
+	    // pool list, if it's not already there. This means that free blocks
+	    // will tend to be found quickly.
+	    if(prev) {
+	        prev->next = pool->next;
+	        pool->next = head->pool;
+	        head->pool = pool;
+	    }
+
 	    return 1;
-
-	// Thread block into free list. We do not store size in or coalesce
-	// pool blocks, they're always all the same size, so all we have in
-	// them is the address of the next free block.
-	*((char **)block) = pool->freelist;
-	pool->freelist = block;
-	pool->avail++;
-
-	// Move the pool with the free block to the beginning of the free
-	// pool list, if it's not already there. This means that free blocks
-	// will tend to be found quickly.
-	if(prev) {
-	    prev->next = pool->next;
-	    pool->next = *head;
-	    *head = pool;
-	}
-
-	return 1;
+        }
+        head = head->next;
     }
     return 0;
 }
@@ -746,7 +706,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc(shm=0x%lX, memory=0x%lX);\n", (long)sh
 	shmpanic("Trying to dealloc pointer outside mapped memory!");
 
     // Try and free it back into a pool.
-    if(shmdepool(&shm->pools, memory)) return 1;
+    if(shmdepool(shm->pools, memory)) return 1;
 
     // step back to block header
     block = data2block(memory);
@@ -930,7 +890,7 @@ void garbage_collect(shm_t   *shm)
 	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || delta > 0) {
 	    garbage *next = garbp->next;
 	    shmdealloc(shm, garbp->block);
-	    shmdepool(&shm->garbage_pool, (char *)garbp);
+	    shmdepool(shm->garbage_pool, (char *)garbp);
 	    garbp = next;
 
 	    if(garbo)
@@ -1080,14 +1040,8 @@ int use_name(shm_t *share, char *name)
 	if(strcmp(ob->name, name) == 0) return 1;
 	ob = ob->next;
     }
-#ifdef WITH_TCL
     ob = (object_t *)ckalloc(sizeof *ob + strlen(name) + 1);
-#else
-    if(!(ob = (object_t *)malloc(sizeof *ob + strlen(name) + 1)) {
-	shared_errno = SH_PRIVATE_MEMORY;
-	return 0;
-    }
-#endif
+
     ob->next = share->objects;
     strcpy(ob->name, name);
     share->objects = ob;
@@ -1103,11 +1057,7 @@ void release_name(shm_t *share, char *name)
 	if(strcmp(ob->name, name) == 0) {
 	    if(prev) prev->next = ob->next;
 	    else share->objects = ob->next;
-#ifdef WITH_TCL
 	    ckfree((char *)ob);
-#else
-	    free(ob);
-#endif
 	    return;
 	}
 	prev = ob;

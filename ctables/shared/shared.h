@@ -84,14 +84,21 @@ typedef struct _garbage {
 struct _shm_t;		// forward
 typedef struct _pool_t {
     struct _pool_t	*next;		// next pool
-    struct _shm_t	*share;		// where it's allocated form;
     char		*start;		// start of pool
-    int			 blocks;	// number of elements in pool
-    int		 	 blocksize;	// size of each pool element
     int		 	 avail;		// number of chunks unallocated
     char		*brk;		// start of never-allocated space
     char		*freelist;      // first freed element
 } pool_t;
+
+// Pool header block
+//
+typedef struct _poolhead_t {
+    struct _poolhead_t	*next;
+    struct _pool_t	*pool;
+    struct _shm_t	*share;
+    int			 blocks;
+    int			 blocksize;
+} poolhead_t;
 
 // Symbol table, to pass addresses of internal structures to readers
 typedef struct _symbol {
@@ -157,10 +164,10 @@ typedef struct _shm_t {
     char		*filename;
     object_t		*objects;
 // server-only fields:
-    pool_t		*pools;
+    poolhead_t		*pools;
     volatile freeblock	*freelist;
     garbage		*garbage;
-    pool_t		*garbage_pool;
+    poolhead_t		*garbage_pool;
     cell_t		 horizon;
 // client-only fields:
     volatile reader	*self;
@@ -171,16 +178,15 @@ shm_t *map_file(char *file, char *addr, size_t default_size, int flags);
 int unmap_file(shm_t *shm);
 void shminitmap(shm_t *shm);
 int shmcheckmap(volatile mapheader *map);
-pool_t *makepool(size_t blocksize, int blocks, shm_t *share);
-pool_t *ckallocpool(size_t blocksize, int blocks);
+poolhead_t *makepool(size_t blocksize, int blocks, shm_t *share);
 int shmaddpool(shm_t *map, size_t blocksize, int blocks);
-char *palloc(pool_t **poolheader, size_t size);
+char *palloc(poolhead_t *head, size_t size);
 void remove_from_freelist(shm_t *shm, volatile freeblock *block);
 void insert_in_freelist(shm_t *shm, volatile freeblock *block);
 char *_shmalloc(shm_t *map, size_t size);
 char *shmalloc(shm_t *map, size_t size);
 void shmfree(shm_t *map, char *block);
-int shmdepool(pool_t **head, char *block);
+int shmdepool(poolhead_t *head, char *block);
 void setfree(volatile freeblock *block, size_t size, int is_free);
 int shmdealloc(shm_t *shm, char *data);
 int write_lock(shm_t *shm);
