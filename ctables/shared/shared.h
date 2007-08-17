@@ -82,22 +82,29 @@ typedef struct _garbage {
 // Pools have much lower overhead for small blocks, because you don't need
 // to merge blocks
 struct _shm_t;		// forward
-typedef struct _pool_t {
-    struct _pool_t	*next;		// next pool
-    char		*start;		// start of pool
-    int		 	 avail;		// number of chunks unallocated
-    char		*brk;		// start of never-allocated space
-    char		*freelist;      // first freed element
-} pool_t;
+
+typedef struct _pool_freelist_t {
+    struct _pool_freelist_t *next;
+} pool_freelist_t;
+
+typedef struct _chunk_t {
+    struct _chunk_t	*next;		// next pool chunk
+    char		*start;		// start of pool shared memory
+    int		 	 avail;		// number of elements unallocated
+    char		*brk;		// start of unallocated space
+} chunk_t;
 
 // Pool header block
 //
 typedef struct _poolhead_t {
     struct _poolhead_t	*next;
-    struct _pool_t	*pool;
+    struct _chunk_t	*chunks;
     struct _shm_t	*share;
     int			 blocks;
     int			 blocksize;
+    int			 numchunks;
+    int			 maxchunks;
+    pool_freelist_t	*freelist;
 } poolhead_t;
 
 // Symbol table, to pass addresses of internal structures to readers
@@ -178,9 +185,10 @@ shm_t *map_file(char *file, char *addr, size_t default_size, int flags);
 int unmap_file(shm_t *shm);
 void shminitmap(shm_t *shm);
 int shmcheckmap(volatile mapheader *map);
-poolhead_t *makepool(size_t blocksize, int blocks, shm_t *share);
-int shmaddpool(shm_t *map, size_t blocksize, int blocks);
+poolhead_t *makepool(size_t blocksize, int blocks, int maxchunks, shm_t *share);
+int shmaddpool(shm_t *shm, size_t blocksize, int blocks, int maxchunks);
 char *palloc(poolhead_t *head, size_t size);
+void freepools(poolhead_t *head, int also_free_shared);
 void remove_from_freelist(shm_t *shm, volatile freeblock *block);
 void insert_in_freelist(shm_t *shm, volatile freeblock *block);
 char *_shmalloc(shm_t *map, size_t size);

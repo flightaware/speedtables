@@ -40,6 +40,11 @@ speed:
 	-rm -f *.dat
 	tclsh8.4 masterspeed.tcl
 
+pools:
+	-rm -r build
+	-rm -f *.dat
+	tclsh8.4 poolspeed.tcl
+
 reader:
 	-rm -r build
 	-rm -f *.dat

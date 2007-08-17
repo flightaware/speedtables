@@ -286,6 +286,9 @@ int unmap_file(shm_t   *share)
 	p->next = share->next;
     }
 
+    freepools(share->pools, 0);
+    freepools(share->garbage_pool, 0);
+
     map = (char *)share->map;
     size = share->size;
     fd = share->fd;
@@ -370,7 +373,7 @@ IFDEBUG(init_debug();)
     shmdealloc(shm, (char *)&block[1]);
 }
 
-poolhead_t *makepool(size_t blocksize, int blocks, shm_t *share)
+poolhead_t *makepool(size_t blocksize, int blocks, int maxchunks, shm_t *share)
 {
     poolhead_t *head = (poolhead_t *)ckalloc(sizeof *head);
 
@@ -381,52 +384,60 @@ poolhead_t *makepool(size_t blocksize, int blocks, shm_t *share)
     head->share = share;
     head->blocks = blocks;
     head->blocksize = blocksize;
-    head->pool = NULL;
+    head->chunks = NULL;
     head->next = NULL;
+    head->numchunks = 0;
+    head->maxchunks = maxchunks;
+    head->freelist = NULL;
 
     return head;
 }
 
-// Find a pool that's got a free chunk of the required size
-pool_t *findpool(poolhead_t *head)
+// allocate a new pool chunk to a pool
+chunk_t *addchunk(poolhead_t *head)
 {
-    pool_t *pool = head->pool;
-    int count = 0;
+    chunk_t *chunk;
 
-    while(pool) {
-	if(pool->avail)
-	    return pool;
-	pool = pool->next;
-	count++;
-        if(count > 1000)
-		shmpanic("too many loops in the pool!");
-    }
+    if(head->maxchunks && head->numchunks >= head->maxchunks)
+	return NULL;
 
-    pool = (pool_t *)ckalloc(sizeof *pool);
+    chunk = (chunk_t *)ckalloc(sizeof *chunk);
 
     if(head->share) {
-        pool->start = _shmalloc(head->share, head->blocksize*head->blocks);
+        chunk->start = _shmalloc(head->share, head->blocksize*head->blocks);
     } else {
-	pool->start = ckalloc(head->blocksize * head->blocks);
+	chunk->start = ckalloc(head->blocksize * head->blocks);
     }
 
-    if(!pool->start) {
-	ckfree((char *)pool);
+    if(!chunk->start) {
+	ckfree((char *)chunk);
+	return NULL;
     }
 
-    pool->avail = head->blocks;
-    pool->brk = pool->start;
-    pool->next = head->pool;
-    pool->freelist = NULL;
+    chunk->avail = head->blocks;
+    chunk->brk = chunk->start;
+    chunk->next = head->chunks;
 
-    head->pool = pool;
+    head->chunks = chunk;
+    head->numchunks++;
 
-    return pool;
+    return chunk;
 }
 
-int shmaddpool(shm_t *shm, size_t blocksize, int blocks)
+int shmaddpool(shm_t *shm, size_t blocksize, int blocks, int maxchunks)
 {
-    poolhead_t *head = makepool(blocksize, blocks, shm);
+    poolhead_t *head;
+
+    // align size
+    if(blocksize % CELLSIZE)
+	blocksize += CELLSIZE - blocksize % CELLSIZE;
+
+    // avoid duplicates - must not have multiple pools the same size
+    for(head = shm->pools; head; head=head->next)
+	if(head->blocksize == blocksize)
+	    return 1;
+
+    head = makepool(blocksize, blocks, maxchunks, shm);
     if(!head) return 0;
 
     head->next = shm->pools;
@@ -437,7 +448,7 @@ int shmaddpool(shm_t *shm, size_t blocksize, int blocks)
 
 char *palloc(poolhead_t *head, size_t wanted)
 {
-    pool_t *pool;
+    chunk_t *chunk;
     char *block;
 
     // align size
@@ -450,25 +461,51 @@ char *palloc(poolhead_t *head, size_t wanted)
 	    break;
 	head = head->next;
     }
+
+    // No pools for this size, return null
     if(!head)
 	return NULL;
 
-    // find (or allocate) a pool that's got a free block
-    pool = findpool(head);
-    if(!pool)
-	return NULL;
-
-    if(pool->freelist) { // use a free block, if available
-	block = pool->freelist;
-	pool->freelist = *(char **)block;
-    } else { // use the next unused block
-	block = pool->brk;
-	pool->brk += head->blocksize;
+    // Use a free block if available
+    if(head->freelist) { // use a free block if available
+	block = (char *)head->freelist;
+	head->freelist = head->freelist->next;
+	return block;
     }
 
-    pool->avail--;
+    // If there's no room in the pool, get a new chunk
+    if(head->chunks && head->chunks->avail > 0)
+	chunk = head->chunks;
+    else
+	if (!(chunk = addchunk(head)))
+	    return NULL;
+
+    // Pull another block out of the pool
+    block = chunk->brk;
+    chunk->brk += head->blocksize;
+    chunk->avail--;
 
     return block;
+}
+
+void freepools(poolhead_t *head, int also_free_shared)
+{
+    while(head) {
+	poolhead_t *next = head->next;
+
+        while(head->chunks) {
+	    chunk_t *chunk = head->chunks;
+	    head->chunks = head->chunks->next;
+	    if(head->share == NULL)
+		    ckfree(chunk->start);
+	    else if(also_free_shared)
+	        shmfree(head->share, chunk->start);
+	    ckfree((char *)chunk);
+        }
+
+	ckfree((char *)head);
+	head = next;
+    }
 }
 
 void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
@@ -577,6 +614,8 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
 
 IFDEBUG(fprintf(SHM_DEBUG_FP, "      return block2data(0x%lX) ==> 0x%lX\n", (long)block, (long)block2data(block));)
 
+	    if((char *)block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
+		shmpanic("Ludicrous block!");
 	    return block2data(block);
 	}
 
@@ -600,6 +639,10 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld);\n", (long)size);)
 
     if(!(block = palloc(shm->pools, size)))
 	block = _shmalloc(shm, size);
+
+    if((char *)block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
+	shmpanic("Ludicrous block!");
+
     return block;
 }
 
@@ -613,7 +656,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
 	shmpanic("Trying to free pointer outside mapped memory!");
 
     if(!shm->garbage_pool) {
-	shm->garbage_pool = makepool(sizeof *entry, GARBAGE_POOL_SIZE, NULL);
+	shm->garbage_pool = makepool(sizeof *entry, GARBAGE_POOL_SIZE, 0, NULL);
 	if(!shm->garbage_pool)
 	    shmpanic("Can't create garbage pool");
     }
@@ -632,34 +675,24 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
 int shmdepool(poolhead_t *head, char *block)
 {
     while(head) {
-	pool_t *pool = head->pool;
-        pool_t *prev = NULL;
-        while(pool) {
-	    size_t offset = block - pool->start;
+	chunk_t *chunk = head->chunks;
+        while(chunk) {
+	    pool_freelist_t *free;
+	    int offset = block - chunk->start;
 	    if(offset < 0 || offset > (head->blocks * head->blocksize)) {
-	        prev = pool;
-	        pool = pool->next;
+	        chunk = chunk->next;
 	        continue;
 	    }
 
-	    if(offset % head->blocksize != 0) // partial free, ignore
-	        return 1;
+	    if(offset % head->blocksize != 0)
+		shmpanic("Unalligned free from pool!");
 
 	    // Thread block into free list. We do not store size in or coalesce
 	    // pool blocks, they're always all the same size, so all we have in
 	    // them is the address of the next free block.
-	    *((char **)block) = pool->freelist;
-	    pool->freelist = block;
-	    pool->avail++;
-
-	    // Move the pool with the free block to the beginning of the free
-	    // pool list, if it's not already there. This means that free blocks
-	    // will tend to be found quickly.
-	    if(prev) {
-	        prev->next = pool->next;
-	        pool->next = head->pool;
-	        head->pool = pool;
-	    }
+	    free = (pool_freelist_t *)block;
+	    free->next = head->freelist;
+	    head->freelist = free;
 
 	    return 1;
         }
@@ -1240,8 +1273,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     char	*sharename = NULL;
     shm_t	*share     = NULL;
 
-    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "set", "info", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET, CMD_INFO};
+    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "set", "info", "pools", "pool", (char *)NULL};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET, CMD_INFO, CMD_POOLS, CMD_POOL};
 
     static CONST struct {
 	int need_share;		// if a missing share is an error
@@ -1255,7 +1288,9 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	{1, -3, "names"},
 	{1, -4, "name ?name?..."},
 	{1, -5, "name value ?name value?..."},
-	{1,  3, ""}
+	{1,  3, ""},
+	{1,  3, ""},
+	{1,  6, "size blocks/chunk max_chunks"}
     };
 
     if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
@@ -1353,6 +1388,67 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 		    Tcl_AppendElement(interp, share->name);
 		    share = share->next;
 	        }
+	    }
+	    return TCL_OK;
+	}
+
+        // list pools
+        case CMD_POOLS: {
+	    poolhead_t *head;
+	    char tmp[32];
+	    pool_freelist_t *free;
+	    int avail;
+
+	    if((head = share->garbage_pool)) {
+
+	        avail = head->chunks ? head->chunks->avail : 0;
+	        for(free = head->freelist; free; free=free->next)
+		    avail++;
+
+	        // garbage pool size is virtually zero.
+	        Tcl_AppendElement(interp, "0");
+	        sprintf(tmp, "%d", head->blocks);
+	        Tcl_AppendElement(interp, tmp);
+	        sprintf(tmp, "%d", head->numchunks);
+	        Tcl_AppendElement(interp, tmp);
+	        sprintf(tmp, "%d", avail);
+	        Tcl_AppendElement(interp, tmp);
+
+	    }
+
+	    for(head = share->pools; head; head=head->next) {
+
+		avail = head->chunks ? head->chunks->avail : 0;
+		for(free = head->freelist; free; free=free->next)
+		    avail++;
+
+		sprintf(tmp, "%d", head->blocksize);
+		Tcl_AppendElement(interp, tmp);
+		sprintf(tmp, "%d", head->blocks);
+		Tcl_AppendElement(interp, tmp);
+		sprintf(tmp, "%d", head->numchunks);
+		Tcl_AppendElement(interp, tmp);
+		sprintf(tmp, "%d", avail);
+		Tcl_AppendElement(interp, tmp);
+
+	    }
+	    return TCL_OK;
+	}
+
+	// add a pool
+	case CMD_POOL: {
+	    int blocks;
+	    int blocksize;
+	    int maxchunks;
+	    if (Tcl_GetIntFromObj(interp, objv[3], &blocks) == TCL_ERROR)
+		return TCL_ERROR;
+	    if (Tcl_GetIntFromObj(interp, objv[4], &blocksize) == TCL_ERROR)
+		return TCL_ERROR;
+	    if (Tcl_GetIntFromObj(interp, objv[5], &maxchunks) == TCL_ERROR)
+		return TCL_ERROR;
+	    if(!shmaddpool(share, blocks, blocksize, maxchunks)) {
+		TclShmError(interp, "add pool");
+		return TCL_ERROR;
 	    }
 	    return TCL_OK;
 	}
