@@ -73,9 +73,9 @@ New ctable commands:
 	$ctable share command ?options?
 		These are equivalent ways of doing the same thing.
 		The "share" extension actually stands apart from
-		the ctable extension, and doesn't even require Tcl,
-		but it's designed for ctable use... it was easier
-		to prototype and debug standalone. It's unlikely
+		the ctable extension, and doesn't even require Tcl
+		(it's designed for ctable use... it was easier
+		to prototype and debug standalone). It's unlikely
 		to be useful to use the explicit share form except
 		in internal debugging. The rest of the doc assumes
 		you're using "$ctable share command".
@@ -98,7 +98,7 @@ New ctable commands:
 		info
 			Returns some internal information about the
 			share in a name-value list. The data includes
-			size, flags, sharename, whether you're trhe
+			size, flags, sharename, whether you're the
 			creator (master), and filename.
 
 		pools
@@ -115,4 +115,32 @@ New ctable commands:
 			max_chunks is zero it will extend to pool
 			to the limit of the shared segment if
 			necessary.
+
+STAPI support (from stapi/doc.txt)
+
+    package require st_shared
+    ::stapi::connect shared://port/table ?options?
+	Options:
+	    -build path ... directory containing the generated ctable package.
+
+        Use a ctable server on localhost, using shared memory for
+        the "search" commands, and ctable_client for other commands.
+
+	server example:
+
+	    top_brands_nokey_m create m master file sharefile.dat
+	    [...]
+	    ::ctable_server::register ctable://*:1616/master m
+	    [...]
+	    if !$tcl_interactive { vwait die }
+
+	client example:
+
+	    package require st_shared
+	    [...]
+            set r [::stapi::connect shared://1616/master -build build]
+	    [...]
+	    $r search [...]
+	    [...]
+	    $r destroy
 
