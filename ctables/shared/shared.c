@@ -258,9 +258,10 @@ IFDEBUG(fprintf(stderr, "mmap(0x%lX, %d, rw, %d, %d, 0) = 0x%lX;\n", (long)addr,
 // shared_errno is.
 int unmap_file(shm_t   *share)
 {
-    char	*map;
-    size_t	 size;
-    int		 fd;
+    char		*map;
+    size_t		 size;
+    int			 fd;
+    volatile reader	*r;
 
     // If there's anyone still using the share, it's a no-op
     if(share->objects)
@@ -287,9 +288,9 @@ int unmap_file(shm_t   *share)
     }
 
     // If we're a reader, zero out our reader entry for re-use
-    reader = pid2reader(share->map, getpid());
-    if(reader)
-	reader->pid = reader->cycle = 0;
+    r = pid2reader(share->map, getpid());
+    if(r)
+	r->pid = r->cycle = 0;
 
     freepools(share->pools, 0);
     freepools(share->garbage_pool, 0);
