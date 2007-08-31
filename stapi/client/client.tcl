@@ -55,6 +55,7 @@ namespace eval ::stapi {
     return $handle
   }
 
+  # sttp://[host:port]/[dir/]table[/stuff][?stuff]
   # ctable://[host:port]/[dir/]table[/stuff][?stuff]
   variable ctable_serial 0
   proc connect_ctable {table_path {address "localhost"} args} {
@@ -65,6 +66,7 @@ namespace eval ::stapi {
     return $local_table
   }
   register ctable connect_ctable
+  register sttp connect_ctable
 
   # local:///ctable_name - dummy connector for local tables
   proc connect_local {table {address ""} args} {

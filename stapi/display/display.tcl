@@ -46,24 +46,19 @@ catch { ::itcl::delete class STDisplay }
 	eval configure $args
 	load_response
 
-	if {![info exists ctable] && [info exists stable]} {
-	  set ctable $stable
+        # allow 'ctable' instead of 'table' as a historical alias (interim)
+	if {![info exists table] && [info exists ctable]} {
+	  set table $stable
 	  unset stable
 	}
         # If it's not already an extended table, treat it like a URI
-        if {[info exists ctable] && ![::stapi::extend::extended $ctable]} {
-	  set uri $ctable
-	  unset ctable
+        if {[info exists table] && ![::stapi::extend::extended $table]} {
+	  set uri $table
+	  unset table
         }
-	if {![info exists ctable]} {
+	if {![info exists table]} {
 	  if ![info exists uri] {
-	    if ![info exists table] {
-	      return -code error "No ctable, table, or uri"
-	    }
-	    if ![info exists hosts] {
-	      set hosts {}
-	    }
-	    set uri "cache://[join $hosts ":"]/$table"
+	    return -code error "No table or uri"
 	  }
 	  if ![info exists keyfields] {
 	    if [info exists key] {
@@ -75,18 +70,18 @@ catch { ::itcl::delete class STDisplay }
 	      return -code error "No key/keyfields"
 	    }
 	  }
-	  set ctable [::stapi::connect $uri -keys $keyfields]
+	  set table [::stapi::connect $uri -keys $keyfields]
 	}
 
 	if ![info exists keyfields] {
 	  if [info exists key] {
 	    set keyfields [list $key]
 	  } else {
-	    set mlist [$ctable methods]
+	    set mlist [$table methods]
 	    if {[lsearch $mlist "key"]} {
-	      set keyfields [list [$ctable key]]
+	      set keyfields [list [$table key]]
 	    } else {
-	      set keyfields [$ctable keys]
+	      set keyfields [$table keys]
 	    }
 	  }
 	}
@@ -135,12 +130,11 @@ catch { ::itcl::delete class STDisplay }
     ## a request is used by DIODisplay. We have to make that more abstract
 
     ## New exposed configvars for STDisplay
-    public variable ctable
-    public variable stable	;# Alias
+    public variable table
+    public variable ctable	;# Alias
     public variable uri
     public variable keyfields
     public variable key
-    public variable hosts
     public variable debug 0
 
     ## Background configvars
@@ -938,15 +932,15 @@ catch { ::itcl::delete class STDisplay }
 	upvar 1 $_request request
 	array set search [array get request]
 	array set search $args
-	uplevel 1 [list $ctable search+] [array get search]
+	uplevel 1 [list $table search+] [array get search]
     }
 
     method fetch {keyVal arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector $keyVal selector] {
-	    set result [$ctable search -compare $selector -array_with_nulls array]
+	    set result [$table search -compare $selector -array_with_nulls array]
 	} else {
-	    set list [$ctable array_get_with_nulls $keyVal]
+	    set list [$table array_get_with_nulls $keyVal]
 	    set result [llength $list]
 	    if {$result} {
 	        array set array $list
@@ -955,7 +949,7 @@ catch { ::itcl::delete class STDisplay }
 	return $result
     }
 
-    # SHorthand to make a key from ctable
+    # SHorthand to make a key from table
     method makekey {arrayName} {
 	upvar 1 $arrayName array
 
@@ -981,24 +975,24 @@ catch { ::itcl::delete class STDisplay }
 	return $list
     }
 
-    # SHorthand to store ctable
+    # SHorthand to store table
     method store {arrayName} {
 	upvar 1 $arrayName array
 	if [make_limit_selector {} selector array] {
-	    if ![$ctable search -compare $selector -key _] {
+	    if ![$table search -compare $selector -key _] {
 		return 0
 	    }
 	}
-	return [$ctable store [array get array]]
+	return [$table store [array get array]]
     }
 
     method delete {keyVal} {
 	if [make_limit_selector $keyVal selector] {
-	    if ![$ctable search -compare $selector -getkey keyVal] {
+	    if ![$table search -compare $selector -getkey keyVal] {
 		return 0
 	    }
 	}
-	return [$ctable delete $keyVal]
+	return [$table delete $keyVal]
     }
 
     method pretty_fields {list} {
@@ -1174,7 +1168,7 @@ catch { ::itcl::delete class STDisplay }
 	    if {$rows} {
 	        set total $rows
 	    } else {
-	        set total [$ctable count]
+	        set total [$table count]
 	    }
 	} else {
 	    set total [perform request -countOnly 1]
@@ -1584,7 +1578,7 @@ catch { ::itcl::delete class STDisplay }
         set adding [expr {$response(DIODfromMode) == "Add"}]
 	if {$adding} {
 	    set keyVal [makekey response]
-	    set list [$ctable array_get_with_nulls $keyVal]
+	    set list [$table array_get_with_nulls $keyVal]
 	    if {[llength $list]} {
 		array set a $list
 	    }

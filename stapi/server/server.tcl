@@ -640,7 +640,7 @@ namespace eval ::stapi {
     # If the tsv file wasn't passed to us, get the lock 
     if {"$tsv_file" == ""} {
       if ![info exists ctable2name($ctable)] {
-        return -code error "$ctable: Not a cached ctable"
+        return -code error "$ctable: Not a cached table"
       }
       set tsv_file [workname $ctable2name($ctable) tsv]
 

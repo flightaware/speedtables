@@ -12,11 +12,11 @@ namespace eval ::stapi::display {
   }
   ::stapi::debug_handler dumper
 
-  proc display_test {table keys {cols {}}} {
-    set ctable [::stapi::connect_sql $table $keys -cols $cols]
-    STTPDisplay test -ctable $ctable -mode List
+  proc display_test {sql_table keys {cols {}}} {
+    set table [::stapi::connect_sql $sql_table $keys -cols $cols]
+    STTPDisplay test -table $table -mode List
   
-    foreach field [$ctable fields] {
+    foreach field [$table fields] {
       test field $field
     }
     test show

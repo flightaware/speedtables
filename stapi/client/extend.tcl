@@ -16,6 +16,7 @@ namespace eval ::stapi::extend {
     types   types
     destroy destroy
     ctable  ctable
+    table   ctable
     makekey makekey
     keys    keys
     key     key
@@ -28,7 +29,7 @@ namespace eval ::stapi::extend {
     if ![info exists indexed($handle)] {
       variable ctable
       if ![info exists ctable($handle)] {
-        error "No ctable open for $handle"
+        error "No table open for $handle"
       }
       set indexed($handle) [$ctable($handle) index indexed]
     }
@@ -40,7 +41,7 @@ namespace eval ::stapi::extend {
     if ![info exists types($handle)] {
       variable ctable
       if ![info exists ctable($handle)] {
-        error "No ctable open for $handle"
+        error "No table open for $handle"
       }
       set types($handle) {}
       foreach f [$ctable($handle) fields] {
@@ -168,7 +169,7 @@ namespace eval ::stapi::extend {
     variable stable
 
     if ![info exists ctable($handle)] {
-      error "No ctable open for $handle"
+      error "No table open for $handle"
     }
 
     $ctable($handle) destroy
@@ -186,7 +187,7 @@ namespace eval ::stapi::extend {
     variable ctable
 
     if ![info exists ctable($handle)] {
-      return -code error "No ctable open for $handle"
+      return -code error "No table open for $handle"
     }
     return $ctable($handle)
   }
@@ -244,7 +245,7 @@ namespace eval ::stapi::extend {
   proc search {handle args} {
     variable ctable
     if ![info exists ctable($handle)] {
-      error "No ctable open for $handle"
+      error "No table open for $handle"
     }
     lappend cmd $ctable($handle)
     array set options $args
@@ -315,7 +316,7 @@ namespace eval ::stapi::extend {
   proc count {handle} {
     variable ctable
     if ![info exists ctable($handle)] {
-      error "No ctable open for $handle"
+      error "No table open for $handle"
     }
     return [$ctable($handle) count]
   }

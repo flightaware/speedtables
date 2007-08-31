@@ -164,15 +164,16 @@
   Methods intially defined, and the packages they're defined in:
 
     package require st_client
-    ctable://[host:port]/[dir/]table[/stuff][?stuff]
+    sttp://[host:port]/[dir/]table[/stuff][?stuff]
+    (or ctable://[host:port]/[dir/]table[/stuff][?stuff] )
 
-	 Use a ctable server via remote_ctable.
+	 Use a ctable server via sttp.
 
     package require st_shared
     shared://port/[dir/]table[/stuff][?stuff]
 
 	Use a ctable server on localhost, using shared memory for
-	the "search" method.
+	the "search" method and sttp: for other methods.
 
 	ctable must be on localhost.
 
@@ -182,7 +183,7 @@
     package require st_client_pgtcl
     sql://connection/table[/col[:type]/col...][?param&param...]
 
-	Create a ctable interface to a PostgreSQL table
+	Create a stapi interface to a PostgreSQL table
 
 	connection:
 		Not implemented yet, will be something like:
@@ -205,11 +206,11 @@
 	last part of this file.
 
     package require st_client
-    ctable (no method)
+    name (no method)
 
 	If the URI is not URI format, it assumes it's an object that provides
-	the same semantics as a ctable... typically either a ctable, an
-	already-opened ctable_client connection, or the result of a previous
+	stapi semantics already... typically a ctable, an already-opened
+	ctable_client connection, or the result of a previous
 	call to ::stapi::connect. If necessary it creates a wrapper around the
 	ctable to implement the extra methods that STTP provides.
 
@@ -222,7 +223,7 @@
 
   register a transport method for ::stapi::connect
 
-== stapi::extend - the STTP API extensions to CTABLES
+== stapi::extend - the STTP API extensions to ctables
 
 These are required for display, but may not be required by other users of the
 package, so the wrapper object is only created when needed.
