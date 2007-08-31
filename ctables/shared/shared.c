@@ -286,6 +286,11 @@ int unmap_file(shm_t   *share)
 	p->next = share->next;
     }
 
+    // If we're a reader, zero out our reader entry for re-use
+    reader = pid2reader(share->map, getpid());
+    if(reader)
+	reader->pid = reader->cycle = 0;
+
     freepools(share->pools, 0);
     freepools(share->garbage_pool, 0);
 

@@ -471,12 +471,16 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      end_write(ctable);
 	      return TCL_ERROR;
 	  }
+
           Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
+
 #ifdef WITH_SHARED_TABLES
 	  // We'll never need "ctable" again, so now we can trash it.
+	  // And, possibly, unmap the file
 	  if(ctable->share) {
-	      // abandon reservetion for name
+	      // abandon reservation for name
 	      release_name(ctable->share, ctable->share_name);
+
 	      // unmap file (if all reservations abandoned)
 	      unmap_file(ctable->share);
 	  }
