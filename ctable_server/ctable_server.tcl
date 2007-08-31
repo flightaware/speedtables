@@ -9,15 +9,19 @@ package require ctable_net
 
 namespace eval ::ctable_server {
   variable registeredCtables
-  variable evalEnabled 1
+
   variable serverVersion 1.0
+  variable protocolResponse ctable_server
+
+  variable evalEnabled 1
+
   # eval? command	args
   variable serverCommands {
     0 shutdown		""
     0 redirect		{remoteURL [-shutdown]}
     0 quit		""
     0 info		{[-verbose]}
-    0 create		ctableName
+    0 create		tableName
     0 tablemakers		""
     0 tables		""
     0 help		""
@@ -158,6 +162,8 @@ proc shutdown_servers {} {
 #
 proc accept_connection {sock ip port} {
     variable clientList
+    variable protocolResponse
+    variable serverVersion
     lappend clientList $sock $ip $port
     serverlog "connect from $sock $ip $port"
 
@@ -166,7 +172,7 @@ proc accept_connection {sock ip port} {
     fconfigure $sock -blocking 0 -translation auto
     fileevent $sock readable [list ::ctable_server::remote_receive $sock $theirPort]
 
-    remote_send $sock [list ctable_server 1.0 ready] 0
+    remote_send $sock [list $protocolResponse $serverVersion ready] 0
 }
 
 #
@@ -389,13 +395,13 @@ proc remote_invoke {sock table line port} {
 		lassign $c cmd args
 		append text "$cmd $args; "
 	    }
-	    append text "or a ctable command"
+	    append text "or a table command"
 	    return $text
 	}
     }
 
     if {![info exists registeredCtables($table)]} {
-	error "ctable $table not registered on this server" "" CTABLE
+	error "table $table not registered on this server" "" CTABLE
     }
 
     set ctable $registeredCtables($table)

@@ -7,14 +7,18 @@
 #
 
 namespace eval ::ctable_net {
+    # default port (rarely used)
     variable ctableDefaultPort 11111
+
+    # default protocol for new URLs
+    variable ctableDefaultProtocol ctable
 
 proc split_ctable_url {cttpUrl} {
     variable ctableDefaultPort
 
     # crack out host:port from the rest
-    if {![regexp -nocase {^ctable://(.*?)/(.*)$} $cttpUrl dummy hostPort theRest]} {
-	error "invalid ctable URL syntax, should be ctable:://host?:port?/?dir/?table??stuff?"
+    if {![regexp -nocase {^(ctable|sttp)://(.*?)/(.*)$} $cttpUrl dummy proto hostPort theRest]} {
+	error "invalid URL syntax, should be proto://host?:port?/?dir/?table??stuff?"
     }
 
     # crack host:port into host and port and if port is empty set it to 
@@ -40,7 +44,9 @@ proc split_ctable_url {cttpUrl} {
 
 
 proc join_ctable_url {host port dir table {extraStuff ""}} {
-    set result "ctable://$host"
+    variable ctableDefaultProtocol
+
+    set result "$ctableDefaultProtocol://$host"
 
     if {$port != ""} {
 	append result ":$port"

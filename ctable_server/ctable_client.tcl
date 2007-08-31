@@ -88,20 +88,20 @@ proc remote_ctable_cache_connect {cttpUrl} {
     if {[gets $sock line] < 0} {
 	after 500
 	if {[gets sock line] < 0} {
-	    error "unexpected EOF from ctable server"
+	    error "unexpected EOF from server"
 	}
     }
 
-    if {[lindex $line 0] != "ctable_server"} {
-	error "ctable server hello line format error"
+    if {[lindex $line 0] != "ctable_server" && [lindex $line 0] != "sttp_server"} {
+	error "server hello line format error"
     }
 
     if {[lindex $line 1] != "1.0"} {
-	error "ctable server version [lindex $line 1] mismatch"
+	error "server version [lindex $line 1] mismatch"
     }
 
     if {[lindex $line 2] != "ready"} {
-	error "unable to handle ctable server state of unreadiness"
+	error "unable to handle server state of unreadiness"
     }
 
     return $sock

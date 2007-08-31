@@ -2,6 +2,9 @@
 
 $Id$
 
+8/31/07 peter
+    * make 'sttp:' and 'ctable:' synonymous in ctable-server.
+
 1/21/07 karl
     * Add server-side support for search with -array and -array_with_nulls.
 
