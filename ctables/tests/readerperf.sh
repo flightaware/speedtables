@@ -1,8 +1,10 @@
 #!/bin/sh
 #$Id$
 
+. test_common.sh
+
 echo "Starting ./master_server.tcl"
-tclsh8.4 ./master_server.tcl 300 &
+${TCLSH} ./master_server.tcl 300 &
 master_pid=$!
 trap 'kill $master_pid >/dev/null' 0 2
 sleep 5
@@ -11,7 +13,7 @@ sleep 5
 
 
 echo "Running ./readerperf.tcl"
-tclsh8.4 ./readerperf.tcl
+${TCLSH} ./readerperf.tcl
 echo "Finished"
 
 sleep 5
