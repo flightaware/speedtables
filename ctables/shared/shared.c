@@ -176,7 +176,7 @@ IFDEBUG(init_debug();)
     fd = open(file, O_RDWR, 0);
 
     if(fd == -1) {
-	if(!size || !addr) {
+	if(!default_size || !addr) {
 	    shared_errno = -SH_NO_MAP;
 	    return 0;
 	}
