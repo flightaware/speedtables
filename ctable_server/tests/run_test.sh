@@ -2,7 +2,8 @@
 
 # $Id$
 
-TCLSH=/usr/fa/bin/tclsh8.4
+#TCLSH=/usr/fa/bin/tclsh8.4
+TCLSH=/usr/local/bin/tclsh8.4
 
 echo + ${TCLSH} test.ct
 ${TCLSH} test.ct
@@ -35,6 +36,7 @@ do
   fi
 done
 
+sleep 5
 if kill -0 $pid 2>/dev/null
 then
   echo "# Server not shut down properly"
