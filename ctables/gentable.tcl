@@ -72,11 +72,11 @@ namespace eval ctable {
     set withSubdir 1
 
     # OSX using FlightAware
-    set sysPrefix /usr/fa
-    set pgPrefix /usr/fa
+    #set sysPrefix /usr/fa
+    #set pgPrefix /usr/fa
     # default
-    #set sysPrefix /usr/local
-    #set pgPrefix /usr/local
+    set sysPrefix /usr/local
+    set pgPrefix /usr/local
 
     variable pgtcl_ver 1.5
 

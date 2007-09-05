@@ -9,8 +9,8 @@ TCLSH=tclsh8.4
 TCLSHM=$(TCLSH)m
 
 # OSX FA version
-TCLSH=/usr/fa/bin/tclsh8.4
-TCLSHM=$(TCLSH)
+#TCLSH=/usr/fa/bin/tclsh8.4
+#TCLSHM=$(TCLSH)
 
 all:
 	-rm -r build
