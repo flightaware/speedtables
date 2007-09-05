@@ -81,7 +81,12 @@ void shared_perror(char *text) {
 	}
 }
 
+
+#ifdef MAP_NOSYNC
 #define DEFAULT_FLAGS (MAP_SHARED|MAP_NOSYNC)
+#else
+#define DEFAULT_FLAGS MAP_SHARED
+#endif
 #define REQUIRED_FLAGS MAP_SHARED
 #define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE|MAP_STACK)
 
@@ -1147,8 +1152,10 @@ int parse_flags(char *s)
 
 	     if(strcmp(word, "nocore") == 0) flags |= MAP_NOCORE;
 	else if(strcmp(word, "core") == 0) flags &= ~MAP_NOCORE;
+#ifdef MAP_NOSYNC
 	else if(strcmp(word, "nosync") == 0) flags |= MAP_NOSYNC;
 	else if(strcmp(word, "sync") == 0) flags &= MAP_NOSYNC;
+#endif
     }
     return flags;
 }
@@ -1162,10 +1169,12 @@ char *flags2string(int flags)
     else
 	strcat(buffer, "core ");
 
+#ifdef MAP_NOSYNC
     if(flags & MAP_NOSYNC)
 	strcat(buffer, "nosync ");
     else
 	strcat(buffer, "sync ");
+#endif
 
     strcat(buffer, "shared");
 

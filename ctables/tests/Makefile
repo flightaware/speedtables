@@ -4,46 +4,52 @@
 # $Id$
 #
 
+# default
+TCLSH=tclsh8.4
+
+# OSX FA version
+TCLSH=/usr/fa/bin/tclsh8.4
+
 all:
 	-rm -r build
-	tclsh8.4 serious-tests.tcl
-	tclsh8.4 incr-test.tcl
-	tclsh8.4 all-field-types.tcl
-	tclsh8.4 reset-test.tcl
-	tclsh8.4 tsv-nokey-tests.tcl
-	tclsh8.4 tsv-tests.tcl
-	tclsh8.4 new-tests.tcl
-	tclsh8.4 key-tests.tcl
-	tclsh8.4 trans-tests.tcl
+	$(TCLSH) serious-tests.tcl
+	$(TCLSH) incr-test.tcl
+	$(TCLSH) all-field-types.tcl
+	$(TCLSH) reset-test.tcl
+	$(TCLSH) tsv-nokey-tests.tcl
+	$(TCLSH) tsv-tests.tcl
+	$(TCLSH) new-tests.tcl
+	$(TCLSH) key-tests.tcl
+	$(TCLSH) trans-tests.tcl
 
 key:
 	-rm -r build
-	tclsh8.4 new-tests.tcl
+	$(TCLSH) new-tests.tcl
 	mkdir tmpdir
 	mv build/*.so tmpdir
-	tclsh8.4 key-tests.tcl
+	$(TCLSH) key-tests.tcl
 	rm build/*.so build/topbrandsgenkey*
 	mv tmpdir/* build
 	rmdir tmpdir
-	tclsh8.4 key-tests.tcl
+	$(TCLSH) key-tests.tcl
 
 master:
 	-rm -r build
 	-rm -f *.dat
-	tclsh8.4 tsv-nokey-tests.tcl
-	tclsh8.4m master.tcl
-	tclsh8.4m master2.tcl
+	$(TCLSH) tsv-nokey-tests.tcl
+	$(TCLSH)m master.tcl
+	$(TCLSH)m master2.tcl
 	rm -f *.dat
 
 speed:
 	-rm -r build
 	-rm -f *.dat
-	tclsh8.4 masterspeed.tcl
+	$(TCLSH) masterspeed.tcl
 
 pools:
 	-rm -r build
 	-rm -f *.dat
-	tclsh8.4 poolspeed.tcl
+	$(TCLSH) poolspeed.tcl
 
 reader:
 	-rm -r build

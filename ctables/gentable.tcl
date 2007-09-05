@@ -45,7 +45,7 @@ namespace eval ctable {
     variable withPipe 1
 
     # set to 1 to build with debugging and link to tcl debugging libraries
-    set genCompilerDebug 1
+    set genCompilerDebug 0
     set showCompilerCommands 0
     set memDebug 0
 
@@ -71,6 +71,10 @@ namespace eval ctable {
     # create files in a subdirectory
     set withSubdir 1
 
+    # OSX using FlightAware
+    #set sysPrefix /usr/fa
+    #set pgPrefix /usr/fa
+    # default
     set sysPrefix /usr/local
     set pgPrefix /usr/local
 
@@ -4823,7 +4827,7 @@ proc compile {fileFragName version} {
     }
 
     if {$withSubdir} {
-	pkg_mkIndex $buildPath */*.tcl */*.so
+	pkg_mkIndex $buildPath */*.tcl */*.so */*.dylib
     } else {
 	pkg_mkIndex $buildPath
     }
