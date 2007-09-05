@@ -2,10 +2,12 @@
 
 # $Id$
 
-echo + tclsh8.4 test.ct
-tclsh8.4 test.ct
-echo + tclsh8.4 test_server.tcl \&
-tclsh8.4 test_server.tcl &
+TCLSH=/usr/fa/bin/tclsh8.4
+
+echo + ${TCLSH} test.ct
+${TCLSH} test.ct
+echo + ${TCLSH} test_server.tcl \&
+${TCLSH} test_server.tcl &
 pid=$!
 echo + sleep 5
 sleep 5
@@ -22,8 +24,8 @@ fail=0
 success=0
 for test
 do
-  echo + tclsh8.4 test_$test.tcl
-  if tclsh8.4 test_$test.tcl
+  echo + ${TCLSH} test_$test.tcl
+  if ${TCLSH} test_$test.tcl
   then
     echo "# $test OK"
     success=`expr $success + 1`

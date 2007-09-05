@@ -9,7 +9,7 @@ set status 0
 if [catch {
     puts "version=[c_test info]"
 
-    set expected_methods {get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach methods shutdown redirect quit info create tablemakers tables help methods eval trigger}
+    set expected_methods {get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach methods shutdown redirect quit info create tablemakers tables help methods eval trigger key makekey attach getprop share}
 
     set required_methods $expected_methods
     set found_methods [c_test methods]
