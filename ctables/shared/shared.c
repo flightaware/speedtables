@@ -83,12 +83,23 @@ void shared_perror(char *text) {
 
 
 #ifdef MAP_NOSYNC
-#define DEFAULT_FLAGS (MAP_SHARED|MAP_NOSYNC)
+# define DEFAULT_FLAGS (MAP_SHARED|MAP_NOSYNC)
+# define WITH_FLAGS 1
 #else
-#define DEFAULT_FLAGS MAP_SHARED
+# define DEFAULT_FLAGS MAP_SHARED
+# ifdef MAP_NOCORE
+#  define WITH_FLAGS 1
+# else
+#  define WITH_FLAGS 0
+# endif
 #endif
+
 #define REQUIRED_FLAGS MAP_SHARED
+#ifdef MAP_STACK
 #define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE|MAP_STACK)
+#else
+#define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE)
+#endif
 
 // open_new - open a new large, empty, mappable file. Return open file
 // descriptor or -1. Errno WILL be set on failure.
@@ -1143,6 +1154,7 @@ int parse_flags(char *s)
     char *word;
     int   flags = DEFAULT_FLAGS;
 
+#ifdef WITH_FLAGS
     while(*s) {
         while(isspace(*s)) s++;
 
@@ -1150,13 +1162,19 @@ int parse_flags(char *s)
 	while(*s && !isspace(*s)) s++;
 	if(*s) *s++ = 0;
 
+#ifdef MAP_NOCORE
 	     if(strcmp(word, "nocore") == 0) flags |= MAP_NOCORE;
 	else if(strcmp(word, "core") == 0) flags &= ~MAP_NOCORE;
 #ifdef MAP_NOSYNC
-	else if(strcmp(word, "nosync") == 0) flags |= MAP_NOSYNC;
+	else
+#endif
+#endif
+#ifdef MAP_NOSYNC
+	     if(strcmp(word, "nosync") == 0) flags |= MAP_NOSYNC;
 	else if(strcmp(word, "sync") == 0) flags &= MAP_NOSYNC;
 #endif
     }
+#endif
     return flags;
 }
 
@@ -1164,17 +1182,21 @@ char *flags2string(int flags)
 {
     static char buffer[32]; // only has to hold "nocore nosync shared"
 
+    buffer[0] = 0;
+
+#ifdef MAP_NOCORE
     if(flags & MAP_NOCORE)
 	strcat(buffer, "nocore ");
     else
+#endif
 	strcat(buffer, "core ");
 
 #ifdef MAP_NOSYNC
     if(flags & MAP_NOSYNC)
 	strcat(buffer, "nosync ");
     else
-	strcat(buffer, "sync ");
 #endif
+	strcat(buffer, "sync ");
 
     strcat(buffer, "shared");
 

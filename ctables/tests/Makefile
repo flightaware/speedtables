@@ -6,9 +6,11 @@
 
 # default
 TCLSH=tclsh8.4
+TCLSHM=$(TCLSH)m
 
 # OSX FA version
-#TCLSH=/usr/fa/bin/tclsh8.4
+TCLSH=/usr/fa/bin/tclsh8.4
+TCLSHM=$(TCLSH)
 
 all:
 	-rm -r build
@@ -37,8 +39,8 @@ master:
 	-rm -r build
 	-rm -f *.dat
 	$(TCLSH) tsv-nokey-tests.tcl
-	$(TCLSH)m master.tcl
-	$(TCLSH)m master2.tcl
+	$(TCLSHM) master.tcl
+	$(TCLSHM) master2.tcl
 	rm -f *.dat
 
 speed:

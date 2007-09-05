@@ -8,8 +8,8 @@
 # $Id$
 #
 
-#INSTDIR=/usr/fa/lib/ctable
-INSTDIR=/usr/local/lib/ctable
+INSTDIR=/usr/fa/lib/ctable
+#INSTDIR=/usr/local/lib/ctable
 WORKDIR=`pwd`
 
 default: test
