@@ -280,10 +280,10 @@ proc gen_deallocate {ctable pointer {private 0}} {
     }
 
     if {"$private" == "0" || "$private" == "FALSE"} {
-	return $pub
+	return "(($ctable)->share_type == CTABLE_SHARED_MASTER ? $pub : $priv)"
     }
 
-    return "(($private) ? $priv : $pub)"
+    return "( (($ctable)->share_type != CTABLE_SHARED_MASTER || ($private)) ? $priv : $pub)"
 }
 
 #
