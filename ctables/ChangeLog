@@ -1,6 +1,9 @@
 
 $Id$
 
+9/7/2007 karl
+    * Fix stuff to compile and work properly when shared memory isn't selected.
+
 8/15/2007
     * Added ability to set share modes: sync/nosync(default) and
       core(default)/nocore.

@@ -2313,8 +2313,8 @@ proc gen_delete_subr {subr struct} {
 
     emit "void ${subr}(CTable *ctable, void *vRow, int indexCtl) {"
     emit "    struct $struct *row = vRow;"
-    emit "    int             final = indexCtl != CTABLE_INDEX_DESTROY;"
     if {$withSharedTables} {
+	emit "    int             final = indexCtl != CTABLE_INDEX_DESTROY;"
 	emit "    int             del_shared = ctable->share_type == CTABLE_SHARED_MASTER;"
     }
     emit ""
@@ -4760,8 +4760,11 @@ proc compile {fileFragName version} {
 		set optflag "-O0"
 		set dbgflag "-g"
 		if {$memDebug} {
+		    #set stub "-ltclstub8.4g"
+		    #set lib "-ltcl8.4g"
 		    set stub "-ltclstub84gm"
 		    set lib "-ltcl84gm"
+
 		} else {
 		    set stub "-ltclstub84g"
 		    set lib "-ltcl84g"
