@@ -16,8 +16,15 @@ FILE *SHM_DEBUG_FP;
 #define IFDEBUG(x)				/* Debug code elided */
 #endif
 
+#include <limits.h>
+
 // Atomic word size, "cell_t".
+#if (LONG_MAX == 4294967296L) /* 32 bit long */
 typedef uint32_t cell_t;
+#else /* 64 bit long */
+typedef uint64_t cell_t;
+#endif
+
 #define CELLSIZE (sizeof (cell_t))
 
 // Marker for the beginning of the list

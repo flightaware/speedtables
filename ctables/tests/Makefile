@@ -6,7 +6,9 @@
 
 # default
 TCLSH=tclsh8.4
-TCLSHM=$(TCLSH)m
+TCLSHM=$(TCLSH)
+# With shared memory debugging
+#TCLSHM=$(TCLSH)m
 
 # with FlightAware
 #TCLSH=/usr/fa/bin/tclsh8.4
