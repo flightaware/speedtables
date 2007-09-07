@@ -46,6 +46,8 @@ struct jsw_skip {
   cmp_f        cmp;  /* User defined row compare function */
 #ifdef WITH_SHARED_TABLES
   shm_t       *share; /* Shared memory this table belongs to */
+#else
+  void        *share;
 #endif
   jsw_node_t **fix;  /* Update array */
 };

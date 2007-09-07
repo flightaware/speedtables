@@ -948,7 +948,6 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     int			   bestScore = 0;
 
     jsw_skip_t   	  *skipList = NULL;
-    jsw_skip_t   	  *skipListCopy = NULL;
     int           	   skipField = 0;
     int			   inOrderWalk = 0;
 
@@ -977,6 +976,14 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     int			   locked_cycle = LOST_HORIZON;
     int			   num_restarts = 0;
 
+    jsw_skip_t   	  *skipListCopy = NULL;
+#endif
+
+    if (search->writingTabsepIncludeFieldNames) {
+	ctable_WriteFieldNames (interp, ctable, search);
+    }
+
+#ifdef WITH_SHARED_TABLES
     if (firstTime) {
 	firstTime = 0;
     } else {
@@ -1042,10 +1049,6 @@ restart_search:
     search->alreadySearched = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
-
-    if (!firstTime && search->writingTabsepIncludeFieldNames) {
-	ctable_WriteFieldNames (interp, ctable, search);
-    }
 
     if (ctable->count == 0) {
 #ifdef WITH_SHARED_TABLES
