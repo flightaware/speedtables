@@ -36,6 +36,8 @@ namespace eval ctable {
     variable pgPrefix		;# default /usr/local
     variable keyCompileVariables
 
+    variable sharedLibraryExt	;# default .so
+
     set ctablePackageVersion 1.4
 
     # set to 1 to see errorInfo in normal tracebacks
@@ -71,7 +73,7 @@ namespace eval ctable {
     # create files in a subdirectory
     set withSubdir 1
 
-    # OSX using FlightAware
+    # with FlightAware
     #set sysPrefix /usr/fa
     #set pgPrefix /usr/fa
     # default
@@ -103,10 +105,15 @@ namespace eval ctable {
     set ctableErrorInfo ""
 
     if {$tcl_platform(os) == "Darwin"} {
-       set withPgtcl 0
+	set withPgtcl 0
+	set sharedLibraryExt .dylib
     } else {
-       set withPgtcl 1
+	set withPgtcl 1
+	set sharedLibraryExt .so
     }
+
+    # debug
+    set withPgtcl 0
 
     set tables ""
 
@@ -4733,7 +4740,7 @@ proc target_path {name} {
 proc compile {fileFragName version} {
     global tcl_platform
     variable buildPath
-    variable pgtcl_ver
+    variable withPgtcl
     variable genCompilerDebug
     variable memDebug
     variable sysPrefix
@@ -4788,7 +4795,17 @@ proc compile {fileFragName version} {
 	    #myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$sysPrefix/include -I$sysPrefix/include/tcl8.4 -I$pgPrefix/include -I$include -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -E > $fileFragName.i"
 	    myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$sysPrefix/include -I$sysPrefix/include/tcl8.4 -I$pgPrefix/include -I$include -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
 
-	    myexec "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile -R$pgPrefix/lib/pgtcl$pgtcl_ver -L$pgPrefix/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgPrefix/lib -lpq -L$sysPrefix/lib $stub"
+	    set ld_cmd "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile"
+
+	    if {$withPgtcl} {
+	        variable pgtcl_ver
+
+		append ld_cmd " -R$pgPrefix/lib/pgtcl$pgtcl_ver -L$pgPrefix/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgPrefix/lib -lpq"
+	    }
+
+	    append ld_cmd " -L$sysPrefix/lib $stub"
+	    myexec $ld_cmd
+
 	    #myexec "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile -L$sysPrefix/lib $stub"
 	}
 
@@ -4830,9 +4847,18 @@ proc compile {fileFragName version} {
     }
 
     if {$withSubdir} {
-	pkg_mkIndex $buildPath */*.tcl */*.so */*.dylib
+	variable sharedLibraryExt
+	set pkg_args [list $buildPath */*.tcl */*$sharedLibraryExt]
     } else {
-	pkg_mkIndex $buildPath
+	set pkg_args [list $buildPath]
+    }
+
+    variable showCompilerCommands
+    if {$showCompilerCommands} {
+	puts [concat + pkg_mkIndex -verbose $pkg_args]
+	eval pkg_mkIndex -verbose $pkg_args
+    } else {
+	eval pkg_mkIndex $pkg_args
     }
 }
 

@@ -8,7 +8,7 @@
 TCLSH=tclsh8.4
 TCLSHM=$(TCLSH)m
 
-# OSX FA version
+# with FlightAware
 #TCLSH=/usr/fa/bin/tclsh8.4
 #TCLSHM=$(TCLSH)
 
