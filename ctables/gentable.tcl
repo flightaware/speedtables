@@ -83,7 +83,7 @@ namespace eval ctable {
     set sysPrefix /usr/local
     set pgPrefix /usr/local
 
-    variable pgtcl_ver 1.5
+    variable pgtcl_ver 1.6
 
     variable leftCurly
     variable rightCurly
@@ -114,9 +114,6 @@ namespace eval ctable {
 	set withPgtcl 1
 	set sharedLibraryExt .so
     }
-
-    # debug
-    set withPgtcl 0
 
     set tables ""
 
