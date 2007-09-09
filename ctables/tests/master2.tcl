@@ -33,19 +33,28 @@ m index create value
 
 suck_in_top_brands_nokeys
 
-puts "Contents"
-m search -key k -array_get a -code {puts "$k : $a"}
+# puts "Contents"
+# m search -key k -array_get a -code {puts "$k : $a"}
+
+variable last_set
 
 proc random_changes {} {
+  variable last_set
   set names [m names]
   set i [expr {int(rand() * [llength $names])}]
   set key [lindex $names $i]
   set val [expr {int(rand() * 100) + 100}]
-  puts [list m set $key value $val]
+  # puts [list m set $key value $val]
   m set $key value $val
+  set last_set [m array_get $key]
 }
 
 for {set i 0} {$i < 1000} {incr i} {
   random_changes
+}
+
+foreach {col val} $last_set {
+  puts "Testing search -compare {{= $col $val}}"
+  m search -compare [list [list = $col $val]] -write_tabsep stdout
 }
 

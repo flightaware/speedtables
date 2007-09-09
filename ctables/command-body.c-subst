@@ -57,27 +57,6 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
     return TCL_OK;
 }
 
-#ifdef WITH_SHARED_TABLES
-  static inline void begin_write(CTable *ctable)
-  {
-    if(ctable->share_type == CTABLE_SHARED_MASTER) {
-      write_lock(ctable->share);
-      ctable->was_locked = 1;
-    }
-  }
-  static inline void end_write(CTable *ctable)
-  {
-    if(ctable->was_locked && ctable->share_type == CTABLE_SHARED_MASTER) {
-      write_unlock(ctable->share);
-      ctable->was_locked = 0;
-    }
-  }
-#else
-# define begin_write(ct)
-# define end_write(ct)
-#endif
-
-
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     CTable *ctable = (CTable *)cData;

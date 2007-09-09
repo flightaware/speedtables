@@ -22,6 +22,9 @@ bigtest:
 test:
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make"
 
+mttest:
+	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make multitable"
+
 keytest:
 	env TCLLIBPATH=${WORKDIR} sh -c "cd tests; make key"
 
