@@ -2282,14 +2282,14 @@ proc gen_defaults_subr {subr struct} {
 }
 
 variable deleteRowHelperSource {
-void ${table}_deleteKey(CTable *ctable, struct ${table} *row, int final)
+void ${table}_deleteKey(CTable *ctable, struct ${table} *row, int free_shared)
 {
     if(!row->hashEntry.key)
 	return;
 
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	if(!final)
+	if(free_shared)
 	    shmfree(ctable->share, (void *)row->hashEntry.key);
     } else
 #endif
@@ -2300,7 +2300,7 @@ void ${table}_deleteKey(CTable *ctable, struct ${table} *row, int final)
 void ${table}_deleteHashEntry(CTable *ctable, struct ${table} *row)
 {
 #ifdef WITH_SHARED_TABLES
-    if(ctable->share_type == CTABLE_SHARED_MASTER) {
+    if(row->hashEntry.key && ctable->share_type == CTABLE_SHARED_MASTER) {
 	shmfree(ctable->share, (void *)row->hashEntry.key);
 	row->hashEntry.key = NULL;
     }
@@ -2326,23 +2326,21 @@ proc gen_delete_subr {subr struct} {
     emit "void ${subr}(CTable *ctable, void *vRow, int indexCtl) {"
     emit "    struct $struct *row = vRow;"
     if {$withSharedTables} {
-	emit "    int             final = indexCtl != CTABLE_INDEX_DESTROY;"
-	emit "    int             del_shared = ctable->share_type == CTABLE_SHARED_MASTER;"
+        emit "    // 'final' means 'shared memory will be deleted anyway, just zero out'"
+	emit "    int             final = indexCtl == CTABLE_INDEX_DESTROY;"
+	emit "    int             is_master = ctable->share_type == CTABLE_SHARED_MASTER;"
+	emit "    int             is_shared = ctable->share_type != CTABLE_SHARED_NONE;"
     }
     emit ""
     emit "    // If there's an index, AND we're not deleting all indices"
     emit "    if (indexCtl == CTABLE_INDEX_NORMAL) $leftCurly"
     emit "        ctable_RemoveFromAllIndexes (ctable, (void *)row);"
     if {$withSharedTables} {
-	emit "        if(row->hashEntry.key && del_shared) $leftCurly"
-	emit "            ${table}_deleteKey(ctable, row, indexCtl != CTABLE_INDEX_DESTROY);"
-	emit "        $rightCurly"
+	emit "        ${table}_deleteKey(ctable, row, TRUE);"
     }
     emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);"
-    emit "    $rightCurly else if(row->hashEntry.key) $leftCurly"
-    emit "        ckfree(row->hashEntry.key);"
-    emit "        row->hashEntry.key = NULL;"
-    emit "    $rightCurly"
+    emit "    $rightCurly else"
+    emit "        ${table}_deleteKey(ctable, row, indexCtl != CTABLE_INDEX_DESTROY);"
     emit ""
 
     foreach fieldName $fieldList {
@@ -2352,20 +2350,11 @@ proc gen_delete_subr {subr struct} {
 	    varstring {
     		if {$withSharedTables} {
 	            emit "    if (row->$fieldName != (char *) NULL) {"
-		    emit "        if(del_shared && indexCtl != CTABLE_INDEX_PRIVATE) {"
+		    emit "	  if(!is_shared || indexCtl == CTABLE_INDEX_PRIVATE) {"
+		    emit "            ckfree ((void *)row->$fieldName);"
+		    emit "        } else if(is_master) {"
 		    emit "            if(!final)"
 		    emit "                shmfree(ctable->share, (char *)row->$fieldName);"
-		    emit "            row->$fieldName = NULL;"
-		    emit "            row->_${fieldName}Length = 0;"
-		    if {![info exists field(notnull)] || !$field(notnull)} {
-		        if {[info exists field(default)]} {
-			    emit "            row->_${fieldName}IsNull = 0;"
-		        } else {
-			    emit "            row->_${fieldName}IsNull = 1;"
-		        }
-		    }
-		    emit "        } else {"
-		    emit "            ckfree ((void *)row->$fieldName);"
 		    emit "        }"
 		    emit "    }"
 		} else {
@@ -2375,12 +2364,10 @@ proc gen_delete_subr {subr struct} {
 	}
     }
     if {$withSharedTables} {
-        emit "    if(del_shared && indexCtl != CTABLE_INDEX_PRIVATE) {"
-	emit "        if(!final)"
-	emit "            shmfree(ctable->share, (char *)row);"
-	emit "    } else {"
+        emit "    if(!is_shared || indexCtl == CTABLE_INDEX_PRIVATE)"
 	emit "        ckfree ((void *)row);"
-	emit "    }"
+	emit "    else if(is_master && !final)"
+	emit "        shmfree(ctable->share, (char *)row);"
     } else {
         emit "    ckfree ((void *)row);"
     }
