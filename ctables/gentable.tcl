@@ -1901,7 +1901,8 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
 #
 # table - the proc that starts defining a table, really, a meta table, and
-#  also following it will be the definition of the structure itself
+#  also following it will be the definition of the structure itself. Clears
+# all per-table variables in ::ctable::
 #
 proc table {name} {
     variable table
@@ -1909,13 +1910,17 @@ proc table {name} {
     variable nonBooleans
     variable fields
     variable fieldList
+    variable keyField
+    variable keyFieldName
 
     set table $name
 
     set booleans ""
+    set nonBooleans ""
     unset -nocomplain fields
     set fieldList ""
-    set nonBooleans ""
+    unset -nocomplain keyField
+    unset -nocomplain keyFieldName
 }
 
 #
@@ -4921,6 +4926,7 @@ proc EndExtension {} {
     emit $rightCurly
 
     close $ofp
+    unset ofp
 
     compile $extension $::ctable::extensionVersion
 }
