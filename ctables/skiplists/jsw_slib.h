@@ -45,7 +45,7 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, void *share );
 /*
   Create a private copy of a skiplist, and free it
 */
-jsw_skip_t *jsw_private_copy(jsw_skip_t *skip, int id);
+jsw_skip_t *jsw_private_copy(jsw_skip_t *skip, int id, cmp_f cmp);
 void jsw_free_private_copy(jsw_skip_t *skip);
 
 /* Release all memory used by the skip list */

@@ -213,10 +213,10 @@ void jsw_free_private_copy(jsw_skip_t *skip)
 //
 // clone skiplist if needed
 //
-jsw_skip_t *jsw_private_copy(jsw_skip_t *skip, int id)
+jsw_skip_t *jsw_private_copy(jsw_skip_t *skip, int id, cmp_f cmp)
 {
     if(skip->id != id)
-	return jsw_private(skip, skip->maxh, skip->cmp, skip->share, id);
+	return jsw_private(skip, skip->maxh, cmp?cmp:skip->cmp, skip->share, id);
     return NULL;
 }
 

@@ -1319,7 +1319,7 @@ restart_search:
 	    main_restart.compareFunction = compareFunction;
 
 	    // clone the skiplist
-	    skipListCopy = jsw_private_copy(skipList, getpid());
+	    skipListCopy = jsw_private_copy(skipList, getpid(), compareFunction);
 	    if(skipListCopy)
 		skipList = skipListCopy;
 	}
