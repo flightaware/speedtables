@@ -1818,7 +1818,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
     }
 
     Tcl_DecrRefCount (utilityObj);
-    if(keyCopy) free(keyCopy);
+    if(keyCopy) ckfree(keyCopy);
     return TCL_OK;
 }
 
@@ -2350,12 +2350,10 @@ proc gen_delete_subr {subr struct} {
 	    varstring {
     		if {$withSharedTables} {
 	            emit "    if (row->$fieldName != (char *) NULL) {"
-		    emit "	  if(!is_shared || indexCtl == CTABLE_INDEX_PRIVATE) {"
+		    emit "	  if(!is_shared || indexCtl == CTABLE_INDEX_PRIVATE)"
 		    emit "            ckfree ((void *)row->$fieldName);"
-		    emit "        } else if(is_master) {"
-		    emit "            if(!final)"
-		    emit "                shmfree(ctable->share, (char *)row->$fieldName);"
-		    emit "        }"
+		    emit "        else if(is_master && !final)"
+		    emit "            shmfree(ctable->share, (char *)row->$fieldName);"
 		    emit "    }"
 		} else {
 	            emit "    if (row->$fieldName != (char *) NULL) ckfree ((void *)row->$fieldName);"

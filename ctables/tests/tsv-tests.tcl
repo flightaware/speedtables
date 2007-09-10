@@ -14,15 +14,18 @@ proc suck_in_top_brands {args} {
     close $fp
 }
 
+puts "first suck"
 suck_in_top_brands
 
 if {[t count] != 100} {
     error "expected count of 100 but got [t count]"
 }
 
+puts "second suck"
 suck_in_top_brands
 
 if {[t count] != 100} {
     error "expected count of 100 but got [t count]"
 }
+puts "finished"
 
