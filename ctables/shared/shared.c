@@ -662,6 +662,9 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld);\n", (long)size);)
     if(!(block = palloc(shm->pools, size)))
 	block = _shmalloc(shm, size);
 
+    if(!block)
+	shmpanic("Out of memory.\n");
+
     if((char *)block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
 	shmpanic("Ludicrous block!");
 
