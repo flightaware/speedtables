@@ -1,10 +1,14 @@
 
 $Id$
 
+9/10/2007 peter
+    * Make sure the compare function in a cloned skiplist is from the 
+      process that we're actually using to walk the skiplist.
+
 9/7/2007 karl
     * Fix stuff to compile and work properly when shared memory isn't selected.
 
-8/15/2007
+8/15/2007 peter
     * Added ability to set share modes: sync/nosync(default) and
       core(default)/nocore.
     * Move pool blocks containing newly freed chunks to the start of the
