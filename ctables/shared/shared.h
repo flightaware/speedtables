@@ -73,6 +73,7 @@ enum shared_error_e {
 	SH_NO_MAP,
 	SH_ALREADY_MAPPED,
 	SH_TOO_SMALL,
+	SH_MAP_FULL,
 };
 extern void shared_perror(char *text);
 

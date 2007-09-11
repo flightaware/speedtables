@@ -64,6 +64,7 @@ char *shared_errmsg[] = {
 	"Map or file doesn't exist",		// SH_NO_MAP
 	"Existing map is inconsistent",		// SH_ALREADY_MAPPED
 	"Map or file is too small",		// SH_TOO_SMALL
+	"Out of shared memory",			// SH_MAP_FULL
 	NULL
 };
 
@@ -432,6 +433,9 @@ chunk_t *addchunk(poolhead_t *head)
     }
 
     if(!chunk->start) {
+	// If we can't allocate memory, set maxchunks to -1 to make
+	// sure we don't try again.
+	head->maxchunks = -1;
 	ckfree((char *)chunk);
 	return NULL;
     }
@@ -647,6 +651,15 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "      return block2data(0x%lX) ==> 0x%lX\n", (lon
 	block = block->next;
     }
 
+    shared_errno = -SH_MAP_FULL;
+
+// Change to "if(1)" to enable fallback panic
+if (0) {
+static int debugcountdown = 30;
+if(debugcountdown-- <= 0)
+  shmpanic("out of memory");
+}
+
     return NULL;
 }
 
@@ -663,9 +676,9 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld);\n", (long)size);)
 	block = _shmalloc(shm, size);
 
     if(!block)
-	shmpanic("Out of memory.\n");
+	return NULL;
 
-    if((char *)block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
+    if (block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
 	shmpanic("Ludicrous block!");
 
     return block;
@@ -895,9 +908,8 @@ int shmattachpid(shm_t   *share, int pid)
 	b = b->next;
     }
     b = (reader_block *)shmalloc(share, sizeof *b);
-    if(!b) {
-	return 0;
-    }
+    if(!b) return 0;
+
     b->count = 0;
     b->next = map->readers;
     map->readers = (reader_block *)b;
@@ -1019,7 +1031,6 @@ int add_symbol(shm_t   *shm, char *name, char *value, int type)
 	len += strlen(value) + 1;
 
     s = (symbol *)shmalloc(shm, len);
-
     if(!s) return 0;
 
     for(i = 0; i <= namelen; i++)
@@ -1058,8 +1069,8 @@ int set_symbol(shm_t *shm, char *name, char *value, int type)
 	    }
 	    if(type == SYM_TYPE_STRING) {
 		char *copy = shmalloc(shm, strlen(value));
-		if(!copy)
-		    return 0;
+		if(!copy) return 0;
+
 		strcpy(copy, value);
 		s->addr = copy;
 	    } else {

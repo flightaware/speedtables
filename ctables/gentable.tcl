@@ -1413,6 +1413,13 @@ struct $table *${table}_make_row_struct () {
     return row;
 }
 
+//
+// Wrapper for hash search.
+//
+// Always succeeds unless using shared memory and we run out of shared memory
+//
+// Must handle this in caller beacuse we're not passing an interpreter in
+//
 struct $table *${table}_find_or_create (CTable *ctable, char *key, int *indexCtlPtr) {
     struct $table *row = NULL;
     static struct $table *nextRow = NULL;
@@ -1432,8 +1439,10 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *indexCtl
 #ifdef WITH_SHARED_TABLES
         if(ctable->share_type == CTABLE_SHARED_MASTER) {
 	    nextRow = (struct $table *)shmalloc(ctable->share, sizeof(struct $table));
-	    if(!nextRow)
-	        ${table}_shmpanic(ctable);
+	    if(!nextRow) {
+		if(ctable->share_panic) ${table}_shmpanic(ctable);
+	        return NULL;
+	    }
 	} else
 #endif
 	    nextRow = (struct $table *)ckalloc(sizeof(struct $table));
@@ -1444,8 +1453,10 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *indexCtl
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
         key_value = (char *)shmalloc(ctable->share, strlen(key)+1);
-	if(!key_value)
-	    ${table}_shmpanic(ctable);
+	if(!key_value) {
+	    if(ctable->share_panic) ${table}_shmpanic(ctable);
+	    return NULL;
+	}
 	strcpy(key_value, key);
 	flags = KEY_STATIC;
     }
@@ -1809,7 +1820,14 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	    key = "";
     }
 
+    // Can only fail if using shared memory
     row = ${table}_find_or_create (ctable, key, &indexCtl);
+#ifdef WITH_SHARED_TABLES
+    if(!row) {
+	TclShmError(interp, key);
+	return TCL_ERROR;
+    }
+#endif
 
     for (col = i = 0; col < nFields; i++) {
         field = strsep (&string, "\t");
@@ -3214,7 +3232,7 @@ proc gen_shared_string_allocator {} {
 	return
     }
 
-    emit "void ${table}_setupDefaultStrings(CTable *ctable) $leftCurly"
+    emit "int ${table}_setupDefaultStrings(CTable *ctable) $leftCurly"
     emit "    volatile char **defaultList;"
     emit "    volatile char *bundle;"
     emit ""
@@ -3223,7 +3241,7 @@ proc gen_shared_string_allocator {} {
     emit "    if(ctable->share_type == CTABLE_SHARED_NONE) $leftCurly"
     emit "        ctable->emptyString = \"\";"
     emit "        ctable->defaultStrings = ${table}_defaultStrings;"
-    emit "        return;"
+    emit "        return TRUE;"
     emit "    $rightCurly"
     emit ""
 
@@ -3231,7 +3249,7 @@ proc gen_shared_string_allocator {} {
     emit "    if(ctable->share_type == CTABLE_SHARED_READER) $leftCurly"
     emit "        ctable->emptyString = ctable->share_ctable->emptyString;"
     emit "        ctable->defaultStrings = ctable->share_ctable->defaultStrings;"
-    emit "        return;"
+    emit "        return TRUE;"
     emit "    $rightCurly"
     emit ""
 
@@ -3263,8 +3281,10 @@ proc gen_shared_string_allocator {} {
 
     set totalSize "$fieldNum * sizeof (char *) + $bundleLen"
     emit "    defaultList = (volatile char **)shmalloc(ctable->share, $totalSize);"
-    emit "    if (!defaultList)"
-    emit "        ${table}_shmpanic(ctable);"
+    emit "    if (!defaultList) {"
+    emit "        if(ctable->share_panic) ${table}_shmpanic(ctable);"
+    emit "        return FALSE;"
+    emit "    }"
     emit ""
 
     emit "    bundle = (char *)&defaultList\[$fieldNum];"
@@ -3278,6 +3298,8 @@ proc gen_shared_string_allocator {} {
     emit ""
 
     emit [join $sets "\n"]
+    emit ""
+    emit "    return TRUE;"
     emit "$rightCurly"
 }
 

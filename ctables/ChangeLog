@@ -1,6 +1,12 @@
 
 $Id$
 
+9/11/2007 peter
+    * Return NULL rather than panicking in shmalloc when out of memory.
+    * Catch NULL return from shmalloc and panic.
+    * Initial support for normal TCL_ERROR handling when shared
+      memory full. Create master ctable with "panic false" option to test.
+
 9/10/2007 peter
     * Make sure the compare function in a cloned skiplist is from the 
       process that we're actually using to walk the skiplist.

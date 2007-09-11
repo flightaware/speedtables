@@ -70,6 +70,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int			 share_type = CTABLE_SHARED_NONE;
 	    char		*share_file = NULL;
 	    char		*share_name = NULL;
+	    int			 share_panic = TRUE;
 	    char		*raw_size = NULL;
 	    shm_t		*share = NULL;
 	    size_t		 share_size = 0;
@@ -130,6 +131,12 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			raw_size = Tcl_GetString(listObjv[i+1]);
 		    else if(strcmp(key, "flags") == 0)
 			share_flags = parse_flags(Tcl_GetString(listObjv[i+1]));
+		    else if(strcmp(key, "panic")) {
+			if (Tcl_GetBooleanFromObj (interp, listObjv[i+1], &share_panic) == TCL_ERROR) {
+			    Tcl_AppendResult(interp, ", getting 'panic' flag", NULL);
+			    goto createError;
+			}
+		    }
 		}
 
 		share_type = share_types[typeIndex];
@@ -188,6 +195,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    if(share_type == CTABLE_SHARED_MASTER) {
 		ctable = (CTable *)shmalloc (share, sizeof(CTable));
 		if(!ctable) {
+		    if(share_panic) ${table}_shmpanic(ctable);
 		    TclShmError(interp, share_name);
 		    goto createError;
 		}
@@ -213,6 +221,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 #ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
+	    ctable->share_panic = share_panic;
 
 	    if(share_name) {
 	        ctable->share_name = ckalloc(strlen(share_name) + 1);
@@ -233,7 +242,11 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->my_reader = share_reader;
 
 	    // call out for this, it's a little complex
-	    ${table}_setupDefaultStrings(ctable);
+	    if (!${table}_setupDefaultStrings(ctable)) {
+		if(share_panic) ${table}_shmpanic(ctable);
+		TclShmError(interp, share_name);
+		goto createError;
+	    }
 
 	    if(share_type == CTABLE_SHARED_READER) {
 		// use the skiplists and so on from the master.
@@ -243,9 +256,14 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    } else {
 		// create an array of pointers to possible skip lists,
 		// one per field
-	        if(share_type == CTABLE_SHARED_MASTER)
+	        if(share_type == CTABLE_SHARED_MASTER) {
 	            ctable->skipLists = (jsw_skip_t **)shmalloc (share, creator->nFields * sizeof (jsw_skip_t *));
-	        else
+		    if(!ctable->skipLists) {
+		        if(share_panic) ${table}_shmpanic(ctable);
+			TclShmError(interp, share_name);
+			goto createError;
+		    }
+	        } else
 #endif
 		    ctable->skipLists = (jsw_skip_t **)ckalloc (creator->nFields * sizeof (jsw_skip_t *));
 
