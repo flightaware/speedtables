@@ -464,7 +464,8 @@ variable nullIndexDuringSetSource {
 # nullCheckDuringSetSource - standard stuff for handling nulls during set
 #
 variable nullCheckDuringSetSource {
-	if (${table}_obj_is_null (obj)) {
+	int obj_is_null = ${table}_obj_is_null (obj);
+	if (obj_is_null) {
 	    if (!row->_${fieldName}IsNull) {
 $handleNullIndex
 	        // field wasn't null but now is
@@ -487,21 +488,21 @@ proc gen_null_check_during_set_source {table fieldName} {
 
     upvar ::ctable::fields::$fieldName field
 
+    if {[info exists field(notnull)] && $field(notnull)} {
+        return ""
+    }
+
     if {[info exists field(indexed)] && $field(indexed)} {
         set handleNullIndex $nullIndexDuringSetSource
     } else {
         set handleNullIndex ""
     }
 
-    if {[info exists field(notnull)] && $field(notnull)} {
-        return ""
-    } else {
-	return [string range [subst -nobackslashes -nocommands $nullCheckDuringSetSource] 1 end-1]
-    }
+    return [string range [subst -nobackslashes -nocommands $nullCheckDuringSetSource] 1 end-1]
 }
 
 variable unsetNullDuringSetSource {
-	if (row->_${fieldName}IsNull) {
+	if (!obj_is_null && row->_${fieldName}IsNull) {
 	    row->_${fieldName}IsNull = 0;
 
 	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
@@ -514,7 +515,7 @@ variable unsetNullDuringSetSource {
 }
 
 variable unsetNullDuringSetSource_unindexed {
-	if (row->_${fieldName}IsNull) {
+	if (!obj_is_null && row->_${fieldName}IsNull) {
 	    row->_${fieldName}IsNull = 0;
 	}
 }
