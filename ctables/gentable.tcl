@@ -695,6 +695,8 @@ proc gen_check_unchanged_string {fieldName default defaultLength} {
             if (!*string)
 		return TCL_OK;"
 	} else {
+	    # For the rare case where the default string is nonprintable,
+	    # fudge it.
 	    if {[string index $default 0] == "\\"} {
 	       set def0 "\"$default\"\[0]"
 	    } else {
@@ -744,14 +746,17 @@ variable varstringSetSource {
 [gen_null_check_during_set_source $table $fieldName]
 
 	string = Tcl_GetStringFromObj (obj, &length);
-[gen_unset_null_during_set_source $table $fieldName [gen_check_unchanged_string $fieldName $default $defaultLength]]
+[gen_unset_null_during_set_source $table $fieldName \
+	[gen_check_unchanged_string $fieldName $default $defaultLength]]
 
 	// we now know it's not the same as the previous value of the string,
 	// even if the previous value was default, so if the new value is
 	// default we know the old value wasn't.
 	if ([gen_default_test string length $default $defaultLength]) {
 [gen_ctable_remove_from_index $fieldName]
-	    [gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
+	    if (row->$fieldName != NULL) {
+	        [gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
+	    }
 
 	    // It's a change to the be default string. If we're
 	    // indexed, force the default string in there so the 
