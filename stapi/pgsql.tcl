@@ -27,7 +27,7 @@ namespace eval ::stapi {
 
   proc set_conn {new_conn} {
     variable pg_conn
-    set pg_conn new_conn
+    set pg_conn $new_conn
   }
 
   proc conn {} {
