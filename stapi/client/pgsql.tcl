@@ -111,6 +111,14 @@ namespace eval ::stapi {
       }
     }
 
+    # If the key is a simple column name, remember it and eliminate it
+    if {[info exists vars(_key)]} {
+      if {[lsearch $raw_fields $vars(_key)] != -1} {
+	set key $vars(_key)
+	unset vars(_key)
+      }
+    }
+
     if {[info exists vars(_key)] || [info exists vars(_keys)]} {
       if {[lsearch $path _key] == -1} {
 	set raw_fields [concat {_key} $raw_fields]
@@ -632,7 +640,7 @@ namespace eval ::stapi {
   }
 
   # Helper routine to shortcut the business of creating a URI and connecting
-  # with the same keys. Using this implicitly pulls in stape::extend inside connect
+  # with the same keys. Using this implicitly pulls in stapi::extend inside connect
   # if it hasn't already been pulled in.
   #
   # Eg: ::stapi::connect_sql my_table {index} -cols {index name value}
