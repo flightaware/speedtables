@@ -2,6 +2,11 @@
 V=""
 V=-verbose
 
+INSTDIR=/usr/fa/lib/stapi
+#INSTDIR=/usr/local/lib/stapi
+
+DIRS=client server display
+
 CLIENT=client/client.tcl client/pgsql.tcl client/optimizer.tcl client/extend.tcl client/shared.tcl
 SERVER=server/server.tcl server/lock.tcl
 DISPLAY=display/display.tcl display/test.tcl
@@ -21,4 +26,8 @@ clean:
 test: pkgIndex.tcl $(TEST)
 	server/test.tcl
 	client/test.tcl
+
+install:
+	for d in . $(DIRS); do mkdir -p $(INSTDIR)/$$d; cp -f $$d/*.tcl $(INSTDIR)/$$d; done
+
 

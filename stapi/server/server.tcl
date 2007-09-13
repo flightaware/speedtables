@@ -67,7 +67,7 @@ namespace eval ::stapi {
   # ::stapi::init ?options?
   #
   # Options:
-  #   -root build_root
+  #   -dir build_root_dir
   #      Root of directory tree for the ctables
   #   -mode mode
   #      Octal mode for new root if it doesn't already exist
@@ -83,8 +83,8 @@ namespace eval ::stapi {
     variable default_build_root
 
     #
-    if [info exists opts(-root)] {
-      set build_root $opts(-root)
+    if [info exists opts(-dir)] {
+      set build_root $opts(-dir)
     }
 
     if ![info exists build_root] {
