@@ -10,19 +10,41 @@ package require Pgtcl
 
 namespace eval ::stapi {
   variable pg_conn
+  variable default_user
+  variable default_db
   variable dio_initted 0
 
-  proc set_DIO {} {
+  proc set_DIO {{db ""} {user ""}} {
     variable dio_initted
     if $dio_initted {
       return
     }
-    set dio_initted 1
-    if {[llength [info commands ::DIO]]} { return }
+
+    if {[llength [info commands ::DIO]]} {
+      set dio_initted 1
+      return
+    }
+
+    if {"$user == ""} {
+      variable default_user
+      if {![info exists default_user]} {
+	return -code error "No SQL user provided"
+      }
+      set user $default_user
+    }
+
+    if {"$db" == ""} {
+      variable default_db
+      if {![info exists default_db]} {
+	return -code error "no SQL db provided"
+      }
+      set db $default_db
+    }
 
     uplevel #0 { package require DIO }
-    ::DIO::handle Postgresql DIO -user www -db www
+    ::DIO::handle Postgresql DIO -user $user -db $db
     exec_sql "set DateStyle TO 'US';"
+    set dio_initted 1
   }
 
   proc set_conn {new_conn} {
