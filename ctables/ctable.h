@@ -167,6 +167,7 @@ typedef struct {
     void                    *clientData;
     void                    *row1;
     void                    *row2;
+    void		    *row3;
     fieldCompareFunction_t   compareFunction;
     Tcl_Obj                **inListObj;
     int                      inCount;

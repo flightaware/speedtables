@@ -250,6 +250,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 	component->clientData = NULL;
 	component->row1 = NULL;
 	component->row2 = NULL;
+	component->row3 = NULL;
 	component->inListObj = NULL;
 	component->inCount = 0;
 	component->compareFunction = ctable->creator->fields[field]->compareFunction;
@@ -259,7 +260,9 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		Tcl_AppendResult (interp, "false, true, null and notnull search expressions must have only two fields", (char *) NULL);
 		goto err;
 	    }
-	}  else {
+	} else {
+	    void *row;
+
 	    if (term == CTABLE_COMP_IN) {
 	        if (termListCount != 3) {
 		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 3 arguments (term, field, list)", (char *) NULL);
@@ -311,11 +314,46 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
 		    needle = Tcl_GetStringFromObj (termList[2], &len);
 		    boyer_moore_setup (sm, (unsigned char *)needle + 1, len - 2, sm->nocase);
+		} else if(sm->type == CTABLE_STRING_MATCH_ANCHORED && term == CTABLE_COMP_MATCH_CASE) {
+		    int len;
+		    char *needle = Tcl_GetStringFromObj (termList[2], &len);
+		    char *prefix = ckalloc(len+1);
+		    int i;
+
+		    /* stash the prefix of the match into row2 */
+		    for(i = 0; i < len; i++) {
+			if(needle[i] == '*') {
+			    break;
+			}
+			prefix[i] = needle[i];
+			break;
+		    }
+
+		    // This test should never fail.
+		    if(i > 0) {
+		        prefix[i] = '\0';
+
+		        row = (*ctable->creator->make_empty_row) ();
+	    		if ((*ctable->creator->set) (interp, ctable, Tcl_NewStringObj (prefix, -1), row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+			    goto err;
+	    	        }
+	    		component->row2 = row;
+
+			// Now set up row3 as the first non-matching string
+			prefix[i-1]++;
+
+		        row = (*ctable->creator->make_empty_row) ();
+	    		if ((*ctable->creator->set) (interp, ctable, Tcl_NewStringObj (prefix, -1), row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+			    goto err;
+	    	        }
+	    		component->row3 = row;
+
+		    }
+		    ckfree(prefix);
 		}
 
 		component->clientData = sm;
 	    }
-	    void *row;
 
 	    /* stash what we want to compare to into a row as in "range"
 	     */
@@ -805,7 +843,7 @@ enum skipEnd_e {
     SKIP_END_NONE, SKIP_END_NE_ROW1, SKIP_END_GE_ROW1, SKIP_END_GT_ROW1, SKIP_END_GE_ROW2
 };
 enum skipNext_e {
-    SKIP_NEXT_NONE, SKIP_NEXT_ROW, SKIP_NEXT_IN_LIST
+    SKIP_NEXT_NONE, SKIP_NEXT_ROW, SKIP_NEXT_MATCH, SKIP_NEXT_IN_LIST
 };
 
 // skiplist scanning rules table.
@@ -839,7 +877,7 @@ static struct {
   {SKIP_START_GT_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_NONE,  1 }, // GT
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // MATCH
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTMATCH
-  {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // MATCH_CASE
+  {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_MATCH, 3 }, // MATCH_CASE
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTMATCH_CASE
   {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_ROW,   4 }, // RANGE
   {SKIP_START_RESET,	SKIP_END_NONE, SKIP_NEXT_IN_LIST, 100}  // IN
@@ -1157,6 +1195,13 @@ restart_search:
 		continue;
 	    }
 
+	    // Special case - if it's a match and not anchored, skip
+	    if(skipTypes[comparisonType].skipNext == SKIP_NEXT_MATCH) {
+		if(component->row2 == NULL) {
+		    continue;
+		}
+	    }
+
 	    score = skipTypes[comparisonType].score;
 
 	    // Prefer to avoid sort
@@ -1181,6 +1226,15 @@ restart_search:
             indexNumber = creator->fields[field]->indexNumber;
 
 	    switch(skipNext) {
+	        case SKIP_NEXT_MATCH: {
+		    // For a match, we use row2 and row3 as row1 and row2,
+		    // otherwise treat it as a range
+		    inOrderWalk = 1;
+		    row1 = component->row2;
+		    row2 = component->row3;
+		    skipNext = SKIP_NEXT_ROW;
+		    break;
+	        }
 		case SKIP_NEXT_ROW: {
 		    inOrderWalk = 1;
 		    row1 = component->row1;
@@ -1886,6 +1940,10 @@ ctable_TeardownSearch (CTableSearch *search) {
 
 	    if (component->row2 != NULL) {
 	        search->ctable->creator->delete (search->ctable, component->row2, CTABLE_INDEX_PRIVATE);
+	    }
+
+	    if (component->row3 != NULL) {
+	        search->ctable->creator->delete (search->ctable, component->row3, CTABLE_INDEX_PRIVATE);
 	    }
 
 	    // this needs to be pluggable
