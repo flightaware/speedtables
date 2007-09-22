@@ -1,6 +1,9 @@
 
 $Id$
 
+9/22/3007 peter
+    * Split configuration out into separate config.tcl, it was getting unweildy
+
 9/11/2007 peter
     * Return NULL rather than panicking in shmalloc when out of memory.
     * Catch NULL return from shmalloc and panic.
