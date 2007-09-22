@@ -40,50 +40,12 @@ namespace eval ctable {
 
     set ctablePackageVersion 1.4
 
-    # set to 1 to see errorInfo in normal tracebacks
-    set errorDebug 1
+    # If loaded directly, rather than as a package
+    if {![info exists srcDir]} {
+	set srcDir .
+    }
 
-    # set to 0 to generate without the "-pipe" in the gcc command
-    variable withPipe 1
-
-    # set to 1 to build with debugging and link to tcl debugging libraries
-    set genCompilerDebug 1
-    # set to 1 to link to mem debug libraries
-    set memDebug 0
-
-    # set to 1 to show compiler commands
-    set showCompilerCommands 0
-
-    # set to 1 to run various sanity checks on rows
-    set sanityChecks 0
-
-    set withSharedTables 1
-    set withSharedTclExtension 0
-    # Either -none, -stderr, or the name of a file
-    #set sharedTraceFile sharedebug.out
-    set sharedTraceFile -none
-
-    # either NULL or an absolute address
-    set sharedBase 0xA0000000
-    #set sharedBase NULL
-
-    # approx number of ctable row pools required to fill all shared memory
-    set poolRatio 16
-
-    # Create and manage the "dirty" flag
-    set withDirty 1
-
-    # create files in a subdirectory
-    set withSubdir 1
-
-    # with FlightAware
-    #set sysPrefix /usr/fa
-    #set pgPrefix /usr/fa
-    # default
-    set sysPrefix /usr/local
-    set pgPrefix /usr/local
-
-    variable pgtcl_ver 1.6
+    source [file join $srcDir config.tcl]
 
     variable leftCurly
     variable rightCurly
@@ -107,14 +69,6 @@ namespace eval ctable {
 
     set ctableErrorInfo ""
 
-    if {$tcl_platform(os) == "Darwin"} {
-	set withPgtcl 0
-	set sharedLibraryExt .dylib
-    } else {
-	set withPgtcl 1
-	set sharedLibraryExt .so
-    }
-
     set tables ""
 
     namespace eval fields {}
@@ -126,10 +80,6 @@ namespace eval ctable {
     set ctableTypes "boolean fixedstring varstring char mac short int long wide float double inet tclobj key"
 
     set reservedWords "bool char short int long wide float double"
-
-if {![info exists srcDir]} {
-    set srcDir .
-}
 
 set fp [open $srcDir/template.c-subst]
 set metaTableSource [read $fp]
@@ -4866,12 +4816,25 @@ proc compile {fileFragName version} {
 # -finstrument-functions / -lSaturn
 
 	"Darwin" {
+	    switch -glob $sysPrefix {
+		/System* {
+		    set sysInclude [file join $sysPrefix Headers]
+		    set sysLib $sysPrefix
+		    set debugSuffix ""
+		}
+		default {
+		    set sysInclude [file join $sysPrefix include]
+		    set sysLib [file join $sysPrefix lib]
+		    set debugSuffix "g"
+		}
+	    }
+
 	    if {$genCompilerDebug} {
 		set dbgflag "-g"
 		#set optflag "-O2"
 		set optflag ""
-		set stub "-ltclstub8.4g"
-		set lib "-ltcl8.4g"
+		set stub "-ltclstub8.4$debugSuffix"
+		set lib "-ltcl8.4$debugSuffix"
 	    } else {
 		set dbgflag ""
 		set optflag "-O3"
@@ -4879,9 +4842,9 @@ proc compile {fileFragName version} {
 		set lib "-ltcl8.4"
 	    }
 
-	    myexec "gcc $pipeFlag -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$sysPrefix/include -I$include -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
+	    myexec "gcc $pipeFlag -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$sysInclude -I$include -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
 
-	    myexec "gcc $pipeFlag $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/System/Library/Frameworks/Tcl.framework/Versions/8.4 $stub"
+	    myexec "gcc $pipeFlag $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L$sysLib $stub"
 
 	    #exec gcc $pipeFlag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$include -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
 
