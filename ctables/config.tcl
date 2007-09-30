@@ -47,7 +47,7 @@
 
     variable pgtcl_ver 1.6
 
-# OS-specific defaults
+# OS-specific defaults - will be replaced by stuff from tclConfig.sh
 
     if {$tcl_platform(os) == "Darwin"} {
 	set withPgtcl 0

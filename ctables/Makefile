@@ -17,42 +17,42 @@ default: test
 
 alltest: bigtest test
 
-bigtest:
+bigtest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd bigtests; make"
 
-test:
+test: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make"
 
-mttest:
+mttest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make multitable"
 
-keytest:
+keytest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make key"
 
-mastertest:
+mastertest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make master"
 
-readertest:
+readertest: sysconfig.tcl
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make reader"
 
-multitest:
+multitest: sysconfig.tcl
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make multireader"
 
-speedtest:
+speedtest: sysconfig.tcl
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make speedreader"
 
-perftest:
+perftest: sysconfig.tcl
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make speed"
 
-pooltest:
+pooltest: sysconfig.tcl
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make pools"
 
-stapitest:
+stapitest: sysconfig.tcl
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi"
 
@@ -62,7 +62,10 @@ debug:
 mdebug:
 	sh -c "export TCLLIBPATH=${TCLLIBPATH}; cd tests; gdb /usr/local/bin/tclsh8.4m -c tclsh8.4m.core"
 
-install:
+install: sysconfig.tcl
 	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c shared/*.[ch] $(INSTDIR)
+
+sysconfig.tcl: mkConfig.sh
+	./mkConfig.sh > sysconfig.tcl
 

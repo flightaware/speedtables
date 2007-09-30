@@ -47,6 +47,8 @@ namespace eval ctable {
 
     source [file join $srcDir config.tcl]
 
+    source [file join $srcDir sysconfig.tcl]
+
     variable leftCurly
     variable rightCurly
 
@@ -4752,6 +4754,8 @@ proc compile {fileFragName version} {
     variable withPipe
     variable withSubdir
 
+    variable sysconfig
+
     set include [target_path include]
     set targetPath [target_path $fileFragName]
     set sourceFile [target_name $fileFragName $version]
@@ -4767,24 +4771,36 @@ proc compile {fileFragName version} {
 
     switch $tcl_platform(os) {
 	"FreeBSD" {
+	    set stubs [info exists sysconfig(stub)]
 	    if {$genCompilerDebug} {
 		set optflag "-O0"
-		set dbgflag "-g"
+		set dbgflag $sysconfig(dbg)
 		if {$memDebug} {
 		    #set stub "-ltclstub8.4g"
 		    #set lib "-ltcl8.4g"
-		    set stub "-ltclstub84gm"
-		    set lib "-ltcl84gm"
-
+		    if {$stubs} {
+		        set stub "$sysconfig(stubg)m"
+		    }
+		    set lib "$sysconfig(libg)m"
 		} else {
-		    set stub "-ltclstub84g"
-		    set lib "-ltcl84g"
+		    if {$stubs} {
+		        set stub "$sysconfig(stubg)"
+		    }
+		    set lib $sysconfig(libg)
 		}
 	    } else {
-		set optflag "-O3"
+		set optflag $sysconfig(opt)
 		set dbgflag ""
-		set stub "-ltclstub84"
-		set lib "-ltcl84"
+		if {$stubs} {
+		    set stubs " $sysconfig(stub)"
+		}
+		set lib $sysconfig(lib)
+	    }
+
+	    if {$stubs} {
+		set stubString "-DUSE_TCL_STUBS=$stubs"
+	    } else {
+		set stubString ""
 	    }
 
 	    # put -DTCL_MEM_DEBUG in there if you're building with
@@ -4795,11 +4811,17 @@ proc compile {fileFragName version} {
 		set memDebugString ""
 	    }
 
-	    # if you don't know what the hell is going on, ask gcc
-	    #myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$sysPrefix/include -I$sysPrefix/include/tcl8.4 -I$pgPrefix/include -I$include -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -E > $fileFragName.i"
-	    myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$sysPrefix/include -I$sysPrefix/include/tcl8.4 -I$pgPrefix/include -I$include -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
+	    if {$withPgtcl} {
+		set pgString -I$pgPrefix/include
+	    } else {
+		set pgString ""
+	    }
 
-	    set ld_cmd "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile"
+	    myexec "$sysconfig(cc) $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $stubString $memDebugString -c $sourceFile -o $objFile"
+	    # myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$sysPrefix/include -I$sysPrefix/include/tcl8.4 -I$pgPrefix/include -I$include -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
+
+	    set ld_cmd "$sysconfig(ld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
+	    #set ld_cmd "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile"
 
 	    if {$withPgtcl} {
 	        variable pgtcl_ver
@@ -4807,7 +4829,8 @@ proc compile {fileFragName version} {
 		append ld_cmd " -R$pgPrefix/lib/pgtcl$pgtcl_ver -L$pgPrefix/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgPrefix/lib -lpq"
 	    }
 
-	    append ld_cmd " -L$sysPrefix/lib $stub"
+	    append ld_cmd " $sysconfig(ldflags) $stub"
+	    #append ld_cmd " -L$sysPrefix/lib $stub"
 	    myexec $ld_cmd
 
 	    #myexec "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile -L$sysPrefix/lib $stub"
