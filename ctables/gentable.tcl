@@ -32,11 +32,8 @@ namespace eval ctable {
     variable withPipe
     variable memDebug
     variable sanityChecks
-    variable sysPrefix		;# default /usr/local
     variable pgPrefix		;# default /usr/local
     variable keyCompileVariables
-
-    variable sharedLibraryExt	;# default .so
 
     set ctablePackageVersion 1.4
 
@@ -4746,10 +4743,10 @@ proc target_path {name} {
 proc compile {fileFragName version} {
     global tcl_platform
     variable buildPath
+    variable sysFlags
     variable withPgtcl
     variable genCompilerDebug
     variable memDebug
-    variable sysPrefix
     variable pgPrefix
     variable withPipe
     variable withSubdir
@@ -4767,128 +4764,74 @@ proc compile {fileFragName version} {
 	set pipeFlag ""
     }
 
-    # add -pg for profiling with gprof
+    set stubs [info exists sysconfig(stub)]
 
-    switch $tcl_platform(os) {
-	"FreeBSD" {
-	    set stubs [info exists sysconfig(stub)]
-	    if {$genCompilerDebug} {
-		set optflag "-O0"
-		set dbgflag $sysconfig(dbg)
-		if {$memDebug} {
-		    #set stub "-ltclstub8.4g"
-		    #set lib "-ltcl8.4g"
-		    if {$stubs} {
-		        set stub "$sysconfig(stubg)m"
-		    }
-		    set lib "$sysconfig(libg)m"
-		} else {
-		    if {$stubs} {
-		        set stub "$sysconfig(stubg)"
-		    }
-		    set lib $sysconfig(libg)
-		}
-	    } else {
-		set optflag $sysconfig(opt)
-		set dbgflag ""
-		if {$stubs} {
-		    set stubs " $sysconfig(stub)"
-		}
-		set lib $sysconfig(lib)
-	    }
+    if {$genCompilerDebug} {
+	set optflag "-O0"
+	set dbgflag $sysconfig(dbg)
 
-	    if {$stubs} {
-		set stubString "-DUSE_TCL_STUBS=$stubs"
-	    } else {
-		set stubString ""
-	    }
-
-	    # put -DTCL_MEM_DEBUG in there if you're building with
-	    # memory debugging (see Tcl docs)
-	    if {$memDebug} {
-		set memDebugString "-DTCL_MEM_DEBUG=1"
-	    } else {
-		set memDebugString ""
-	    }
-
-	    if {$withPgtcl} {
-		set pgString -I$pgPrefix/include
-	    } else {
-		set pgString ""
-	    }
-
-	    myexec "$sysconfig(cc) $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $stubString $memDebugString -c $sourceFile -o $objFile"
-	    # myexec "gcc $pipeFlag $optflag $dbgflag -fPIC -I$sysPrefix/include -I$sysPrefix/include/tcl8.4 -I$pgPrefix/include -I$include -Wall -Wno-implicit-int -fno-common -DUSE_TCL_STUBS=1 $memDebugString -c $sourceFile -o $objFile"
-
-	    set ld_cmd "$sysconfig(ld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
-	    #set ld_cmd "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile"
-
-	    if {$withPgtcl} {
-	        variable pgtcl_ver
-
-		append ld_cmd " -R$pgPrefix/lib/pgtcl$pgtcl_ver -L$pgPrefix/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgPrefix/lib -lpq"
-	    }
-
-	    append ld_cmd " $sysconfig(ldflags) $stub"
-	    #append ld_cmd " -L$sysPrefix/lib $stub"
-	    myexec $ld_cmd
-
-	    #myexec "ld -Bshareable $dbgflag -x -o $targetPath/lib${fileFragName}.so $objFile -L$sysPrefix/lib $stub"
+	if {$memDebug} {
+	    set memSuffix m
+	} else {
+	    set memSuffix ""
 	}
 
-# -finstrument-functions / -lSaturn
-
-	"Darwin" {
-	    switch -glob $sysPrefix {
-		/System* {
-		    set sysInclude [file join $sysPrefix Headers]
-		    set sysLib $sysPrefix
-		    set debugSuffix ""
-		}
-		default {
-		    set sysInclude [file join $sysPrefix include]
-		    set sysLib [file join $sysPrefix lib]
-		    set debugSuffix "g"
-		}
-	    }
-
-	    if {$genCompilerDebug} {
-		set dbgflag "-g"
-		#set optflag "-O2"
-		set optflag ""
-		set stub "-ltclstub8.4$debugSuffix"
-		set lib "-ltcl8.4$debugSuffix"
-	    } else {
-		set dbgflag ""
-		set optflag "-O3"
-		set stub "-ltclstub8.4"
-		set lib "-ltcl8.4"
-	    }
-
-	    myexec "gcc $pipeFlag -DCTABLE_NO_SYS_LIMITS $dbgflag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I$sysInclude -I$include -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile"
-
-	    myexec "gcc $pipeFlag $dbgflag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L$sysLib $stub"
-
-	    #exec gcc $pipeFlag $optflag -fPIC -Wall -Wno-implicit-int -fno-common -I/sc/include -I$include -DUSE_TCL_STUBS=1 -c $sourceFile -o $objFile
-
-	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common  -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver $stub
-	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl -L/sc/lib $stub
-	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/sc/lib -lpgtcl -L/sc/lib $stub
-	    #exec gcc $pipeFlag $optflag -fPIC -dynamiclib  -Wall -Wno-implicit-int -fno-common -headerpad_max_install_names -Wl,-search_paths_first -Wl,-single_module -o $targetPath/${fileFragName}${version}.dylib $objFile -L/sc/lib $stub
-
-
-	    # -L/sc/lib -lpq -L/sc/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver
-	    # took $lib off the end?
+	if {$stubs} {
+		set stub "$sysconfig(stubg)$memSuffix"
 	}
+	set lib "$sysconfig(libg)$memSuffix"
 
-	default {
-	    error "unknown OS $tcl_platform(os)"
+    } else {
+	set optflag $sysconfig(opt)
+	set dbgflag ""
+
+	if {$stubs} {
+	    set stubs " $sysconfig(stub)"
 	}
+	set lib $sysconfig(lib)
     }
 
+    if {$stubs} {
+	set stubString "-DUSE_TCL_STUBS=$stubs"
+    } else {
+	set stubString ""
+    }
+
+    # put -DTCL_MEM_DEBUG in there if you're building with
+    # memory debugging (see Tcl docs)
+    if {$memDebug} {
+	set memDebugString "-DTCL_MEM_DEBUG=1"
+    } else {
+	set memDebugString ""
+    }
+
+    if {[info exists sysFlags($tcl_platform(os))]} {
+	set sysString $sysFlags($tcl_platform(os))
+    } else {
+	set sysString ""
+    }
+
+    if {$withPgtcl} {
+	set pgString -I$pgPrefix/include
+    } else {
+	set pgString ""
+    }
+
+    myexec "$sysconfig(cc) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $stubString $memDebugString -c $sourceFile -o $objFile"
+
+    set ld_cmd "$sysconfig(ld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
+
+    if {$withPgtcl} {
+	variable pgtcl_ver
+
+	append ld_cmd " -R$pgPrefix/lib/pgtcl$pgtcl_ver -L$pgPrefix/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgPrefix/lib -lpq"
+    }
+
+    append ld_cmd " $sysconfig(ldflags) $stub"
+    myexec $ld_cmd
+
     if {$withSubdir} {
-	variable sharedLibraryExt
-	set pkg_args [list $buildPath */*.tcl */*$sharedLibraryExt]
+	set pkg_args [list $buildPath */*.tcl */*[info sharedlibextension]]
     } else {
 	set pkg_args [list $buildPath]
     }

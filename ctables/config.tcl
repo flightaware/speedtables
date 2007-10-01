@@ -1,7 +1,6 @@
 # Common configuration parameters
 
     # with FlightAware, this overrides later definitions
-    #set sysPrefix /usr/fa
     #set pgPrefix /usr/fa
 
     # set to 1 to see errorInfo in normal tracebacks
@@ -47,24 +46,16 @@
 
     variable pgtcl_ver 1.6
 
-# OS-specific defaults - will be replaced by stuff from tclConfig.sh
+# OS-specific tweaks
+    set sysFlags(Darwin) "-DCTABLE_NO_SYS_LIMITS"
 
     if {$tcl_platform(os) == "Darwin"} {
 	set withPgtcl 0
+    }
+
+    if {!$withPgtcl} {
 	unset -nocomplain pgPrefix
-
-	set sharedLibraryExt .dylib
-
-	if {![info exists sysPrefix]} {
-	    set sysPrefix /System/Library/Frameworks/Tcl.framework/Versions/8.4
-	}
-    } else {
-	set sharedLibraryExt .so
-	if {![info exists sysPrefix]} {
-	    set sysPrefix /usr/local
-	}
-	if {$withPgtcl && ![info exists pgPrefix]} {
-	    set pgPrefix /usr/local
-	}
+    } elseif {![info exists pgPrefix]} {
+	set pgPrefix /usr/local
     }
 

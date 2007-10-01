@@ -4,7 +4,8 @@ $Id$
 9/30/2007 peter
     * Created system-dependent dynamically-generated sysconfig.tcl
       using mkConfig.sh to pull out some info from tclConfig.sh.
-      Using this for building FreeBSD version, mostly.
+      Works with FreeBSD and Darwin, with only one platform-specific tweak
+      other than fiddling with WITH_PGTCL.
 
 9/22/2007 peter
     * Split configuration out into separate config.tcl, it was getting unweildy

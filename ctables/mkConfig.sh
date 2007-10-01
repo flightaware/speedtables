@@ -35,25 +35,23 @@ echo "set sysconfig(cc) {$TCL_CC}"
 echo "set sysconfig(ccflags) {$TCL_DEFS $TCL_EXTRA_CFLAGS $TCL_INCLUDE_SPEC}"
 echo "set sysconfig(warn) {$TCL_CFLAGS_WARNING}"
 echo "set sysconfig(ldflags) {$TCL_SHLIB_CFLAGS}"
-echo "set sysconfig(ld) {$TCL_SHLIB_LD}"
+echo "set sysconfig(ld) {`eval echo $TCL_SHLIB_LD`}"
 echo "set sysconfig(shlib) {$TCL_SHLIB_SUFFIX}"
 echo "set sysconfig(dbgx) {$TCL_DBGX}"
-TCL_LIB="`eval echo $TCL_LIB_SPEC`"
-echo "set sysconfig(libg) {$TCL_LIB}"
+echo "set sysconfig(libg) {`eval echo $TCL_LIB_SPEC`}"
 echo "set sysconfig(dbg) {$TCL_CFLAGS_DEBUG}"
 echo "set sysconfig(opt) {$TCL_CFLAGS_OPTIMIZE}"
 if [ "$TCL_SUPPORTS_STUBS" = "1" ]
 then
-  TCL_STUB_LIB="`eval echo $TCL_STUB_LIB_SPEC`"
-  echo "set sysconfig(stubg) {$TCL_STUB_LIB}"
+  echo "set sysconfig(stubg) {`eval echo $TCL_STUB_LIB_SPEC`}"
 fi
+
+# Generate again with no "g" flag, if necessary
 TCL_DBGX=
-TCL_LIB="`eval echo $TCL_LIB_SPEC`"
-echo "set sysconfig(lib) {$TCL_LIB}"
+echo "set sysconfig(lib) {`eval echo $TCL_LIB_SPEC`}"
 if [ "$TCL_SUPPORTS_STUBS" = "1" ]
 then
-  TCL_STUB_LIB="`eval echo $TCL_STUB_LIB_SPEC`"
-  echo "set sysconfig(stub) {$TCL_STUB_LIB}"
+  echo "set sysconfig(stub) {`eval echo $TCL_STUB_LIB_SPEC`}"
 fi
 
 echo "# End of generated code"
