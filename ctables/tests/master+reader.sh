@@ -3,6 +3,9 @@
 
 . test_common.sh
 
+echo "Prebuilding master table"
+${TCLSH} ./master_prebuild.tcl
+
 echo "Starting ./master_server.tcl"
 ${TCLSH} ./master_server.tcl &
 master_pid=$!

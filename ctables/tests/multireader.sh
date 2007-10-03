@@ -8,6 +8,9 @@ count=${2:-100000}
 delay=${3:-20}
 changes=${4:-1}
 
+echo "Prebuilding master table"
+${TCLSH} ./master_prebuild.tcl
+
 echo "Starting ./master_server.tcl"
 ${TCLSH} ./master_server.tcl $delay $changes &
 master_pid=$!
