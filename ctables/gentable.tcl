@@ -32,7 +32,6 @@ namespace eval ctable {
     variable withPipe
     variable memDebug
     variable sanityChecks
-    variable pgPrefix		;# default /usr/local
     variable keyCompileVariables
 
     set ctablePackageVersion 1.4
@@ -55,7 +54,6 @@ namespace eval ctable {
     # Important compile settings, used in generating the ID
     set keyCompileVariables {
 	withPgtcl
-	pgtcl_ver
 	withSharedTables
 	withSharedTclExtension
 	sharedTraceFile
@@ -4747,7 +4745,6 @@ proc compile {fileFragName version} {
     variable withPgtcl
     variable genCompilerDebug
     variable memDebug
-    variable pgPrefix
     variable withPipe
     variable withSubdir
 
@@ -4812,7 +4809,12 @@ proc compile {fileFragName version} {
     }
 
     if {$withPgtcl} {
-	set pgString -I$pgPrefix/include
+	set pgString -I$sysconfig(pgtclprefix)/include
+	if [info exists sysconfig(pqprefix)] {
+	    if {"$sysconfig(pqprefix)" != "$sysconfig(pgtclprefix)"} {
+	        append pgString " -I$sysconfig(pqprefix)/include"
+	    }
+	}
     } else {
 	set pgString ""
     }
@@ -4822,9 +4824,25 @@ proc compile {fileFragName version} {
     set ld_cmd "$sysconfig(ld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
 
     if {$withPgtcl} {
-	variable pgtcl_ver
+	set pgtcl_lib $sysconfig(pgtclprefix)/lib
+	set pgtcl_ver $sysconfig(pgtclver)
 
-	append ld_cmd " -R$pgPrefix/lib/pgtcl$pgtcl_ver -L$pgPrefix/lib/pgtcl$pgtcl_ver -lpgtcl$pgtcl_ver -L$pgPrefix/lib -lpq"
+        lappend pgpath $pgtcl_lib/pgtcl$pgtcl_ver
+
+	if [info exists sysconfig(pqprefix)] {
+	    if {"$sysconfig(pqprefix)" != "$sysconfig(pgtclprefix)"} {
+		lappend pgpath $sysconfig(pqprefix)/lib
+	    }
+	}
+
+	foreach dir $pgpath {
+	    append ld_cmd " -R$dir"
+	}
+	foreach dir $pgpath {
+	    append ld_cmd " -L$dir"
+	}
+
+	append ld_cmd " -lpgtcl$pgtcl_ver -lpq"
     }
 
     append ld_cmd " $sysconfig(ldflags) $stub"

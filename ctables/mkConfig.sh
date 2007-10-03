@@ -2,14 +2,16 @@
 
 # $Id$
 
-# Create sysconfig.tcl from tclConfig.sh
+# Create sysconfig.tcl from tclConfig.sh and other things
 
-versions="8.4"
-prefixes="/usr/fa/lib/tcl /usr/local/lib/tcl /usr/lib/tcl /System/Library/Frameworks/Tcl.framework/Versions/ $*"
+tcl_versions="8.4"
+tcl_prefixes="/usr/fa/lib/tcl /usr/local/lib/tcl /usr/lib/tcl /System/Library/Frameworks/Tcl.framework/Versions/ $*"
 
-for version in $versions
+pg_prefixes="/usr/fa /usr/local /usr/local/pgsql"
+
+for version in $tcl_versions
 do
-  for prefix in $prefixes
+  for prefix in $tcl_prefixes
   do
     try="$prefix$version/tclConfig.sh"
     if [ -f "$try" ]
@@ -53,6 +55,40 @@ if [ "$TCL_SUPPORTS_STUBS" = "1" ]
 then
   echo "set sysconfig(stub) {`eval echo $TCL_STUB_LIB_SPEC`}"
 fi
+
+# Look for pgsql
+for prefix in $pg_prefixes
+do
+  if [ -f $prefix/include/libpq-fe.h ]
+  then
+    echo "set sysconfig(pqprefix) $prefix"
+  fi
+
+  # look for pgtcl-ng before pgtcl
+  for dir in $prefix/lib/pgtcl?.?.?
+  do
+    if [ -f $dir/pkgIndex.tcl ]
+    then
+      pgtclver="`expr $dir : $prefix/lib/pgtcl'\(.*\)'`"
+      echo "set sysconfig(pgtclver) $pgtclver"
+      echo "set sysconfig(pgtclprefix) $prefix"
+    fi
+  done
+
+  # look for pgtcl
+  if [ -z "$pgtclver" ]
+  then
+    for dir in $prefix/lib/pgtcl?.?
+    do
+      if [ -f $dir/pgtcl.tcl ]
+      then
+        ver="`expr $dir : $prefix/lib/pgtcl'\(.*\)'`"
+        echo "set sysconfig(pgtclver) $ver"
+        echo "set sysconfig(pgtclprefix) $prefix"
+      fi
+    done
+  fi
+done
 
 echo "# End of generated code"
 

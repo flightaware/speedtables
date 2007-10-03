@@ -1,8 +1,5 @@
 # Common configuration parameters
 
-    # with FlightAware, this overrides later definitions
-    #set pgPrefix /usr/fa
-
     # set to 1 to see errorInfo in normal tracebacks
     set errorDebug 1
 
@@ -15,7 +12,7 @@
     set memDebug 0
 
     # set to 1 to show compiler commands
-    set showCompilerCommands 0
+    set showCompilerCommands 1
 
     # set to 1 for pgTcl support
     set withPgtcl 1
@@ -44,18 +41,10 @@
     # create files in a subdirectory
     set withSubdir 1
 
-    variable pgtcl_ver 1.6
-
 # OS-specific tweaks
     set sysFlags(Darwin) "-DCTABLE_NO_SYS_LIMITS"
 
     if {$tcl_platform(os) == "Darwin"} {
 	set withPgtcl 0
-    }
-
-    if {!$withPgtcl} {
-	unset -nocomplain pgPrefix
-    } elseif {![info exists pgPrefix]} {
-	set pgPrefix /usr/local
     }
 

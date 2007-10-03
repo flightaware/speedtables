@@ -1,6 +1,10 @@
 
 $Id$
 
+10/3/2007 peter
+    * generate config vars for libpq and libpgtcl in mkConfig.sh
+    * Switch to libpgtcl-ng by default since it's got the right rpath.
+
 9/30/2007 peter
     * Created system-dependent dynamically-generated sysconfig.tcl
       using mkConfig.sh to pull out some info from tclConfig.sh.
