@@ -7,7 +7,6 @@
 #
 
 package require stapi
-package require st_optimizer
 
 namespace eval ::stapi::extend {
   variable stapi_cmds
@@ -295,13 +294,7 @@ namespace eval ::stapi::extend {
       set options(-compare) $new_compare
     }
 
-    set search search
-    if {"[set i [indexed $handle]]" != ""} {
-      if [::stapi::optimize_array options $i [types $handle]] {
-	set search search+
-      }
-    }
-    lappend cmd $search
+    lappend cmd search
 
     foreach {n v} [array get options] {
       lappend cmd $n $v

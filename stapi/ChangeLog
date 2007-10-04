@@ -1,0 +1,81 @@
+10/4/2007 peter
+    Remove optimizer completely, it's been moved to speedtables.
+
+    Extract this ChangeLog from CVS.
+
+8/10/2007 peter
+    stapi front end for shared tables
+
+    ::stapi::connect shared://port/table ?-build build_path?
+
+    Can accept "localhost:port", for consistency.
+
+7/18/2007 peter
+    Bulk rename "sttp" to "stapi".
+
+7/11/2007 peter
+    Don't call remote ctable from inside remote ctable code block. o_O
+
+7/11/2007 peter
+    * Made sttp consistent with ctables, if there's no simple key then it
+      simulates the ctables "_key" field.
+
+7/10/2007 peter
+    Removed "perform" and "fetch" and dependencies on it to simplify the
+    API and make it easier to implement in ctables.
+    Removed the array versions of "store" and "makekey" for the same reason.
+
+7/9/2007 peter
+    Support new ctable "key" command.
+
+6/7/2007 peter
+    Document the extensions to search and reference the optimizer.
+
+2/28/2007 peter
+    Merging "sttpx" into "sttp" - it's silly having an "extended" version
+    of something that's not even released. :)
+
+2/6/2007 peter
+    Remove dependance on sc_postgres.
+
+1/24/2007 peter
+    Splitting speedcache into sttp[_server|_client|_display]
+
+1/22/2007 peter
+    Working STDisplay with "sql:" URLs.
+
+1/19/2007 peter
+    Working sql: URLs.
+
+1/18/2007 peter
+    Hack reduction: remove CableAware glue from connect_ctable, create
+    ::scache::register and move the glue to glue.tcl as connect_cache.
+    Get rid of "/var/tmp/speedcache", if you don't specify a cache
+    location it'll use the local directory.
+
+1/15/2007 peter
+    ctable connection wrapper:
+      ::scache::connect URL ?options?
+
+    URL formats:
+      ctable://...
+        cttp URI
+      sql://user:passwd@host:db/table/...
+        direct SQL connection Not implemented
+      local:///ctable
+        reference to already-opened ctable
+
+    more to come.
+
+    Q: should "ctable:" be "cttp:"?
+
+
+1/5/2007 peter
+    Import from CableAware.
+
+    Remove the "helper" routine for generating the ctable from sql because
+    it's based on the cable-aware cache.cfg file format.
+    Replaced with a "glue" routine in glue.tcl, and a routine for creating
+    the column-list format for a ctable from the sql database and
+    optional arguments.
+
