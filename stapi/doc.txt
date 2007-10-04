@@ -126,15 +126,6 @@
 
 ==== st_client ====
 
-::stapi::optimize_array array_name {indexed_col ...} {col type...}
-
-  query optimizer
-  input  - an array containing the arguments to a $ctable search
-         - a list of indexed fields
-         - a name-value pair set of field types
-  output - a possibly optimised search in the array
-         - true if optimization was possible and you can use search+
-
 ::stapi::connect uri ?-name value...?
 
   Connect to a ctable or other database with a ctable interface via a URI.
@@ -197,6 +188,7 @@
 			Define the SQL required to perform the selection
 		_key=sql_code
 			Define the SQL for the key
+			If the key is a simple column name, just use that.
 		_keys=column:column:...
 			Define the key in terms of a list of columns.
 
@@ -253,33 +245,4 @@ package, so the wrapper object is only created when needed.
       Comparable to:
 
         $ctable set [$ctable makekey $list] $list
-
-  In addition, the following methods are modified:
-
-    $ctable search ?-name value?
-
-      -compare list
-
-        The list may be passed through an optimizer that rearranges the
-	comparisons for more efficiency.
-
-	Also, the additional comparisons are recognised:
-
-	  <> is a synonym for !=
-
-	  imatch is a synonym for match
-	  xmatch is a synonym for match_case
-
-	  umatch field string
-
-	    Equivalent to match_case field [toupper string]
-
-	  lmatch field string
-
-	    Equivalent to match_case field [tolower string]
-
-	These extensions are used by STTPDisplay to allow fast indexed
-	ctable searches ignoring case when the underlying ctable is known
-	to have a field that is always upper or lower case, in a way that
-	hides the differences between ctables and SQL tables.
 
