@@ -1367,7 +1367,7 @@ struct $table *${table}_make_row_struct () {
 //
 // Must handle this in caller beacuse we're not passing an interpreter in
 //
-struct $table *${table}_find_or_create (CTable *ctable, char *key, int *indexCtlPtr) {
+struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char *key, int *indexCtlPtr) {
     struct $table *row = NULL;
     static struct $table *nextRow = NULL;
     int flags = KEY_VOLATILE;
@@ -1388,6 +1388,7 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *indexCtl
 	    nextRow = (struct $table *)shmalloc(ctable->share, sizeof(struct $table));
 	    if(!nextRow) {
 		if(ctable->share_panic) ${table}_shmpanic(ctable);
+		TclShmError(interp, key);
 	        return NULL;
 	    }
 	} else
@@ -1402,6 +1403,7 @@ struct $table *${table}_find_or_create (CTable *ctable, char *key, int *indexCtl
         key_value = (char *)shmalloc(ctable->share, strlen(key)+1);
 	if(!key_value) {
 	    if(ctable->share_panic) ${table}_shmpanic(ctable);
+	    TclShmError(interp, key);
 	    return NULL;
 	}
 	strcpy(key_value, key);
@@ -1767,14 +1769,10 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	    key = "";
     }
 
-    // Can only fail if using shared memory
-    row = ${table}_find_or_create (ctable, key, &indexCtl);
-#ifdef WITH_SHARED_TABLES
+    row = ${table}_find_or_create (interp, ctable, key, &indexCtl);
     if(!row) {
-	TclShmError(interp, key);
 	return TCL_ERROR;
     }
-#endif
 
     for (col = i = 0; col < nFields; i++) {
         field = strsep (&string, "\t");
@@ -1787,6 +1785,10 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	    return TCL_ERROR;
 	}
     }
+
+    if (indexCtl == CTABLE_INDEX_NEW)
+        if(${table}_index_defaults(interp, ctable, row) == TCL_ERROR)
+	    return TCL_ERROR;
 
     Tcl_DecrRefCount (utilityObj);
     if(keyCopy) ckfree(keyCopy);
@@ -2128,7 +2130,7 @@ proc gen_ctable_type_stuff {} {
 #
 # gen_defaults_subr - gen code to set a row to default values
 #
-proc gen_defaults_subr {subr struct} {
+proc gen_defaults_subr {struct} {
     variable table
     variable fields
     variable withSharedTables
@@ -2139,14 +2141,27 @@ proc gen_defaults_subr {subr struct} {
 
     set baseCopy ${struct}_basecopy
 
-    emit "void ${subr}(struct $struct *row) $leftCurly"
+    emit "void ${struct}_init(struct $struct *row) $leftCurly"
     emit "    static int firstPass = 1;"
     emit "    static struct $struct $baseCopy;"
     emit ""
     emit "    if (firstPass) $leftCurly"
+    emit "        int i;"
     emit "        firstPass = 0;"
     emit ""
     emit "        $baseCopy.hashEntry.key = NULL;"
+    
+    if {$withSharedTables} {
+        emit "        $baseCopy._row_cycle = LOST_HORIZON;"
+    }
+
+    emit ""
+    emit "        for(i = 0; i < [string toupper $table]_NLINKED_LISTS; i++) $leftCurly"
+    emit "	      $baseCopy._ll_nodes\[i].next = NULL;"
+    emit "	      $baseCopy._ll_nodes\[i].prev = NULL;"
+    emit "	      $baseCopy._ll_nodes\[i].head = NULL;"
+    emit "	  $rightCurly"
+    emit ""
 
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
@@ -2247,6 +2262,47 @@ proc gen_defaults_subr {subr struct} {
     emit "    $rightCurly"
     emit ""
     emit "    *row = $baseCopy;"
+
+    emit "$rightCurly"
+    emit ""
+
+    emit "int ${struct}_index_defaults(Tcl_Interp *interp, CTable *ctable, struct $struct *row) $leftCurly"
+
+# emit "printf(\"${struct}_index_defaults(...);\\n\");"
+    set fieldnum 0 ; # postincremented 0 .. fields
+    set listnum 0  ; # preincrementd 1 .. lists+1
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
+
+	if {[info exists field(indexed)] && $field(indexed)} {
+	    incr listnum
+	    if {[info exists field(default)]} {
+		emit "// Field \"$fieldName\" ($fieldnum) index $listnum:"
+# emit "printf(\"ctable->skipLists\[$fieldnum] == %08lx\\n\",  (long)ctable->skipLists\[$fieldnum]);"
+
+# emit "printf(\"row->_ll_nodes\[$listnum].head == %08lx\\n\",  (long)row->_ll_nodes\[$listnum].head);"
+
+	        emit "    if(ctable->skipLists\[$fieldnum] && row->_ll_nodes\[$listnum].head == NULL) $leftCurly"
+	        if {"$field(type)" == "varstr"} {
+		    emit "        row->$fieldName = \"$field(default)\";"
+	        }
+#emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
+	        emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
+	        emit "            return TCL_ERROR;"
+	        if {"$field(type)" == "varstr"} {
+	            emit "        row->$fieldName = NULL;"
+	        }
+	        emit "    $rightCurly"
+	    } else {
+		emit "// Field \"$fieldName\" ($fieldnum) index $listnum no default"
+	    }
+	} else {
+	    emit "// Field \"$fieldName\" ($fieldnum) not indexed"
+        }
+        incr fieldnum
+    }
+
+    emit "    return TCL_OK;"
 
     emit "$rightCurly"
     emit ""
@@ -5118,7 +5174,7 @@ proc CTable {name data} {
 
     ::ctable::gen_setup_routine $name
 
-    ::ctable::gen_defaults_subr ${name}_init $name
+    ::ctable::gen_defaults_subr $name
 
     ::ctable::gen_delete_subr ${name}_delete $name
 

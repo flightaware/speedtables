@@ -589,7 +589,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    sprintf(key = keyString, "%u", ctable->autoRowNumber++);
         }
 
-        row = ${table}_find_or_create (ctable, key, &indexCtl);
+        row = ${table}_find_or_create (interp, ctable, key, &indexCtl);
+	if(!row) {
+	    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+	    return TCL_ERROR;
+	}
 
 	for (i = 0; i < listObjc; i+= 2) {
 	    if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], indexCtl) == TCL_ERROR) {
@@ -613,7 +617,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
-        row = ${table}_find_or_create (ctable, Tcl_GetString (objv[2]), &indexCtl);
+        row = ${table}_find_or_create (interp, ctable, Tcl_GetString (objv[2]), &indexCtl);
+	if(!row) {
+	    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+	    return TCL_ERROR;
+	}
 
 	if (objc == 4) {
 	    // If there's precisely one element in the list, get a new list
@@ -640,6 +648,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    }
 	}
 
+        if (indexCtl == CTABLE_INDEX_NEW)
+	    if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR)
+	        return TCL_ERROR;
+
 	break;
       }
 
@@ -653,7 +665,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
-        row = ${table}_find_or_create (ctable, Tcl_GetString (objv[2]), &indexCtl);
+        row = ${table}_find_or_create (interp, ctable, Tcl_GetString (objv[2]), &indexCtl);
+	if(!row) {
+	    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+	    return TCL_ERROR;
+	}
 
 	if (objc == 4) {
 	    if (Tcl_ListObjGetElements (interp, objv[3], &listObjc, &listObjv) == TCL_ERROR) {
@@ -684,6 +700,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		    }
 		}
 	    }
+
+            if (indexCtl == CTABLE_INDEX_NEW)
+	        if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR)
+	            return TCL_ERROR;
+
 	    break;
 	}
 
@@ -705,6 +726,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		return TCL_ERROR;
 	    }
 	}
+
+        if (indexCtl == CTABLE_INDEX_NEW)
+	    if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR)
+	        return TCL_ERROR;
+
         break;
       }
 
@@ -794,7 +820,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	          key = PQgetvalue(res, pgRow, keyColumn);
 	      }
 
-	      row = ${table}_find_or_create (ctable, key, &indexCtl);
+	      row = ${table}_find_or_create (interp, ctable, key, &indexCtl);
+	      if(!row) {
+	          Tcl_AppendResult (interp, " while saving Postgres result into ${table}", (char *)NULL);
+	          return TCL_ERROR;
+	      }
 
 	      for (field = firstColumn; field < nFields; field++) {
 		  if(field == keyColumn) {
@@ -818,6 +848,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		  }
 		  ${table}_set (interp, ctable, valueObj, row, fieldList[field], indexCtl);
 	      }
+
+              if (indexCtl == CTABLE_INDEX_NEW)
+	          if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR)
+	              return TCL_ERROR;
 	  }
 
 	  if (noKeys && key != NULL) {
