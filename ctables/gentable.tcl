@@ -111,9 +111,10 @@ proc emit {text} {
 # cquote -- quote a string so the C compiler will see the same thing
 #  if it occurs inside double-quotes
 #
-proc cquote {string} {
-  # first, escape the metacharacters \ and "
-  regsub -all {["\\]} $string {\\&} string
+proc cquote {string {meta {"}}} {
+  # first, escape the metacharacters (quote) and backslash
+  append meta {\\}
+  regsub -all "\[$meta]" $string {\\&} string
 
   # Now loop over the string looking for nonprinting characters
   set quoted ""
@@ -665,11 +666,7 @@ proc gen_check_unchanged_string {fieldName default defaultLength} {
 proc gen_default_test {varName lengthName default defaultLength} {
     if {$defaultLength == 0} { return "!*$varName" }
 
-    if {[string index $default 0] == "\\"} {
-       set def0 "\"$default\"\[0]"
-    } else {
-	set def0 '[string index $default 0]'
-    }
+    set def0 '[cquote [string index $default 0] {'}]'
 
     return "$lengthName == $defaultLength && *$varName == $def0 && strncmp ($varName, \"$default\", $defaultLength) == 0"
 }
@@ -712,7 +709,7 @@ variable varstringSetSource {
 	    // can't use our proc here yet because of the
 	    // default empty string obj fanciness
 	    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
-		row->$fieldName = \"$default\";
+		row->$fieldName = \"[cquote $default]\";
 		if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 		    return TCL_ERROR;
 		}
@@ -1968,7 +1965,7 @@ proc fixedstring {fieldName length args} {
 
     if {[info exists field(default)]} {
         if {[string length $field(default)] != $length} {
-	    error "fixedstring \"$fieldName\" default string \"$field(default)\" must match length \"$length\""
+	    error "fixedstring \"$fieldName\" default string \"[cquote $field(default)]\" must match length \"$length\""
 	}
     }
 
@@ -2187,7 +2184,7 @@ proc gen_defaults_subr {struct} {
 
 	    fixedstring {
 	        if {[info exists field(default)]} {
-		    emit "        strncpy ($baseCopy.$fieldName, \"$field(default)\", $field(length));"
+		    emit "        strncpy ($baseCopy.$fieldName, \"[cquote $field(default)]\", $field(length));"
 		    if {![info exists field(notnull)] || !$field(notnull)} {
 			emit "        $baseCopy._${fieldName}IsNull = 0;"
 		    }
@@ -2226,7 +2223,7 @@ proc gen_defaults_subr {struct} {
 
 	    char {
 	        if {[info exists field(default)]} {
-		    emit "        $baseCopy.$fieldName = '[string index $field(default) 0]';"
+		    emit "        $baseCopy.$fieldName = '[cquote [string index $field(default) 0] {'}]';"
 		    if {![info exists field(notnull)] || !$field(notnull)} {
 			emit "        $baseCopy._${fieldName}IsNull = 0;"
 		    }
@@ -2284,7 +2281,7 @@ proc gen_defaults_subr {struct} {
 
 	        emit "    if(ctable->skipLists\[$fieldnum] && row->_ll_nodes\[$listnum].head == NULL) $leftCurly"
 	        if {"$field(type)" == "varstr"} {
-		    emit "        row->$fieldName = \"$field(default)\";"
+		    emit "        row->$fieldName = \"[cquote $field(default)]\";"
 	        }
 #emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
 	        emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
@@ -4103,13 +4100,25 @@ variable fieldCompareNullCheckSource {
 #
 proc gen_field_compare_null_check_source {table fieldName} {
     variable fieldCompareNullCheckSource
+    variable varstringCompareDefaultSource
+    variable varstringCompareNullSource
     upvar ::ctable::fields::$fieldName field
 
-    if {[info exists field(notnull)] && $field(notnull)} {
-        return ""
+    if {"$field(type)" == "varstring" && [info exists field(default)]} {
+	if {"$field(default)" == ""} {
+	     set source $varstringCompareNullSource
+	} else {
+	     set source $varstringCompareDefaultSource
+	     set defaultString "\"[cquote $field(default)]\""
+	     set defaultChar "'[cquote [string index $field(default) 0] {'}]'"
+	}
+    } elseif {[info exists field(notnull)] && $field(notnull)} {
+        set source ""
+    } else {
+	set source $fieldCompareNullCheckSource
     }
 
-    return [string range [subst -nobackslashes -nocommands $fieldCompareNullCheckSource] 1 end-1]
+    return [string range [subst -nobackslashes -nocommands $source] 1 end-1]
 }
 
 #
@@ -4197,6 +4206,47 @@ variable varstringFieldCompSource {
     }
     return strcmp (row1->$fieldName, row2->$fieldName);
 }
+
+#
+# varstringCompareDefaultSource - compare against default strings
+#
+variable varstringCompareDefaultSource {
+    if (!row1->$fieldName) {
+	if(!row2->$fieldName) {
+	    return 0;
+	} else {
+	    if ($defaultChar != row2->${fieldName}[0]) {
+		return ($defaultChar < row2->${fieldName}[0]) ? -1 : 1;
+	    }
+	    return strcmp($defaultString, row2->$fieldName);
+	}
+    } else {
+	if(!row2->$fieldName) {
+	    if (row1->${fieldName}[0] != $defaultChar) {
+		return (row1->${fieldName}[0] < $defaultChar) ? -1 : 1;
+	    }
+	    return strcmp(row1->$fieldName, $defaultString);
+	}
+    }
+}
+
+#
+# varstringCompareNullSource - compare against default empty string
+#
+variable varstringCompareNullSource {
+    if (!row1->$fieldName) {
+	if(!row2->$fieldName) {
+	    return 0;
+	} else {
+	    return -1;
+	}
+    } else {
+	if(!row2->$fieldName) {
+	    return 1;
+	}
+    }
+}
+
 
 #
 # fixedstringFieldCompSource - code we run subst over to generate a comapre of a 

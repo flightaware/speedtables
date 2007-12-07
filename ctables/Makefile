@@ -66,6 +66,6 @@ install: sysconfig.tcl
 	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c shared/*.[ch] $(INSTDIR)
 
-sysconfig.tcl: mkConfig.sh
+sysconfig.tcl: mkConfig.sh config.tcl
 	./mkConfig.sh > sysconfig.tcl
 
