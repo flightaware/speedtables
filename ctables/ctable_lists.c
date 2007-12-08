@@ -39,6 +39,7 @@ ctable_ListRemove (ctable_BaseRow *row, int i)
     *row->_ll_nodes[i].prev = row->_ll_nodes[i].next;
 
     // i'm removed
+    row->_ll_nodes[i].prev = NULL;
 }
 
 //
@@ -62,6 +63,8 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
     *row->_ll_nodes[i].prev = row->_ll_nodes[i].next;
 
     // i'm removed
+    row->_ll_nodes[i].prev = NULL;
+
     return mightBeTheLastOne;
 }
 

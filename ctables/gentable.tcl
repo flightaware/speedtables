@@ -531,7 +531,6 @@ proc gen_ctable_remove_from_index {fieldName} {
     } else {
         return ""
     }
-    
 }
 
 variable insertIntoIndexSource {

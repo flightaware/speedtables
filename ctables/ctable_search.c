@@ -2099,20 +2099,24 @@ inline void
 ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_BaseRow *row = vRow;
-    int index;
+    int index = ctable->creator->fields[field]->indexNumber;
 
 // printf("remove from index field %d\n", field);
 
     if (skip == NULL) {
-// printf("it's null\n");
+// printf("no skiplist\n");
         return;
     }
 
-    if (ctable_ListRemoveMightBeTheLastOne (row, ctable->creator->fields[field]->indexNumber)) {
+    // invariant: prev is never NULL if in list
+    if(row->_ll_nodes[index].prev == NULL) {
+// printf("not in skiplist, probably null");
+	return;
+    }
+    if (ctable_ListRemoveMightBeTheLastOne (row, index)) {
 // printf("i might be the last one, field %d\n", field);
-	index = ctable->creator->fields[field]->indexNumber;
         // it might be the last one, see if it really was
-// printf ("row->ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
+// printf ("row->_ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
 	if (*row->_ll_nodes[index].head == NULL) {
 // printf("erasing last entry field %d\n", field);
             // put the pointer back so the compare routine will have
