@@ -2195,34 +2195,26 @@ Tcl_DecrRefCount (utilityObj);
     return TCL_OK;
 }
 
-inline int
+//
+// Current index model doesn't index nulls. This is correct because the NULL
+// search doesn't use skiplists, and NULL only matches the NULL search.
+//
+// The next two routines are a hook for possible future use. Since they
+// are static inline they should always be optimized away.
+//
+// ctable_RemoveNullFromIndex - remove a NULL entry from an index
+//
+static inline int
 ctable_RemoveNullFromIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
-    return TCL_OK; /* PDS 20070215 NULL kludge FIXME? */
-#if 0 /* PDS 20070215 NULL kludge FIXME? */
-    jsw_skip_t *skip = ctable->skipLists[field];
-
-    if (skip == NULL) {
-        return TCL_OK;
-    }
-
-    Tcl_AppendResult (interp, "remove null from index unimplemented", (char *) NULL);
-    return TCL_ERROR;
-#endif /* PDS 20070215 NULL kludge FIXME? */
+    return TCL_OK;
 }
 
-inline int
+//
+// ctable_InsertNullIntoIndex - insert a NULL entry into an index
+//
+static inline int
 ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
-    return TCL_OK; /* PDS 20070215 NULL kludge FIXME? */
-#if 0 /* PDS 20070215 NULL kludge FIXME? */
-    jsw_skip_t *skip = ctable->skipLists[field];
-
-    if (skip == NULL) {
-        return TCL_OK;
-    }
-
-    Tcl_AppendResult (interp, "insert null into index unimplemented", (char *) NULL);
     return TCL_OK;
-#endif /* PDS 20070215 NULL kludge FIXME? */
 }
 
 //
@@ -2233,27 +2225,30 @@ ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int f
 // really anything since we're switching to bidirectionally linked lists
 // as targets of skip list nodes.
 //
-// consequently should make sure the field has an index set up for it
-// in the linked list nodes of the row
-//
 int
 ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
     ctable_BaseRow *row;
 
-    jsw_skip_t      *skip = ctable->skipLists[field];
+    jsw_skip_t      *skip;
 
-    // if there's already a skip list, just say "fine"
-    // it's debatable if that's really what we want to do.
-    // perhaps we should generate an error, but that seems
-    // painful to the programmer who uses this tool.
-
-    if (skip != NULL) {
-        return TCL_OK;
-    }
-
+    // make sure the field has an index set up for it
+    // in the linked list nodes of the row.
     if (ctable->creator->fields[field]->indexNumber < 0) {
 	Tcl_AppendResult (interp, "can't create an index on a field that hasn't been defined as allowing an index", (char *)NULL);
 	return TCL_ERROR;
+    }
+
+    // make sure we're allowed to do this
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_READER) {
+	Tcl_AppendResult (interp, "can't create an index on a read-only table", (char *)NULL);
+	return TCL_ERROR;
+    }
+#endif
+
+    // if there's already a skip list, just say "fine"
+    if ((skip = ctable->skipLists[field]) != NULL) {
+        return TCL_OK;
     }
 
 #ifdef WITH_SHARED_TABLES
@@ -2263,13 +2258,11 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
 #endif
         skip = jsw_snew (depth, ctable->creator->fields[field]->compareFunction, NULL);
 
-    // we plug the list in last
-    // we'll have to do a lot more here for concurrent access NB
-
+    // we should plug the list in last, so that concurrent users don't
+    // walk an incomplete skiplist, but ctable_InsertIntoIndex needs this
     ctable->skipLists[field] = skip;
 
-    // yes yes yet another walk through the hash table, in create index?!
-    // gotta do it that way until skip lists are solid
+    // Walk the whole table to create the index
     CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
 	// we want to be able to call out to an error handler rather
 	// than fail and unwind the stack.
