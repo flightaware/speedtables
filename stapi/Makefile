@@ -7,7 +7,7 @@ INSTDIR=/usr/local/lib/stapi
 
 DIRS=client server display
 
-CLIENT=client/client.tcl client/pgsql.tcl client/optimizer.tcl client/extend.tcl client/shared.tcl
+CLIENT=client/client.tcl client/pgsql.tcl client/extend.tcl client/shared.tcl
 SERVER=server/server.tcl server/lock.tcl
 DISPLAY=display/display.tcl display/test.tcl
 COMMON=debug.tcl pgsql.tcl stapi.tcl copy.tcl
