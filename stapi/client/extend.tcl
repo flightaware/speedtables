@@ -86,7 +86,7 @@ namespace eval ::stapi::extend {
     incr seq
     set stable($handle) ::stapi::extend::_table$seq
     proc $stable($handle) {cmd args} "
-	uplevel 1 \[concat \[stapi \$cmd $handle] \$args]
+	uplevel 1 \[concat \[list stapi \$cmd $handle] \$args]
     "
     return $stable($handle)
   }

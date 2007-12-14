@@ -25,7 +25,7 @@ namespace eval ::stapi {
       return
     }
 
-    if {"$user == ""} {
+    if {"$user" == ""} {
       variable default_user
       if {![info exists default_user]} {
 	return -code error "No SQL user provided"

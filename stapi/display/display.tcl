@@ -65,12 +65,11 @@ catch { ::itcl::delete class STDisplay }
 	      set keyfields [list $key]
 	    }
 	  }
-	  if ![info exists keyfields] {
-	    if ![::stapi::extended $uri] {
-	      return -code error "No key/keyfields"
-	    }
-	  }
-	  set table [::stapi::connect $uri -keys $keyfields]
+	  if [info exists keyfields] {
+	    set table [::stapi::connect $uri -keys $keyfields]
+	  } else {
+	    set table [::stapi::connect $uri]
+          }
 	}
 
 	if ![info exists keyfields] {
@@ -90,6 +89,12 @@ catch { ::itcl::delete class STDisplay }
 	  if {[llength $keyfields] == 1} {
 	    set key [lindex $keyfields 0]
 	  }
+	}
+
+	if {![info exists key]} {
+	  set cause $table
+	  if {[info exists uri]} { set cause $uri }
+	  return -code error "No key or keyfields, and $cause doesn't know how to tell me"
 	}
 
 	if {[lempty $form]} {

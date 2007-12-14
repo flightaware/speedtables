@@ -1,4 +1,4 @@
-#!/usr/fa/bin/tclsh8.4
+#!/usr/local/bin/tclsh8.4
 
 lappend auto_path [exec pwd]
 
