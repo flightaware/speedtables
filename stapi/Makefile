@@ -2,8 +2,8 @@
 V=""
 V=-verbose
 
-INSTDIR=/usr/fa/lib/stapi
-#INSTDIR=/usr/local/lib/stapi
+#INSTDIR=/usr/fa/lib/stapi
+INSTDIR=/usr/local/lib/stapi
 
 DIRS=client server display
 

@@ -1,3 +1,8 @@
+$Id$
+
+12/14/2007 karl
+    * Install by default to /usr/local/lib not /usr/fa/lib.
+
 10/4/2007 peter
     Remove optimizer completely, it's been moved to speedtables.
 
