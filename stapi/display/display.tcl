@@ -304,8 +304,17 @@ catch { ::itcl::delete class STDisplay }
 
     method show {} {
 	if {[llength $fields] <= 0} {
+	    foreach key $keyfields {
+		if {"$key" == "_key"} {
+	            field $key -text "Key"
+		} else {
+	            field $key -text [string toupper $key]
+		}
+	    }
 	    foreach fld [$table fields] {
-		field $fld
+		if {[lsearch $keyfields $fld] == 0} {
+		    field $fld -text [string toupper $fld]
+		}
 	    }
 	}
 	if {[llength $fields] <= 0} {
