@@ -269,7 +269,7 @@ puts "ok"
 
 puts -nonewline "testing 'search with array get'..."
 t search -compare {{= name {Brock Sampson}}} -array_get foo -code {
-    set expect [list id brock name {Brock Sampson} home {Venture Compound} show {Venture Bros} alive 1 gender male age 35 coolness 100]
+    set expect [list id brock name {Brock Sampson} home {Venture Compound} show {Venture Bros} alive 1 gender male age 35 coolness 100 _key brock]
     if {$foo != $expect} {
         error "got '$foo' , expected '$expect'"
     }
@@ -278,7 +278,7 @@ puts "ok"
 
 puts -nonewline "testing 'search with array get with nulls'..."
 t search -compare {{= name {Brock Sampson}}} -array_get_with_nulls foo -code {
-    set expect [list id brock name {Brock Sampson} home {Venture Compound} show {Venture Bros} dad {} alive 1 gender male age 35 coolness 100]
+    set expect [list id brock name {Brock Sampson} home {Venture Compound} show {Venture Bros} dad {} alive 1 gender male age 35 coolness 100 _key brock]
     if {$foo != $expect} {
         error "got '$foo' , expected '$expect'"
     }

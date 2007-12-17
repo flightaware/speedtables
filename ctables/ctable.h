@@ -349,6 +349,7 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth)
 #define is_hidden_obj(obj) (Tcl_GetString(obj)[0] == '_')
 #define is_hidden_name(fieldNames,field) ((fieldNames)[field][0] == '_')
 #define is_hidden_field(table,field) is_hidden_name((table)->fieldNames,field)
+#define is_key_field(table,field,noKeys) ((noKeys) == 0 && strcmp("_key",(table)->fieldNames[field]) == 0)
 
 // Values for share_type
 #ifdef WITH_SHARED_TABLES

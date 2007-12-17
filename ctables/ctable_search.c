@@ -432,13 +432,13 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	  case CTABLE_SEARCH_ACTION_ARRAY_WITH_NULLS:
 	  case CTABLE_SEARCH_ACTION_ARRAY: {
-	   int result = TCL_OK;
+	    int result = TCL_OK;
 
 	    if (search->nRetrieveFields < 0) {
 	       int i;
 
 	       for (i = 0; i < creator->nFields; i++) {
-		   if (is_hidden_field(creator,i)) {
+		   if (is_hidden_field(creator,i) && !is_key_field(creator,i,search->noKeys)) {
 		       continue;
 		   }
 	           if (search->endAction == CTABLE_SEARCH_ACTION_ARRAY) {
@@ -452,9 +452,6 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
 	           if (search->endAction == CTABLE_SEARCH_ACTION_ARRAY) {
-		       if (is_hidden_field(creator,i)) {
-		           continue;
-		       }
 		       result = creator->array_set (interp, search->varNameObj, row, search->retrieveFields[i]);
 		   } else {
 		       result = creator->array_set_with_nulls (interp, search->varNameObj, row, search->retrieveFields[i]);
@@ -474,7 +471,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	    listObj = Tcl_NewObj ();
 	    if (search->nRetrieveFields < 0) {
 		for (i = 0; i < creator->nFields; i++) {
-		    if (is_hidden_field(creator,i)) {
+		    if (is_hidden_field(creator,i) && !is_key_field(creator,i,search->noKeys)) {
 			continue;
 		    }
 		    creator->lappend_nonnull_field_and_name (interp, listObj, row, i);
@@ -493,7 +490,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	    listObj = Tcl_NewObj ();
 	    if (search->nRetrieveFields < 0) {
 		for (i = 0; i < creator->nFields; i++) {
-		    if (is_hidden_field(creator,i)) {
+		    if (is_hidden_field(creator,i) && !is_key_field(creator,i,search->noKeys)) {
 			continue;
 		    }
 		    creator->lappend_field_and_name (interp, listObj, row, i);
