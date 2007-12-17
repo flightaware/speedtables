@@ -385,16 +385,18 @@ namespace eval ::stapi {
     exec_sql $create_sql
   }
 
-  # open_cached name ?pattern? ?-opt val?...
+  # open_cached name ?pattern? ?-option val?... ?option val...?
   #
   # Open an initialised ctable, maintaining a local cache of the underlying
   # SQL table in a .tsv file in the workdir.
   #
-  # Options
-  #   pattern
-  #   -pat pattern
+  # There is one positional option, ?pattern?. 
   #      Only read lines matching the pattern from the cache, if the cache is
   #      good.
+  #
+  # Options begin with a dash:
+  #   -pat pattern
+  #      Equivalent to the pattern positional option
   #   -time cache_timeout
   #      Override the default cache timeout.
   #   -col name
@@ -402,6 +404,9 @@ namespace eval ::stapi {
   #      each entry, if any.
   #   -index field_name
   #      Name of a field to create an index on. Multiple -index are allowed.
+  # 
+  # Options that don't begin with a dash are passed to the ctable create
+  # command.
   #
   proc open_cached {name args} {
     variable sql2ctable
@@ -421,19 +426,24 @@ namespace eval ::stapi {
       set args [lrange $args 1 end]
     }
 
+    set open_command [list open_raw_ctable $name]
+
     foreach {n v} $args {
       switch -glob -- $n {
 	-pat* { set pattern $v }
         -tim* { set timeout $v }
 	-col* { set time_col $v }
 	-ind* { lappend indices $v }
-	default { return -code error "Unknown option '$n'" }
+	-* { return -code error "Unknown option '$n'" }
+	default {
+	   lappend open_command $n $v
+	}
       }
     }
 
-    # open_raw_ctable does all the heavy lifting of loading the extension and
-    # creating the ctable instance.
-    set ctable [open_raw_ctable $name]
+    # open_raw_ctable (see above) does all the heavy lifting of loading the
+    # extension and creating the ctable instance.
+    set ctable [eval $open_command]
 
     # we need to know this to find the tsv file and sql file
     set ctable_name "c_$name"
@@ -811,7 +821,7 @@ namespace eval ::stapi {
   # we lock the ctable while we're loading it to make sure some scurvy
   # beggar doesn't go gcc on us while we're slurping our dot-ohs.
   #
-  proc open_raw_ctable {name} {
+  proc open_raw_ctable {name args} {
     init
 
     # validate and lock the ctable
@@ -835,7 +845,7 @@ namespace eval ::stapi {
 
     # Create a new ctable instance
     if [catch {
-      set ctable [c_$name create #auto]
+      set ctable [eval [list c_$name create #auto] $args]
     } err] {
       unlockfile $build_dir
       error $err $::errorInfo

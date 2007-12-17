@@ -70,18 +70,21 @@
      -prefix text
         If specified, prefix column names with "$prefix"
 
-::stapi::open_cached name ?pattern? ?-opt val?...
+::stapi::open_cached name ?pattern? ?-option value?... ?option value?
 
    Open an initialised ctable, maintaining a local cache of the underlying
    SQL table in a .tsv file in the workdir.
 
-   Options
-     pattern
-     -pat pattern
+   pattern
         Only read lines matching the pattern from the cache, if the cache is
         good. This is an optimization to avoid reading the entire table into
 	memory when only a part of the table will be used. If the cache is old
 	or missing, then the entire table will still be read into memory.
+
+   Options not starting with a dash are passed directly to the ctable create
+   command. Options starting with a dash are:
+     -pat pattern
+	Same as the ?pattern? positional argument.
      -time cache_timeout
         Override the default cache timeout.
      -col name
@@ -118,11 +121,13 @@
   reread (if the tsv file is missing) or reconstructed using SQL queries (if
   the tcl file is missing).
 
-::stapi::open_raw_ctable name
+::stapi::open_raw_ctable name ?option value?...
 
   Open an initialized ctable (as in open_cached) but don't fetch anything
   from SQL. This is used internally, and is also useful for setting up
   temporary tables, copies, etcetera...
+
+  Options are passed directly to the ctable create command.
 
 ==== st_client ====
 
