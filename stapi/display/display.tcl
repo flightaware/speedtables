@@ -841,7 +841,7 @@ catch { ::itcl::delete class STDisplay }
 	}
         ## If there's a list of sortfields, it's only sortable if it's in that
 	if {![lempty $sortfields]} {
-	    if {[lsearch $sortfields $name] < 0} {
+	    if {[lsearch $sortfields $name] == -1} {
 		return 0
 	    }
 	}
@@ -851,6 +851,11 @@ catch { ::itcl::delete class STDisplay }
 
      ## Check field's "searchability"
      protected method searchable {name} {
+	## If it's marked as searchable
+	if {[lsearch $searchfields $name] == -1) {
+	    return 1
+	}
+
 	## If it's filtered and the filter isn't reversible one way or another
 	if {
 	    [info exists filters($name)] &&
@@ -859,10 +864,12 @@ catch { ::itcl::delete class STDisplay }
 	} {
 	    return 0
 	}
+
 	## If it's an alias field
 	if [info exists alias($name)] {
 	    return 0
 	}
+
 	# Otherwise it's searchable
 	return 1
     }
