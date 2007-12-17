@@ -216,7 +216,12 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 #puts "set $actions(keyVar) $value"
 				    uplevel #$callerLevel set $actions(keyVar) $value
 				}
-				continue
+#
+# TODO - make sure the behavior with -get is consistent
+#
+				if {$actions(action) != "-get" && [info exists actions(-noKeys)] && $actions(-noKeys) == 1} {
+				    continue
+				}
 			    }
 
 			    if {$actions(action) == "-get"} {
@@ -293,6 +298,10 @@ proc remote_ctable_invoke {localTableName level command} {
 	if {[info exists pairs(-write_tabsep)]} {
 	    set actions(-write_tabsep) $pairs(-write_tabsep)
 	    unset pairs(-write_tabsep)
+	}
+
+	if {[info exists pairs(-noKeys)]} {
+	    set actions(-noKeys) $pairs(-noKeys)
 	}
 
 	if {[info exists pairs(-code)]} {
