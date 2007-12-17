@@ -839,12 +839,14 @@ catch { ::itcl::delete class STDisplay }
 	if !$allowsort {
 	    return 0
 	}
+
         ## If there's a list of sortfields, it's only sortable if it's in that
 	if {![lempty $sortfields]} {
 	    if {[lsearch $sortfields $name] == -1} {
 		return 0
 	    }
 	}
+
 	## Otherwise if it's searchable, it's sortable
 	return [searchable $name]
      }
@@ -1562,7 +1564,7 @@ catch { ::itcl::delete class STDisplay }
 	foreach target $selection {
 	    foreach {how column what} $target { break }
 
-	    if [info exists unfilters($column)] {
+	    if {[info exists unfilters($column)] && "$unfilters($column)" != "-"} {
 	        set what [$unfilters($column) $what]
 	    }
 
@@ -1927,12 +1929,14 @@ catch { ::itcl::delete class STDisplay }
 
     method unfilter {name {value ""}} {
 	if [string length $value] {
-	    set f [uplevel 1 [list namespace which $value]]
-	    if {"$f" == ""} {
-		return -code error "Unknown filter $value"
+	    if {"$value" != "-"} {
+	        set f [uplevel 1 [list namespace which $value]]
+	        if {"$f" == ""} {
+		    return -code error "Unknown filter $value"
+	        }
+	        set value $f
 	    }
-	    set value $f
-	    set unfilters($name) $f
+	    set unfilters($name) $value
 	} elseif {[info exists unfilters($name)]} {
 	    set value $unfilters($name)
   	}
