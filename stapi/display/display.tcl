@@ -949,12 +949,12 @@ catch { ::itcl::delete class STDisplay }
 	}
     }
 
-    # Perform an extended "search+" request bundled in an array
+    # Perform an extended "search" request bundled in an array
     method perform {_request args} {
 	upvar 1 $_request request
 	array set search [array get request]
 	array set search $args
-	uplevel 1 [list $table search+] [array get search]
+	uplevel 1 [list $table search] [array get search]
     }
 
     method fetch {keyVal arrayName} {

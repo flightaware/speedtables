@@ -116,6 +116,18 @@ namespace eval ::stapi {
       variable default_timeout
       set default_timeout [expr {$opts(-cache) * 60}]
     }
+
+    #
+    if [info exists opts(-user)] {
+      variable default_user
+      set default_user $opts(-user)
+    }
+
+    #
+    if [info exists opts(-db)] {
+      variable default_db
+      set default_db $opts(-db)
+    }
   }
 
   # init_ctable name table_list where_clause ?columns|column...?
