@@ -1,6 +1,11 @@
 
 $Id$
 
+12/17/2007 karl
+    * Adopted the code used to generate varstring field compare functions
+      to make varstring sort comparisons work properly when one or both
+      varstring pointers are null.
+
 10/3/2007 peter
     * generate config vars for libpq and libpgtcl in mkConfig.sh
     * Switch to libpgtcl-ng by default since it's got the right rpath.

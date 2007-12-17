@@ -876,14 +876,26 @@ variable nullSortSource {
 #
 proc gen_null_check_during_sort_comp {table fieldName} {
     variable nullSortSource
+    variable varstringSortCompareNullSource
+    variable varstringSortCompareDefaultSource
 
     upvar ::ctable::fields::$fieldName field
 
-    if {[info exists field(notnull)] && $field(notnull)} {
-        return ""
+    if {"$field(type)" == "varstring" && [info exists field(default)]} {
+	if {"$field(default)" == ""} {
+	     set source $varstringSortCompareNullSource
+	} else {
+	     set source $varstringSortCompareDefaultSource
+	     set defaultString "\"[cquote $field(default)]\""
+	     set defaultChar "'[cquote [string index $field(default) 0] {'}]'"
+	}
+    } elseif {[info exists field(notnull)] && $field(notnull)} {
+        set source ""
     } else {
-	return [string range [subst -nobackslashes -nocommands $nullSortSource] 1 end-1]
+	set source $nullSortSource
     }
+
+    return [string range [subst -nobackslashes -nocommands $source] 1 end-1]
 }
 
 variable nullExcludeSource {
@@ -947,6 +959,61 @@ variable numberSortSource {
 	break;
       }
 }
+
+#
+# varstringSortCompareDefaultSource - compare against default strings for
+#   sorting
+#
+# note there's also a varstringCompareNullSource that's pretty close to this
+# but returns stuff rather than setting results and doing a break
+#
+#
+variable varstringSortCompareDefaultSource {
+    if (!row1->$fieldName) {
+	if(!row2->$fieldName) {
+	    result = 0;
+	    break;
+	} else {
+	    if ($defaultChar != row2->${fieldName}[0]) {
+		result = direction * (($defaultChar < row2->${fieldName}[0]) ? -1 : 1);
+		break;
+	    }
+	    result = direction * strcmp($defaultString, row2->$fieldName);
+	    break;
+	}
+    } else {
+	if(!row2->$fieldName) {
+	    if (row1->${fieldName}[0] != $defaultChar) {
+		result = direction * ((row1->${fieldName}[0] < $defaultChar) ? -1 : 1);
+		break;
+	    }
+	    result = direction * strcmp(row1->$fieldName, $defaultString);
+	    break;
+	}
+    }
+}
+
+#
+# varstringSortCompareNullSource - compare against default empty string
+#   for sorting
+#
+# note there's also a varstringCompareNullSource that's pretty close to this
+# but returns stuff rather than setting results and doing a break
+#
+variable varstringSortCompareNullSource {
+    if (!row1->$fieldName) {
+	if(!row2->$fieldName) {
+	    return 0;
+	} else {
+	    return direction * -1;
+	}
+    } else {
+	if(!row2->$fieldName) {
+	    return direction;
+	}
+    }
+}
+
 
 #
 # varstringSortSource - code we run subst over to generate a compare of 
@@ -4209,6 +4276,10 @@ variable varstringFieldCompSource {
 #
 # varstringCompareDefaultSource - compare against default strings
 #
+# note there's also a varstringSortCompareDefaultSource that's pretty close to 
+# this but sets a result variable and does a break to get out of a case
+# statement rather than returning something
+#
 variable varstringCompareDefaultSource {
     if (!row1->$fieldName) {
 	if(!row2->$fieldName) {
@@ -4231,6 +4302,10 @@ variable varstringCompareDefaultSource {
 
 #
 # varstringCompareNullSource - compare against default empty string
+#
+# note there's also a varstringSortCompareNullSource that's pretty close to 
+# this but sets a result variable and does a break to get out of a case
+# statement rather than returning something
 #
 variable varstringCompareNullSource {
     if (!row1->$fieldName) {
