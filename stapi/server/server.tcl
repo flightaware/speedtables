@@ -845,12 +845,16 @@ namespace eval ::stapi {
 
     # Create a new ctable instance
     if [catch {
-      set ctable [eval [list c_$name create #auto] $args]
+      if [llength $args] {
+        set ctable [eval [list c_$name create #auto master] $args]
+      } else {
+	set ctable [c_$name create #auto]
+      }
     } err] {
       unlockfile $build_dir
       error $err $::errorInfo
     }
-      
+
     unlockfile $build_dir
     return $ctable
   }
