@@ -346,8 +346,8 @@ catch { ::itcl::delete class STDisplay }
 	}
   
 	# if there was a request to generate a CSV file, generate it
-	if {[info exists response(dd_csv)]} {
-	    gencsvfile $response(dd_csv)
+	if {[info exists response(ct_csv)]} {
+	    gencsvfile $response(ct_csv)
 	    if $csvredirect {
 		headers redirect $csvurl
 		destroy
@@ -525,7 +525,7 @@ catch { ::itcl::delete class STDisplay }
 
 	set pref DIO$end
 	if {!$count} {
-	  set count [ct_result -countOnly]
+	  set count [perform -countOnly]
 	}
 
 	set pages [expr ($count + $pagesize - 1) / $pagesize]
