@@ -22,6 +22,24 @@ proc search_test {name searchFields expect} {
     }
 }
 
+proc search_test_countonly {name searchFields expect} {
+    puts -nonewline "running $name..."; flush stdout
+    set cmd [linsert $searchFields 0 t search -countOnly 1]
+    #puts $cmd
+    set result [eval $cmd]
+
+    if {$result != $expect} {
+	puts "error in test: $name"
+	puts "got '$result'"
+	puts "expected '$expect'"
+	puts "command '$cmd'"
+	puts ""
+    } else {
+	puts "ok"
+    }
+}
+
+
 proc search_unsorted_test {name searchFields expect} {
     puts -nonewline "running $name..."; flush stdout
     set result ""
@@ -87,6 +105,14 @@ search_unsorted_test "unsorted search with offset 5 and limit 10" {-offset 5 -li
 search_unsorted_test "unsorted search with offset 5 and limit 5" {-offset 5 -limit 5} {clarence thundercleese mom zorak brak}
 
 search_test "search where alive is false" {-compare {{false alive}}} {jonas}
+
+search_test_countonly "search countOnly no compare" {} {31}
+
+search_test_countonly "search countOnly no compare limit" {-limit 10} {10}
+
+search_test_countonly "search countOnly no compare offset" {-offset 25} {6}
+
+search_test_countonly "search countOnly compare" {-compare {{false alive}}} {1}
 
 t index create name
 # Note, this one won't actually use skiplists.

@@ -720,8 +720,12 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 	     continue;
 	 }
 
-	 if (actionResult == TCL_BREAK || actionResult == TCL_RETURN) {
+	 if (actionResult == TCL_BREAK) {
 	     return TCL_OK;
+	 }
+
+	 if (actionResult == TCL_RETURN) {
+	     return TCL_RETURN;
 	 }
 
 	 if (actionResult == TCL_ERROR) {
@@ -1566,12 +1570,13 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%d; row->_ro
 
   search_complete:
     actionResult = ctable_PostSearchCommonActions (interp, ctable, search);
+
   clean_and_return:
     if (search->tranTable != NULL) {
 	ckfree ((void *)search->tranTable);
     }
 
-    if (actionResult == TCL_OK && (search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY)) {
+    if ((actionResult == TCL_OK || actionResult == TCL_RETURN) && (search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY)) {
 	Tcl_SetIntObj (Tcl_GetObjResult (interp), search->matchCount);
     }
 
@@ -1874,6 +1879,39 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	}
     }
 
+    // Optimize countOnly
+    if(search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) {
+	if(search->nComponents == 0 && search->nRetrieveFields <= 0 && search->codeBody == NULL && search->pattern == NULL && search->varNameObj == NULL && search->keyVarNameObj == NULL) {
+	    int count = ctable->count;
+
+	    // Maybe should walk the requested index even for no components
+	    // to make it a quicker non-null search, so get rid of the "0 &&"
+	    // if that's changed
+	    if(0 && search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->reqIndexField == CTABLE_SEARCH_INDEX_ANY) {
+	        jsw_skip_t *skip = ctable->skipLists[search->reqIndexField];
+		if(skip != NULL) {
+		    count = (int)jsw_ssize(skip);
+		}
+	    }
+
+	    if (search->offset) {
+		count -= search->offset;
+		if (count < 0) {
+		    count = 0;
+		}
+	    }
+
+	    if (search->limit) {
+		if (count > search->limit) {
+		    count = search->limit;
+		}
+	    }
+
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj (count));
+	    return TCL_RETURN;
+	}
+    }
+
     if (search->endAction == CTABLE_SEARCH_ACTION_NONE &&
 	search->tranType != CTABLE_SEARCH_TRAN_NONE) {
 	search->endAction = CTABLE_SEARCH_ACTION_TRANSACTION_ONLY;
@@ -1975,17 +2013,22 @@ ctable_TeardownSearch (CTableSearch *search) {
 int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable, int indexField) {
     CTableSearch    search;
+    int result;
 
-    if (ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField) == TCL_ERROR) {
+    result = ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField);
+    if (result == TCL_ERROR) {
         return TCL_ERROR;
     }
 
-    if (ctable_PerformSearch (interp, ctable, &search) == TCL_ERROR) {
-        return TCL_ERROR;
+    // return from "setup" means "search optimized away"
+    if (result == TCL_RETURN) {
+	result = TCL_OK;
+    } else {
+        result = ctable_PerformSearch (interp, ctable, &search);
     }
 
     ctable_TeardownSearch (&search);
-    return TCL_OK;
+    return result;
 }
 
 
