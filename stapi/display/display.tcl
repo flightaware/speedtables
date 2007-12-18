@@ -525,7 +525,7 @@ catch { ::itcl::delete class STDisplay }
 
 	set pref DIO$end
 	if {!$count} {
-	  set count [perform -countOnly]
+	  set count [perform request -countOnly 1]
 	}
 
 	set pages [expr ($count + $pagesize - 1) / $pagesize]
