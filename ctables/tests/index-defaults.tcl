@@ -2,6 +2,9 @@ source index-defaults.ct
 
 package require Indef
 
+# set to 1 to create some spiciness
+set spicy_brains 0
+
 set t [indef create #auto]
 
 proc di {t i} {
@@ -33,7 +36,11 @@ for {set i 0} {$i < 100} {incr i} {
 for {set i 0} {$i < 100} {incr i} {
   set j [expr {int(rand() * 100)}]
   if [expr {int(rand() * 2)}] {
-    $t set $j spiciness [expr {int(rand() * 100) * 0.1}]
+    if {$spicy_brains} {
+      $t set $j spiciness [expr {int(rand() * 100) * 0.1}]
+    } else {
+      $t set $j id [re $foods]$i flavor [re $flavors]
+    }
   } else {
     if {[$t exists $j]} {
       $t delete $j
