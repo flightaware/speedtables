@@ -12,6 +12,7 @@ proc di {t i} {
 
 $t index create color
 $t index create flavor
+$t index create spiciness
 
 set foods {pizza sugar toast waffles soup nuts}
 set colors {red orange yellow white maroon}
@@ -29,8 +30,36 @@ for {set i 0} {$i < 100} {incr i} {
   }
 }
 
+for {set i 0} {$i < 100} {incr i} {
+  set j [expr {int(rand() * 100)}]
+  if [expr {int(rand() * 2)}] {
+    $t set $j spiciness [expr {int(rand() * 100) * 0.1}]
+  } else {
+    if {[$t exists $j]} {
+      $t delete $j
+    } else {
+      $t set $j id [re $foods]$i flavor [re $flavors]
+    }
+  }
+}
+
 di $t color
 di $t flavor
+di $t spiciness
+
+for {set i 0} {$i < 100} {incr i} {
+  set j [expr {int(rand() * 100)}]
+  $t set $j color [re $colors] flavor [re $flavors]
+}
+
+for {set i 0} {$i < 100} {incr i} {
+  set j [expr {int(rand() * 100)}]
+  if {[$t exists $j]} {
+    $t delete $j
+  } else {
+    $t set $j id [re $foods]$i flavor [re $flavors]
+  }
+}
 
 for {set i 0} {$i < 100} {incr i} {
   set j [expr {int(rand() * 100)}]
