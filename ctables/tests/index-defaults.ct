@@ -1,0 +1,10 @@
+package require ctable
+
+CExtension indef 1.0 {
+  CTable indef {
+    varstring id indexed 1 notnull 1 unique 1
+    varstring color indexed 1 notnull 1 default red
+    varstring flavor indexed 1 notnull 1 default sweet
+  }
+}
+

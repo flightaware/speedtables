@@ -2346,13 +2346,19 @@ proc gen_defaults_subr {struct} {
 # emit "printf(\"row->_ll_nodes\[$listnum].head == %08lx\\n\",  (long)row->_ll_nodes\[$listnum].head);"
 
 	        emit "    if(ctable->skipLists\[$fieldnum] && row->_ll_nodes\[$listnum].head == NULL) $leftCurly"
-	        if {"$field(type)" == "varstr"} {
+if 0 {
+emit "fprintf(stderr, \"row->_ll_nodes\[$listnum] = { 0x%lx 0x%lx 0x%lx }\","
+emit "    (long)row->_ll_nodes\[$listnum].head,"
+emit "    (long)row->_ll_nodes\[$listnum].prev,"
+emit "    (long)row->_ll_nodes\[$listnum].next);"
+emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
+}
+	        if {"$field(type)" == "varstring"} {
 		    emit "        row->$fieldName = \"[cquote $field(default)]\";"
 	        }
-#emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
 	        emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
 	        emit "            return TCL_ERROR;"
-	        if {"$field(type)" == "varstr"} {
+	        if {"$field(type)" == "varstring"} {
 	            emit "        row->$fieldName = NULL;"
 	        }
 	        emit "    $rightCurly"

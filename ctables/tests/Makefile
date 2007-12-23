@@ -27,6 +27,10 @@ all:
 	$(TCLSH) trans-tests.tcl
 	$(TCLSH) multitable-tests.tcl
 
+indef:
+	-rm -r build
+	$(TCLSH) index-defaults.tcl
+
 key:
 	-rm -r build
 	$(TCLSH) new-tests.tcl
