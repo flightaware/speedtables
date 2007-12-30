@@ -19,6 +19,8 @@
 
 #include "speedtableHash.c"
 
+// #define MEGADEBUG
+
 /*
  * ctable_ParseFieldList - given a Tcl list object and a pointer to an array
  * of integer field numbers and a pointer to an integer for field counts,
@@ -686,6 +688,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 {
     int sortIndex;
     ctable_CreatorTable *creator = ctable->creator;
+    int actionResult = TCL_OK;
 
     // if we're not sorting or performing a transaction, we're done -- we did 'em all on the fly
     if (search->tranTable == NULL) {
@@ -708,32 +711,31 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
     }
 
     if(search->bufferResults) { // we deferred the operation to here
-      // walk the result
-      for (sortIndex = search->offset; sortIndex < search->offsetLimit; sortIndex++) {
-        int actionResult;
+        // walk the result
+        for (sortIndex = search->offset; sortIndex < search->offsetLimit; sortIndex++) {
 
-	/* here is where we want to take the match actions
-	 * when we are sorting or otherwise buffering
-	 */
-	 actionResult = ctable_SearchAction (interp, ctable, search, search->tranTable[sortIndex]);
-	 if (actionResult == TCL_CONTINUE || actionResult == TCL_OK) {
-	     continue;
-	 }
-
-	 if (actionResult == TCL_BREAK) {
-	     return TCL_OK;
-	 }
-
-	 if (actionResult == TCL_RETURN) {
-	     return TCL_RETURN;
-	 }
-
-	 if (actionResult == TCL_ERROR) {
-	     return TCL_ERROR;
-	 }
-      }
+	    /* here is where we want to take the match actions
+	     * when we are sorting or otherwise buffering
+	     */
+	    actionResult = ctable_SearchAction (interp, ctable, search, search->tranTable[sortIndex]);
+	    switch (actionResult) {
+	        case TCL_CONTINUE:
+	        case TCL_OK: {
+	            actionResult = TCL_OK;
+	            break;
+	        }
+	        case TCL_BREAK:
+	        case TCL_RETURN: {
+	            goto normal_return;
+	        }
+	        case TCL_ERROR: {
+	            return TCL_ERROR;
+	        }
+	    }
+        }
     }
 
+normal_return:
     // Finally, perform any pending transaction.
     if(search->tranType != CTABLE_SEARCH_TRAN_NONE) {
 	if (ctable_PerformTransaction(interp, ctable, search) == TCL_ERROR) {
@@ -741,7 +743,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 	}
     }
 
-    return TCL_OK;
+    return actionResult;
 }
 
 //
@@ -830,7 +832,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
      }
 
      if ((actionResult == TCL_BREAK) || (actionResult == TCL_RETURN)) {
-	 return TCL_BREAK;
+	 return actionResult;
      }
 
      panic("software failure - unhandled SearchAction return");
@@ -1415,7 +1417,7 @@ restart_search:
 	    }
 	}
 
-#if 0
+#ifdef MEGADEBUG
 #ifdef WITH_SHARED_TABLES
 if(ctable->share_type == CTABLE_SHARED_READER)
     fprintf(stderr, "Following skiplist 0x%lX\n", (long)skipList);
@@ -1423,7 +1425,7 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 #endif
 
 	// Count is only to make sure we blow up on infinite loops
-	for(myCount = 0; myCount < ctable->count; myCount++) {
+	for(myCount = 0; myCount <= ctable->count; myCount++) {
 	    if(skipNext == SKIP_NEXT_IN_LIST) {
 		// We're looking at a list of entries rather than a range,
 		// so we have to loop here searching for each in turn instead
@@ -1456,7 +1458,6 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 	    // Now we can fetch whatever we found.
             if ((row = jsw_srow (skipList)) == NULL)
 		goto search_complete;
-
 #ifdef SANITY_CHECKS
 	creator->sanity_check_pointer(ctable, (void *)row, CTABLE_INDEX_NORMAL, "ctablePerformSearch : row");
 #endif
@@ -1472,8 +1473,8 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 		    int delta = row->_row_cycle - main_cycle;
 		    if(delta > 0) {
 		        if(ctable_SearchRestartNeeded(row, &main_restart)) {
-#if 0
-if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%d; row->_row_cycle=%d; delta %d\n", getpid(), main_cycle, row->_row_cycle, delta);
+#ifdef MEGADEBUG
+if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%ld; row->_row_cycle=%ld; delta %d\n", getpid(), main_cycle, row->_row_cycle, delta);
 #endif
 			    goto restart_search;
 			}
@@ -1531,8 +1532,8 @@ if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%d; row->_ro
 		        int delta = row->_row_cycle - main_cycle;
 		        if(delta > 0) {
 		            if(ctable_SearchRestartNeeded(row, &loop_restart)) {
-#if 0
-if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%d; row->_row_cycle=%d; delta=%d\n", getpid(), loop_cycle, row->_row_cycle, delta);
+#ifdef MEGADEBUG
+if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_row_cycle=%ld; delta=%d\n", getpid(), loop_cycle, row->_row_cycle, delta);
 #endif
 			        goto restart_search;
 			    }
@@ -1548,7 +1549,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%d; row->_ro
 	        compareResult = ctable_SearchCompareRow (interp, ctable, search, walkRow);
 	        if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
 
-	        if (compareResult == TCL_BREAK) {
+	        if (compareResult == TCL_BREAK || compareResult == TCL_RETURN) {
 	            actionResult = TCL_OK;
 	            goto clean_and_return;
 	        }
@@ -1587,7 +1588,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%d; row->_ro
     if(skipListCopy)
 	jsw_free_private_copy(skipListCopy);
 
-#if 0
+#ifdef MEGADEBUG
 if(num_restarts) fprintf(stderr, "%d: Restarted search %d times\n", getpid(), num_restarts);
 #endif
 #endif
