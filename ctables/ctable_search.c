@@ -976,7 +976,7 @@ int ctable_SearchRestartNeeded(ctable_BaseRow *row, struct restart_t *restart)
 static int
 ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
     int           	  compareResult;
-    int            	  actionResult = TCL_OK;
+    int			  finalResult = TCL_OK;
 
     ctable_CreatorTable	 *creator = ctable->creator;
 
@@ -1303,12 +1303,19 @@ restart_search:
 	// walk the hash table links.
 	CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
 	    compareResult = ctable_SearchCompareRow (interp, ctable, search, row);
-	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
+	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK))
+		continue;
 
-	    if (compareResult == TCL_BREAK) break;
+	    if (compareResult == TCL_BREAK)
+		break;
+
+	    if (compareResult == TCL_RETURN) {
+		finalResult = TCL_RETURN;
+		break;
+	    }
 
 	    if (compareResult == TCL_ERROR) {
-		actionResult = TCL_ERROR;
+		finalResult = TCL_ERROR;
 		goto clean_and_return;
 	    }
         }
@@ -1332,12 +1339,18 @@ restart_search:
 	    row1 = (ctable_BaseRow *)row2;
 
 	    compareResult = ctable_SearchCompareRow (interp, ctable, search, row1);
-	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
+	    if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK))
+		continue;
 
-	    if (compareResult == TCL_BREAK) break;
+	    if (compareResult == TCL_BREAK)
+		break;
 
+	    if (compareResult == TCL_RETURN) {
+		finalResult = TCL_RETURN;
+		break;
+	    }
 	    if (compareResult == TCL_ERROR) {
-		actionResult = TCL_ERROR;
+		finalResult = TCL_ERROR;
 		goto clean_and_return;
 	    }
         }
@@ -1438,7 +1451,7 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 		  // make a row matching the next value in the list
                   if ((*ctable->creator->set) (interp, ctable, inListObj[inIndex++], row1, skipField, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
                       Tcl_AppendResult (interp, " while processing \"in\" compare function", (char *) NULL);
-                      actionResult = TCL_ERROR;
+                      finalResult = TCL_ERROR;
                       goto clean_and_return;
                   }
 
@@ -1549,13 +1562,16 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 	        compareResult = ctable_SearchCompareRow (interp, ctable, search, walkRow);
 	        if ((compareResult == TCL_CONTINUE) || (compareResult == TCL_OK)) continue;
 
-	        if (compareResult == TCL_BREAK || compareResult == TCL_RETURN) {
-	            actionResult = TCL_OK;
-	            goto clean_and_return;
+	        if (compareResult == TCL_BREAK)
+		    goto search_complete;
+
+		if (compareResult == TCL_RETURN) {
+		    finalResult = TCL_RETURN;
+	            goto search_complete;
 	        }
 
 	        if (compareResult == TCL_ERROR) {
-	            actionResult = TCL_ERROR;
+	            finalResult = TCL_ERROR;
 	            goto clean_and_return;
 	        }
 	    }
@@ -1565,19 +1581,28 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 	}
 	// Should never just fall out of the loop...
 	Tcl_AppendResult (interp, "infinite search loop", (char *) NULL);
-	actionResult = TCL_ERROR;
+	finalResult = TCL_ERROR;
 	goto clean_and_return;
     }
 
   search_complete:
-    actionResult = ctable_PostSearchCommonActions (interp, ctable, search);
+    switch (ctable_PostSearchCommonActions (interp, ctable, search)) {
+	case TCL_ERROR: {
+	    finalResult = TCL_ERROR;
+	    break;
+	}
+	case TCL_RETURN: {
+	    finalResult = TCL_RETURN;
+	    break;
+	}
+    }
 
   clean_and_return:
     if (search->tranTable != NULL) {
 	ckfree ((void *)search->tranTable);
     }
 
-    if ((actionResult == TCL_OK || actionResult == TCL_RETURN) && (search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY)) {
+    if (finalResult != TCL_ERROR && search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) {
 	Tcl_SetIntObj (Tcl_GetObjResult (interp), search->matchCount);
     }
 
@@ -1593,7 +1618,7 @@ if(num_restarts) fprintf(stderr, "%d: Restarted search %d times\n", getpid(), nu
 #endif
 #endif
 
-    return actionResult;
+    return finalResult;
 }
 
 //

@@ -347,3 +347,16 @@ if {[t delete dean] != 0} {
     error "t delete dene should have returned 0 the second time"
 }
 puts "ok"
+
+puts -nonewline "return test..."
+proc return_test {} {
+    t search -compare {{= name {Brock Sampson}}} -array foo -code {
+	return $foo(name)
+    }
+    return "loop ended"
+}
+
+if {"[set result [return_test]]" != "Brock Sampson"} {
+    error "Return test returned '$result'"
+}
+puts "ok"
