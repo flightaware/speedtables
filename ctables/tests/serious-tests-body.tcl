@@ -350,13 +350,14 @@ puts "ok"
 
 puts -nonewline "return test..."
 proc return_test {} {
-    t search -compare {{= name {Brock Sampson}}} -array foo -code {
+    t search -compare {{= name {Doctor Orpheus}}} -array foo -code {
+	puts -nonewline " found "
 	return $foo(name)
     }
     return "loop ended"
 }
 
-if {"[set result [return_test]]" != "Brock Sampson"} {
+if {"[set result [return_test]]" != "Doctor Orpheus"} {
     error "Return test returned '$result'"
 }
 puts "ok"

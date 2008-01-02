@@ -794,6 +794,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  for (field = firstColumn; field < nFields; field++) {
 	      fieldName = PQfname (res, field);
 
+
 	      Tcl_SetStringObj (fieldNameObj, fieldName, -1);
 
 	      if (Tcl_GetIndexFromObj (interp, fieldNameObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
@@ -812,7 +813,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  nTuples = PQntuples (res);
 
-	  for (pgRow = firstColumn; pgRow < nTuples; pgRow++) {
+	  for (pgRow = 0; pgRow < nTuples; pgRow++) {
 	      if(keyColumn == -1) {
 	          sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
 	          key = keyNumberString;
