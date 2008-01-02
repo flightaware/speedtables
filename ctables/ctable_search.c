@@ -1487,7 +1487,7 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 		    if(delta > 0) {
 		        if(ctable_SearchRestartNeeded(row, &main_restart)) {
 #ifdef MEGADEBUG
-if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%ld; row->_row_cycle=%ld; delta %d\n", getpid(), main_cycle, row->_row_cycle, delta);
+if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%ld; row->_row_cycle=%ld; delta %d\n", getpid(), (long)main_cycle, (long)row->_row_cycle, delta);
 #endif
 			    goto restart_search;
 			}
@@ -1546,7 +1546,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%ld; row->_r
 		        if(delta > 0) {
 		            if(ctable_SearchRestartNeeded(row, &loop_restart)) {
 #ifdef MEGADEBUG
-if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_row_cycle=%ld; delta=%d\n", getpid(), loop_cycle, row->_row_cycle, delta);
+if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_row_cycle=%ld; delta=%d\n", getpid(), (long)loop_cycle, (long)row->_row_cycle, delta);
 #endif
 			        goto restart_search;
 			    }
