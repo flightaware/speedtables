@@ -4969,7 +4969,7 @@ proc compile {fileFragName version} {
 	set dbgflag ""
 
 	if {$stubs} {
-	    set stubs " $sysconfig(stub)"
+	    set stub " $sysconfig(stub)"
 	}
 	set lib $sysconfig(lib)
     }
