@@ -4,7 +4,7 @@
 # $Id$
 #
 
-# default
+# default 
 TCLSH=tclsh8.4
 TCLSHM=$(TCLSH)
 # With shared memory debugging
