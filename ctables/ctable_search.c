@@ -1993,20 +1993,20 @@ ctable_TeardownSearch (CTableSearch *search) {
     // teardown components
     for (i = 0; i < search->nComponents; i++) {
 	CTableSearchComponent  *component = &search->components[i];
+
+	if (component->row1 != NULL) {
+	    search->ctable->creator->delete (search->ctable, component->row1, CTABLE_INDEX_PRIVATE);
+	}
+
+	if (component->row2 != NULL) {
+	    search->ctable->creator->delete (search->ctable, component->row2, CTABLE_INDEX_PRIVATE);
+	}
+
+	if (component->row3 != NULL) {
+	    search->ctable->creator->delete (search->ctable, component->row3, CTABLE_INDEX_PRIVATE);
+	}
+
 	if (component->clientData != NULL) {
-
-	    if (component->row1 != NULL) {
-	        search->ctable->creator->delete (search->ctable, component->row1, CTABLE_INDEX_PRIVATE);
-	    }
-
-	    if (component->row2 != NULL) {
-	        search->ctable->creator->delete (search->ctable, component->row2, CTABLE_INDEX_PRIVATE);
-	    }
-
-	    if (component->row3 != NULL) {
-	        search->ctable->creator->delete (search->ctable, component->row3, CTABLE_INDEX_PRIVATE);
-	    }
-
 	    // this needs to be pluggable
 	    if ((component->comparisonType == CTABLE_COMP_MATCH) || (component->comparisonType == CTABLE_COMP_NOTMATCH) || (component->comparisonType == CTABLE_COMP_MATCH_CASE) || (component->comparisonType == CTABLE_COMP_NOTMATCH_CASE)) {
 		struct ctableSearchMatchStruct *sm = component->clientData;

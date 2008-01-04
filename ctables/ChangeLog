@@ -1,6 +1,10 @@
 
 $Id$
 
+1/4/2007 karl
+    * Fix memory leak in search teardown that caused from one to three
+      temporary rows allocated per search component to not be freed.
+
 12/17/2007 karl
     * Adopted the code used to generate varstring field compare functions
       to make varstring sort comparisons work properly when one or both
