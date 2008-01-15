@@ -3,3 +3,13 @@
 $Id$
 
 "exists" method does not check argument count
+
+-noKeys in one place, -nokeys in another, the style elsewhere is 
+like -with_key_fields.
+
+Needs to be a way to tell read_tabsep that the fieldnames are the first line
+and have it work with a key field defined and not.
+
+I think if you're doing a $table search -delete 1, it should probably
+return the number of rows deleted.  However, adding -countOnly 1 makes
+it return that, so maybe that's right, but I don't think so.
