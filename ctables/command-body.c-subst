@@ -198,7 +198,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
 
 	  if (objc != 2) {
-	    Tcl_WrongNumArgs (interp, 1, objv, "fields");
+	    Tcl_WrongNumArgs (interp, 2, objv, "");
 	    return TCL_ERROR;
 	  }
 
@@ -224,7 +224,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  Tcl_HashSearch hashSearch;
 
 	  if (objc != 2) {
-	      Tcl_WrongNumArgs (interp, 1, objv, "keys");
+	      Tcl_WrongNumArgs (interp, 2, objv, "");
 	      return TCL_ERROR;
 	  }
 
@@ -477,7 +477,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      int	 i;
 
 	      if (objc != 3) {
-		  Tcl_AppendResult(interp, "Expected process id.", NULL);
+	          Tcl_WrongNumArgs (interp, 2, objv, "process_id");
 		  return TCL_ERROR;
 	      }
 	      if (Tcl_GetIntFromObj (interp, objv[2], &pid) == TCL_ERROR) {
@@ -509,6 +509,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_DELETE: {
+	if (objc != 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "field");
+	    return TCL_ERROR;
+	}
 	hashEntry = ctable_FindHashEntry (ctable->keyTablePtr, Tcl_GetString (objv[2]));
 
 	if (hashEntry == (ctable_HashEntry *) NULL) {
@@ -525,11 +529,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_COUNT: {
+	  if (objc != 2) {
+	      Tcl_WrongNumArgs (interp, 2, objv, "");
+	      return TCL_ERROR;
+	  }
           Tcl_SetIntObj (Tcl_GetObjResult (interp), ctable->count);
 	  break;
       }
 
       case OPT_EXISTS: {
+	if (objc != 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "field");
+	    return TCL_ERROR;
+	}
 	hashEntry = ctable_FindHashEntry (ctable->keyTablePtr, Tcl_GetString (objv[2]));
 
 	if (hashEntry == (ctable_HashEntry *) NULL) {

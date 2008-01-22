@@ -1,6 +1,11 @@
 
 $Id$
 
+1/22/2008 peter
+    * Validate arguments for delete or exists methods.
+    * Fix argument validation in a couple of other places to use
+      Tcl_WrongNumArgs
+
 1/4/2007 karl
     * Fix memory leak in search teardown that caused from one to three
       temporary rows allocated per search component to not be freed.
