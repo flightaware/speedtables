@@ -17,7 +17,9 @@ and have it work with a key field defined and not.
 
 I think if you're doing a $table search -delete 1, it should probably
 return the number of rows deleted.  However, adding -countOnly 1 makes
-it return that, so maybe that's right, but I don't think so.
+it return that number, but no deletes occur.
 
 -- I think -countOnly is a bit confusing, and redundant. If there is a code body the value should be the value of the body, otherwise it should always be a count.
 
+---- But what count?  Aren't you overloading count, or, oh, the number of
+rows matched.  hmm.
