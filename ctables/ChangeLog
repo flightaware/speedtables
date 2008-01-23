@@ -6,14 +6,44 @@ $Id$
     * Fix argument validation in a couple of other places to use
       Tcl_WrongNumArgs
 
-1/4/2007 karl
+1/4/2008 karl
     * Fix memory leak in search teardown that caused from one to three
       temporary rows allocated per search component to not be freed.
+
+1/2/2008 peter
+    * 64/32-bit compatibility - force cycle to long
+
+12/31/2007
+    * make RETURN work in ctable_search.c by tracking TCL_RETURN, TCL_BREAK,
+      TCL_CONTINUE, etc...
+    * Fix search panic - loop one more time to handle case where there's
+      precisely one match AND it's the last time through the loop over an
+      index AND it's got a break or return in it.
+
+12/17/2007 peter
+    Fixes to satisfy STDisplay:
+    * Always include the "_key" entry in an array.
+    * Add -noKey option to turn this off.
 
 12/17/2007 karl
     * Adopted the code used to generate varstring field compare functions
       to make varstring sort comparisons work properly when one or both
       varstring pointers are null.
+
+12/8/2007
+    Much skiplist work:
+    * Don't put NULL entries in skiplists at all.
+    * Don't remove element from list if "prev" pointer is null. This is now
+      an *invariant* in the ctable_lists code - the "prev" pointer is non-null
+      if and only if the row is in a list.
+    And support work:
+    * Extend varstring null check code to check for default strings.
+
+12/4/2007 peter
+    * Store default values consistently in indexes.
+    * Make sure that default values are stored efficiently in indexes by
+      only checking if there's any defaults not stored in indexes after
+      setting a whole new row.
 
 10/3/2007 peter
     * generate config vars for libpq and libpgtcl in mkConfig.sh
