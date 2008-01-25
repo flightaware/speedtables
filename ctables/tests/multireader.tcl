@@ -34,6 +34,7 @@ foreach id $ids {
     set idwant($id) 0
 }
 
+set jlast 0
 for {set i 0} {$i < $count} {incr i} {
     set n [expr {int(rand() * $idcount)}]
     set id [lindex $ids $n]
@@ -52,6 +53,11 @@ for {set i 0} {$i < $count} {incr i} {
     set sleep [expr {int(rand() * 100)}]
     if {$sleep == 0} {
         after 1
+    }
+    set j [expr {($i * 10) / $count}] 
+    if {$j != $jlast} {
+        puts "$pid: count=$i"
+	set jlast $j
     }
 }
 

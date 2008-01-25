@@ -21,6 +21,7 @@ bigtest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd bigtests; make"
 
 test: sysconfig.tcl
+	@echo TCLLIBPATH=${TCLLIBPATH}
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make"
 
 mttest: sysconfig.tcl

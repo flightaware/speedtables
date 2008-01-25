@@ -89,7 +89,7 @@ proc random_changes {delay count} {
 }
 
 proc status {} {
-  puts "[clock format [clock seconds]] [pid]: created $::lastKey rows"
+  puts "[clock format [clock seconds]] [pid]: created $::lastKey rows size=[m count]"
   after 10000 status
 }
 puts "running, delay = $delay, count=$count, waiting for connections"

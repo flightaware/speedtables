@@ -37,6 +37,21 @@ proc search_test_countonly {name searchFields expect} {
     } else {
 	puts "ok"
     }
+
+    puts -nonewline "running '$name' without -countOnly..."; flush stdout
+    set cmd [linsert $searchFields 0 t search]
+
+    set result [eval $cmd]
+        
+    if {$result != $expect} {
+        puts "error in test: $name"
+        puts "got '$result'"
+        puts "expected '$expect'"
+        puts "command '$cmd'"
+        puts ""
+    } else {
+        puts "ok"
+    }
 }
 
 

@@ -382,7 +382,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
     key = row->hashEntry.key;
 
-    if (search->endAction == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
+    if (search->action == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
 	Tcl_DString     dString;
 
 	Tcl_DStringInit (&dString);
@@ -416,7 +416,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	// pairs with nulls suppressed) and "array get with nulls"
 	// style, (all requested fields, null or not)
 
-	switch (search->endAction) {
+	switch (search->action) {
 
 	  case CTABLE_SEARCH_ACTION_GET: {
 	    if (search->nRetrieveFields < 0) {
@@ -443,20 +443,20 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 		   if (is_hidden_field(creator,i) && !is_key_field(creator,i,search->noKeys)) {
 		       continue;
 		   }
-	           if (search->endAction == CTABLE_SEARCH_ACTION_ARRAY) {
-		       result = creator->array_set (interp, search->varNameObj, row, i);
+	           if (search->action == CTABLE_SEARCH_ACTION_ARRAY) {
+		       result = creator->array_set (interp, search->rowVarNameObj, row, i);
 		   } else {
-		       result = creator->array_set_with_nulls (interp, search->varNameObj, row, i);
+		       result = creator->array_set_with_nulls (interp, search->rowVarNameObj, row, i);
 		   }
 	       }
 	    } else {
 	       int i;
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-	           if (search->endAction == CTABLE_SEARCH_ACTION_ARRAY) {
-		       result = creator->array_set (interp, search->varNameObj, row, search->retrieveFields[i]);
+	           if (search->action == CTABLE_SEARCH_ACTION_ARRAY) {
+		       result = creator->array_set (interp, search->rowVarNameObj, row, search->retrieveFields[i]);
 		   } else {
-		       result = creator->array_set_with_nulls (interp, search->varNameObj, row, search->retrieveFields[i]);
+		       result = creator->array_set_with_nulls (interp, search->rowVarNameObj, row, search->retrieveFields[i]);
 		   }
 	       }
 	    }
@@ -521,7 +521,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	}
 
 	// set the returned list into the value var
-	if ((listObj != NULL) && (Tcl_ObjSetVar2 (interp, search->varNameObj, (Tcl_Obj *)NULL, listObj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL)) {
+	if ((listObj != NULL) && (Tcl_ObjSetVar2 (interp, search->rowVarNameObj, (Tcl_Obj *)NULL, listObj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *) NULL)) {
 	    return TCL_ERROR;
 	}
 
@@ -686,18 +686,23 @@ updateParseError:
 static int
 ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 {
-    int sortIndex;
+    int walkIndex;
     ctable_CreatorTable *creator = ctable->creator;
     int actionResult = TCL_OK;
 
-    // if we're not sorting or performing a transaction, we're done -- we did 'em all on the fly
-    if (search->tranTable == NULL) {
-        return TCL_OK;
-    }
-
     // if there was nothing matched, or we're before the offset, we're done
     if(search->matchCount == 0 || search->offset > search->matchCount) {
+	// And we didn't match anything
+	search->matchCount = 0;
 	return TCL_OK;
+    }
+
+    // if we're not sorting or performing a transaction, we're done -- we
+    // did 'em all on the fly
+    if (search->tranTable == NULL) {
+	// But account for the offset in the matchCount
+	search->matchCount -= search->offset;
+        return TCL_OK;
     }
 
     // figure out the last row they could want, if it's more than what's
@@ -710,14 +715,14 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
       qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, creator->sort_compare);
     }
 
-    if(search->bufferResults) { // we deferred the operation to here
+    if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
         // walk the result
-        for (sortIndex = search->offset; sortIndex < search->offsetLimit; sortIndex++) {
+        for (walkIndex = search->offset; walkIndex < search->offsetLimit; walkIndex++) {
 
 	    /* here is where we want to take the match actions
 	     * when we are sorting or otherwise buffering
 	     */
-	    actionResult = ctable_SearchAction (interp, ctable, search, search->tranTable[sortIndex]);
+	    actionResult = ctable_SearchAction (interp, ctable, search, search->tranTable[walkIndex]);
 	    switch (actionResult) {
 	        case TCL_CONTINUE:
 	        case TCL_OK: {
@@ -726,6 +731,9 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 	        }
 	        case TCL_BREAK:
 	        case TCL_RETURN: {
+		    // We DO count this row as a match, to be consistent with
+		    // the non-deferred case.
+		    search->offsetLimit = walkIndex + 1;
 	            goto normal_return;
 	        }
 	        case TCL_ERROR: {
@@ -736,6 +744,9 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
     }
 
 normal_return:
+    // Calculate the final match count
+    search->matchCount = search->offsetLimit - search->offset;
+
     // Finally, perform any pending transaction.
     if(search->tranType != CTABLE_SEARCH_TRAN_NONE) {
 	if (ctable_PerformTransaction(interp, ctable, search) == TCL_ERROR) {
@@ -785,14 +796,13 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     if (search->tranTable == NULL) {
 	++search->matchCount;
     } else {
-	/* We are sorting or doing a transaction, grab it. If we're sorting,
-	 * return because we gotta sort before we can compare
-	 * against start and limit and stuff */
-	assert (search->matchCount < ctable->count);
+	/* We are buffering the results (eg, for a sort or a transaction)
+	 * so just return, we'll do the heavy lifting later. */
+	assert (search->matchCount <= ctable->count);
 	search->tranTable[search->matchCount++] = row;
 
-	// If buffering for any reason (eg, sorting), defer until later
-	if(search->bufferResults)
+	// If buffering for an important reason (eg, sorting), defer
+	if(search->bufferResults == CTABLE_BUFFER_DEFER)
 	    return TCL_CONTINUE;
     }
 
@@ -802,7 +812,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	return TCL_CONTINUE;
     }
 
-    if (search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) {
+    if (search->action == CTABLE_SEARCH_ACTION_NONE) {
 	// we're only counting -- if there is a limit and it's been 
 	// met, we're done
 	if ((search->limit != 0) && (search->matchCount >= search->offsetLimit)) {
@@ -815,28 +825,28 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	return TCL_CONTINUE;
     }
 
-    /* we want to take the match actions here --
-     * we're here when we aren't sorting
+    /* we want to take the match actions here -- we're here when we aren't
+     * buffering (at least not for an "important" reason)
      */
-     actionResult = ctable_SearchAction (interp, ctable, search, row);
-     if (actionResult == TCL_ERROR) {
-	  return TCL_ERROR;
-     }
+    actionResult = ctable_SearchAction (interp, ctable, search, row);
+    if (actionResult == TCL_ERROR) {
+	return TCL_ERROR;
+    }
 
-     if ((actionResult == TCL_CONTINUE) || (actionResult == TCL_OK)) {
+    if ((actionResult == TCL_CONTINUE) || (actionResult == TCL_OK)) {
 	// if there was a limit and we've met it, we're done
 	if ((search->limit != 0) && (search->matchCount >= search->offsetLimit)) {
 	    return TCL_BREAK;
 	}
 	return TCL_CONTINUE;
-     }
+    }
 
-     if ((actionResult == TCL_BREAK) || (actionResult == TCL_RETURN)) {
-	 return actionResult;
-     }
+    if ((actionResult == TCL_BREAK) || (actionResult == TCL_RETURN)) {
+	return actionResult;
+    }
 
-     panic("software failure - unhandled SearchAction return");
-     return TCL_ERROR;
+    panic("software failure - unhandled SearchAction return");
+    return TCL_ERROR;
 }
 
 enum skipStart_e {
@@ -1274,28 +1284,32 @@ restart_search:
     }
 
     // buffer results if:
-    //   We're not countOnly, and...
+    //   We've got a code block and...
     //     We're searching, or...
     //     We're a reader table, or...
     //     We explicitly requested bufering.
-    if(search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) {
-	search->bufferResults = 0;
+    if(search->codeBody == NULL) {
+	search->bufferResults = CTABLE_BUFFER_NONE;
     } else if(search->sortControl.nFields > 0) {
-	search->bufferResults = 1;
+	search->bufferResults = CTABLE_BUFFER_DEFER;
 #ifdef WITH_SHARED_TABLES
     } else if(ctable->share_type == CTABLE_SHARED_READER) {
-	search->bufferResults = 1;
+	search->bufferResults = CTABLE_BUFFER_DEFER;
 #endif
-    } else if(search->bufferResults == -1) {
-    	search->bufferResults = 0;
+    } else if(search->bufferResults < 0) {
+    	search->bufferResults = CTABLE_BUFFER_NONE;
     }
 
-    // if we're buffering (for any reason) or running a transaction,
+    // If we're not buffering for any other reason, buffer for a transaction
+    // but set bufferResults to PROVISIONAL so we can still terminate the
+    // search early
+    if(search->bufferResults == CTABLE_BUFFER_NONE && search->tranType != CTABLE_SEARCH_TRAN_NONE) {
+	search->bufferResults = CTABLE_BUFFER_PROVISIONAL;
+    }
+
+    // if we're buffering,
     // allocate a space for the search results that we'll then sort from
-    if (
-      search->bufferResults ||
-      search->tranType != CTABLE_SEARCH_TRAN_NONE
-    ) {
+    if (search->bufferResults != CTABLE_BUFFER_NONE) {
 	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
     }
 
@@ -1585,6 +1599,8 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 	goto clean_and_return;
     }
 
+  // We only jump to this on success, so we got to the end of the loop
+  // or we broke out of it early
   search_complete:
     switch (ctable_PostSearchCommonActions (interp, ctable, search)) {
 	case TCL_ERROR: {
@@ -1597,12 +1613,13 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 	}
     }
 
+  // We only jump to this on an error
   clean_and_return:
     if (search->tranTable != NULL) {
 	ckfree ((void *)search->tranTable);
     }
 
-    if (finalResult != TCL_ERROR && search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) {
+    if (finalResult != TCL_ERROR && search->codeBody == NULL) {
 	Tcl_SetIntObj (Tcl_GetObjResult (interp), search->matchCount);
     }
 
@@ -1634,7 +1651,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
     static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-delete", "-update", "-buffer", "-index", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY, SEARCH_OPT_ARRAY_WITH_NULLS, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX};
+    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX};
 
     if (objc < 2) {
       wrong_args:
@@ -1644,7 +1661,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
     // initialize search control structure
     search->ctable = ctable;
-    search->endAction = CTABLE_SEARCH_ACTION_NONE;
+    search->action = CTABLE_SEARCH_ACTION_NONE;
     search->nComponents = 0;
     search->components = NULL;
     search->countMax = 0;
@@ -1657,13 +1674,13 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->retrieveFields = NULL;
     search->nRetrieveFields = -1;   // -1 = all, 0 = none
     search->noKeys = 0;
-    search->varNameObj = NULL;
+    search->rowVarNameObj = NULL;
     search->keyVarNameObj = NULL;
     search->codeBody = NULL;
     search->writingTabsepIncludeFieldNames = 0;
     search->tranType = CTABLE_SEARCH_TRAN_NONE;
     search->reqIndexField = indexField;
-    search->bufferResults = -1; // -1 is "if sorting only"
+    search->bufferResults = CTABLE_BUFFER_DEFAULT;
 
     search->matchCount = 0;
     search->alreadySearched = -1;
@@ -1725,35 +1742,35 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    break;
 	  }
 
-	  case SEARCH_OPT_ARRAY: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
-		goto endActionOverload;
-	    search->varNameObj = objv[i++];
-	    search->endAction = CTABLE_SEARCH_ACTION_ARRAY;
+	  case SEARCH_OPT_ARRAY_NAMEOBJ: {
+	    if (search->action != CTABLE_SEARCH_ACTION_NONE)
+		goto actionOverload;
+	    search->rowVarNameObj = objv[i++];
+	    search->action = CTABLE_SEARCH_ACTION_ARRAY;
 	    break;
 	  }
 
-	  case SEARCH_OPT_ARRAY_WITH_NULLS: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
-		goto endActionOverload;
-	    search->varNameObj = objv[i++];
-	    search->endAction = CTABLE_SEARCH_ACTION_ARRAY_WITH_NULLS;
+	  case SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ: {
+	    if (search->action != CTABLE_SEARCH_ACTION_NONE)
+		goto actionOverload;
+	    search->rowVarNameObj = objv[i++];
+	    search->action = CTABLE_SEARCH_ACTION_ARRAY_WITH_NULLS;
 	    break;
 	  }
 
 	  case SEARCH_OPT_ARRAYGET_NAMEOBJ: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
-		goto endActionOverload;
-	    search->varNameObj = objv[i++];
-	    search->endAction = CTABLE_SEARCH_ACTION_ARRAY_GET;
+	    if (search->action != CTABLE_SEARCH_ACTION_NONE)
+		goto actionOverload;
+	    search->rowVarNameObj = objv[i++];
+	    search->action = CTABLE_SEARCH_ACTION_ARRAY_GET;
 	    break;
 	  }
 
 	  case SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
-		goto endActionOverload;
-	    search->varNameObj = objv[i++];
-	    search->endAction = CTABLE_SEARCH_ACTION_ARRAY_GET_WITH_NULLS;
+	    if (search->action != CTABLE_SEARCH_ACTION_NONE)
+		goto actionOverload;
+	    search->rowVarNameObj = objv[i++];
+	    search->action = CTABLE_SEARCH_ACTION_ARRAY_GET_WITH_NULLS;
 	    break;
 	  }
 
@@ -1763,10 +1780,10 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
           }
 
 	  case SEARCH_OPT_GET_NAMEOBJ: {
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
-		goto endActionOverload;
-	    search->varNameObj = objv[i++];
-	    search->endAction = CTABLE_SEARCH_ACTION_GET;
+	    if (search->action != CTABLE_SEARCH_ACTION_NONE)
+		goto actionOverload;
+	    search->rowVarNameObj = objv[i++];
+	    search->action = CTABLE_SEARCH_ACTION_GET;
 	    break;
           }
 
@@ -1789,6 +1806,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	  }
 
 	  case SEARCH_OPT_COUNTONLY: {
+#if 0
 	    int countOnly;
 
 	    if (Tcl_GetBooleanFromObj (interp, objv[i++], &countOnly) == TCL_ERROR) {
@@ -1797,10 +1815,13 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    }
 
 	    if (countOnly) {
-		if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
-		    goto endActionOverload;
-		search->endAction = CTABLE_SEARCH_ACTION_COUNT_ONLY;
+		if (search->action != CTABLE_SEARCH_ACTION_NONE)
+		    goto actionOverload;
+		search->action = CTABLE_SEARCH_ACTION_COUNT;
 	    }
+#else
+	    i++; // skip argument
+#endif
 	    break;
 	  }
 
@@ -1886,8 +1907,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    int        mode;
 	    char      *channelName;
 
-	    if (search->endAction != CTABLE_SEARCH_ACTION_NONE)
-		goto endActionOverload;
+	    if (search->action != CTABLE_SEARCH_ACTION_NONE)
+		goto actionOverload;
 
 	    channelName = Tcl_GetString (objv[i++]);
 	    if ((search->tabsepChannel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
@@ -1900,14 +1921,38 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 		return TCL_ERROR;
 	    }
 
-	    search->endAction = CTABLE_SEARCH_ACTION_WRITE_TABSEP;
+	    search->action = CTABLE_SEARCH_ACTION_WRITE_TABSEP;
 	  }
 	}
     }
 
-    // Optimize countOnly
-    if(search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) {
-	if(search->nComponents == 0 && search->nRetrieveFields <= 0 && search->codeBody == NULL && search->pattern == NULL && search->varNameObj == NULL && search->keyVarNameObj == NULL) {
+    // If we have a code body, make sure we're not doing a write_tabsep, make
+    // sure we have a row variable or a key variable, and that we're not
+    // leaving the search action "none"
+    if (search->codeBody != NULL) {
+	if (search->action == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
+	    Tcl_AppendResult (interp, "Both -code and -write_tabsep specified");
+	    goto errorReturn;
+	}
+	if (search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {
+	    Tcl_AppendResult (interp, "Code block specified, but none of -key, -get, -array, -array_get, -array_with_nulls, or -array_get_with_nulls provided");
+	    goto errorReturn;
+	}
+	if(search->action == CTABLE_SEARCH_ACTION_NONE)
+	    search->action = CTABLE_SEARCH_ACTION_CODE;
+    }
+
+    // If we're doing a transaction, make sure we're not leaving the search
+    // action "none"
+    if(search->tranType != CTABLE_SEARCH_TRAN_NONE) {
+	if(search->action == CTABLE_SEARCH_ACTION_NONE)
+	    search->action = CTABLE_SEARCH_ACTION_TRANSACTION_ONLY;
+    }
+
+    // If there's nothing going on in the search, then skip the search and
+    // return a simple count
+    if(search->action == CTABLE_SEARCH_ACTION_NONE) {
+	if(search->nComponents == 0 && search->nRetrieveFields <= 0 && search->codeBody == NULL && search->pattern == NULL && search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {
 	    int count = ctable->count;
 
 	    // Maybe should walk the requested index even for no components
@@ -1938,43 +1983,26 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	}
     }
 
-    if (search->endAction == CTABLE_SEARCH_ACTION_NONE &&
-	search->tranType != CTABLE_SEARCH_TRAN_NONE) {
-	search->endAction = CTABLE_SEARCH_ACTION_TRANSACTION_ONLY;
-    }
-
-    if (search->endAction == CTABLE_SEARCH_ACTION_NONE &&
-	search->keyVarNameObj == NULL) {
-	goto endActionOverload;
-    }
-
-    if (search->endAction == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
-        if (search->codeBody != NULL || search->keyVarNameObj != NULL || search->varNameObj != NULL) {
-	    Tcl_AppendResult (interp, "can't use -code or -key along with -write_tabsep", (char *) NULL);
+    if (search->action != CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
+	if(search->writingTabsepIncludeFieldNames) {
+	    Tcl_AppendResult (interp, "can't use -with_field_names without -write_tabsep", (char *) NULL);
 	    return TCL_ERROR;
 	}
-    } else if (search->writingTabsepIncludeFieldNames) {
-	Tcl_AppendResult (interp, "can't use -with_field_names without -write_tabsep", (char *) NULL);
-	return TCL_ERROR;
-    }
 
-    if ((search->endAction == CTABLE_SEARCH_ACTION_COUNT_ONLY) && search->sortControl.nFields) {
-	Tcl_AppendResult (interp, "it's nuts to -sort something that's a -countOnly anyway", (char *) NULL);
-	return TCL_ERROR;
-    }
-
-    if ((search->endAction != CTABLE_SEARCH_ACTION_WRITE_TABSEP) && (search->endAction != CTABLE_SEARCH_ACTION_COUNT_ONLY) && (search->endAction != CTABLE_SEARCH_ACTION_TRANSACTION_ONLY)) {
-        if (!search->codeBody) {
-	    Tcl_AppendResult (interp, "one of -code, -write-tabsep, -delete, or -update must be specified", (char *)NULL);
+        if (search->codeBody == NULL && search->sortControl.nFields) {
+	    Tcl_AppendResult (interp, "Sorting must be accompanied by -code or -write_tabsep", (char *) NULL);
 	    return TCL_ERROR;
-	}
+        }
     }
 
     return TCL_OK;
 
-  endActionOverload: 
+  actionOverload: 
 
-    Tcl_AppendResult (interp, "one and only one of -array, -array_with_nulls, -array_get, -array_get_with_nulls, -write_tabsep and -countOnly must be specified", (char *) NULL);
+    Tcl_AppendResult (interp, "only one of -array, -array_with_nulls, -array_get, -array_get_with_nulls, or -write_tabsep must be specified", (char *) NULL);
+
+  errorReturn:
+
     return TCL_ERROR;
 }
 

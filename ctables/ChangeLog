@@ -1,6 +1,17 @@
 
 $Id$
 
+1/24/2008 peter
+    * Change syntax!
+    * search now returns a count UNLESS a -code body is provided.
+      o -countOnly is accepted but ignored.
+      o Internal changes:
+	endAction -> action
+	varNameObj -> rowVarNameObj
+      o shouldn't change any existing legal code.
+    * Minimal changes to tests.
+    * Fix validation to return the exact string for tested cases.
+
 1/22/2008 peter
     * Validate arguments for delete or exists methods.
     * Fix argument validation in a couple of other places to use

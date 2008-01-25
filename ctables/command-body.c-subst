@@ -198,7 +198,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
 
 	  if (objc != 2) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "");
+	    Tcl_WrongNumArgs (interp, 2, objv, NULL);
 	    return TCL_ERROR;
 	  }
 
@@ -224,7 +224,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  Tcl_HashSearch hashSearch;
 
 	  if (objc != 2) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "");
+	      Tcl_WrongNumArgs (interp, 2, objv, NULL);
 	      return TCL_ERROR;
 	  }
 
@@ -530,7 +530,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_COUNT: {
 	  if (objc != 2) {
-	      Tcl_WrongNumArgs (interp, 2, objv, "");
+	      Tcl_WrongNumArgs (interp, 2, objv, NULL);
 	      return TCL_ERROR;
 	  }
           Tcl_SetIntObj (Tcl_GetObjResult (interp), ctable->count);

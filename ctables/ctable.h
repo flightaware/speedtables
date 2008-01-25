@@ -182,15 +182,20 @@ typedef struct {
 #define CTABLE_SEARCH_ACTION_ARRAY 4
 #define CTABLE_SEARCH_ACTION_ARRAY_WITH_NULLS 5
 #define CTABLE_SEARCH_ACTION_WRITE_TABSEP 6
-#define CTABLE_SEARCH_ACTION_COUNT_ONLY 7
-#define CTABLE_SEARCH_ACTION_TRANSACTION_ONLY 8
+#define CTABLE_SEARCH_ACTION_TRANSACTION_ONLY 7
+#define CTABLE_SEARCH_ACTION_CODE 8
 
 // transactions are run after the operation is complete, so they don't modify
 // a field that's being searched on
-
 #define CTABLE_SEARCH_TRAN_NONE 0
 #define CTABLE_SEARCH_TRAN_DELETE 1
 #define CTABLE_SEARCH_TRAN_UPDATE 2
+
+// Buffering types
+#define CTABLE_BUFFER_DEFAULT -1
+#define CTABLE_BUFFER_PROVISIONAL -2
+#define CTABLE_BUFFER_NONE 0
+#define CTABLE_BUFFER_DEFER 1
 
 // Special "field" values for Search with skiplists
 #define CTABLE_SEARCH_INDEX_NONE -1
@@ -204,7 +209,7 @@ typedef struct {
     int                                 *retrieveFields;
 
     Tcl_Obj                             *codeBody;
-    Tcl_Obj                             *varNameObj;
+    Tcl_Obj                             *rowVarNameObj;
     Tcl_Obj                             *keyVarNameObj;
 
     int					 tranType;
@@ -215,7 +220,7 @@ typedef struct {
     void                                 *row1;
     void                                 *row2;
 
-    int                                  endAction;
+    int                                  action;
 
     int					 bufferResults;
 
