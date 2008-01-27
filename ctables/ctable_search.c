@@ -1649,13 +1649,13 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     int             searchTerm = 0;
     CONST char                 **fieldNames = ctable->creator->fieldNames;
 
-    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-noKeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-delete", "-update", "-buffer", "-index", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-delete", "-update", "-buffer", "-index", (char *)NULL};
 
     enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX};
 
     if (objc < 2) {
       wrong_args:
-	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-noKeys 0|1? ?-offset offset? ?-regexp pattern? ?-sort {?-?field1..}? ?-write_tabsep channel? ?-delete 0|1? ?-update {fields value...}? ?-buffer 0|1?");
+	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-nokeys 0|1? ?-offset offset? ?-regexp pattern? ?-sort {?-?field1..}? ?-write_tabsep channel? ?-delete 0|1? ?-update {fields value...}? ?-buffer 0|1?");
 	return TCL_ERROR;
     }
 
@@ -1720,7 +1720,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
 	  case SEARCH_OPT_DONT_INCLUDE_KEY: {
 	    if (Tcl_GetBooleanFromObj (interp, objv[i++], &search->noKeys) == TCL_ERROR) {
-	        Tcl_AppendResult (interp, " while processing search noKeys", (char *) NULL);
+	        Tcl_AppendResult (interp, " while processing search -nokeys", (char *) NULL);
 	        return TCL_ERROR;
 	    }
 	    break;

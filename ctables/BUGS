@@ -2,18 +2,28 @@
 
 $Id$
 
-"exists" method does not check argument count
--- fixed
-
 -noKeys in one place, -nokeys in another, the style elsewhere is 
 like -with_key_fields.
 
--- Good point. Probably best to get rid of the double negative implication and standardize on -with_key_fields or simplify to -with_keys.
+-- Good point. 
+
+  -nokeys was introduced 2007/1/11
+	A lot of karl's test cases use it
+
+  -noKeys was added in 2007/12
+
+Changing the latter to "-nokeys".
 
 Needs to be a way to tell read_tabsep that the fieldnames are the first line
 and have it work with a key field defined and not.
 
--- Agreed.
+**** I've changed my mind on this. For the first part, this is much more easily done in Tcl before calling read_tabsep, just like in import_postgresql_result. For the second part, it already does.
+
+   * If there's a defined key field, and it's in the list of fields, it's used as the key, no matter where in the list it is.
+   * It there isn't one, or it's not in the list, then:
+     * If -nokeys isn't provided, the first column is assumed to be the key.
+     * If -nokeys is provided, the key is a monotonically increasing integer,
+       and read_tabsep returns the last key read.
 
 I think if you're doing a $table search -delete 1, it should probably
 return the number of rows deleted.  However, adding -countOnly 1 makes
@@ -21,5 +31,10 @@ it return that number, but no deletes occur.
 
 -- I think -countOnly is a bit confusing, and redundant. If there is a code body the value should be the value of the body, otherwise it should always be a count.
 
+**** done
+
 ---- But what count?  Aren't you overloading count, or, oh, the number of
 rows matched.  hmm.
+
+**** It returns the number of rows matched.
+

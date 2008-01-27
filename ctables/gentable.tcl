@@ -1873,6 +1873,11 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
         return TCL_ERROR;
     }
 
+    if ((mode & TCL_READABLE) == 0) {
+	Tcl_AppendResult (interp, "channel \"", channelName, "\" not readable", (char *)NULL);
+        return TCL_ERROR;
+    }
+
     if(noKeys) {
 	keyColumn = -1;
     } else {
@@ -1883,11 +1888,6 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	if(fieldNums[i] == ${table}_keyField) {
 	    keyColumn = i;
 	}
-    }
-
-    if ((mode & TCL_READABLE) == 0) {
-	Tcl_AppendResult (interp, "channel \"", channelName, "\" not readable", (char *)NULL);
-        return TCL_ERROR;
     }
 
     while (1) {

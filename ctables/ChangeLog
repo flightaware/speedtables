@@ -1,6 +1,10 @@
 
 $Id$
 
+1/27/2008 peter
+    * Change -noKeys to -nokeys
+    * Fix some error messages
+
 1/24/2008 peter
     * Change syntax!
     * search now returns a count UNLESS a -code body is provided.
