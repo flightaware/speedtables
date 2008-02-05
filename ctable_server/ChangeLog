@@ -2,6 +2,9 @@
 
 $Id$
 
+2/5/08 karl
+    * Detect EOF from server socket rather than going into an infinite loop.
+
 8/31/07 peter
     * make 'sttp:' and 'ctable:' synonymous in ctable-server.
 

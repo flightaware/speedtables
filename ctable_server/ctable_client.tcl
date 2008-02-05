@@ -150,7 +150,9 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
     while 1 {
 	# Ignore blank lines
 	if {[string length $line] < 1} {
-	    set line [gets $sock]
+	    if {[gets $sock line] < 0} {
+	        error "$cttpUrl: unexpected EOF from server"
+	    }
 	    continue
 	}
 
