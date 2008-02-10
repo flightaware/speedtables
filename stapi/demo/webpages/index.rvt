@@ -1,0 +1,33 @@
+<?
+package require DIO
+package require sttp_client
+package require sttp_display
+
+if [var exists demo] {
+    set demo [var get demo]
+} else {
+    set demo simple
+}
+
+package require sttp_demo_$demo
+
+namespace eval ::demo {
+    set table [::sttp::connect $demo_ctable($::request::demo) -key isbn]
+    set display [::STTPDisplay #auto -ctable $table -mode List]
+    if [info exists rowfunctions] {
+        $display rowfunctions $rowfunctions
+    }
+    if [info exists functions] {
+        $display functions $functions
+    }
+
+    if {"$::request::demo" != "simple"} {
+        $display hidden demo $::request::demo
+    }
+    $display field isbn -text ISBN
+    $display field title
+    $display field author
+
+    $display show
+}
+?>

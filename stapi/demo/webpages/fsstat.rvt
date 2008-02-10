@@ -1,0 +1,32 @@
+<?
+package require DIO
+package require sttp_client
+package require sttp_display
+
+package require sttp_demo_bsd
+
+namespace eval ::demo {
+    set table [::sttp::connect ::demo::fsstat -key mountedFileSystem]
+    set display [::STTPDisplay #auto -ctable $table -mode List]
+    if [info exists rowfunctions] {
+        $display rowfunctions $rowfunctions
+    }
+    if [info exists functions] {
+        $display functions $functions
+    }
+
+    $display field mountedFileSystem -text "File System"
+    $display field mountPoint -text "Mount"
+    $display field fileSystemType -text Type
+    $display field fundamentalFileSystemBlockSize -text "Blocksize"
+    $display field optimalTransferBlockSize -text "Opt. Xfer"
+    $display field totalDataBlocks -text "Blocks"
+    $display field freeBlocks -text "Free"
+    $display field availableFreeBlocks -text "Avail"
+    $display field totalFileNodes -text "Inodes"
+    $display field freeFileNodes -text "Free Inodes"
+    $display field flags -text Flags
+
+    $display show
+}
+?>

@@ -1,0 +1,28 @@
+<?
+package require DIO
+package require sttp_client
+package require sttp_display
+
+package require sttp_demo_disks
+
+namespace eval ::demo {
+    set table [::sttp::connect $::demo::uri -key disk]
+    set display [::STTPDisplay #auto -ctable $table -mode List]
+    if [info exists rowfunctions] {
+        $display rowfunctions $rowfunctions
+    }
+    if [info exists functions] {
+        $display functions $functions
+    }
+
+    $display field disk -text "Disk"
+    $display field fileSystemType -text Type
+    $display field totalMegs -text "Total MB"
+    $display field freeMegs -text "Free MB"
+    $display field availableFreeMegs -text "Avail MB"
+    $display field usedMegs -text "Used MB"
+    $display field capacity -text "% Capacity"
+
+    $display show
+}
+?>

@@ -1,0 +1,289 @@
+table.DIO {
+    border-collapse: collapse;
+}
+
+table.DIOView {
+    border-collapse: collapse;
+}
+
+table.DIOForm {
+    border : 0px;
+    border-spacing : 0px;
+    border-collapse: collapse;
+    vertical-align: middle;
+}
+
+td.DIOForm {
+    background-color : #EEEEEE;
+    border : 0px;
+    padding : 3px;
+    vertical-align: middle;
+    font-size: 13px;
+}
+
+input.DIOFormSaveButton {
+    vertical-align: middle;
+}
+
+input.DIOFormCancelButton {
+    vertical-align: middle;
+}
+
+table.DIORowHeader {
+     border-collapse: collapse;
+     border : 0px;
+     border-spacing : 0px;
+     font-size : 14px;
+}
+
+th.DIORowHeaderFunctions {
+    background-color : #DDDDFF;
+    border : 1px #DDDDFF solid;
+    padding : 3px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+th.DIORowHeader {
+    background-color : #DDDDFF;
+    border : 1px #DDDDFF solid;
+    padding : 3px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+td.DIORowField {
+    background-color : #FFFFFF;
+    padding : 3px;
+    border : 1px #DDDDFF solid;
+    vertical-align: text-top;
+    font-size: 11px;
+}
+
+td.DIORowFieldAlt {
+    background-color : #EEEEEE;
+    padding : 3px;
+    border : 1px #DDDDFF solid;
+    vertical-align: text-top;
+    font-size: 11px;
+}
+
+td.DIORowFunctions {
+    background-color : #FFFFFF;
+    padding : 3px;
+    border : 1px #DDDDFF solid;
+    font-size: 11px;
+}
+
+td.DIORowFunctionsAlt {
+    background-color : #EEEEFF;
+    padding : 3px;
+    border : 1px #DDDDFF solid;
+}
+
+select.DIORowFunctionSelect {
+
+}
+
+input.DIORowFunctionButton {
+
+}
+
+table.DIONavButtons {
+
+}
+
+td.DIOBackButton {
+
+}
+
+input.DIOBackButton {
+
+}
+
+td.DIONextButton {
+
+}
+
+input.DIONextButton {
+
+}
+
+table.DIOTopNavButtons {
+
+}
+
+td.DIOTopBackButton {
+
+}
+
+input.DIOTopBackButton {
+
+}
+
+td.DIOTopNextButton {
+
+}
+
+input.DIOTopNextButton {
+
+}
+
+table.DIOBottomNavButtons {
+
+}
+
+td.DIOBottomBackButton {
+
+}
+
+input.DIOBottomBackButton {
+
+}
+
+td.DIOBottomNextButton {
+
+}
+
+input.DIOBottomNextButton {
+
+}
+
+table.DIOMain {
+    border-collapse: collapse;
+    font-size : 12px;
+}
+
+td.DIOMainFunctionsHeader {
+
+}
+
+td.DIOMainFunctions {
+
+}
+
+select.DIOMainFunctionsSelect {
+
+}
+
+td.DIOMainSearchByHeader {
+
+}
+
+td.DIOMainSearchBy {
+
+}
+
+select.DIOMainSearchBy {
+
+}
+
+td.DIOMainQueryHeader {
+
+}
+
+td.DIOMainQuery {
+
+}
+
+input.DIOMainQuery {
+
+}
+
+td.DIOMainNumResultsHeader {
+
+}
+
+td.DIOMainNumResults {
+
+}
+
+select.DIOMainNumResults {
+
+}
+
+td.DIOMainSubmitButton {
+
+}
+
+input.DIOMainSubmitButton {
+
+}
+
+table.DIODeleteConfirm {
+
+}
+
+td.DIODeleteConfirm {
+
+}
+
+td.DIODeleteConfirmYesButton {
+
+}
+
+input.DIODeleteConfirmYesButton {
+
+}
+
+td.DIODeleteConfirmNoButton {
+
+}
+
+input.DIODeleteConfirmNoButton {
+
+}
+
+tr.DIOViewRow {
+    background-color : #FFFFFF;
+    padding : 3px;
+    border : 1px #DDDDFF solid;
+}
+
+tr.DIOViewRowAlt {
+    background-color : #EEEEEE;
+    padding : 3px;
+    border : 1px #DDDDFF solid;
+}
+
+td.DIOViewHeader {
+    border: 0px;
+    padding: 0px;
+}
+
+td.DIOViewField {
+    border: 0px;
+    padding: 0px;
+    width: 100%;
+}
+
+td.DIOViewHeader-mesa_system {
+
+}
+
+td.DIOFormHeader {
+
+}
+
+td.DIOFormHeader-description {
+
+}
+
+td.DIOFormField {
+
+}
+
+input.DIOFormField {
+
+}
+
+input.DIOFormField-description {
+
+}
+
+a.DIOArrow {
+  text-color: blue;
+  text-decoration: none;
+  font-weight: bold;
+}
+
