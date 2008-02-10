@@ -1,5 +1,7 @@
 # $Id$
 
+package require BSD
+
 proc load_disks {ctable} {
     set host [info hostname]
 

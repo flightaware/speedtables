@@ -1,6 +1,6 @@
 # $Id$
 
-CTableBuildPath /usr/local/lib/rivet/packages-local/sttp_demo/ctables
+package require stapi_demo_config
 
 CExtension demo_ctable 1.0 {
 
@@ -11,8 +11,6 @@ CTable c_demo_ctable {
 }
 
 }
-
-lappend auto_path /usr/local/lib/rivet/packages-local/sttp_demo/ctables
 
 package require Demo_ctable
 

@@ -15,4 +15,4 @@ namespace eval ::demo {
     set functions "List Search"
 }
 
-package provide sttp_demo_bsd 1.0
+package provide stapi_demo_bsd 1.0

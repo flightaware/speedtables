@@ -1,6 +1,6 @@
 # $Id$
 
-CTableBuildPath /usr/local/lib/rivet/packages-local/sttp_demo/ctables
+package require stapi_demo_config
 
 CExtension fsstat_ctable 1.0 {
 
@@ -19,8 +19,6 @@ CTable c_fsstat {
 }
 
 }
-
-lappend auto_path /usr/local/lib/rivet/packages-local/sttp_demo/ctables
 
 package require Fsstat_ctable
 

@@ -1,13 +1,13 @@
 <?
 package require DIO
-package require sttp_client
-package require sttp_display
+package require st_client
+package require st_display
 
-package require sttp_demo_disks
+package require stapi_demo_disks
 
 namespace eval ::demo {
     set table [::sttp::connect $::demo::uri -key disk]
-    set display [::STTPDisplay #auto -ctable $table -mode List]
+    set display [::STDisplay #auto -ctable $table -mode List]
     if [info exists rowfunctions] {
         $display rowfunctions $rowfunctions
     }

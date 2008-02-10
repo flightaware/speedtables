@@ -1,10 +1,7 @@
 # $Id$
 
 package require ctable
-
-set workdir /usr/local/lib/rivet/packages-local/sttp_demo/ctables
-CTableBuildPath $workdir
-lappend auto_path $workdir
+package require stapi_demo_config
 
 CExtension disks_ctable 1.0 {
 

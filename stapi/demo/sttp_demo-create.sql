@@ -1,3 +1,5 @@
+-- $Id$
+
 create table sttp_demo (
 	isbn	varchar primary key,
 	title	varchar,

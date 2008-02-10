@@ -9,9 +9,9 @@ lappend auto_path /usr/local/lib/rivet/packages-local
 package require BSD
 package require ctable
 package require disks_lib
-package require sttp_client
+package require st_client
 
-load_disks [::sttp::connect ctable://localhost:6668/disks -key disk]
+load_disks [::sttp::connect sttp://localhost:6668/disks -key disk]
 
 package provide disks_client 1.0
 

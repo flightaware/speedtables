@@ -1,6 +1,6 @@
 # $Id$
 
-package require sttp_client_postgres
+package require st_client_pgtcl
 
 namespace eval ::demo {
     set demo_ctable(sql) sql:///sttp_demo?_key=isbn
@@ -8,4 +8,4 @@ namespace eval ::demo {
     set functions "Search Add List"
 }
 
-package provide sttp_demo_sql 1.0
+package provide stapi_demo_sql 1.0

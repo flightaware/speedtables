@@ -16,4 +16,4 @@ namespace eval ::demo {
     set demo_ctable(simple) ::demo::demo_ctable
 }
 
-package provide sttp_demo_simple 1.0
+package provide stapi_demo_simple 1.0

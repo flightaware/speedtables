@@ -14,7 +14,7 @@ package require disks_ctable
 
 ::c_disks create ::disks
 
-::ctable_server::register ctable://*:6668/disks ::disks
+::ctable_server::register sttp://*:6668/disks ::disks
 
 vwait Die
 
