@@ -1,6 +1,13 @@
 
 $Id$
 
+2/13/2008 peter
+    Search was not buffering for all transactions because with the change in
+    meaning of "count" it was no longer a given that there was no buffering
+    specified for all cases but -code. Fixed by doing the buffering test for
+    everything but "CTABLE_SEARCH_ACTION_NONE" instead of just when code was
+    not equal to NULL.
+
 1/27/2008 peter
     * Change -noKeys to -nokeys
     * Fix some error messages
