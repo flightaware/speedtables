@@ -1284,11 +1284,11 @@ restart_search:
     }
 
     // buffer results if:
-    //   We've got a code block and...
+    //   We've got search actions, AND...
     //     We're searching, or...
     //     We're a reader table, or...
     //     We explicitly requested bufering.
-    if(search->codeBody == NULL) {
+    if (search->action == CTABLE_SEARCH_ACTION_NONE) {
 	search->bufferResults = CTABLE_BUFFER_NONE;
     } else if(search->sortControl.nFields > 0) {
 	search->bufferResults = CTABLE_BUFFER_DEFER;
