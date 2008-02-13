@@ -21,6 +21,27 @@ if {[t count] != 100} {
     error "expected count of 100 but got [t count]"
 }
 
+puts "write test"
+proc check_first_line {list {expected ""}} {
+   set fp [open /tmp/top_brands.tsv w]
+   eval [concat [list t search -write_tabsep $fp] $list]
+   close $fp
+   set fp [open /tmp/top_brands.tsv r]
+   if ![gets $fp line] {
+      error "no data written to /tmp/top_brands.tsv"
+   }
+   close $fp
+   if {"$expected" != "" && "$line" != "$expected"} {
+      regsub -all "\t" $line {\t} tline
+      regsub -all "\t" $expected {\t} texpected
+      error "bad data in /tmp/top_brands.tsv\n\texpected $texpected\n\tgot $tline"
+   }
+}
+
+check_first_line {} ""
+check_first_line {-sort rank} "coke\t1\tCoca-Cola\t67394"
+check_first_line {-sort name} "aol\t82\tAOL\t3248"
+
 puts "second suck"
 suck_in_top_brands
 
