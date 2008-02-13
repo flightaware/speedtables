@@ -11,7 +11,6 @@
 package ifneeded st_client 1.0 [list source [file join $dir client/client.tcl]]
 package ifneeded st_client_postgres 1.0 [list source [file join $dir client/pgsql.tcl]]
 package ifneeded st_debug 1.0 [list source [file join $dir debug.tcl]]
-package ifneeded st_display 1.0 [list source [file join $dir display/display.tcl]]
 package ifneeded st_display_test 1.0 [list source [file join $dir display/test.tcl]]
 package ifneeded st_locks 1.0 [list source [file join $dir server/lock.tcl]]
 package ifneeded st_postgres 1.0 [list source [file join $dir pgsql.tcl]]\n[list source [file join $dir copy.tcl]]

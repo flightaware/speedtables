@@ -854,7 +854,7 @@ catch { ::itcl::delete class STDisplay }
      ## Check field's "searchability"
      protected method searchable {name} {
 	## If it's marked as searchable
-	if {[lsearch $searchfields $name] == -1) {
+	if {[lsearch $searchfields $name] == -1} {
 	    return 1
 	}
 
