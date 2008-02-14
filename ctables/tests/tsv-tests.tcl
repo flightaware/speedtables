@@ -6,6 +6,8 @@
 # $Id$
 #
 
+source test_common.tcl
+
 source top-brands-def.tcl
 
 proc suck_in_top_brands {args} {

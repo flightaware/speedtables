@@ -4,6 +4,8 @@
 # $Id$
 #
 
+source test_common.tcl
+
 source top-brands-nokey-def.tcl
 
 if {"[t store id 1 rank 1 name first]" != "0"} {

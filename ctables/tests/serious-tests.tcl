@@ -4,10 +4,9 @@
 # $Id$
 #
 
-package require ctable
+source test_common.tcl
 
-# set ::ctable::genCompilerDebug 0
-# set ::ctable::showCompilerCommands 0
+package require ctable
 
 source searchtest-def.tcl
 

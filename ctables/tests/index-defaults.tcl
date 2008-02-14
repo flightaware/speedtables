@@ -1,3 +1,7 @@
+# $Id$
+
+source test_common.tcl
+
 source index-defaults.ct
 
 package require Indef

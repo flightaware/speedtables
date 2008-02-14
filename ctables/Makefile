@@ -8,7 +8,6 @@
 # $Id$
 #
 
-#INSTDIR=/usr/fa/lib/ctable
 INSTDIR=/usr/local/lib/ctable
 WORKDIR=`pwd`
 TCLLIBPATH="${WORKDIR} ${WORKDIR}/../ctable_server ${WORKDIR}/../stapi"

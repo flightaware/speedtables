@@ -5170,6 +5170,7 @@ proc install_ch_files {includeDir} {
 	lappend subdirs shared
     }
 
+    emit "// Importing .c and .h files to '$includeDir'\n//"
     foreach file $copyFiles {
 	set fullName [file join $srcDir $file]
 
@@ -5189,10 +5190,12 @@ proc install_ch_files {includeDir} {
 
 	if [info exists fullName] {
             file copy -force $fullName $includeDir
+	    emit "// Imported '$fullName'"
 	} else {
 	    return -code error "Can't find $file in $srcDir"
 	}
     }
+    emit "// Import complete\n"
 }
 
 #
@@ -5262,12 +5265,15 @@ proc start_codegen {} {
 	return
     }
 
-    ::ctable::install_ch_files [::ctable::target_path include]
-
     set ::ctable::ofp [open $::ctable::sourceFile w]
 
     ::ctable::gen_preamble
+
     ::ctable::gen_ctable_type_stuff
+
+    # This runs here so we have the log of where we got files from in
+    # the right place
+    ::ctable::install_ch_files [::ctable::target_path include]
 
     ::ctable::emit "#include \"ctable_search.c\""
 

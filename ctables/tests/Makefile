@@ -10,10 +10,6 @@ TCLSHM=$(TCLSH)
 # With shared memory debugging
 #TCLSHM=$(TCLSH)m
 
-# with FlightAware
-#TCLSH=/usr/fa/bin/tclsh8.4
-#TCLSHM=$(TCLSH)
-
 all:
 	-rm -r build
 	$(TCLSH) serious-tests.tcl

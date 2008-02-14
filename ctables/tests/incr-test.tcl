@@ -4,6 +4,8 @@
 # $Id$
 #
 
+source test_common.tcl
+
 source searchtest-def.tcl
 
 source dumb-data.tcl

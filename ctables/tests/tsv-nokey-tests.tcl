@@ -4,6 +4,8 @@
 # $Id$
 #
 
+source test_common.tcl
+
 source top-brands-nokey-def.tcl
 
 proc check_value {format expected actual} {

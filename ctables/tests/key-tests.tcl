@@ -4,6 +4,8 @@
 # $Id$
 #
 
+source test_common.tcl
+
 proc dump_table {t} {
     foreach k [$t names] {
         puts "$k => [$t array_get $k]"

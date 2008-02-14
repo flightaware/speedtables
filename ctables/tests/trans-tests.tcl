@@ -4,6 +4,8 @@
 # $Id$
 #
 
+source test_common.tcl
+
 source top-brands-nokey-def.tcl
 
 set id 1

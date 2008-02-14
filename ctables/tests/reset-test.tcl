@@ -5,6 +5,8 @@
 # $Id$
 #
 
+source test_common.tcl
+
 source searchtest-def.tcl
 
 proc test {} {

@@ -4,6 +4,8 @@
 # $Id$
 #
 
+source test_common.tcl
+
 package require ctable_server
 
 set suffix _m

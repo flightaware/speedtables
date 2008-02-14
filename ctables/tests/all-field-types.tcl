@@ -4,9 +4,9 @@
 # $Id$
 #
 
-package require ctable
+source test_common.tcl
 
-#CTableBuildPath /tmp
+package require ctable
 
 CExtension all_field_types 1.0 {
 

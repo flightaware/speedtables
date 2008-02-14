@@ -1,6 +1,12 @@
 
 $Id$
 
+2/14/2008 peter
+    * Depending on TCLLIBPATH to override auto_path isn't reliable.
+      Instead, force auto_path to be something sane IN the tests dir.
+      + Make changes to test config settings in tests/test_common.tcl
+	so we don't have to pollute the default config.tcl
+
 2/13/2008 peter
     * Search was not buffering for all transactions because with the change in
       meaning of "count" it was no longer a given that there was no buffering
@@ -15,7 +21,8 @@ $Id$
 
 1/24/2008 peter
     * Change syntax!
-    * search now returns a count UNLESS a -code body is provided.
+    * search now returns a count UNLESS a -code body is provided and includes
+	a return statement.
       o -countOnly is accepted but ignored.
       o Internal changes:
 	endAction -> action

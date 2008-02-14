@@ -4,6 +4,8 @@
 
 # Just making sure you can define multiple ctables in an extension.
 
+source test_common.tcl
+
 source multitable.tcl
 
 nameval create nv
