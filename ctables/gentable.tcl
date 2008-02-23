@@ -1760,7 +1760,7 @@ ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *ds
     int i;
 
     if(!noKeys) {
-    	Tcl_DStringAppend(dsPtr, "_key", 1);
+    	Tcl_DStringAppend(dsPtr, "_key", 4);
     }
 
     for (i = 0; i < nFields; i++) {
@@ -1769,7 +1769,7 @@ ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *ds
 	    // Tcl_DStringAppend (dsPtr, "|", 1);
 	}
 
-	Tcl_DStringAppend(dsPtr, ${table}_fields[fieldNums[i]], 1);
+	Tcl_DStringAppend(dsPtr, ${table}_fields[fieldNums[i]], -1);
     }
     Tcl_DStringAppend (dsPtr, "\n", 1);
 }
