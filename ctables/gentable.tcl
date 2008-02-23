@@ -1726,7 +1726,7 @@ ${table}_get_string (const void *vPointer, int field, int *lengthPtr, Tcl_Obj *u
 
 variable tabSepFunctionsSource {
 void
-${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys) {
+${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, char *sepstr) {
     int              i;
     CONST char      *string;
     int              nChars;
@@ -1739,8 +1739,7 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
 
     for (i = 0; i < nFields; i++) {
 	if (!noKeys || (i > 0)) {
-	    Tcl_DStringAppend (dsPtr, "\t", 1);
-	    // Tcl_DStringAppend (dsPtr, "|", 1);
+	    Tcl_DStringAppend (dsPtr, sepstr, -1);
 	}
 
 	string = ${table}_get_string (row, fieldNums[i], &nChars, utilityObj);
@@ -1755,7 +1754,7 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
 }
 
 void 
-${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys)
+${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, char *sepstr)
 {
     int i;
 
@@ -1765,8 +1764,7 @@ ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *ds
 
     for (i = 0; i < nFields; i++) {
 	if (!noKeys || (i > 0)) {
-	    Tcl_DStringAppend (dsPtr, "\t", 1);
-	    // Tcl_DStringAppend (dsPtr, "|", 1);
+	    Tcl_DStringAppend (dsPtr, sepstr, -1);
 	}
 
 	Tcl_DStringAppend(dsPtr, ${table}_fields[fieldNums[i]], -1);
@@ -1775,11 +1773,13 @@ ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *ds
 }
 
 int
-${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsPtr, int *fieldNums, int *noKeysPtr)
+${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsPtr, int *fieldNums, int *noKeysPtr, char *sepstr)
 {
     int i;
     int field;
     char *tab;
+    char save = '\0';
+    int seplen = strlen(sepstr);
 
     *noKeysPtr = 1;
     field = 0;
@@ -1789,8 +1789,10 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
             return TCL_ERROR;
 	}
 
-	if ( (tab = strchr(string, '\t')) )
+	if ( (tab = strstr(string, sepstr)) ) {
+	    save = *tab;
 	    *tab = 0;
+	}
 
 	if(*noKeysPtr && field == 0 && strcmp(string, "_key") == 0) {
 	    *noKeysPtr = 0;
@@ -1807,8 +1809,10 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 	    fieldNums[field++] = i;
 	}
 
-	if(tab)
-	    *tab++ = '\t';
+	if(tab) {
+	    *tab = save;
+	    tab += seplen;
+	}
 
 	string = tab;
     }
@@ -1819,7 +1823,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames) {
+${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr) {
     Tcl_Channel             channel;
     int                     mode;
     Tcl_DString             dString;
@@ -1841,7 +1845,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
         Tcl_DStringSetLength (&dString, 0);
 
-	${table}_dstring_append_fieldnames (fieldNums, nFields, &dString, noKeys);
+	${table}_dstring_append_fieldnames (fieldNums, nFields, &dString, noKeys, sepstr);
 
 	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
@@ -1864,7 +1868,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
         Tcl_DStringSetLength (&dString, 0);
 
-	${table}_dstring_append_get_tabsep (key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys);
+	${table}_dstring_append_get_tabsep (key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys, sepstr);
 
 	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
@@ -1878,7 +1882,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int keyColumn) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int keyColumn, char *sepstr) {
     struct $table *row;
     char          *key;
     char          *field;
@@ -1888,6 +1892,8 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
     Tcl_Obj       *utilityObj = Tcl_NewObj ();
     char           keyNumberString[32];
     char	  *keyCopy = NULL;
+    int		   seplen = strlen(sepstr);
+    char	   save = '\0';
 
     if (keyColumn == -1) {
         sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
@@ -1895,16 +1901,19 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
     } else {
         // find the beginning of the "keyColumn"th column in the string.
         for (key = string, i = 0; key && i < keyColumn; i++) {
-	    key = strchr(key, '\t');
-	    if(key) key++;
+	    key = strstr(key, sepstr);
+	    if(key) key += seplen;
         }
         if (key) {
-	    char *keyEnd = strchr(key, '\t');
-	    if(keyEnd) *keyEnd = 0;
+	    char *keyEnd = strstr(key, sepstr);
+	    if(keyEnd) {
+		save = *keyEnd;
+		*keyEnd = 0;
+	    }
 	    keyCopy = ckalloc(strlen(key)+1);
 	    strcpy(keyCopy, key);
 	    key = keyCopy;
-	    if(keyEnd) *keyEnd = '\t';
+	    if(keyEnd) *keyEnd = save;
         }
 	if(!key)
 	    key = "";
@@ -1916,7 +1925,16 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
     }
 
     for (col = i = 0; col < nFields; i++) {
-        field = strsep (&string, "\t");
+	if(string) {
+	    field = string;
+            string = strstr (string, sepstr);
+	    if(string) {
+	        *string = '\0';
+	        string += seplen;
+	    }
+	} else {
+	    field = "";
+	}
 	if(i == keyColumn) {
 	    continue;
 	}
@@ -1937,7 +1955,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = Tcl_NewObj();
@@ -1946,6 +1964,8 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     char             keyNumberString[32];
     int		     keyColumn;
     int		     i;
+    int		     seplen = strlen(sepstr);
+    char	     save = '\0';
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -1963,7 +1983,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	    return TCL_OK;
 	string = Tcl_GetString (lineObj);
 
-	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys) == TCL_ERROR)
+	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys, sepstr) == TCL_ERROR)
 	    return TCL_ERROR;
     }
 
@@ -1990,19 +2010,22 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	// if pattern exists, see if it does not match key and if so, skip
 	if (pattern != NULL) {
 	    for (key = string, i = 0; key && i < keyColumn; i++) {
-		key = strchr(key, '\t');
-		if(key) key++;
+		key = strstr(key, sepstr);
+		if(key) key += seplen;
 	    }
 	    if (key) {
-		char *keyEnd = strchr(key, '\t');
-	        if(keyEnd) *keyEnd = 0;
+		char *keyEnd = strstr(key, sepstr);
+	        if(keyEnd) {
+		    save = *keyEnd;
+		    *keyEnd = 0;
+		}
 
 	        if (!Tcl_StringCaseMatch (string, pattern, 1)) continue;
-		if(keyEnd) *keyEnd = '\t';
+		if(keyEnd) *keyEnd = save;
 	    }
 	}
 
-	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn) == TCL_ERROR) {
+	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn, sepstr) == TCL_ERROR) {
 	    char lineNumberString[32];
 
 	    Tcl_DecrRefCount (lineObj);

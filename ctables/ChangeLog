@@ -1,6 +1,11 @@
 
 $Id$
 
+2/23/2008 peter
+    * implemented "-tab" option to read_tabsep, write_tabsep, and
+      search -write_tabsep to allow TSV files with fields containing
+      tabs, and for compatibility with other token-separated files
+
 2/22/2008 peter
     * implemented read_tabsep $fp -with_field_names, the counterpart to
       search -write_tabsep $fp -with_field_names 1

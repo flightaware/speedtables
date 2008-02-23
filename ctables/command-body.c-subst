@@ -888,6 +888,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	char            *channel;
 	int              noKeys = 0;
 	int		 withFieldNames = 0;
+	char		*sepstr = "\t";
 
 	if (objc < 3) {
 	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
@@ -910,6 +911,15 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		}
 		pattern = Tcl_GetString (objv[objIdx++]);
 		objc -= 2;
+	    } else if (strcmp (possibleSwitch, "-tab") == 0) {
+		objIdx++;
+		objc--;
+	        if (objc <= 0) {
+		    Tcl_AppendResult (interp, "-tab not followed by tab char", (char *)NULL);
+		    return TCL_ERROR;
+		}
+		sepstr = Tcl_GetString (objv[objIdx++]);
+		objc--;
 	    } else if (strcmp (possibleSwitch, "-nokeys") == 0) {
 		objIdx++;
 		objc--;
@@ -931,7 +941,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	if (objc == 0) {
-	    if (optIndex == OPT_READ_TABSEP && withFieldNames) {
+	    if (optIndex != OPT_WRITE_TABSEP && withFieldNames) {
 		nFields = $nFields;
 	    } else {
 	        for (nFields = i = 0; i < $nFields; i++) {
@@ -941,8 +951,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	        }
 	    }
 	} else {
-	    if (optIndex == OPT_READ_TABSEP && withFieldNames) {
-		Tcl_AppendResult(interp, "Can not specify explicit field names with \"read_tabsep ... -with_field_names\"", (char *)NULL);
+	    if (optIndex != OPT_WRITE_TABSEP && withFieldNames) {
+		Tcl_AppendResult(interp, "Can not specify explicit field names when reading with \"-with_field_names\"", (char *)NULL);
 		return TCL_ERROR;
 	    }
 	    nFields = objc;
@@ -971,17 +981,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
   }
 
   fprintf(stderr,
-	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d, %d);\n",
+	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d, %d, \"%s\");\n",
 	optIndex == OPT_WRITE_TABSEP ? "export" : "import",
-	channel, buffer, nFields, pattern, noKeys, withFieldNames
+	channel, buffer, nFields, pattern, noKeys, withFieldNames, sepstr
   );
 }
 #endif
 
 	if (optIndex == OPT_WRITE_TABSEP) {
-	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames);
-	} else {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames);
+	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr);
+	} else if(optIndex == OPT_READ_TABSEP) {
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr);
 	}
 
 	break;

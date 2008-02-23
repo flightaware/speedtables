@@ -46,9 +46,24 @@ check_first_line {-sort name} "aol\t82\tAOL\t3248"
 check_first_line {-with_field_names 1 -fields {name value}} "_key\tname\tvalue"
 
 puts "read/write test"
-set fp [open /tmp/top_brands.tsv r]
 t reset
+set fp [open /tmp/top_brands.tsv r]
 t read_tabsep $fp -with_field_names
+close $fp
+
+if {[t count] != 100} {
+    error "expected count of 100 but got [t count]"
+}
+
+if {"[t get aol]" != "{} AOL 3248"} {
+    error "got [list [t get aol]] expected {{} AOL 3248}"
+}
+
+puts "tab string test"
+check_first_line {-with_field_names 1 -fields {name value} -tab "XXX"} "_keyXXXnameXXXvalue"
+
+set fp [open /tmp/top_brands.tsv r]
+t read_tabsep $fp -tab "XXX" -with_field_names
 close $fp
 
 if {[t count] != 100} {
