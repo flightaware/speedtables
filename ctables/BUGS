@@ -25,6 +25,13 @@ and have it work with a key field defined and not.
      * If -nokeys is provided, the key is a monotonically increasing integer,
        and read_tabsep returns the last key read.
 
+**** Changed my mind again.
+
+* It already works with a key field defined or not. That's golden.
+* I figured out a cleaner way to implement -with_key_fields
+
+**** done
+
 I think if you're doing a $table search -delete 1, it should probably
 return the number of rows deleted.  However, adding -countOnly 1 makes
 it return that number, but no deletes occur.

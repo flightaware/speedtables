@@ -1,6 +1,10 @@
 
 $Id$
 
+2/22/2008 peter
+    * implemented read_tabsep $fp -with_field_names, the counterpart to
+      search -write_tabsep $fp -with_field_names 1
+
 2/14/2008 peter
     * Depending on TCLLIBPATH to override auto_path isn't reliable.
       Instead, force auto_path to be something sane IN the tests dir.

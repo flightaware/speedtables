@@ -887,6 +887,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	char            *pattern = NULL;
 	char            *channel;
 	int              noKeys = 0;
+	int		 withFieldNames = 0;
 
 	if (objc < 3) {
 	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
@@ -913,6 +914,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		objIdx++;
 		objc--;
 		noKeys = 1;
+	    } else if (strcmp (possibleSwitch, "-with_field_names") == 0) {
+		objIdx++;
+		objc--;
+		withFieldNames = 1;
 	    } else {
 		Tcl_AppendResult (interp, "unknown switch: ", possibleSwitch, (char *)NULL);
 		return TCL_ERROR;
@@ -920,18 +925,26 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	if (objc > $nFields) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-with_field_names? ?field field...?");
           Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
 	  return TCL_ERROR;
 	}
 
 	if (objc == 0) {
-	    for (nFields = i = 0; i < $nFields; i++) {
-		if(!is_hidden_name(${table}_fields,i)) {
-	            fieldIds[nFields++] = i;
-		}
+	    if (optIndex == OPT_READ_TABSEP && withFieldNames) {
+		nFields = $nFields;
+	    } else {
+	        for (nFields = i = 0; i < $nFields; i++) {
+		    if(!is_hidden_name(${table}_fields,i)) {
+	                fieldIds[nFields++] = i;
+		    }
+	        }
 	    }
 	} else {
+	    if (optIndex == OPT_READ_TABSEP && withFieldNames) {
+		Tcl_AppendResult(interp, "Can not specify explicit field names with \"read_tabsep ... -with_field_names\"", (char *)NULL);
+		return TCL_ERROR;
+	    }
 	    nFields = objc;
 	    for (i = 0; i < objc; i++) {
 	        if (Tcl_GetIndexFromObj (interp, objv[objIdx++], ${table}_fields, "field", TCL_EXACT, &fieldIds[i]) != TCL_OK) {
@@ -958,17 +971,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
   }
 
   fprintf(stderr,
-	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d);\n",
+	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d, %d);\n",
 	optIndex == OPT_WRITE_TABSEP ? "export" : "import",
-	channel, buffer, nFields, pattern, noKeys
+	channel, buffer, nFields, pattern, noKeys, withFieldNames
   );
 }
 #endif
 
 	if (optIndex == OPT_WRITE_TABSEP) {
-	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys);
+	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames);
 	} else {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames);
 	}
 
 	break;

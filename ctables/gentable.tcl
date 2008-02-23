@@ -1754,8 +1754,72 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
     Tcl_DecrRefCount (utilityObj);
 }
 
+void 
+${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys)
+{
+    int i;
+
+    if(!noKeys) {
+    	Tcl_DStringAppend(dsPtr, "_key", 1);
+    }
+
+    for (i = 0; i < nFields; i++) {
+	if (!noKeys || (i > 0)) {
+	    Tcl_DStringAppend (dsPtr, "\t", 1);
+	    // Tcl_DStringAppend (dsPtr, "|", 1);
+	}
+
+	Tcl_DStringAppend(dsPtr, ${table}_fields[fieldNums[i]], 1);
+    }
+    Tcl_DStringAppend (dsPtr, "\n", 1);
+}
+
 int
-${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
+${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsPtr, int *fieldNums, int *noKeysPtr)
+{
+    int i;
+    int field;
+    char *tab;
+
+    *noKeysPtr = 1;
+    field = 0;
+    while(string) {
+	if(field > *nFieldsPtr) {
+            Tcl_AppendResult (interp, "Field name row specifies more fields than in ${table}", (char *)NULL);
+            return TCL_ERROR;
+	}
+
+	if ( (tab = strchr(string, '\t')) )
+	    *tab = 0;
+
+	if(*noKeysPtr && field == 0 && strcmp(string, "_key") == 0) {
+	    *noKeysPtr = 0;
+	} else {
+	    for(i = 0; ${table}_fields[i]; i++)
+	        if(strcmp(string, ${table}_fields[i]) == 0)
+		    break;
+
+	    if(!${table}_fields[i]) {
+                Tcl_AppendResult (interp, "Unknown field \"", string, "\" in ${table}", (char *)NULL);
+                return TCL_ERROR;
+            }
+
+	    fieldNums[field++] = i;
+	}
+
+	if(tab)
+	    *tab++ = '\t';
+
+	string = tab;
+    }
+
+    *nFieldsPtr = field;
+
+    return TCL_OK;
+}
+
+int
+${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames) {
     Tcl_Channel             channel;
     int                     mode;
     Tcl_DString             dString;
@@ -1772,6 +1836,20 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     }
 
     Tcl_DStringInit (&dString);
+
+    if (withFieldNames) {
+
+        Tcl_DStringSetLength (&dString, 0);
+
+	${table}_dstring_append_fieldnames (fieldNums, nFields, &dString, noKeys);
+
+	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
+	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
+	    Tcl_DStringFree (&dString);
+	    return TCL_ERROR;
+	}
+
+    }
 
     CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
 	// if there's no pattern and no keys has been set, no need to
@@ -1859,7 +1937,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = Tcl_NewObj();
@@ -1876,6 +1954,17 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     if ((mode & TCL_READABLE) == 0) {
 	Tcl_AppendResult (interp, "channel \"", channelName, "\" not readable", (char *)NULL);
         return TCL_ERROR;
+    }
+
+    /* If no fields, read field names from first line */
+    if(withFieldNames) {
+        Tcl_SetStringObj (lineObj, "", 0);
+        if (Tcl_GetsObj (channel, lineObj) <= 0)
+	    return TCL_OK;
+	string = Tcl_GetString (lineObj);
+
+	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys) == TCL_ERROR)
+	    return TCL_ERROR;
     }
 
     if(noKeys) {
@@ -1907,6 +1996,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	    if (key) {
 		char *keyEnd = strchr(key, '\t');
 	        if(keyEnd) *keyEnd = 0;
+
 	        if (!Tcl_StringCaseMatch (string, pattern, 1)) continue;
 		if(keyEnd) *keyEnd = '\t';
 	    }
