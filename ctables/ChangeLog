@@ -1,6 +1,15 @@
 
 $Id$
 
+2/25/2008 peter
+    The ctable search main loop is pretty complex, and many of the comments
+    are misleading. I've fixed a number of them to try and make them clearer.
+
+    * Pulled the code to prepare for transactions into a separate routine.
+
+    TODO: pull out the optimization code, or split the skiplist and hashtable
+    code into separate routines.
+
 2/23/2008 peter
     * implemented "-tab" option to read_tabsep, write_tabsep, and
       search -write_tabsep to allow TSV files with fields containing

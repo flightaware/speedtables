@@ -806,7 +806,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	    return TCL_CONTINUE;
     }
 
-    // We're not sorting or buffering, let's figure out what to do as we
+    // We're not deferring the results, let's figure out what to do as we
     // match. If we haven't met the start point, blow it off.
     if (search->matchCount <= search->offset) {
 	return TCL_CONTINUE;
@@ -968,6 +968,42 @@ int ctable_SearchRestartNeeded(ctable_BaseRow *row, struct restart_t *restart)
     return 0;
 }
 #endif
+
+//
+// ctable_PrepareTransactions - set up buffering for transactions if needed
+//
+void ctable_PrepareTransactions(CTable *ctable, CTableSearch *search)
+{
+    // buffer results if:
+    //   We've got search actions, AND...
+    //     We're searching, or...
+    //     We're a reader table, or...
+    //     We explicitly requested bufering.
+    if (search->action == CTABLE_SEARCH_ACTION_NONE) {
+	search->bufferResults = CTABLE_BUFFER_NONE;
+    } else if(search->sortControl.nFields > 0) {
+	search->bufferResults = CTABLE_BUFFER_DEFER;
+#ifdef WITH_SHARED_TABLES
+    } else if(ctable->share_type == CTABLE_SHARED_READER) {
+	search->bufferResults = CTABLE_BUFFER_DEFER;
+#endif
+    } else if(search->bufferResults < 0) {
+    	search->bufferResults = CTABLE_BUFFER_NONE;
+    }
+
+    // If we're not buffering for any other reason, buffer for a transaction
+    // but set bufferResults to PROVISIONAL so we can still terminate the
+    // search early
+    if(search->bufferResults == CTABLE_BUFFER_NONE && search->tranType != CTABLE_SEARCH_TRAN_NONE) {
+	search->bufferResults = CTABLE_BUFFER_PROVISIONAL;
+    }
+
+    // if we're buffering,
+    // allocate a space for the search results that we'll then sort from
+    if (search->bufferResults != CTABLE_BUFFER_NONE) {
+	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
+    }
+}
 
 //
 // ctable_PerformSearch - perform the search
@@ -1158,10 +1194,6 @@ restart_search:
 	    }
 	}
 
-/*
-        if(ctable->share_type == CTABLE_SHARED_READER)
-	    fprintf(stderr, "search->reqIndexField=%d\n", search->reqIndexField);
-*/
 	// Look for the best usable search field starting with the requested
 	// one
 	for(try = 0; try < search->nComponents; try++, index++) {
@@ -1194,15 +1226,11 @@ restart_search:
 
 		    // Always use a hash if it's available, because it's
 		    // either '=' (with only one result) or 'in' (which
-		    // has to be walked here).
+		    // HAS to be walked here).
 		    break;
 		}
 	    }
 
-/*
-            if(ctable->share_type == CTABLE_SHARED_READER)
-	        fprintf(stderr, "ctable->skipLists[%d]=0x%lX\n", field, (long)ctable->skipLists[field]);
-*/
 	    // Do we have an index on this puppy?
 	    if(!ctable->skipLists[field]) {
 		continue;
@@ -1283,35 +1311,8 @@ restart_search:
 	}
     }
 
-    // buffer results if:
-    //   We've got search actions, AND...
-    //     We're searching, or...
-    //     We're a reader table, or...
-    //     We explicitly requested bufering.
-    if (search->action == CTABLE_SEARCH_ACTION_NONE) {
-	search->bufferResults = CTABLE_BUFFER_NONE;
-    } else if(search->sortControl.nFields > 0) {
-	search->bufferResults = CTABLE_BUFFER_DEFER;
-#ifdef WITH_SHARED_TABLES
-    } else if(ctable->share_type == CTABLE_SHARED_READER) {
-	search->bufferResults = CTABLE_BUFFER_DEFER;
-#endif
-    } else if(search->bufferResults < 0) {
-    	search->bufferResults = CTABLE_BUFFER_NONE;
-    }
-
-    // If we're not buffering for any other reason, buffer for a transaction
-    // but set bufferResults to PROVISIONAL so we can still terminate the
-    // search early
-    if(search->bufferResults == CTABLE_BUFFER_NONE && search->tranType != CTABLE_SEARCH_TRAN_NONE) {
-	search->bufferResults = CTABLE_BUFFER_PROVISIONAL;
-    }
-
-    // if we're buffering,
-    // allocate a space for the search results that we'll then sort from
-    if (search->bufferResults != CTABLE_BUFFER_NONE) {
-	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
-    }
+    // Prepare transaction buffering if necessary
+    ctable_PrepareTransactions(ctable, search);
 
     if (walkType == WALK_DEFAULT) {
 	// walk the hash table links.
@@ -1334,7 +1335,11 @@ restart_search:
 	    }
         }
     } else if(walkType == WALK_HASH_EQ || walkType == WALK_HASH_IN) {
-	// if it's '=': inIndex == inCount == 0 BUT key != NULL
+	// Just look up the necessary hash table values
+
+	// This loop is a little complex because for "=" the key is
+	// already set, otherwise it needs to be loaded from the index
+	// list. This would actually be simpler with a goto. :)
 	while (inIndex < inCount || key) {
 	    // If we don't have a key, get one.
 	    if (!key)
@@ -1452,6 +1457,8 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 #endif
 
 	// Count is only to make sure we blow up on infinite loops
+	// It's compared less than OR equal to the largest possible value
+	// it could have.
 	for(myCount = 0; myCount <= ctable->count; myCount++) {
 	    if(skipNext == SKIP_NEXT_IN_LIST) {
 		// We're looking at a list of entries rather than a range,
@@ -1545,8 +1552,9 @@ if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%ld; row->_r
 	    }
 
             // walk walkRow through the linked list of rows off this skip list
-	    // node. if you ever change this to make deletion possible while
-	    // searching, switch this to use the safe foreach routine instead
+	    // node. This is not the safe foreach routine because we don't
+	    // change the skiplist during the search, and if someone else
+	    // does it we need to restart the transaction anyway.
 
             CTABLE_LIST_FOREACH (row, walkRow, indexNumber) {
 
