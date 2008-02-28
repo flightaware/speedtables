@@ -76,34 +76,46 @@ proc remote_ctable_cache_disconnect {cttpUrl {sock ""}} {
 proc remote_ctable_cache_connect {cttpUrl} {
     variable ctableSockets
 
+    # If there's a valid open socket
     if {[info exists ctableSockets($cttpUrl)]} {
-       return $ctableSockets($cttpUrl)
+	if {![eof $ctableSockets($cttpUrl)]} {
+            return $ctableSockets($cttpUrl)
+	}
+	close $ctableSockets($cttpUrl)
+	unset ctableSockets($cttpUrl)
     }
 
     lassign [::ctable_net::split_ctable_url $cttpUrl] host port dir remoteTable stuff
 
-    set sock [socket $host $port]
-    set ctableSockets($cttpUrl) $sock
-
-    if {[gets $sock line] < 0} {
+    # Don't error out immediately if we can't open the socket
+    if [catch {socket $host $port} sock] {
 	after 500
-	if {[gets sock line] < 0} {
-	    error "unexpected EOF from server"
-	}
+	set sock [socket $host $port]
+    }
+
+    # Previous code retried this. I don't see any reason to, I think it was
+    # trying to handle the "can't open socket" case.
+    if {[gets $sock line] < 0} {
+	close $sock
+	error "unexpected EOF from server"
     }
 
     if {[lindex $line 0] != "ctable_server" && [lindex $line 0] != "sttp_server"} {
+	close $sock
 	error "server hello line format error"
     }
 
     if {[lindex $line 1] != "1.0"} {
+	close $sock
 	error "server version [lindex $line 1] mismatch"
     }
 
     if {[lindex $line 2] != "ready"} {
+	close $sock
 	error "unable to handle server state of unreadiness"
     }
 
+    set ctableSockets($cttpUrl) $sock
     return $sock
 }
 
@@ -151,6 +163,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 	# Ignore blank lines
 	if {[string length $line] < 1} {
 	    if {[gets $sock line] < 0} {
+		remote_ctable_cache_disconnect $cttpUrl $sock
 	        error "$cttpUrl: unexpected EOF from server"
 	    }
 	    continue

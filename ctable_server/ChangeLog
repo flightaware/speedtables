@@ -2,6 +2,16 @@
 
 $Id$
 
+1/28/08 peter
+    Change remote_ctable_send:
+    * Call remote_ctable_cache_disconnect on sockets when detecting EOF
+      on looking for a response
+    Change remote_ctable_cache_connect:
+    * Abandon sockets that are at EOF
+    * Retry the socket connection, once, after 500 ms
+    * discard the invalid connection instead of caching it if the server does
+      not respond with a valid ctable_server string.
+
 2/5/08 karl
     * Detect EOF from server socket rather than going into an infinite loop.
 
