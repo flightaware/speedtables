@@ -9,6 +9,7 @@
 #
 
 INSTDIR=/usr/local/lib/ctable_server
+BINDIR=/usr/local/bin
 
 pkgIndex.tcl:	ctable_client.tcl ctable_server.tcl
 	echo "pkg_mkIndex . *.tcl" | tclsh8.4
@@ -16,6 +17,10 @@ pkgIndex.tcl:	ctable_client.tcl ctable_server.tcl
 all:	pkgIndex.tcl
 
 install:	all
-	-mkdir $(INSTDIR)
+	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl $(INSTDIR)
+	-install -m 755 sttp $(BINDIR)
+
+test:
+	cd tests; make
 

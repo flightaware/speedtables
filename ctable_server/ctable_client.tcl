@@ -97,7 +97,7 @@ proc remote_ctable_cache_connect {cttpUrl} {
     # trying to handle the "can't open socket" case.
     if {[gets $sock line] < 0} {
 	close $sock
-	error "unexpected EOF from server"
+	error "unexpected EOF from server on connect"
     }
 
     if {[lindex $line 0] != "ctable_server" && [lindex $line 0] != "sttp_server"} {
@@ -135,6 +135,25 @@ proc remote_sock_send {sock cttpUrl command} {
 }
 
 #
+# read a possibly multi-line response from the server
+#
+proc get_response {sock lineVar} {
+    upvar 1 $lineVar line
+    while {[set length [gets $sock line]] == 0} { continue }
+    if {$length > 0} {
+        # Handle "# NNNN" - multi-line request NNNN bytes long
+        if {"[string index $line 0]" == "#"} {
+	    set length [string trim [string range $line 1 end]]
+	    set line [read $sock $length]
+	    if {"$line" == ""} {
+		set length 0
+	    }
+        }
+    }
+    return $length
+}
+
+#
 # remote_ctable_send - send a command to a remote ctable server
 #
 proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_redirect 0}} {
@@ -145,35 +164,23 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 
     set sock [remote_ctable_cache_connect $cttpUrl]
 
-    # Try 5 times to send the data
+    # Try 5 times to send the data and get a response
     set i 0
-    while {[catch {remote_sock_send $sock $cttpUrl $command} err] == 1} {
+    while 1 {
+        if {[catch {remote_sock_send $sock $cttpUrl $command} err] != 1} {
+	    if {[get_response $sock line] > 0} { break }
+	    set err "Unexpected EOF from server on response"
+	}
 	incr i
 	if {$i > 5} {
 	    error "$cttpUrl: $err"
 	}
         remote_ctable_cache_disconnect $cttpUrl $sock
-
+    
 	set sock [remote_ctable_cache_connect $cttpUrl]
     }
 
-    set line [gets $sock]
-
     while 1 {
-	# Ignore blank lines
-	if {[string length $line] < 1} {
-	    if {[gets $sock line] < 0} {
-		remote_ctable_cache_disconnect $cttpUrl $sock
-	        error "$cttpUrl: unexpected EOF from server"
-	    }
-	    continue
-	}
-
-	# Handle "# NNNN" - multi-line request NNNN bytes long
-	if {"[string index $line 0]" == "#"} {
-	    set line [read $sock [string trim [string range $line 1 end]]]
-	}
-
 	switch [lindex $line 0] {
 	    "e" {
 		error [lindex $line 1] [lindex $line 2] [lindex $line 3]
@@ -265,7 +272,9 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			error "no action, need -write_tabsep or -code: $actionData"
 		    }
 		}
-    		set line [gets $sock]
+		if {[get_response $sock line] <= 0} {
+		    error "$cttpUrl: unexpected EOF from server after multiline response"
+		}
 	    }
 
 	    default {

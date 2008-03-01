@@ -15,9 +15,13 @@ namespace eval ::ctable_server {
 
   variable evalEnabled 1
 
+  variable logfile stdout
+
+  variable hideErrorInfo 1
+
   # eval? command	args
   variable serverCommands {
-    0 shutdown		""
+    0 shutdown		{[-nowait]}
     0 redirect		{remoteURL [-shutdown]}
     0 quit		""
     0 info		{[-verbose]}
@@ -142,9 +146,23 @@ proc start_server {{port 11111}} {
 }
 
 #
-# shutdown_servers - close server sockets and flag the system to shut down
+# close_clients - close all open client sockets
 #
-proc shutdown_servers {} {
+proc close_clients {} {
+    variable clientList
+
+    foreach {sock ip port} $clientList {
+	serverlog "Closing $sock on $port from $ip"
+	close $sock
+    }
+    set clientList {}
+}
+
+#
+# shutdown_servers - close server sockets and flag the system to shut down
+#   on a clean shutdown
+#
+proc shutdown_servers {{clean 1}} {
     variable portSockets
     variable shuttingDown
 
@@ -153,8 +171,10 @@ proc shutdown_servers {} {
 	close $sock
 	unset portSockets($port)
     }
-    serverlog "Requesting shutdown"
-    set shuttingDown 1
+    if {$clean} {
+        serverlog "Requesting shutdown"
+        set shuttingDown 1
+    }
 }
 
 #
@@ -176,6 +196,30 @@ proc accept_connection {sock ip port} {
 }
 
 #
+# handle_eof - do the various bits of cleanup associated with a socket
+#   closing, or the client requesting a socket be closed
+#
+proc handle_eof {sock {eof EOF}} {
+    variable clientList
+    variable shuttingDown
+
+    set i [lsearch $clientList $sock]
+    if {$i >= 0} {
+	set j [expr $i + 2]
+	set clientList [lreplace $clientList $i $j]
+    }
+    serverlog "$eof on $sock, closing"
+    close $sock
+    if {$shuttingDown} {
+	if {[llength $clientList] == 0} {
+	    serverdie "All client sockets closed, shutting down"
+	} else {
+	    serverlog "Waiting on [expr [llength $clientList] / 3] clients."
+	}
+    }
+}
+
+#
 # remote_receive - receive data from the remote side
 #
 proc remote_receive {sock myPort} {
@@ -183,30 +227,16 @@ proc remote_receive {sock myPort} {
     variable registeredCtableRedirects
     variable ctableUrlCache
 
+### puts stderr "remote_receive '$sock' '$myPort'"
+
     if {[eof $sock]} {
-	variable clientList
-	variable shuttingDown
-	set i [lsearch $clientList $sock]
-	if {$i >= 0} {
-	    set j [expr $i + 2]
-	    set clientList [lreplace $clientList $i $j]
-	}
-	serverlog "EOF on $sock, closing"
-	close $sock
-	if {$shuttingDown} {
-	    if {[llength $clientList] == 0} {
-	        serverlog "All client sockets closed, shutting down"
-	        exit 0
-	    } else {
-		serverlog "Waiting on [expr [llength $clientList] / 3] clients."
-	    }
-	}
-	return
+	handle_eof $sock
+        return
     }
 
     if {[gets $sock line] >= 0} {
 	if {"$line" == ""} {
-	    serverlog "blank line"
+	    serverlog "blank line from $sock"
 	    return
 	}
 	# "#NNNN" means a multi-line request NNNN bytes long
@@ -236,14 +266,28 @@ proc remote_receive {sock myPort} {
 	}
 
 	if {[catch {remote_invoke $sock $table $line $myPort} result] == 1} {
+	    set ec $::errorCode
+	    set ei $::errorInfo
+
+	    if {$ec == "ctable_quit"} {
+		serverlog "$table: $result (done)"
+	        # We've already closed the socket, done
+		return
+	    }
+
 	    serverlog "$table: $result" \
-		"In ($sock) $ctableUrl $line" $::errorInfo
-	    # look at errorInfo if you want to know more, don't send it
-	    # back to them -- it exposes stuff about us they don't care
-	    # about
-	    if {$errorCode == "ctable_quit"} return
-	    ### puts stdout [list e $result "" $errorCode]
-	    remote_send $sock [list e $result "" $errorCode]
+		"In ($sock) $ctableUrl $line" $ei"
+
+	    variable hideErrorInfo
+	    if {$hideErrorInfo} {
+	        # look at errorInfo if you want to know more, don't send it
+	        # back to them -- it exposes stuff about us they don't care
+	        # about
+		set ei ""
+	    }
+
+	    ### puts stdout [list e $result $ei $ec]
+	    remote_send $sock [list e $result $ei $ec]
 	} else {
 	    ### puts stdout [list k $result]
 	    remote_send $sock [list k $result]
@@ -261,6 +305,13 @@ proc remote_send {sock line {multi 1}} {
     }
     puts $sock $line
     flush $sock
+}
+
+#
+# Send an "OK" empty response
+#
+proc remote_ok {sock} {
+    puts $sock [list k ""]
 }
 
 #
@@ -292,7 +343,7 @@ proc remote_invoke {sock table line port} {
     variable triggerCommands
     variable triggerCode
 
-    ### puts "remote_invoke '$sock' '$line'"
+    ### puts stderr "remote_invoke '$sock' '$table' '$line' '$port'"
 
     set remoteArgs [lassign $line command]
 
@@ -300,7 +351,16 @@ proc remote_invoke {sock table line port} {
 
     switch $command {
 	"shutdown" {
-	    return [shutdown_servers]
+	    if {[string match "-no*" [lindex $remoteArgs 0]]} {
+	        # Acknowledge immediately because the socket is going down hard
+	        remote_ok $sock
+		# No cleanup, we're killing everything
+		serverdie "Shutting down immediately"
+		# And just in case...
+	        error "quit" "" ctable_quit
+	    } else {
+	        return [shutdown_servers]
+	    }
 	}
 
 	"redirect" {
@@ -321,8 +381,12 @@ proc remote_invoke {sock table line port} {
 	    return 1
 	}
 
-	"quit" {
-	    close $sock
+	"quit" { # A more polite "eof" :)
+	    # Acknowledge immediately because the socket is going down hard
+	    remote_ok $sock
+	    # Clean up
+	    handle_eof $sock quit
+	    # And this will keep it from trying to send another OK
 	    error "quit" "" ctable_quit
 	}
 
@@ -445,12 +509,44 @@ proc remote_invoke {sock table line port} {
 }
 
 proc serverlog {args} {
+    variable logfile
     if [llength $args] {
 	set message "[clock format [clock seconds]] [pid]: [join $args "\n"]"
 	if {[llength $args] > 1} {
 	    set message "\n$message"
 	}
-	puts $message
+	puts $logfile $message
+    }
+}
+
+proc serverwait {{var ""}} {
+    variable waitvar
+    if {"$var" != ""} {
+	uplevel 1 [list set $var 0]
+	set waitvar $var
+    } else {
+	set waitvar ::ctable_server::Die
+    }
+    serverlog "Waiting on $waitvar"
+    vwait $waitvar
+}
+
+proc serverdie {{message ""}} {
+    if {"$message" != ""} {
+	set message " - $message"
+    }
+    serverlog "Terminating server$message"
+    variable waitvar
+    if [info exists waitvar] {
+	# Shutdown all the server sockets
+	shutdown_servers 0
+	# Close all the client sockets
+	close_clients
+	# And signal done
+	serverlog "Signal termination on $waitvar"
+	set $waitvar 1
+    } else {
+	exit 0
     }
 }
 

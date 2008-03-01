@@ -2,6 +2,16 @@
 
 $Id$
 
+1/29/08 peter
+    * Added "sttp" utility command for sending commands to a ctable server
+      from a shell script
+    * Many changes to ctable_server and ctable_client to get restart logic
+      correct.
+	Simplified both.
+	Added new proc ::ctable_server::serverwait to use instead of
+	    "vwait Die" to allow ctable_server to terminate cleanly and
+	    do cleanup outside the sttp process.
+
 1/28/08 peter
     Change remote_ctable_send:
     * Call remote_ctable_cache_disconnect on sockets when detecting EOF

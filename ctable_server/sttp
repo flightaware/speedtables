@@ -1,0 +1,24 @@
+#!/usr/bin/env tclsh8.4
+# $Id$
+
+
+package require ctable_client
+
+if {[llength $argv] < 2} {
+  puts "Usage: $argv0 sttp_url sttp_command ?args...?"
+}
+
+set cmd [lassign $argv url]
+remote_ctable $url _remote
+
+set status [catch [concat _remote $cmd] response]
+
+if {$status} {
+  puts stderr $response
+} else {
+  puts $response
+}
+
+_remote destroy
+
+exit $status

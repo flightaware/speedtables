@@ -2,30 +2,38 @@
 
 # $Id$
 
-#TCLSH=/usr/fa/bin/tclsh8.4
 TCLSH=/usr/local/bin/tclsh8.4
+URL=ctable://localhost:1984/test
 
-echo + ${TCLSH} test.ct
+# Don't care what the result is
+../sttp $URL shutdown -nowait > /dev/null 2>&1
+
+# Rebuild the ctable
+rm -rf build
 ${TCLSH} test.ct
-echo + ${TCLSH} test_server.tcl \&
-${TCLSH} test_server.tcl &
-pid=$!
-echo + sleep 5
-sleep 5
 
-if kill -0 $pid 2>/dev/null
-then
-  echo "# server OK"
-else
-  echo "# server failed"
-  exit -1
-fi
+echo "`date` $0 $*" > server.log
 
 fail=0
 success=0
 for test
 do
-  echo + ${TCLSH} test_$test.tcl
+  # Start the server
+  ${TCLSH} test_server.tcl 2>> server.log &
+  pid=$!
+
+  # Wait for it to start
+  sleep 1
+  echo "`date` sttp $URL methods" >> server.log
+  if ../sttp $URL methods > /dev/null
+  then : OK
+  else 
+    echo "# server failed"
+    cat server.log
+    exit -1
+  fi
+
+  echo "`date` ${TCLSH} test_$test.tcl" >> server.log
   if ${TCLSH} test_$test.tcl
   then
     echo "# $test OK"
@@ -34,16 +42,23 @@ do
     echo "# $test failed"
     fail=`expr $fail + 1`
   fi
+
+  sleep 1
+  # Stop the server
+  echo "`date` sttp $URL shutdown -nowait" >> server.log
+  ../sttp $URL shutdown -nowait > /dev/null 2>&1
+
+  sleep 1
+  if kill -0 $pid 2>/dev/null
+  then
+    echo "# Server not shut down properly"
+    echo + kill $pid
+    kill $pid
+    fail=`expr $fail + 1`
+    cat server.log
+  fi
 done
 
-sleep 5
-if kill -0 $pid 2>/dev/null
-then
-  echo "# Server not shut down properly"
-  echo + kill $pid
-  kill $pid
-  fail=`expr $fail + 1`
-fi
 echo "# $success OK $fail failed"
 
 exit $failed
