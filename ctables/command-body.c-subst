@@ -560,6 +560,20 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	char	   *key;
         Tcl_Obj    *keyObj;
 	static char keyString[32];
+	int	    nocomplain = 0;
+
+	while (objc > 2) {
+	    char *option = Tcl_GetString (objv[2]);
+	    if(*option != '-') break;
+	    if (strcmp (Tcl_GetString (objv[2]), "-nocomplain") == 0) {
+	        nocomplain = 1;
+	    } else {
+		Tcl_AppendResult(interp, "Unknown option ", option, NULL);
+		return TCL_ERROR;
+	    }
+	    objv++;
+	    objc--;
+	}
 
 	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "pairList or field value ?field value...?");
@@ -608,11 +622,15 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	for (i = 0; i < listObjc; i+= 2) {
-	    if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], indexCtl) == TCL_ERROR) {
+	    if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], indexCtl, nocomplain) == TCL_ERROR) {
 		Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
 		return TCL_ERROR;
 	    }
 	}
+
+        if (indexCtl == CTABLE_INDEX_NEW)
+	    if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR)
+	        return TCL_ERROR;
 
         Tcl_SetObjResult (interp, Tcl_NewStringObj (key, -1));
 
@@ -623,13 +641,28 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
         int       i;
 	int       listObjc;
 	Tcl_Obj **listObjv;
+	Tcl_Obj  *keyObj = objv[2];
+	int	  nocomplain = 0;
 
-	if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key pairList or key field value ?field value...?");
+	while (objc > 3) {
+	    char *option = Tcl_GetString (objv[3]);
+	    if(*option != '-') break;
+	    if (strcmp (Tcl_GetString (objv[3]), "-nocomplain") == 0) {
+	        nocomplain = 1;
+	    } else {
+		Tcl_AppendResult(interp, "Unknown option ", option, NULL);
+		return TCL_ERROR;
+	    }
+	    objv++;
+	    objc--;
+	}
+
+	if (objc < 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "key ?-nocomplain? pairList or key field value ?field value...?");
 	    return TCL_ERROR;
 	}
 
-        row = ${table}_find_or_create (interp, ctable, Tcl_GetString (objv[2]), &indexCtl);
+        row = ${table}_find_or_create (interp, ctable, Tcl_GetString (keyObj), &indexCtl);
 	if(!row) {
 	    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
 	    return TCL_ERROR;
@@ -654,7 +687,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	for (i = 0; i < listObjc; i+= 2) {
-	    if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], indexCtl) == TCL_ERROR) {
+	    if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], indexCtl, nocomplain) == TCL_ERROR) {
 		Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
 		return TCL_ERROR;
 	    }

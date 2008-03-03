@@ -7,7 +7,13 @@
 # default 
 TCLSH=tclsh8.4
 TCLSHM=$(TCLSH)
+
+# With full memory debugging
+#TCLSH=tclsh8.4m
+#TCLSHM=$(TCLSH)
+
 # With shared memory debugging
+#TCLSH=tclsh8.4
 #TCLSHM=$(TCLSH)m
 
 all:

@@ -1,6 +1,10 @@
 
 $Id$
 
+3/03.2008 peter
+    * Added "-nocomplain" option for "set" and "store" and "makekey"
+      Need to add it for read_tabsep and import_postgres_result.
+
 2/25/2008 peter
     The ctable search main loop is pretty complex, and many of the comments
     are misleading. I've fixed a number of them to try and make them clearer.

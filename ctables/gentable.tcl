@@ -1507,12 +1507,16 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char
 }
 
 int
-${table}_set_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
+${table}_set_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl, int nocomplain)
 {
     int field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
-        return TCL_ERROR;
+	if (nocomplain) {
+	    Tcl_ResetResult(interp);
+	    return TCL_OK;
+	}
+	return TCL_ERROR;
     }
 
     return ${table}_set (interp, ctable, obj, row, field, indexCtl);

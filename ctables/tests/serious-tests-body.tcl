@@ -376,3 +376,13 @@ if {"[set result [return_test]]" != "Doctor Orpheus"} {
     error "Return test returned '$result'"
 }
 puts "ok"
+
+puts -nonewline "Testing 'set -nocomplain'..."
+proc nocomplain_test {} {
+    return [t set randomkey -nocomplain {name "Random Name" unknown unknown}]
+}
+
+if {"[set result [nocomplain_test]]" != ""} {
+    error "Nocomplain test returned '$result'"
+}
+puts "ok"
