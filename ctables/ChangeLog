@@ -1,7 +1,7 @@
 
 $Id$
 
-3/03.2008 peter
+3/03/2008 peter
     * Added "-nocomplain" option for "set" and "store" and "makekey"
       Need to add it for read_tabsep and import_postgres_result.
 
