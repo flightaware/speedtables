@@ -1777,7 +1777,7 @@ ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *ds
 }
 
 int
-${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsPtr, int *fieldNums, int *noKeysPtr, char *sepstr)
+${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsPtr, int *fieldNums, int *noKeysPtr, char *sepstr, int nocomplain)
 {
     int i;
     int field;
@@ -1806,8 +1806,12 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 		    break;
 
 	    if(!${table}_fields[i]) {
-                Tcl_AppendResult (interp, "Unknown field \"", string, "\" in ${table}", (char *)NULL);
-                return TCL_ERROR;
+		if(nocomplain) {
+		    i = -1;
+		} else {
+                    Tcl_AppendResult (interp, "Unknown field \"", string, "\" in ${table}", (char *)NULL);
+                    return TCL_ERROR;
+		}
             }
 
 	    fieldNums[field++] = i;
@@ -1939,7 +1943,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	} else {
 	    field = "";
 	}
-	if(i == keyColumn) {
+	if(i == keyColumn || fieldIds[col] == -1) {
 	    continue;
 	}
 	Tcl_SetStringObj (utilityObj, field, -1);
@@ -1959,7 +1963,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, int nocomplain) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj;
@@ -1992,7 +1996,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	}
 	string = Tcl_GetString (lineObj);
 
-	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys, sepstr) == TCL_ERROR) {
+	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys, sepstr, nocomplain) == TCL_ERROR) {
 	    Tcl_DecrRefCount (lineObj);
 	    return TCL_ERROR;
 	}

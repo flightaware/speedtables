@@ -554,18 +554,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_MAKEKEY:
       case OPT_STORE: {
-        int         i;
-	int         listObjc;
-	Tcl_Obj   **listObjv;
-	char	   *key;
-        Tcl_Obj    *keyObj;
-	static char keyString[32];
-	int	    nocomplain = 0;
+        int            i;
+	int            listObjc;
+	Tcl_Obj      **listObjv;
+	char	      *key;
+        Tcl_Obj       *keyObj;
+	static char    keyString[32];
+	int	       nocomplain = 0;
+	Tcl_Obj *CONST*origObjv = objv;
 
 	while (objc > 2) {
 	    char *option = Tcl_GetString (objv[2]);
 	    if(*option != '-') break;
-	    if (strcmp (Tcl_GetString (objv[2]), "-nocomplain") == 0) {
+	    if (strcmp (option, "-nocomplain") == 0) {
 	        nocomplain = 1;
 	    } else {
 		Tcl_AppendResult(interp, "Unknown option ", option, NULL);
@@ -576,7 +577,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	if (objc < 3) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "pairList or field value ?field value...?");
+	    Tcl_WrongNumArgs (interp, 2, origObjv, "pairList or field value ?field value...?");
 	    return TCL_ERROR;
 	}
 
@@ -638,16 +639,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_SET: {
-        int       i;
-	int       listObjc;
-	Tcl_Obj **listObjv;
-	Tcl_Obj  *keyObj = objv[2];
-	int	  nocomplain = 0;
+        int            i;
+	int            listObjc;
+	Tcl_Obj      **listObjv;
+	Tcl_Obj       *keyObj = objv[2];
+	int	       nocomplain = 0;
+	Tcl_Obj *CONST*origObjv = objv;
 
 	while (objc > 3) {
 	    char *option = Tcl_GetString (objv[3]);
 	    if(*option != '-') break;
-	    if (strcmp (Tcl_GetString (objv[3]), "-nocomplain") == 0) {
+	    if (strcmp (option, "-nocomplain") == 0) {
 	        nocomplain = 1;
 	    } else {
 		Tcl_AppendResult(interp, "Unknown option ", option, NULL);
@@ -658,7 +660,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	if (objc < 3) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "key ?-nocomplain? pairList or key field value ?field value...?");
+	    Tcl_WrongNumArgs (interp, 2, origObjv, "key ?-nocomplain? pairList or key field value ?field value...?");
 	    return TCL_ERROR;
 	}
 
@@ -798,23 +800,31 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  char              keyNumberString[32];
 	  int		    keyColumn;
 	  int		    firstColumn;
+	  int		    nocomplain = 0;
+	  Tcl_Obj	   *resultObj = objv[2];
 
 	  extern PGresult *PgGetResultId (Tcl_Interp *interp, CONST char *id, void **resultidPtr);
 
-          if ((objc < 3) || (objc > 4)) {
-	    arg_err:
-	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-nokeys?");
+	  while (objc > 3) {
+	      char *option = Tcl_GetString (objv[objc-1]);
+	      if(*option != '-') break;
+	      if (strcmp (option, "-nokeys") == 0) {
+	          noKeys = 1;
+	      } else if (strcmp (option, "-nocomplain") == 0) {
+		  nocomplain = 1;
+	      } else {
+	          goto import_arg_err;
+	      }
+	      objc--;
+	  }
+
+          if (objc != 3) {
+	    import_arg_err:
+	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-nokeys? ?-nocomplain?");
 	      return TCL_ERROR;
 	  }
 
-	  if (objc == 4) {
-	      if (strcmp (Tcl_GetString (objv[3]), "-nokeys") != 0) {
-	          goto arg_err;
-	      }
-	      noKeys = 1;
-	  }
-
-	  res = PgGetResultId (interp, Tcl_GetString (objv[2]), NULL);
+	  res = PgGetResultId (interp, Tcl_GetString (resultObj), NULL);
 	  if (res == NULL) {
 	      Tcl_SetStringObj (Tcl_GetObjResult (interp), Tcl_GetString (objv[2]), -1);
 	      Tcl_AppendResult (interp, " is not a valid query result", NULL);
@@ -843,8 +853,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      Tcl_SetStringObj (fieldNameObj, fieldName, -1);
 
 	      if (Tcl_GetIndexFromObj (interp, fieldNameObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-		  Tcl_AppendResult (interp, " while matching postgres field \"", fieldName, "\" with fields from table \"${table}\"", (char *)NULL);
-		  return TCL_ERROR;
+		  if (nocomplain) {
+		      Tcl_ResetResult(interp);
+		      fieldIndex = -1;
+		  } else {
+		      Tcl_AppendResult (interp, " while matching postgres field \"", fieldName, "\" with fields from table \"${table}\"", (char *)NULL);
+		      return TCL_ERROR;
+		  }
 	      }
 
 	      fieldList[field] = fieldIndex;
@@ -874,6 +889,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	      for (field = firstColumn; field < nFields; field++) {
 		  if(field == keyColumn) {
+		      continue;
+		  }
+
+		  if(fieldList[field] == -1) {
 		      continue;
 		  }
 
@@ -922,6 +941,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int              noKeys = 0;
 	int		 withFieldNames = 0;
 	char		*sepstr = "\t";
+	int		 nocomplain = 0;
 
 	if (objc < 3) {
 	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
@@ -961,6 +981,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		objIdx++;
 		objc--;
 		withFieldNames = 1;
+	    } else if (optIndex != OPT_WRITE_TABSEP && strcmp (possibleSwitch, "-nocomplain") == 0) {
+		objIdx++;
+		objc--;
+		nocomplain = 1;
 	    } else {
 		Tcl_AppendResult (interp, "unknown switch: ", possibleSwitch, (char *)NULL);
 		return TCL_ERROR;
@@ -991,7 +1015,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    nFields = objc;
 	    for (i = 0; i < objc; i++) {
 	        if (Tcl_GetIndexFromObj (interp, objv[objIdx++], ${table}_fields, "field", TCL_EXACT, &fieldIds[i]) != TCL_OK) {
-		    return TCL_ERROR;
+		    if(nocomplain) {
+			fieldIds[i] = -1;
+		    } else {
+		        return TCL_ERROR;
+		    }
 		}
 	    }
 	}
@@ -1024,7 +1052,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	if (optIndex == OPT_WRITE_TABSEP) {
 	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr);
 	} else if(optIndex == OPT_READ_TABSEP) {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, nocomplain);
 	}
 
 	break;
