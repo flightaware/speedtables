@@ -30,10 +30,15 @@ package provide speedtable 1.1
     # set to 1 to build with debugging and link to tcl debugging libraries
     #set genCompilerDebug 0
     # set to 1 to link to mem debug libraries
-    #set memDebug 0
+    set memDebug 0
+
+if {"[info commands memory]" != ""} {
+    set memDebug 1
+    memory onexit [file join [pwd] memory.log]
+}
 
     # set to 1 to show compiler commands
-    #set showCompilerCommands 0
+    set showCompilerCommands 1
 
     # set to 1 to run various sanity checks on rows
     #set sanityChecks 0
