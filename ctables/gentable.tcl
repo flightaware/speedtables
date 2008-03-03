@@ -1958,7 +1958,7 @@ int
 ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr) {
     Tcl_Channel      channel;
     int              mode;
-    Tcl_Obj         *lineObj = Tcl_NewObj();
+    Tcl_Obj         *lineObj;
     char            *string;
     int              recordNumber = 0;
     char             keyNumberString[32];
@@ -1976,15 +1976,22 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
         return TCL_ERROR;
     }
 
-    /* If no fields, read field names from first line */
+    /* Don't allocate this until necessary */
+    lineObj = Tcl_NewObj();
+
+    /* If no fields, read field names from first row */
     if(withFieldNames) {
         Tcl_SetStringObj (lineObj, "", 0);
-        if (Tcl_GetsObj (channel, lineObj) <= 0)
+        if (Tcl_GetsObj (channel, lineObj) <= 0) {
+	    Tcl_DecrRefCount (lineObj);
 	    return TCL_OK;
+	}
 	string = Tcl_GetString (lineObj);
 
-	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys, sepstr) == TCL_ERROR)
+	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys, sepstr) == TCL_ERROR) {
+	    Tcl_DecrRefCount (lineObj);
 	    return TCL_ERROR;
+	}
     }
 
     if(noKeys) {
