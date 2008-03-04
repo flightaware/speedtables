@@ -274,11 +274,6 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 	}
 
 	if (Tcl_GetIndexFromObj (interp, termList[0], searchTerms, "term", TCL_EXACT, &term) != TCL_OK) {
-	    // Allow for static search terms.
-	    if(search->nocomplain) {
-		Tcl_ResetResult(interp);
-		continue;
-	    }
 	    goto err;
 	}
 

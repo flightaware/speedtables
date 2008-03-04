@@ -239,7 +239,6 @@ typedef struct {
     int                                  nRetrieveFields;
 
     int                                  noKeys;
-    int					 nocomplain;
 
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsepIncludeFieldNames;
