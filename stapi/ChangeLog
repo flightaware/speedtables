@@ -1,5 +1,8 @@
 $Id$
 
+3/04/2008 peter
+    Make "List" the default for STDisplay.
+
 12/14/2007 karl
     * Install by default to /usr/local/lib not /usr/fa/lib.
 
