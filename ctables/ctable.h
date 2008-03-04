@@ -109,6 +109,10 @@ typedef struct ctable_baseRowStruct {
 #define CTABLE_COMP_RANGE 14
 #define CTABLE_COMP_IN 15
 
+// These must line up with the CTABLE_COMP terms above
+#define CTABLE_SEARCH_TERMS {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "notmatch", "match_case", "notmatch_case", "range", "in", (char *)NULL}
+
+
 // when setting, incr'ing, read_tabsepping, etc, we can control at the
 // C level whether we want normal index behavior (if the field is
 // indexed and it changes, it will be removed from the index under
@@ -170,6 +174,7 @@ typedef struct {
     void		    *row3;
     fieldCompareFunction_t   compareFunction;
     Tcl_Obj                **inListObj;
+    void		   **inListRows;
     int                      inCount;
     int                      fieldID;
     int                      comparisonType;
@@ -234,6 +239,7 @@ typedef struct {
     int                                  nRetrieveFields;
 
     int                                  noKeys;
+    int					 nocomplain;
 
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsepIncludeFieldNames;

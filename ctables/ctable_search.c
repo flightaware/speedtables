@@ -189,6 +189,43 @@ if(!s) panic("ctable_searchMatchPatternCheck called with null");
     return CTABLE_STRING_MATCH_PATTERN;
 }
 
+int ctable_CreateInRows(Tcl_Interp *interp, CTable *ctable, CTableSearchComponent *component)
+{
+    int i;
+
+    if(component->inListRows || component->inCount == 0)
+	return TCL_OK;
+
+    component->inListRows = (void **)ckalloc(component->inCount * sizeof (void *));
+
+    // Since the main loop may abort, make sure this is clean
+    for(i = 0; i < component->inCount; i++) {
+	component->inListRows[i] = NULL;
+    }
+
+    for(i = 0; i < component->inCount; i++) {
+	component->inListRows[i] = (*ctable->creator->make_empty_row) ();
+
+	if ((*ctable->creator->set) (interp, ctable, component->inListObj[i], component->inListRows[i], component->fieldID, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+	    Tcl_AppendResult (interp, " while processing \"in\" compare function", (char *) NULL);
+	    return TCL_ERROR;
+	}
+    }
+    return TCL_OK;
+}
+
+void ctable_FreeInRows(CTable *ctable, CTableSearchComponent *component)
+{
+    if(component->inListRows) {
+	int i;
+	for(i = 0; i < component->inCount; i++) {
+	    if(component->inListRows[i])
+	        ctable->creator->delete (ctable, component->inListRows[i], CTABLE_INDEX_PRIVATE);
+	}
+	ckfree((void *)component->inListRows);
+	component->inListRows = NULL;
+    }
+}
 
 static int
 ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListObj, CONST char **fieldNames, CTableSearch *search) {
@@ -204,8 +241,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
     CTableSearchComponent  *components;
     CTableSearchComponent  *component;
     
-    // these terms must line up with the CTABLE_COMP_* defines
-    static CONST char *searchTerms[] = {"false", "true", "null", "notnull", "<", "<=", "=", "!=", ">=", ">", "match", "notmatch", "match_case", "notmatch_case", "range", "in", (char *)NULL};
+    static CONST char *searchTerms[] = CTABLE_SEARCH_TERMS;
 
     if (Tcl_ListObjGetElements (interp, componentListObj, &componentListCount, &componentList) == TCL_ERROR) {
         return TCL_ERROR;
@@ -238,6 +274,11 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 	}
 
 	if (Tcl_GetIndexFromObj (interp, termList[0], searchTerms, "term", TCL_EXACT, &term) != TCL_OK) {
+	    // Allow for static search terms.
+	    if(search->nocomplain) {
+		Tcl_ResetResult(interp);
+		continue;
+	    }
 	    goto err;
 	}
 
@@ -254,6 +295,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 	component->row2 = NULL;
 	component->row3 = NULL;
 	component->inListObj = NULL;
+	component->inListRows = NULL;
 	component->inCount = 0;
 	component->compareFunction = ctable->creator->fields[field]->compareFunction;
 
@@ -276,7 +318,6 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		}
 
 		component->row1 = (*ctable->creator->make_empty_row) ();
-
 	    } else if (term == CTABLE_COMP_RANGE) {
 	        void *row;
 
@@ -1054,6 +1095,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
     int			   inIndex = 0;
     Tcl_Obj		 **inListObj = NULL;
+    void		 **inListRows = NULL;
     int			   inCount = 0;
 
     int			   canUseHash = 1;
@@ -1164,6 +1206,7 @@ restart_search:
     }
 #endif
 
+#if 0
     // Check for invalid "in" components.
     if (search->nComponents > 0) {
 	int i;
@@ -1182,19 +1225,15 @@ restart_search:
 		if(creator->keyField == field) {
 #ifdef WITH_SHARED_TABLES
 	            if(!canUseHash) {
-        	        if(locked_cycle != LOST_HORIZON)
-	    		    read_unlock(ctable->share);
 		        Tcl_AppendResult(interp, "Need index for 'in' operator", NULL);
-		        return TCL_ERROR;
+		        finalResult = TCL_ERROR;
+		        goto clean_and_return;
 		    }
 #endif
 	        } else if(!ctable->skipLists[field]) {
-#ifdef WITH_SHARED_TABLES
-        	    if(locked_cycle != LOST_HORIZON)
-	    		read_unlock(ctable->share);
-#endif
 		    Tcl_AppendResult(interp, "Need index for 'in' operator on non-key field", NULL);
-		    return TCL_ERROR;
+		    finalResult = TCL_ERROR;
+		    goto clean_and_return;
 		}
 		if(search->reqIndexField == CTABLE_SEARCH_INDEX_NONE)
 	            search->reqIndexField = field;
@@ -1202,6 +1241,7 @@ restart_search:
 	    }
 	}
     }
+#endif
 
     // if they're asking for an index search, look for the best search
     // in the list of comparisons
@@ -1318,6 +1358,11 @@ restart_search:
 		    inOrderWalk = 0; // TODO: check if list in order
 		    inListObj = component->inListObj;
 		    inCount = component->inCount;
+		    if (ctable_CreateInRows(interp, ctable, component) == TCL_ERROR) {
+			finalResult = TCL_ERROR;
+			goto clean_and_return;
+		    }
+		    inListRows = component->inListRows;
 		    row1 = component->row1;
 		    break;
 		}
@@ -1501,13 +1546,6 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 		  if(inIndex >= inCount)
 		      goto search_complete;
 
-		  // make a row matching the next value in the list
-                  if ((*ctable->creator->set) (interp, ctable, inListObj[inIndex++], row1, skipField, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
-                      Tcl_AppendResult (interp, " while processing \"in\" compare function", (char *) NULL);
-                      finalResult = TCL_ERROR;
-                      goto clean_and_return;
-                  }
-
 #ifdef WITH_SHARED_TABLES
 		  if(main_cycle != LOST_HORIZON) {
 	            // Save the cycle at the time we started the walk
@@ -1516,7 +1554,7 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 #endif
 
 		  // If there's a match for this row, break out of the loop
-                  if (jsw_sfind (skipList, row1) != NULL)
+                  if (jsw_sfind (skipList, inListRows[inIndex++]) != NULL)
 		      break;
 	        }
 	    }
@@ -2091,6 +2129,8 @@ ctable_TeardownSearch (CTableSearch *search) {
 
 	    ckfree (component->clientData);
 	}
+
+	ctable_FreeInRows(search->ctable, component);
     }
 
     ckfree ((void *)search->components);

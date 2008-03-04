@@ -4793,6 +4793,25 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
       row1 = (struct $table *)component->row1;
       compType = component->comparisonType;
 
+      if (compType == CTABLE_COMP_IN) {
+	  int inIndex;
+	  if(component->inListRows == NULL && ctable_CreateInRows(interp, searchControl->ctable, component) == TCL_ERROR) {
+              return TCL_ERROR;
+	  }
+
+	  for(inIndex = 0; inIndex < component->inCount; inIndex++) {
+	      if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)component->inListRows[inIndex]) == 0) {
+		  break;
+	      }
+	  }
+
+	  if(inIndex >= component->inCount) {
+	      return TCL_CONTINUE;
+	  }
+	  continue;
+      }
+
+      // Take care of the easy cases first
       switch (compType) {
 	case CTABLE_COMP_LT:
 	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) < 0) {

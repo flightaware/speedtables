@@ -161,6 +161,9 @@ search+_test "using 'in'" {-compare {{in show {"The Brak Show" "Stroker and Hoop
 
 search_unsorted_test "using index and 'in'" {-index show -compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
+t index drop name
+search_test "unindexed in" {-index name -compare {{in name {"Brock Sampson" "Hank Venture"}}}} {hank brock}
+
 puts -nonewline "testing 'fields'..."
 if {[t fields] != {id name home show dad alive gender age coolness}} {
    error "t fields expected to return {id name home show dad alive gender age coolness}\nbut got {[t fields]}"
