@@ -4778,6 +4778,7 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
     int                                 exclude = 0;
     int                                 compType;
     CTableSearchComponent              *component;
+    int					inIndex;
 
 
 #ifdef SANITY_CHECKS
@@ -4793,8 +4794,9 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
       row1 = (struct $table *)component->row1;
       compType = component->comparisonType;
 
-      if (compType == CTABLE_COMP_IN) {
-	  int inIndex;
+      // Take care of the common code first
+      switch (compType) {
+	case CTABLE_COMP_IN:
 	  if(component->inListRows == NULL && ctable_CreateInRows(interp, searchControl->ctable, component) == TCL_ERROR) {
               return TCL_ERROR;
 	  }
@@ -4809,10 +4811,7 @@ int ${table}_search_compare(Tcl_Interp *interp, CTableSearch *searchControl, voi
 	      return TCL_CONTINUE;
 	  }
 	  continue;
-      }
 
-      // Take care of the easy cases first
-      switch (compType) {
 	case CTABLE_COMP_LT:
 	  if (component->compareFunction ((ctable_BaseRow *)row, (ctable_BaseRow *)row1) < 0) {
 	      continue;

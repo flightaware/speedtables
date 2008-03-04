@@ -934,7 +934,7 @@ static struct {
   {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_MATCH, 3 }, // MATCH_CASE
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTMATCH_CASE
   {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_ROW,   4 }, // RANGE
-  {SKIP_START_RESET,	SKIP_END_NONE, SKIP_NEXT_IN_LIST, 100}  // IN
+  {SKIP_START_RESET,	SKIP_END_NONE, SKIP_NEXT_IN_LIST,  6 }  // IN
 };
 
 #define SORT_SCORE 1 // being able to sort is worth 1 point
@@ -1206,43 +1206,6 @@ restart_search:
     }
 #endif
 
-#if 0
-    // Check for invalid "in" components.
-    if (search->nComponents > 0) {
-	int i;
-	int inField = -1;
-	for(i = 0; i < search->nComponents; i++) {
-	    if(search->components[i].comparisonType == CTABLE_COMP_IN) {
-		int field = search->components[i].fieldID;
-		if(inField != -1 && inField != field) {
-#ifdef WITH_SHARED_TABLES
-        	    if(locked_cycle != LOST_HORIZON)
-	    		read_unlock(ctable->share);
-#endif
-		    Tcl_AppendResult(interp, "Only one \"in\" operation per search", NULL);
-		    return TCL_ERROR;
-		}
-		if(creator->keyField == field) {
-#ifdef WITH_SHARED_TABLES
-	            if(!canUseHash) {
-		        Tcl_AppendResult(interp, "Need index for 'in' operator", NULL);
-		        finalResult = TCL_ERROR;
-		        goto clean_and_return;
-		    }
-#endif
-	        } else if(!ctable->skipLists[field]) {
-		    Tcl_AppendResult(interp, "Need index for 'in' operator on non-key field", NULL);
-		    finalResult = TCL_ERROR;
-		    goto clean_and_return;
-		}
-		if(search->reqIndexField == CTABLE_SEARCH_INDEX_NONE)
-	            search->reqIndexField = field;
-		inField = field;
-	    }
-	}
-    }
-#endif
-
     // if they're asking for an index search, look for the best search
     // in the list of comparisons
     //
@@ -1297,8 +1260,8 @@ restart_search:
 		    search->alreadySearched = index;
 
 		    // Always use a hash if it's available, because it's
-		    // either '=' (with only one result) or 'in' (which
-		    // HAS to be walked here).
+		    // either '=' (with only one result) or 'in' (with at
+		    // most inCount results).
 		    break;
 		}
 	    }

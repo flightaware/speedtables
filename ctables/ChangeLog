@@ -1,6 +1,10 @@
 
 $Id$
 
+3/04/2008 peter
+    * Allow search -compare {{in field {list...}}} even when field is
+      not indexed.
+
 3/03/2008 peter
     * Added "-nocomplain" option for "set" and "store" and "makekey"
       Need to add it for read_tabsep and import_postgres_result.
