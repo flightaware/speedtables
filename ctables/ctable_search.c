@@ -1155,11 +1155,51 @@ restart_search:
 	search->reqIndexField = CTABLE_SEARCH_INDEX_NONE;
     }
 
-    // If they're not asking for an indexed search, but the first
-    // component is "in", request an indexed search.
-    if (search->reqIndexField == CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
-	if(search->components[0].comparisonType == CTABLE_COMP_IN) {
-	    search->reqIndexField = search->components[0].fieldID;
+    // Check if we can use the hash table.
+#ifdef WITH_SHARED_TABLES
+    // fprintf(stderr, "ctable->share_type=%d\n", ctable->share_type);
+    if(ctable->share_type == CTABLE_SHARED_READER) {
+	// fprintf(stderr, "READER TABLE\n");
+	canUseHash = 0;
+    }
+#endif
+
+    // Check for invalid "in" components.
+    if (search->nComponents > 0) {
+	int i;
+	int inField = -1;
+	for(i = 0; i < search->nComponents; i++) {
+	    if(search->components[i].comparisonType == CTABLE_COMP_IN) {
+		int field = search->components[i].fieldID;
+		if(inField != -1 && inField != field) {
+#ifdef WITH_SHARED_TABLES
+        	    if(locked_cycle != LOST_HORIZON)
+	    		read_unlock(ctable->share);
+#endif
+		    Tcl_AppendResult(interp, "Only one \"in\" operation per search", NULL);
+		    return TCL_ERROR;
+		}
+		if(creator->keyField == field) {
+#ifdef WITH_SHARED_TABLES
+	            if(!canUseHash) {
+        	        if(locked_cycle != LOST_HORIZON)
+	    		    read_unlock(ctable->share);
+		        Tcl_AppendResult(interp, "Need index for 'in' operator", NULL);
+		        return TCL_ERROR;
+		    }
+#endif
+	        } else if(!ctable->skipLists[field]) {
+#ifdef WITH_SHARED_TABLES
+        	    if(locked_cycle != LOST_HORIZON)
+	    		read_unlock(ctable->share);
+#endif
+		    Tcl_AppendResult(interp, "Need index for 'in' operator on non-key field", NULL);
+		    return TCL_ERROR;
+		}
+		if(search->reqIndexField == CTABLE_SEARCH_INDEX_NONE)
+	            search->reqIndexField = field;
+		inField = field;
+	    }
 	}
     }
 
@@ -1174,14 +1214,6 @@ restart_search:
     //
     // If we're doing a client search, we don't have access to the
     // hashtable, so we can't do a hash search.
-#ifdef WITH_SHARED_TABLES
-    // fprintf(stderr, "ctable->share_type=%d\n", ctable->share_type);
-    if(ctable->share_type == CTABLE_SHARED_READER) {
-	// fprintf(stderr, "READER TABLE\n");
-	canUseHash = 0;
-    }
-#endif
-
     if (search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
 	int index = 0;
 	int try;
