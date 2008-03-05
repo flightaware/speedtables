@@ -136,18 +136,18 @@
 <p class="p11"><span class="s1">search+<span class="Apple-tab-span">	</span>24</span></p>
 <p class="p11"><span class="s1">foreach<span class="Apple-tab-span">	</span>24</span></p>
 <p class="p11"><span class="s1">incr<span class="Apple-tab-span">	</span>24</span></p>
-<p class="p11"><span class="s1">type<span class="Apple-tab-span">	</span>24</span></p>
+<p class="p11"><span class="s1">type<span class="Apple-tab-span">	</span>25</span></p>
 <p class="p11"><span class="s1">import_postgres_result<span class="Apple-tab-span">	</span>25</span></p>
-<p class="p11"><span class="s1">fieldtype<span class="Apple-tab-span">	</span>25</span></p>
+<p class="p11"><span class="s1">fieldtype<span class="Apple-tab-span">	</span>26</span></p>
 <p class="p11"><span class="s1">needs_quoting<span class="Apple-tab-span">	</span>26</span></p>
 <p class="p11"><span class="s1">names<span class="Apple-tab-span">	</span>26</span></p>
 <p class="p11"><span class="s1">reset<span class="Apple-tab-span">	</span>26</span></p>
-<p class="p11"><span class="s1">destroy<span class="Apple-tab-span">	</span>26</span></p>
+<p class="p11"><span class="s1">destroy<span class="Apple-tab-span">	</span>27</span></p>
 <p class="p11"><span class="s1">share<span class="Apple-tab-span">	</span>27</span></p>
 <p class="p11"><span class="s1">getprop<span class="Apple-tab-span">	</span>27</span></p>
 <p class="p11"><span class="s1">attach<span class="Apple-tab-span">	</span>27</span></p>
 <p class="p11"><span class="s1">statistics<span class="Apple-tab-span">	</span>27</span></p>
-<p class="p11"><span class="s1">write_tabsep<span class="Apple-tab-span">	</span>27</span></p>
+<p class="p11"><span class="s1">write_tabsep<span class="Apple-tab-span">	</span>28</span></p>
 <p class="p11"><span class="s1">read_tabsep<span class="Apple-tab-span">	</span>28</span></p>
 <p class="p11"><span class="s1">index<span class="Apple-tab-span">	</span>29</span></p>
 <p class="p10"><span class="s1">Special Notes On How To Make Searches Go Fast<span class="Apple-tab-span">	</span></span><span class="s5">31</span></p>
@@ -539,14 +539,18 @@
 <p class="p14"><span class="s1">Write everything in the table tab-separated to channel $channel</span></p>
 <p class="p29"><span class="s1">$speed table search -write_tabsep $channel</span></p>
 <p class="p14"><span class="s1">Write everything in the table with coolness &gt; 50 and hipness &gt; 50:</span></p>
-<p class="p29"><span class="s1">$speed table search -write_tabsep $channel \</span></p>
+<p class="p29"><span class="s1">$speedtable search -write_tabsep $channel \</span></p>
 <p class="p29"><span class="s1"><span class="Apple-converted-space">    </span>-compare {{&gt; coolness 50} {&gt; hipness 50}}</span></p>
 <p class="p14"><span class="s1">Run some code every everything in the table matching above:</span></p>
-<p class="p29"><span class="s1">$speed table search \</span></p>
+<p class="p29"><span class="s1">$speedtable search \</span></p>
 <p class="p29"><span class="s1"><span class="Apple-converted-space">    </span>-compare {{&gt; coolness 50} {&gt; hipness 50}} \</span></p>
 <p class="p29"><span class="s1"><span class="Apple-converted-space">     </span>-key key -array_get data -code {</span></p>
 <p class="p29"><span class="s1"><span class="Apple-tab-span">	</span><span class="Apple-converted-space">    </span>puts "key -&gt; $key, data -&gt; $data"</span></p>
 <p class="p29"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p37"><span class="s1">-poll_interval interval</span></p>
+<p class="p14"><span class="s1">Perform an </span><span class="s7">update</span><span class="s1"> operation every </span><span class="s7">interval</span><span class="s1"> rows, to allow background processing to work in the background while a long search is going on.</span></p>
+<p class="p37"><span class="s1">-poll_code {code}</span></p>
+<p class="p14"><span class="s1">Perform the specified </span><span class="s7">code</span><span class="s1"> every </span><span class="s7">-poll_interval</span><span class="s1"> rows. Errors from the code will be handled by the </span><span class="s7">bgerror</span><span class="s1"> mechanism. If no poll interval is specified then a default (1024) is used.</span></p>
 <p class="p19"><span class="s1"><i>search+</i></span></p>
 <p class="p14"><span class="s1">Search+ is a (deprecated) synonym for search.<span class="Apple-converted-space"> </span></span></p>
 <p class="p19"><span class="s1"><i>foreach</i></span></p>
@@ -1138,8 +1142,8 @@
 <p class="p14"><span class="s1">Note that varstrings are <i>char *</i> pointers.<span class="Apple-converted-space">  </span>We allocate the space for whatever string is stored and store the address of that allocated space.<span class="Apple-converted-space">  </span>Fixed-length strings are generated inline.</span></p>
 <p class="p5"><span class="s1">The null field bits and booleans are all generated together and should be stored efficiently by the compiler.<span class="Apple-converted-space">  </span>We rely on the C compiler to do the right thing with regards to word-aligning fields as needed for efficiency.</span></p>
 <p class="p14"><span class="s1">You can examine the C code generated -- it's quite readable.<span class="Apple-converted-space">  </span>If you didn't know better, you might think it was written by a person rather than a program.<span class="Apple-converted-space">  </span>(Several times when working on speed tables I’ve started editing the generated code rather than the code that’s generating it, by mistake.)</span></p>
-<p class="p14"><span class="s1">Each table-defining command created has a <i>speedTableCreatorTable</i> associated with it, for example:</span></p>
-<p class="p61"><span class="s1">struct speedTableCreatorTable {</span></p>
+<p class="p14"><span class="s1">Each table-defining command created has a <i>CTableCreatorTable</i> associated with it, for example:</span></p>
+<p class="p61"><span class="s1">struct CTableCreatorTable {</span></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>Tcl_HashTable <span class="Apple-converted-space">    </span>*registeredProspeed tablePtr;</span></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>long unsigned int<span class="Apple-converted-space">  </span>nextAutoCounter;</span></p>
 <p class="p62"><span class="s1"></span><br></p>
@@ -1149,15 +1153,15 @@
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>CONST char <span class="Apple-converted-space">      </span>**fieldNames;</span></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>Tcl_Obj<span class="Apple-converted-space">          </span>**nameObjList;</span></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int <span class="Apple-converted-space">              </span>*fieldList;</span></p>
-<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>enum speed table_types *fieldTypes;</span></p>
+<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>enum ctable_types *fieldTypes;</span></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int <span class="Apple-converted-space">              </span>*fieldsThatNeedQuoting;</span></p>
 <p class="p62"><span class="s1"></span><br></p>
-<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>struct speed tableFieldInfo **fields;</span></p>
+<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>struct ctableFieldInfo **fields;</span></p>
 <p class="p62"><span class="s1"></span><br></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>void *(*make_empty_row) ();</span></p>
-<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int (*set) (Tcl_Interp *interp, struct speed tableTable *speed table, Tcl_Obj *dataObj</span></p>
+<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int (*set) (Tcl_Interp *interp, struct CTableTable *ctable, Tcl_Obj *dataObj</span></p>
 <p class="p61"><span class="s1">, void *row, int field, int indexCtl);</span></p>
-<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int (*set_null) (Tcl_Interp *interp, struct speed tableTable *speed table, void *row,</span></p>
+<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int (*set_null) (Tcl_Interp *interp, struct CTable *ctable, void *row,</span></p>
 <p class="p61"><span class="s1">int field, int indexCtl);</span></p>
 <p class="p62"><span class="s1"></span><br></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>Tcl_Obj *(*get) (Tcl_Interp *interp, void *row, int field);</span></p>
@@ -1176,7 +1180,7 @@
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums,</span></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space"> </span>int nFields, Tcl_DString *dsPtr, int noKey);</span></p>
 <p class="p62"><span class="s1"></span><br></p>
-<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int (*search_compare) (Tcl_Interp *interp, struct speed tableSearchStruct *search</span></p>
+<p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int (*search_compare) (Tcl_Interp *interp, struct CTableSearchStruct *search</span></p>
 <p class="p61"><span class="s1">Control, void *pointer, int tailoredWalk);</span></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space">    </span>int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void</span></p>
 <p class="p61"><span class="s1"><span class="Apple-converted-space"> </span>*hashEntryPtr2);</span></p>
@@ -1186,17 +1190,17 @@
 <p class="p14"><span class="s1"><i>nFields</i> is the number of fields defined for the row, while <i>nLinkedLists</i> says how many doubly linked lists are included in each row.<span class="Apple-converted-space">  </span>(The first doubly linked list is used by Speed Tables to link all rows of a table together; the rest are created for linking into index entries for each field that is defined as indexable.)</span></p>
 <p class="p14"><span class="s1"><i>fieldNames</i> is a pointer to an array of pointers to the name of each field, while <i>nameObjList</i> is a pointer to an array of pointers of Tcl objects containing the names of each field.<span class="Apple-converted-space">  </span>By generating these once in the meta table, they can be used all over the place, by each speed table created by the meta table in many places, sharing these objects and neither incurring the memory or CPU overhead of constantly instantiating new Tcl objects from the name string whenever field names are needed.</span></p>
 <p class="p14"><span class="s1"><i>fieldList</i> is a pointer to an array of integers corresponding to the field numbers.<span class="Apple-converted-space">  </span>Guess what?<span class="Apple-converted-space">  </span>If there are six fields it will contain {0, 1, 2, 3, 4, 5}.<span class="Apple-converted-space">  </span>The thing is we can feed it to routines we have that take such a list when the user has not told us what fields they want.<span class="Apple-converted-space">  </span><i>fieldTypes</i> are an array of data type numbers for each field.<span class="Apple-converted-space">  </span>(Data type numbers are defined in speed table.h.)<span class="Apple-converted-space">  </span><i>fieldsThatNeedQuoting</i> is an array of ints, one for each field, saying if it needs quoting or not.</span></p>
-<p class="p5"><span class="s1">A number of the fields defined above are being consolidated into the <i>speed tableFieldInfo struct</i>, which is defined for each field and contains the field name, name object, field number, type number, whether or not it needs quoting, its compare function (for indexing the the like, something we generate for each field), and its index number (which index of the array of doubly linked list elements built into each row), if indexed, else -1.</span></p>
+<p class="p5"><span class="s1">A number of the fields defined above are being consolidated into the <i>CTableFieldInfo struct</i>, which is defined for each field and contains the field name, name object, field number, type number, whether or not it needs quoting, its compare function (for indexing the the like, something we generate for each field), and its index number (which index of the array of doubly linked list elements built into each row), if indexed, else -1.</span></p>
 <p class="p14"><span class="s1">Finally, a number of pointers to functions to do things to the speed table are defined.<span class="Apple-converted-space">  </span>This is cool stuff.<span class="Apple-converted-space">  </span>As I began to code the complex sorting and indexing code, it started getting hard to keep my head wrapped around it all.<span class="Apple-converted-space">  </span>Trying to custom-generate all that search code made complicated code even more complicated.<span class="Apple-converted-space">  </span>Standardizing the search code to not be custom generated at all and to access the custom-generated aspects of the different Speed Tables through these function pointers.</span></p>
 <p class="p14"><span class="s1">Function pointers are provided to create an empty row, set a field of a row to a value, set a field of a row to null, get the native value of a field from a row as a Tcl object, and get a string representation of a field from a row.<span class="Apple-converted-space">  </span>Additional function pointers are provided to get the contents of a row as a Tcl list and as a key-value Tcl list, with or without null values, to append the contents of a field to a list, to append the name of a field and the contents of a row’s field to a list, and some other stuff like that.</span></p>
 <p class="p14"><span class="s1">Each instance of the table created with "create" has a speedtableTable associated with it:</span></p>
-<p class="p30"><span class="s1">struct speed tableTable {</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>struct speed tableCreatorTable<span class="Apple-converted-space">      </span>*creatorTable;</span></p>
+<p class="p30"><span class="s1">struct CTableTable {</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>struct CTableCreatorTable<span class="Apple-converted-space">      </span>*creatorTable;</span></p>
 <p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Tcl_HashTable <span class="Apple-converted-space">                      </span>*keyTablePtr;</span></p>
 <p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Tcl_Command<span class="Apple-converted-space">                          </span>commandInfo;</span></p>
 <p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>long <span class="Apple-converted-space">                                </span>count;</span></p>
 <p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>jsw_skip_t <span class="Apple-converted-space">                        </span>**skipLists;</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>struct speed table_baseRow<span class="Apple-converted-space">          </span>*ll_head;</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>struct ctable_baseRow<span class="Apple-converted-space">          </span>*ll_head;</span></p>
 <p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>int<span class="Apple-converted-space">                                  </span>nLinkedLists;</span></p>
 <p class="p29"><span class="s1">};</span></p>
 <p class="p14"><span class="s1">This contains a pointer to the meta table (creatorTable), a hash table that we use to store and fetch keys, a command info struct that we use to delete our created command from the Tcl interpreter when it's told to destroy itself, the row count, a pointer to an array of pointers to skip lists, one for each field that has an index defined for it (it’s NULL otherwise).</span></p>
@@ -1230,17 +1234,17 @@
 <p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>FIELD_CABLE_INFO_EXTRASTUFF</span></p>
 <p class="p30"><span class="s1">};</span></p>
 <p class="p30"><span class="s1">The types of each field are emitted as an array and whether or not fields need quoting:</span></p>
-<p class="p30"><span class="s1">enum speed table_types cable_info_types[] = {</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_INET,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_MAC,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_VARSTRING,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_VARSTRING,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_VARSTRING,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_VARSTRING,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_INT,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_INT,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_LONG,</span></p>
-<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>Speed Table_TYPE_TCLOBJ</span></p>
+<p class="p30"><span class="s1">enum ctable_types cable_info_types[] = {</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_INET,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_MAC,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_VARSTRING,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_VARSTRING,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_VARSTRING,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_VARSTRING,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_INT,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_INT,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_LONG,</span></p>
+<p class="p30"><span class="s1"><span class="Apple-converted-space">    </span>CTABLE_TYPE_TCLOBJ</span></p>
 <p class="p30"><span class="s1">};</span></p>
 <p class="p47"><span class="s1"></span><br></p>
 <p class="p30"><span class="s1">int cable_info_needs_quoting[] = {</span></p>
@@ -1260,7 +1264,7 @@
 <p class="p14"><span class="s1">An<i> init routine</i>, for example, cable_info_init, is defined that will set a newly malloc'ed row to default values (Defaults can be specified for most fields. If a field does not have a default, that field’s null bit is set to true.)</span></p>
 <p class="p5"><span class="s1">For efficiency's sake, we have a base copy that we initialize the first time the init routine is called and then for subsequent calls to initialize a row we merely do a structure copy to copy that base copy to the pointer to the row passed.</span></p>
 <p class="p14"><span class="s1">A delete routine is defined, for instance, cable_info_delete, that will take a pointer to the defined structure and free it.<span class="Apple-converted-space">  </span>The thing here is that it has to delete any varstrings defined within the row prior to freeing the row itself.</span></p>
-<p class="p14"><span class="s1"><b>*_find</b> takes a pointer to the StructTable corresponding to the speed table, for instance, cable_infoStructTable and a char * containing the key to be<span class="Apple-converted-space">  </span>looked up, and returns a pointer to the struct (in the example, a struct speed table_info *) containing the matching row, or NULL if none is found.</span></p>
+<p class="p14"><span class="s1"><b>*_find</b> takes a pointer to the StructTable corresponding to the speed table, for instance, cable_infoStructTable and a char * containing the key to be<span class="Apple-converted-space">  </span>looked up, and returns a pointer to the struct (in the example, a struct ctable_info *) containing the matching row, or NULL if none is found.</span></p>
 <p class="p14"><span class="s1"><b>*_find_or_create</b> takes a pointer to the StructTable, a char * containing the key to be looked up or created, and a pointer to an int.<span class="Apple-converted-space">  </span>If the key is found, a pointer to its row is returned and the pointed-to int is set to zero.<span class="Apple-converted-space">  </span>If it is not found, a new entry for that name is created, an instance of the structure is allocated and initialized, the pointed-to int is set to one, and the pointer to the new row is returned.</span></p>
 <p class="p14"><span class="s1">A <b>*_obj_is_null</b> routine is defined, for instance cable_info_obj_is_null that will return a 1 if the passed Tcl object contains a null value and zero otherwise.</span></p>
 <p class="p14"><span class="s1"><b>*_genlist</b> (cable_info_genlist), given a pointer to a Tcl interpreter and a pointer to a row of the corresponding structure type will generate a list of all of the fields in the table into the Tcl interpreter's result object.</span></p>
@@ -1297,13 +1301,13 @@
 <p class="p14"><span class="s1">Speed Tables has been carefully coded to generate C code that will compile cleanly, specifically with the GNU C Compiler, gcc 3.3 and gcc 4.0.<span class="Apple-converted-space">  </span>Right now we run the compiler with error warning levels set very high and any warnings causing the speed tables library generation process to fail.<span class="Apple-converted-space">  </span>This has helped us to catch many bugs during development and we’ve done the work to make sure all the routines are being used with correct argument types, etc.</span></p>
 <p class="p14"><span class="s1">Should you come across a compiler warning that stops the speed table generation process, you may want to look at speed tables’ software and try to fix it.</span></p>
 <p class="p14"><span class="s1">If you want to see what compiler commands speed tables is executing, you can turn on compiler debugging.</span></p>
-<p class="p29"><span class="s1">set ::speedtable::showCompilerCommands 1</span></p>
+<p class="p29"><span class="s1">set ::ctable::showCompilerCommands 1</span></p>
 <p class="p14"><span class="s1">Do this after your “package require speedtable” and before you declare your C extensions.</span></p>
 <p class="p14"><span class="s1">How we invoke the compiler can be found in <b>gentable.tcl</b>.<span class="Apple-converted-space">  </span>We currently only support FreeBSD and Mac OS X, and a general solution will likely involve producing a GNU configure.in script and running autoconf, configure, etc.<span class="Apple-converted-space">  </span>We’d love some help on this.</span></p>
 <p class="p24"><span class="s1">Simple Syntax Errors May Cause Compiler Errors</span></p>
 <p class="p15"><span class="s1"></span><br></p>
 <p class="p14"><span class="s1">Most syntax errors in a C extension definition will be caught by speed tables and reported.<span class="Apple-converted-space">  </span>When sourcing a speed table definition, you may get the message</span></p>
-<p class="p31"><span class="s1"><b>(run ::speedtable::get_error_info to see speed table's internal errorInfo)</b></span></p>
+<p class="p31"><span class="s1"><b>(run ::ctable::get_error_info to see speed table's internal errorInfo)</b></span></p>
 <p class="p14"><span class="s1">This means that speed tables has caught some kind of unexpected internal error within itself.<span class="Apple-converted-space">  </span>It has suppressed its own error traceback because it isn’t valuable to anyone who isn’t looking to dig into the error.</span></p>
 <p class="p14"><span class="s1">If you’re not running tclsh interactively, you’ll probably want to do so and then source in whatever is causing the error.<span class="Apple-converted-space">  </span>After you get the above error message, you can execute...</span></p>
 <p class="p29"><span class="s1">::speedtable::get_error_info</span></p>
@@ -1312,7 +1316,7 @@
 <p class="p24"><span class="s1">Core Dumps at Runtime</span></p>
 <p class="p15"><span class="s1"></span><br></p>
 <p class="p14"><span class="s1">Speed Tables shouldn’t ever dump core but, if it does, you may want to try to figure it out.<span class="Apple-converted-space">  </span>If you want to be able to use your C debugger on the speed tables code, turn on compiler debugging after you’ve loaded the speedtable package and before you load your extension.</span></p>
-<p class="p29"><span class="s1">set ::speedtable::genCompilerDebug 1</span></p>
+<p class="p29"><span class="s1">set ::ctable::genCompilerDebug 1</span></p>
 <p class="p14"><span class="s1">Ideally you’ll also build Tcl with debugging enabled.<span class="Apple-converted-space">  </span>When building Tcl, add </span><span class="s7">--enable-symbols</span><span class="s1"> to your configure options to get a Tcl library that you can run your debugger over.</span></p>
 <p class="p14"><span class="s1">Run gdb on tclsh and when you hit your segmentation violation or whatever, if all is well, gdb should be on the line where the trap occurred and let you poke around all of the C variables and structures and the like.</span></p>
 <p class="p14"><span class="s1">If gdb can’t find any symbols, try moving up through some stack frames (see gdb’s documentation for more information).<span class="Apple-converted-space">  </span>If in the speed tables routines you aren’t getting file name and line number information and access to your local variables and the like, you probably haven’t managed to build it with debugging enabled.<span class="Apple-converted-space">  </span>Turn on showing compiler commands and make sure you see <b>-g</b> being specified when the commands are being run.</span></p>
@@ -1403,7 +1407,7 @@
 <p class="p14"><span class="s1">NOTE that all the records must be accepted by PostgreSQL, i.e. not violate any constraints, etc, or none of them will be.</span></p>
 <p class="p14"><span class="s1">Karl Lehenbauer</span></p>
 <p class="p14"><span class="s1">7/19/06 off-and-on through 1/07 and counting...</span></p>
-<p class="p14"><span class="s1">(last edit March 4, 2008 7:55 PM)</span></p>
+<p class="p14"><span class="s1">(last edit March 5, 2008 12:00 PM)</span></p>
 <p class="p14"><span class="s1">Acknowledgements</span></p>
 <p class="p14"><span class="s1">I would like to acknowledge Peter da Silva, the first outside user of speed tables and the first person to use them in real production code with millions of rows of data.</span></p>
 <p class="p14"><span class="s1">His insight and experience greatly contribute to the design and evolution of the technology.<span class="Apple-converted-space">  </span>In particular, thanks to him it is easier to use, more capable, faster, and more memory-efficient.</span></p>
@@ -1411,7 +1415,7 @@
 <p class="p14"><span class="s1">In addition, the query optimizer was completely his idea and implementation.</span></p>
 <p class="p69"><span class="s1"><sup>1 It is common to see ten or twenty times the space consumed by the data itself used up by the Tcl objects, lists, arrays, etc, used to hold them.<span class="Apple-converted-space">  </span>Even on a modern machine, using 20 gigabytes of memory to store a gigabyte of data is at a minimum kind of gross and, at worst, renders the solution unusable.)2 Additional data types can be added, although over Speed Tables’ evolution it has become an increasingly complicated undertaking.3<span class="Apple-converted-space">  </span>It feels a bit clumsy to have an external key like this, and we can pretty easily make the field be a part of the row itself, which seems better.<span class="Apple-converted-space">  </span>It has generally proven useful to have some kind of unique key for each row although we can and do synthesize our own and if we’re willing to write it, explicitly support tables with no unique keys at all.4 Fairly analogous to stored procedures in a SQL database, Tcl code running on the server’s interpreter could perform multiple speed table actions in one invocation, reducing client/server communications overhead and any delays associated with it.</sup></span></p>
 <p class="p1"><span class="s1"><span class="Apple-tab-span">	</span></span></p>
-<p class="p70"><span class="s1">67</span></p>
-<p class="p14"><span class="s1">66</span></p>
+<p class="p70"><span class="s1">7</span></p>
+<p class="p14"><span class="s1">8</span></p>
 </body>
 </html>
