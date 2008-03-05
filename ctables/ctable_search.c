@@ -711,16 +711,19 @@ updateParseError:
 // ctable_search_poll - called periodically from a search to avoid blocking
 // the Tcl event loop.
 //
-void ctable_search_poll(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
+int ctable_search_poll(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 {
     if(search->pollCodeBody) {
-	if(Tcl_EvalObjEx (interp, search->pollCodeBody, 0) == TCL_ERROR)
+	int result = Tcl_EvalObjEx (interp, search->pollCodeBody, 0);
+	if(result == TCL_ERROR) {
 	    Tcl_BackgroundError(interp);
+	    Tcl_ResetResult(interp);
+	}
     } else {
 	Tcl_DoOneEvent(0);
     }
+    return TCL_OK;
 }
-
 
 //
 // ctable_PostSearchCommonActions - actions taken at the end of a search
@@ -767,12 +770,12 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
     }
 
     if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
-	if(search->pollPeriod) search->nextPoll = search->pollPeriod;
         // walk the result
         for (walkIndex = search->offset; walkIndex < search->offsetLimit; walkIndex++) {
-	    if(search->pollPeriod && --search->nextPoll < 0) {
-		ctable_search_poll(interp, ctable, search);
-		search->nextPoll = search->pollPeriod;
+	    if(search->pollInterval && --search->nextPoll <= 0) {
+		if(ctable_search_poll(interp, ctable, search) == TCL_ERROR)
+		    return TCL_ERROR;
+		search->nextPoll = search->pollInterval;
 	    }
 	    /* here is where we want to take the match actions
 	     * when we are sorting or otherwise buffering
@@ -822,9 +825,10 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     int   actionResult;
 
     // Handle polling
-    if(search->pollPeriod && --search->nextPoll < 0) {
-	ctable_search_poll(interp, ctable, search);
-	search->nextPoll = search->pollPeriod;
+    if(search->pollInterval && --search->nextPoll <= 0) {
+	if(ctable_search_poll(interp, ctable, search) == TCL_ERROR)
+	    return TCL_ERROR;
+	search->nextPoll = search->pollInterval;
     }
 
     // if we have a match pattern (for the key) and it doesn't match,
@@ -1375,7 +1379,7 @@ restart_search:
     ctable_PrepareTransactions(ctable, search);
 
     // Prepare for background operations
-    if(search->pollPeriod) search->nextPoll = search->pollPeriod;
+    if(search->pollInterval) search->nextPoll = search->pollInterval;
 
     if (walkType == WALK_DEFAULT) {
 	// walk the hash table links.
@@ -1684,6 +1688,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
     }
 
     if (finalResult != TCL_ERROR && search->codeBody == NULL) {
+	Tcl_ResetResult(interp);
 	Tcl_SetIntObj (Tcl_GetObjResult (interp), search->matchCount);
     }
 
@@ -1713,10 +1718,9 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     int             searchTerm = 0;
     CONST char                 **fieldNames = ctable->creator->fieldNames;
 
-    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll", "-poll_period", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-regexp", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL, SEARCH_OPT_POLL_PERIOD};
-
+    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_REGEXP, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL};
     if (objc < 2) {
       wrong_args:
 	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-nokeys 0|1? ?-offset offset? ?-regexp pattern? ?-sort {?-?field1..}? ?-write_tabsep channel? ?-tab value? ?-delete 0|1? ?-update {fields value...}? ?-buffer 0|1?");
@@ -1732,7 +1736,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->offset = 0;
     search->limit = 0;
     search->pattern = NULL;
-    search->pollPeriod = 0;
+    search->pollInterval = 0;
     search->nextPoll = -1;
     search->pollCodeBody = NULL;
     search->sortControl.fields = NULL;
@@ -1914,21 +1918,21 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	      break;
 	  }
 
-	  case SEARCH_OPT_POLL: {
+	  case SEARCH_OPT_POLL_CODE: {
 	      search->pollCodeBody = objv[i++];
-	      if (!search->pollPeriod)
-		  search->pollPeriod = CTABLE_DEFAULT_POLL_PERIOD;
+	      if (!search->pollInterval)
+		  search->pollInterval = CTABLE_DEFAULT_POLL_INTERVAL;
 	      break;
 	  }
 
-	  case SEARCH_OPT_POLL_PERIOD: {
-	    int poll_period;
-	    if (Tcl_GetIntFromObj (interp, objv[i++], &poll_period) == TCL_ERROR) {
-	        Tcl_AppendResult (interp, " while processing poll_period option", (char *) NULL);
+	  case SEARCH_OPT_POLL_INTERVAL: {
+	    int poll_interval;
+	    if (Tcl_GetIntFromObj (interp, objv[i++], &poll_interval) == TCL_ERROR) {
+	        Tcl_AppendResult (interp, " while processing poll_interval option", (char *) NULL);
 	        return TCL_ERROR;
 	    }
 
-	    search->pollPeriod = poll_period;
+	    search->pollInterval = poll_interval;
 	    break;
 	  }
 	
@@ -2022,11 +2026,11 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     // leaving the search action "none"
     if (search->codeBody != NULL) {
 	if (search->action == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
-	    Tcl_AppendResult (interp, "Both -code and -write_tabsep specified");
+	    Tcl_AppendResult (interp, "Both -code and -write_tabsep specified", NULL);
 	    goto errorReturn;
 	}
 	if (search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {
-	    Tcl_AppendResult (interp, "Code block specified, but none of -key, -get, -array, -array_get, -array_with_nulls, or -array_get_with_nulls provided");
+	    Tcl_AppendResult (interp, "Code block specified, but none of -key, -get, -array, -array_get, -array_with_nulls, or -array_get_with_nulls provided", NULL);
 	    goto errorReturn;
 	}
 	if(search->action == CTABLE_SEARCH_ACTION_NONE)

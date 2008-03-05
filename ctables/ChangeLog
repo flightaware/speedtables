@@ -1,6 +1,18 @@
 
 $Id$
 
+3/05/2008 peter
+    * Added background polling for search, new options:
+      -poll_interval rows (default 0)
+      -poll_code {code} (default none)
+	If a poll interval is specified but no code is provided, then it
+	calls Tcl_DoOneEvent(0) ... equivalent of "update". If code is provided
+	and no interval is specified, it uses CTABLE_DEFAULT_POLL_INTERVAL
+	from ctable.h. Errors from the poll code are handled by the bgerror
+	mechanism
+
+    * Fixed some error handling problems in ctable_search.c
+
 3/04/2008 peter
     * Allow search -compare {{in field {list...}}} even when field is
       not indexed.

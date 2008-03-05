@@ -27,6 +27,7 @@ all:
 	$(TCLSH) new-tests.tcl
 	$(TCLSH) key-tests.tcl
 	$(TCLSH) trans-tests.tcl
+	$(TCLSH) poll-tests.tcl
 	$(TCLSH) multitable-tests.tcl
 
 indef:

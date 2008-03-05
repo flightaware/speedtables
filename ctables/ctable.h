@@ -207,7 +207,7 @@ typedef struct {
 #define CTABLE_SEARCH_INDEX_ANY -2
 
 // If poll code is provided, the poll code will be run after this many rows
-#define CTABLE_DEFAULT_POLL_PERIOD 1024
+#define CTABLE_DEFAULT_POLL_INTERVAL 1024
 
 // ctable search struct - this controls everything about a search
 typedef struct {
@@ -243,7 +243,7 @@ typedef struct {
 
     int                                  noKeys;
 
-    int					 pollPeriod;
+    int					 pollInterval;
     Tcl_Obj				*pollCodeBody;
     int					 nextPoll;
 
