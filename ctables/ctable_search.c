@@ -576,6 +576,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	  case TCL_OK:
 	  case TCL_CONTINUE:
 	  case TCL_BREAK:
+	    Tcl_ResetResult(interp);
 	  case TCL_RETURN:
 	    return evalResult;
 	}
@@ -1687,9 +1688,8 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 	ckfree ((void *)search->tranTable);
     }
 
-    if (finalResult != TCL_ERROR && search->codeBody == NULL) {
-	Tcl_ResetResult(interp);
-	Tcl_SetIntObj (Tcl_GetObjResult (interp), search->matchCount);
+    if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
+	Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
     }
 
 #ifdef WITH_SHARED_TABLES
