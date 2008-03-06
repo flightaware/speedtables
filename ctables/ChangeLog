@@ -1,6 +1,12 @@
 
 $Id$
 
+3/06/2008 peter
+    * Fixed import_tabsep - need to remove key column from list of field IDs
+      passed to set_from_tabsep.
+
+    * Added "-skip" option to read_tabsep for password file demo.
+
 3/05/2008 peter
     * Added background polling for search, new options:
       -poll_interval rows (default 0)

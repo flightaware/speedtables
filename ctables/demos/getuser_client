@@ -1,0 +1,44 @@
+#!/usr/bin/env tclsh8.4
+
+# $Id$
+
+package require ctable_client
+
+remote_ctable sttp://localhost:3100/passwd passwd
+
+if {[llength $argv] == 0} {
+   puts stderr "Usage: $argv0 user \[user...]"
+   exit 2
+}
+
+proc show_user {rowArray} {
+    upvar 1 $rowArray row
+
+    puts "User name: $row(user)"
+    puts "       ID: $row(uid)"
+    puts "    Group: $row(gid)"
+    puts "     GCOS: $row(gcos)"
+    puts "     Home: $row(home)"
+    puts "    Shell: $row(shell)"
+}
+
+foreach user $argv {
+    if [string is integer $user] {
+	set count [
+	    passwd search \
+		-compare [list [list = uid $user]] \
+		-array_with_nulls row \
+		-key key \
+		-code { puts $key; show_user row }
+	]
+	if {$count == 0} {
+	    puts stderr "$uid: no users found"
+	}
+    } elseif ![passwd exists $user] {
+	puts "$user: not found"
+    } else {
+	array set row [passwd array_get_with_nulls $user]
+	show_user row
+    }
+}
+

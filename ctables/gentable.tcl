@@ -1963,7 +1963,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, int nocomplain) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, int nocomplain) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj;
@@ -1974,6 +1974,8 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     int		     i;
     int		     seplen = strlen(sepstr);
     char	     save = '\0';
+    int		     skiplen = skip ? strlen(skip) : -1;
+    int		     col;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -1989,12 +1991,14 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
     /* If no fields, read field names from first row */
     if(withFieldNames) {
-        Tcl_SetStringObj (lineObj, "", 0);
-        if (Tcl_GetsObj (channel, lineObj) <= 0) {
-	    Tcl_DecrRefCount (lineObj);
-	    return TCL_OK;
-	}
-	string = Tcl_GetString (lineObj);
+	do {
+            Tcl_SetStringObj (lineObj, "", 0);
+            if (Tcl_GetsObj (channel, lineObj) <= 0) {
+	        Tcl_DecrRefCount (lineObj);
+	        return TCL_OK;
+	    }
+	    string = Tcl_GetString (lineObj);
+	} while(skip && strncmp(string, skip, skiplen) == 0);
 
 	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys, sepstr, nocomplain) == TCL_ERROR) {
 	    Tcl_DecrRefCount (lineObj);
@@ -2008,19 +2012,28 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	keyColumn = 0;
     }
 
-    for(i = 0; i < nFields; i++) {
+    for(col = i = 0; i < nFields; i++) {
 	if(fieldNums[i] == ${table}_keyField) {
 	    keyColumn = i;
+	} else {
+	    if(col != i) {
+	        fieldNums[col] = fieldNums[i];
+	    }
+	    col++;
 	}
     }
+    if(col != i)
+	nFields--;
 
     while (1) {
 	char            *key;
 
-        Tcl_SetStringObj (lineObj, "", 0);
-        if (Tcl_GetsObj (channel, lineObj) <= 0) break;
+	do {
+            Tcl_SetStringObj (lineObj, "", 0);
+            if (Tcl_GetsObj (channel, lineObj) <= 0) goto done;
 
-	string = Tcl_GetString (lineObj);
+	    string = Tcl_GetString (lineObj);
+	} while(skip && strncmp(string, skip, skiplen) == 0);
 
 	// if pattern exists, see if it does not match key and if so, skip
 	if (pattern != NULL) {
@@ -2051,6 +2064,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
 	recordNumber++;
     }
+done:
 
     Tcl_DecrRefCount (lineObj);
 

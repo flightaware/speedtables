@@ -942,6 +942,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int		 withFieldNames = 0;
 	char		*sepstr = "\t";
 	int		 nocomplain = 0;
+	char		*skip = NULL;
 
 	if (objc < 3) {
 	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
@@ -968,10 +969,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		objIdx++;
 		objc--;
 	        if (objc <= 0) {
-		    Tcl_AppendResult (interp, "-tab not followed by tab char", (char *)NULL);
+		    Tcl_AppendResult (interp, "-tab not followed by tab string", (char *)NULL);
 		    return TCL_ERROR;
 		}
 		sepstr = Tcl_GetString (objv[objIdx++]);
+		objc--;
+	    } else if (strcmp (possibleSwitch, "-skip") == 0) {
+		objIdx++;
+		objc--;
+	        if (objc <= 0) {
+		    Tcl_AppendResult (interp, "-skip not followed by skip string", (char *)NULL);
+		    return TCL_ERROR;
+		}
+		skip = Tcl_GetString (objv[objIdx++]);
 		objc--;
 	    } else if (strcmp (possibleSwitch, "-nokeys") == 0) {
 		objIdx++;
@@ -1052,7 +1062,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	if (optIndex == OPT_WRITE_TABSEP) {
 	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr);
 	} else if(optIndex == OPT_READ_TABSEP) {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, nocomplain);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, nocomplain);
 	}
 
 	break;
