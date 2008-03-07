@@ -1,0 +1,9 @@
+#!/usr/bin/env tclsh8.4
+
+# $Id$
+
+package require st_client
+set pwtab [::stapi::connect sttp://localhost:3100/passwd]
+
+source show_user.tcl
+

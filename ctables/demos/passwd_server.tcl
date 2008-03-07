@@ -6,22 +6,7 @@
 package require ctable
 package require ctable_server
 
-CExtension password 1.0 {
-
-CTable pw {
-    key user
-    varstring passwd
-    int uid indexed 1 notnull 1
-    int gid notnull 1
-    varstring gcos
-    varstring home
-    varstring shell
-}
-
-}
-
-
-package require Password
+source passwd_table.tcl
 
 proc load_password {pw} {
 	set fp [open /etc/passwd r]
@@ -29,9 +14,9 @@ proc load_password {pw} {
 	close $fp
 }
 
-pw create passwd
+u_passwd create passwd
 
-load_password passwd
+load_pwfile passwd /etc/passwd
 
 ::ctable_server::register sttp://*:3100/passwd passwd
 

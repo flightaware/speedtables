@@ -6,60 +6,11 @@
 package require ctable
 package require ctable_server
 
-CExtension password 1.0 {
+source passwd_table.tcl
 
-CTable pw {
-    key user
-    varstring passwd
-    int uid indexed 1 notnull 1
-    int gid notnull 1
-    varstring gcos
-    varstring home
-    varstring shell
-}
+set pwtab [u_passwd create #auto]
 
-}
+load_pwfile $pwtab /etc/passwd
 
-
-package require Password
-
-proc load_password {pw} {
-	set fp [open /etc/passwd r]
-	$pw read_tabsep $fp -tab ":" -skip "#" -nokeys
-	close $fp
-}
-
-pw create passwd
-
-load_password passwd
-
-proc show_user {rowArray} {
-    upvar 1 $rowArray row
-
-    puts "User name: $row(user)"
-    puts "       ID: $row(uid)"
-    puts "    Group: $row(gid)"
-    puts "     GCOS: $row(gcos)"
-    puts "     Home: $row(home)"
-    puts "    Shell: $row(shell)"
-}
-
-foreach user $argv {
-    if [string is integer $user] {
-	set count [
-	    passwd search \
-		-compare [list [list = uid $user]] \
-		-array_with_nulls row \
-		-code { show_user row }
-	]
-	if {$count == 0} {
-	    puts stderr "$uid: no users found"
-	}
-    } elseif ![passwd exists $user] {
-	puts "$user: not found"
-    } else {
-	array set row [passwd array_get_with_nulls $user]
-	show_user row
-    }
-}
+source show_user.tcl
 

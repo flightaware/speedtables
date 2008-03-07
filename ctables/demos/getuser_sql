@@ -1,0 +1,12 @@
+#!/usr/bin/env tclsh8.4
+
+# $Id$
+
+package require st_client_pgtcl
+
+::stapi::init_conn [pg_connect account_db]
+
+set pwtab [::stapi::connect sql:///passwd?_key=user]
+
+source show_user.tcl
+
