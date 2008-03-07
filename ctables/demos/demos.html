@@ -1,0 +1,233 @@
+To demonstrate how speed tables, the speed table transfer protocol, and stapi
+works, let's build a table based on something that should be familiar to most
+UNIX programmers... the UNIX /etc/passwd file.
+<p>
+The file consists of lines looking something like this:
+<p>
+<tt>fred:*:1616:1616:Fred Smith:/home/fred:/bin/tcsh</tt>
+<p>
+To represent these in a speed table, we'll create a table like this:
+<pre>
+  CTable u_passwd {
+    varstring user     indexed 1 notnull 1
+    varstring passwd
+    int       uid      indexed 1 notnull 1
+    int       gid      notnull 1
+    varstring fullname
+    varstring home     notnull 1
+    varstring shell
+  }
+</pre>
+In a full scale application we'd have a variety of methods to load and edit
+this table, but we'll load it from /etc/passwd using read_tabsep. Specifying ":" as the tab and ignoring comment lines with "skip" allows the file to be easily read:
+<pre>
+proc load_pwfile {tab file} {
+    set fp [open $file r]
+    $tab read_tabsep $fp -tab ":" -skip "#*" -nokeys
+    close $fp
+}
+</pre>
+The complete code for creating this table is in <a href="passwd_table.tcl">passwd_table.tcl</a>.
+<p>
+Once the file is loaded into a table we will search for users in the table with a little search procedure that does a callback for each :
+<pre>
+proc search_passwd {tab id proc} {
+    if [string is integer $id] {
+        set field uid
+    } else {
+        set field user
+    }
+
+    return [
+        $tab search \
+            -compare [list [list = $field $id]] \
+            -array_get_with_nulls list \
+            -code {$proc $list}
+    ]
+}
+</pre>
+The search can be performed on any fields, for example let's say you reserve
+user IDs below 1000 for "role" accounts like webmaster, and you want to check
+for users over 1000 that are really "role" accounts. You can search for
+accounts with a home directory outside "/home" but a user ID over 999, and
+so use <tt>search -compare {{>= uid 1000} {notmatch "/home/*" $home}}</tt>.
+<p>
+When a user is found we can use a simple callback routine. The direct 1:1
+mapping between name-value lists, Tcl arrays, and speed table rows is
+convenient here.
+<pre>
+proc show_user {list} {
+    array set entry $list
+
+    puts "User name: $entry(user)"
+    puts "       ID: $entry(uid)"
+    puts "    Group: $entry(gid)"
+    puts "     Name: $entry(fullname)"
+    puts "     Home: $entry(home)"
+    puts "    Shell: $entry(shell)"
+}
+</pre>
+The code for these routines is in <a href="passwd_table.tcl">passwd_table.tcl</a>.
+<p>
+To use the speed table and these helper routines is a standalone program, you
+would do something like this:
+<pre>
+package require ctable
+
+source passwd_table.tcl
+source show_user.tcl
+
+set pwtab [u_passwd create #auto]
+
+load_pwfile $pwtab /etc/passwd
+
+foreach id $argv {
+    if {[search_passwd $pwtab $id show_user] == 0} {
+        puts stderr "$id: not found"
+    }
+}
+</pre>
+this code is in <a href="getuser_direct">getuser_direct</a>.
+<p>
+of course loading the password file every time you want to look up a user
+is rather inefficient, so we can create a speed table server. Turning this
+program into a server is easy, we load the speed table server package, and
+then instead of looking up a user name and display it we go to sleep
+waiting on requests:
+<pre>
+package require ctable
+<i>package require ctable_server</i>
+
+source passwd_table.tcl
+
+u_passwd create passwd
+
+load_pwfile passwd /etc/passwd
+
+<i>::ctable_server::register sttp://*:3100/passwd passwd
+
+::ctable_server::serverwait</i>
+</pre>
+Code in <a href=passwd_server.tcl>passwd_server.tcl</a>.
+<p>
+The client code is similarly simple. Instead of building our own speed table
+we connect to the server and use it via the speed table transfer protocol,
+STTP:
+<pre>
+<i>package require ctable_client</i>
+
+source show_user.tcl
+
+<i>remote_ctable sttp://localhost:3100/passwd passwd</i>
+
+if {[llength $argv] == 0} {
+   puts stderr "Usage: $argv0 user \[user...]"
+   exit 2
+}
+
+foreach id $argv {
+    if {[search_passwd <i>passwd</i> $id show_user] == 0} {
+        puts stderr "$id: not found"
+    }
+}
+</pre>
+Code in <a href=getuser_client>getuser_client</a>.
+<p>
+None of the code in show_user.tcl needs to know that it's operating on a
+remote table instead of a local one. This can be generalised even further,
+producing the speed table API (STAPI). To use STAPI, you use
+<tt>::stapi::connect URI</tt>, which returns a proc that behaves like a
+speed table. So, first, let's modify the STTP client to use STAPI:
+<pre>
+<i>package require st_client</i>
+
+source show_user.tcl
+
+<i>set pwtab [::stapi::connect sttp://localhost:3100/passwd]</i>
+
+if {[llength $argv] == 0} {
+   puts stderr "Usage: $argv0 user \[user...]"
+   exit 2
+}
+
+foreach id $argv {
+    if {[search_passwd $pwtab $id show_user] == 0} {
+        puts stderr "$id: not found"
+    }
+}
+</pre>
+The package "st_client" pulls in the STAPI connection code and registers the <tt>sttp:</pre> method with it. Each method has been defined as a separate package so you don't have to pull in connection code for methods you're not using.
+<p>
+This doesn't seem to be much of a change, and it isn't. But now let's say we
+need to connect to an SQL server that's using this SQL table:
+<pre>
+CREATE TABLE passwd (
+    user        varstr PRIMARY KEY,
+    passwd      varstr,
+    uid         integer NOT NULL,
+    gid         integer NOT NULL,
+    fullname    varstr,
+    home        varstr NOT NULL,
+    shell       varstr
+);
+</pre>
+To use this table in PostgreSQL instead of the speed table server, we load
+up the <tt>sql:</tt> method like so:
+<pre>
+<i>package require st_client_pgtcl</i>
+
+source show_user.tcl
+
+<i>::stapi::init_conn [pg_connect -conninfo $login_info]
+
+set pwtab [::stapi::connect sql:///passwd?_key=user]</i>
+
+if {[llength $argv] == 0} {
+   puts stderr "Usage: $argv0 user \[user...]"
+   exit 2
+}
+
+foreach id $argv {
+    if {[search_passwd $pwtab $id show_user] == 0} {
+        puts stderr "$id: not found"
+    }
+}
+</pre>
+The <tt>sql:</tt> connection method in STAPI reads the database to find the
+structure of the table and converts the Speed Table search term into an SQL
+query and performs the same callbacks as the original search.
+<p>
+The other major use of STAPI is for shared memory speed tables. The shared
+memory interface requires that the client get a connection token from the
+master process, and it can only perform "search" operations on the table. The
+server can pass the key back via STTP but without STAPI you have to maintain
+two ctable objects, using code like:
+<pre>
+remote_ctable sttp://localhost:1234/table m
+table create r reader [m attach [pid]]
+</pre>
+And then remembering to use the STTP conection to the master table (m) or
+the shared memory reader table (r) depending on whether you're using
+<tt>search</tt> or not.
+<p>
+The "st_shared" package hides this:
+<pre>
+<i>package require st_shared</i>
+
+source show_user.tcl
+
+<i>set pwtab [::stapi::connect shared://localhost:3100/passwd]</i>
+
+if {[llength $argv] == 0} {
+   puts stderr "Usage: $argv0 user \[user...]"
+   exit 2
+}
+
+foreach id $argv {
+    if {[search_passwd $pwtab $id show_user] == 0} {
+        puts stderr "$id: not found"
+    }
+}
+</pre>
+STAPI keeps track of both tables and calls the appropriate one for each method.
+

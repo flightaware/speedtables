@@ -8,7 +8,13 @@ package require ctable_server
 
 source passwd_table.tcl
 
-u_passwd create passwd
+proc load_password {pw} {
+	set fp [open /etc/passwd r]
+	$pw read_tabsep $fp -tab ":" -skip "#" -nokeys
+	close $fp
+}
+
+u_passwd create passwd master file passwd.dat
 
 load_pwfile passwd /etc/passwd
 

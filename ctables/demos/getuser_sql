@@ -4,9 +4,20 @@
 
 package require st_client_pgtcl
 
+source show_user.tcl
+
 ::stapi::init_conn [pg_connect account_db]
 
 set pwtab [::stapi::connect sql:///passwd?_key=user]
 
-source show_user.tcl
+if {[llength $argv] == 0} {
+   puts stderr "Usage: $argv0 user \[user...]"
+   exit 2
+}
+
+foreach id $argv {
+    if {[search_passwd $pwtab $id show_user] == 0} {
+	puts stderr "$id: not found"
+    }
+}
 

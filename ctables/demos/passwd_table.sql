@@ -5,8 +5,8 @@ CREATE TABLE passwd (
     passwd	varstr,
     uid		integer NOT NULL,
     gid 	integer NOT NULL,
-    gcos	varstr,
-    home	varstr,
+    fullname	varstr,
+    home	varstr NOT NULL,
     shell	varstr
 );
 

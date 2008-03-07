@@ -1,15 +1,9 @@
 #!/usr/bin/env tclsh8.4
+
 # $Id$
 
-# Demo - ctable view of /etc/passwd
-
-package require ctable
-
-source passwd_table.tcl
-
-set pwtab [u_passwd create #auto]
-
-load_pwfile $pwtab /etc/passwd
+package require st_shared
+set pwtab [::stapi::connect shared://localhost:3100/passwd]
 
 source show_user.tcl
 
@@ -23,3 +17,4 @@ foreach id $argv {
 	puts stderr "$id: not found"
     }
 }
+
