@@ -945,7 +945,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	char		*skip = NULL;
 
 	if (objc < 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?field field...?");
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-tab string? ?-with_field_names? ?-skip pattern? ?field field...?");
 	  return TCL_ERROR;
 	}
 
@@ -978,7 +978,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		objIdx++;
 		objc--;
 	        if (objc <= 0) {
-		    Tcl_AppendResult (interp, "-skip not followed by skip string", (char *)NULL);
+		    Tcl_AppendResult (interp, "-skip not followed by pattern", (char *)NULL);
 		    return TCL_ERROR;
 		}
 		skip = Tcl_GetString (objv[objIdx++]);

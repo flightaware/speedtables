@@ -1974,7 +1974,6 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     int		     i;
     int		     seplen = strlen(sepstr);
     char	     save = '\0';
-    int		     skiplen = skip ? strlen(skip) : -1;
     int		     col;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
@@ -1998,7 +1997,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	        return TCL_OK;
 	    }
 	    string = Tcl_GetString (lineObj);
-	} while(skip && strncmp(string, skip, skiplen) == 0);
+	} while(skip && Tcl_StringMatch(string, skip));
 
 	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys, sepstr, nocomplain) == TCL_ERROR) {
 	    Tcl_DecrRefCount (lineObj);
@@ -2033,7 +2032,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
             if (Tcl_GetsObj (channel, lineObj) <= 0) goto done;
 
 	    string = Tcl_GetString (lineObj);
-	} while(skip && strncmp(string, skip, skiplen) == 0);
+	} while(skip && Tcl_StringMatch(string, skip));
 
 	// if pattern exists, see if it does not match key and if so, skip
 	if (pattern != NULL) {
