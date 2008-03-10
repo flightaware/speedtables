@@ -48,8 +48,8 @@ catch { ::itcl::delete class STDisplay }
 
         # allow 'ctable' instead of 'table' as a historical alias (interim)
 	if {![info exists table] && [info exists ctable]} {
-	  set table $stable
-	  unset stable
+	  set table $ctable
+	  unset ctable
 	}
         # If it's not already an extended table, treat it like a URI
         if {[info exists table] && ![::stapi::extend::extended $table]} {
@@ -525,7 +525,7 @@ catch { ::itcl::delete class STDisplay }
 
 	set pref DIO$end
 	if {!$count} {
-	  set count [perform request -countOnly 1]
+	  set count [perform request]
 	}
 
 	set pages [expr ($count + $pagesize - 1) / $pagesize]
@@ -1019,7 +1019,7 @@ catch { ::itcl::delete class STDisplay }
 
     method delete {keyVal} {
 	if [make_limit_selector $keyVal selector] {
-	    if ![$table search -compare $selector -getkey keyVal] {
+	    if ![$table search -compare $selector -key keyVal] {
 		return 0
 	    }
 	}
@@ -1202,7 +1202,7 @@ catch { ::itcl::delete class STDisplay }
 	        set total [$table count]
 	    }
 	} else {
-	    set total [perform request -countOnly 1]
+	    set total [perform request]
 	}
 
 	if {$total <= [get_offset]} {

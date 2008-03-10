@@ -111,7 +111,7 @@ namespace eval ::stapi {
       }
     }
 
-    # If the key is a simple column name, remember it and eliminate it
+    # If the key is a simple column name, remember it and eliminate _key
     if {[info exists vars(_key)]} {
       if {[lsearch $raw_fields $vars(_key)] != -1} {
 	set key $vars(_key)
@@ -163,6 +163,7 @@ namespace eval ::stapi {
       }
     }
 
+    # last ditch - use first field in table
     if ![info exists key] {
       set key [lindex $fields 0]
       # set fields [lrange $fields 1 end]
@@ -375,18 +376,19 @@ namespace eval ::stapi {
     if [info exists search(-array)] {
       return -code error "Unimplemented: search -array"
     }
-    if {[info exists search(-countOnly)] && $search(-countOnly) == 0} {
-      unset search(-countOnly)
-    }
-    if {[info exists search(-countOnly)] && ![info exists search(-code)]} {
-      return -code error "Must provide -code or -countOnly"
+    if {![info exists search(-code)] &&
+	![info exists search(-key)] &&
+	![info exists search(-array_get_with_nulls)] &&
+	![info exists search(-array_with_nulls)} {
+	set search(-countOnly) 1
     }
     set sql [${ns}::search_to_sql search]
-    if [info exists search(-countOnly)] {
+    if {[info exists search(-countOnly)]} {
       return [lindex [sql_get_one_tuple $sql] 0]
     }
+
     set code {}
-    set array __array
+    set array ${ns}::select_array
     if [info exists search(-array_with_nulls)] {
       set array $search(-array_with_nulls)
     }
@@ -397,8 +399,10 @@ namespace eval ::stapi {
       lappend code "set $search(-key) \$${array}(__key)"
     }
     lappend code $search(-code)
-    # debug [list pg_select [conn] $sql $array [join $code "\n"]]
+    lappend code "incr ${ns}::select_count"
+    set ${ns}::select_count 0
     uplevel #$level [list pg_select [conn] $sql $array [join $code "\n"]]
+    return [set ${ns}::select_count]
   }
 
   proc sql_ctable_foreach {level ns cmd keyvar value code} {
