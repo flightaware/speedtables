@@ -17,6 +17,13 @@ set display [::STDisplay #auto -table $pwtab]
 $display rowfunctions ""
 $display functions "List Search"
 
+$display field user
+$display field uid	-text UID
+$display field gid	-text GID
+$display field fullname -text "Full Name"
+$display field home
+$display field shell
+
 $display show
 ?>
 

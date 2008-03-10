@@ -251,8 +251,17 @@ load_pwfile $pwtab /etc/passwd
 
 set display [::STDisplay #auto -table $pwtab]
 
+# Read-only, suppress editing functions
 $display rowfunctions ""
 $display functions "List Search"
+
+# Fields to display
+$display field user    
+$display field uid      -text UID
+$display field gid      -text GID
+$display field fullname -text "Full Name"
+$display field home
+$display field shell
 
 $display show
 ?&gt;
