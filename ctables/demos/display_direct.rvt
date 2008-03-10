@@ -1,0 +1,22 @@
+<?
+package require DIO
+package require ctable
+package require st_display
+
+# Simple demo
+
+source passwd_table.tcl
+
+set pwtab [u_passwd create #auto]
+
+load_pwfile $pwtab /etc/passwd
+
+set display [::STDisplay #auto -table $pwtab]
+
+# Not editable, so kill the row functions an limit the functions
+$display rowfunctions ""
+$display functions "List Search"
+
+$display show
+?>
+

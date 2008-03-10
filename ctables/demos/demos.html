@@ -230,4 +230,50 @@ foreach id $argv {
 }
 </pre>
 STAPI keeps track of both tables and calls the appropriate one for each method.
+<p>
+STTP also includes a web interface to speedtables, based on the DIODisplay
+package in Rivet. STDisplay currently uses the Rivet form and CGI procedures
+so requires Rivet to run. The simplest example of STDisplay is based on the
+first simple Speed Table example:
+<pre>
+&lt;?
+package require DIO
+package require ctable
+package require st_display
 
+# Simple demo
+
+source passwd_table.tcl
+
+set pwtab [u_passwd create #auto]
+
+load_pwfile $pwtab /etc/passwd
+
+set display [::STDisplay #auto -table $pwtab]
+
+$display rowfunctions ""
+$display functions "List Search"
+
+$display show
+?&gt;
+</pre>
+<p>
+STDisplay will work with any STAPI object that provides a minimal set of STAPI
+methods. You could use any of the standard STAPI front ends -- speed tables,
+STTP, SQL, or shared memory speed tables -- or create your own using, for
+example, iTcl. The methods that need to be implemented are:
+<ul>
+<li>fields
+<li>count
+<li>search
+<li>array_get_with_nulls
+<li>store (unless read-only)
+<li>delete (unless read-only)
+</ul>
+The search options required are:
+<ul>
+<li>-compare
+<li>-array_with_nulls
+<li>-key
+<li>-code
+</ul>
