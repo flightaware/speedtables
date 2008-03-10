@@ -1,3 +1,4 @@
+<H2>Speed Tables Examples</H2>
 To demonstrate how speed tables, the speed table transfer protocol, and stapi
 works, let's build a table based on something that should be familiar to most
 UNIX programmers... the UNIX /etc/passwd file.
@@ -87,8 +88,7 @@ foreach id $argv {
     }
 }
 </pre>
-this code is in <a href="getuser_direct">getuser_direct</a>.
-<p>
+<H2>Client-server Speedtables</H2>
 of course loading the password file every time you want to look up a user
 is rather inefficient, so we can create a speed table server. Turning this
 program into a server is easy, we load the speed table server package, and
@@ -131,7 +131,7 @@ foreach id $argv {
     }
 }
 </pre>
-Code in <a href=getuser_client>getuser_client</a>.
+<H2>Speed Table API</H2>
 <p>
 None of the code in show_user.tcl needs to know that it's operating on a
 remote table instead of a local one. This can be generalised even further,
@@ -156,8 +156,8 @@ foreach id $argv {
     }
 }
 </pre>
-The package "st_client" pulls in the STAPI connection code and registers the <tt>sttp:</pre> method with it. Each method has been defined as a separate package so you don't have to pull in connection code for methods you're not using.
-<p>
+The package "st_client" pulls in the STAPI connection code and registers the <tt>sttp:</tt> method with it. Each method has been defined as a separate package so you don't have to pull in connection code for methods you're not using.
+<H2>SQL Access Method</H2>
 This doesn't seem to be much of a change, and it isn't. But now let's say we
 need to connect to an SQL server that's using this SQL table:
 <pre>
@@ -196,7 +196,7 @@ foreach id $argv {
 The <tt>sql:</tt> connection method in STAPI reads the database to find the
 structure of the table and converts the Speed Table search term into an SQL
 query and performs the same callbacks as the original search.
-<p>
+<H2>Shared Memory Speed Tables</H2>
 The other major use of STAPI is for shared memory speed tables. The shared
 memory interface requires that the client get a connection token from the
 master process, and it can only perform "search" operations on the table. The
@@ -230,9 +230,9 @@ foreach id $argv {
 }
 </pre>
 STAPI keeps track of both tables and calls the appropriate one for each method.
-<p>
+<H2>Speed Tables Display</H2>
 STTP also includes a web interface to speedtables, based on the DIODisplay
-package in Rivet. STDisplay currently uses the Rivet form and CGI procedures
+package from Rivet. STDisplay currently uses the Rivet form and CGI procedures
 so requires Rivet to run. The simplest example of STDisplay is based on the
 first simple Speed Table example:
 <pre>
