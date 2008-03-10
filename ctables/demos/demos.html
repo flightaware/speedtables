@@ -11,7 +11,7 @@ The file consists of lines looking something like this:
 To represent these in a speed table, we'll create a table like this:
 <pre>
   CTable u_passwd {
-    varstring user     indexed 1 notnull 1
+    varstring username indexed 1 notnull 1
     varstring passwd
     int       uid      indexed 1 notnull 1
     int       gid      notnull 1
@@ -37,7 +37,7 @@ proc search_passwd {tab id proc} {
     if [string is integer $id] {
         set field uid
     } else {
-        set field user
+        set field username
     }
 
     return [
@@ -61,7 +61,7 @@ convenient here.
 proc show_user {list} {
     array set entry $list
 
-    puts "User name: $entry(user)"
+    puts "User name: $entry(username)"
     puts "       ID: $entry(uid)"
     puts "    Group: $entry(gid)"
     puts "     Name: $entry(fullname)"
@@ -163,13 +163,13 @@ This doesn't seem to be much of a change, and it isn't. But now let's say we
 need to connect to an SQL server that's using this SQL table:
 <pre>
 CREATE TABLE passwd (
-    user        varstr PRIMARY KEY,
-    passwd      varstr,
+    username    varchar PRIMARY KEY,
+    passwd      varchar,
     uid         integer NOT NULL,
     gid         integer NOT NULL,
-    fullname    varstr,
-    home        varstr NOT NULL,
-    shell       varstr
+    fullname    varchar,
+    home        varchar NOT NULL,
+    shell       varchar
 );
 </pre>
 To use this table in PostgreSQL instead of the speed table server, we load
@@ -181,7 +181,7 @@ source show_user.tcl
 
 <i>::stapi::init_conn [pg_connect -conninfo $login_info]
 
-set pwtab [::stapi::connect sql:///passwd?_key=user]</i>
+set pwtab [::stapi::connect sql:///passwd?_key=username]</i>
 
 if {[llength $argv] == 0} {
    puts stderr "Usage: $argv0 user \[user...]"
@@ -257,7 +257,7 @@ $display rowfunctions ""
 $display functions "List Search"
 
 # Fields to display
-$display field user    
+$display field username -text "User Name"
 $display field uid      -text UID
 $display field gid      -text GID
 $display field fullname -text "Full Name"

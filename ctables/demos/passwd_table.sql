@@ -1,19 +1,12 @@
 -- $Id$
 
 CREATE TABLE passwd (
-    user	varstr PRIMARY KEY,
-    passwd	varstr,
+    username	varchar PRIMARY KEY,
+    passwd	varchar,
     uid		integer NOT NULL,
     gid 	integer NOT NULL,
-    fullname	varstr,
-    home	varstr NOT NULL,
-    shell	varstr
-);
-
-CREATE TABLE group (
-    group	varstr PRIMARY KEY,
-    passwd	varstr,
-    gid		integer NOT NULL,
-    users	varstr
+    fullname	varchar,
+    home	varchar NOT NULL,
+    shell	varchar
 );
 
