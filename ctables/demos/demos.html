@@ -1,13 +1,22 @@
 <!-- $Id$ -->
+<HTML>
+<HEAD>
+<title>Speed Tables Examples</title>
+<style type=text/css>
+pre { margin-left: 2cm; margin-right: 2cm; border: 4px solid #dddddd; background-color: #dddddd }
+.change { background-color: #aaaaaa ; text-color: #000088; }
+</style>
+</HEAD>
+<BODY>
 <H2>Speed Tables Examples</H2>
 To demonstrate how speed tables, the speed table transfer protocol, and stapi
 works, let's build a table based on something that should be familiar to most
 UNIX programmers... the UNIX /etc/passwd file.
 <p>
 The file consists of lines looking something like this:
-<p>
-<tt>fred:*:1616:1616:Fred Smith:/home/fred:/bin/tcsh</tt>
-<p>
+<pre>
+fred:*:1616:1616:Fred Smith:/home/fred:/bin/tcsh
+</pre>
 To represent these in a speed table, we'll create a table like this:
 <pre>
   CTable u_passwd {
@@ -29,8 +38,6 @@ proc load_pwfile {tab file} {
     close $fp
 }
 </pre>
-The complete code for creating this table is in <a href="passwd_table.tcl">passwd_table.tcl</a>.
-<p>
 Once the file is loaded into a table we will search for users in the table with a little search procedure that does a callback for each :
 <pre>
 proc search_passwd {tab id proc} {
@@ -69,9 +76,7 @@ proc show_user {list} {
     puts "    Shell: $entry(shell)"
 }
 </pre>
-The code for these routines is in <a href="passwd_table.tcl">passwd_table.tcl</a>.
-<p>
-To use the speed table and these helper routines is a standalone program, you
+To use the speed table and these helper routines in a standalone program, you
 would do something like this:
 <pre>
 package require ctable
@@ -97,7 +102,7 @@ then instead of looking up a user name and display it we go to sleep
 waiting on requests:
 <pre>
 package require ctable
-<i>package require ctable_server</i>
+<span class=change>package require ctable_server</span>
 
 source passwd_table.tcl
 
@@ -105,21 +110,19 @@ u_passwd create passwd
 
 load_pwfile passwd /etc/passwd
 
-<i>::ctable_server::register sttp://*:3100/passwd passwd
+<span class=change>::ctable_server::register sttp://*:3100/passwd passwd
 
-::ctable_server::serverwait</i>
+::ctable_server::serverwait</span>
 </pre>
-Code in <a href=passwd_server.tcl>passwd_server.tcl</a>.
-<p>
 The client code is similarly simple. Instead of building our own speed table
 we connect to the server and use it via the speed table transfer protocol,
 STTP:
 <pre>
-<i>package require ctable_client</i>
+<span class=change>package require ctable_client</span>
 
 source show_user.tcl
 
-<i>remote_ctable sttp://localhost:3100/passwd passwd</i>
+<span class=change>remote_ctable sttp://localhost:3100/passwd passwd</span>
 
 if {[llength $argv] == 0} {
    puts stderr "Usage: $argv0 user \[user...]"
@@ -127,7 +130,7 @@ if {[llength $argv] == 0} {
 }
 
 foreach id $argv {
-    if {[search_passwd <i>passwd</i> $id show_user] == 0} {
+    if {[search_passwd <span class=change>passwd</span> $id show_user] == 0} {
         puts stderr "$id: not found"
     }
 }
@@ -140,11 +143,11 @@ producing the speed table API (STAPI). To use STAPI, you use
 <tt>::stapi::connect URI</tt>, which returns a proc that behaves like a
 speed table. So, first, let's modify the STTP client to use STAPI:
 <pre>
-<i>package require st_client</i>
+<span class=change>package require st_client</span>
 
 source show_user.tcl
 
-<i>set pwtab [::stapi::connect sttp://localhost:3100/passwd]</i>
+<span class=change>set pwtab [::stapi::connect sttp://localhost:3100/passwd]</span>
 
 if {[llength $argv] == 0} {
    puts stderr "Usage: $argv0 user \[user...]"
@@ -172,16 +175,38 @@ CREATE TABLE passwd (
     shell       varchar
 );
 </pre>
+To populate it, we can use the ctable we loaded up in the first example:
+<pre>
+package require ctable
+package require Pgtcl
+
+source passwd_table.tcl
+
+set pwtab [u_passwd create #auto]
+
+load_pwfile $pwtab /etc/passwd
+
+set conn [pg_connect -conninfo $login_info]
+
+set r [pg_exec $conn "COPY passwd FROM stdin with DELIMITER as '\t';"]
+if {"[pg_result $r -status]" == "PGRES_COPY_IN"} {
+  $pwtab search -write_tabsep $conn -nokeys 1
+  puts $conn "\\."
+} else {
+  puts stderr [pg_result $r -error]
+}
+pg_result $r -clear
+</pre>
 To use this table in PostgreSQL instead of the speed table server, we load
 up the <tt>sql:</tt> method like so:
 <pre>
-<i>package require st_client_pgtcl</i>
+<span class=change>package require st_client_pgtcl</span>
 
 source show_user.tcl
 
-<i>::stapi::init_conn [pg_connect -conninfo $login_info]
+<span class=change>::stapi::init_conn [pg_connect -conninfo $login_info]
 
-set pwtab [::stapi::connect sql:///passwd?_key=username]</i>
+set pwtab [::stapi::connect sql:///passwd?_key=username]</span>
 
 if {[llength $argv] == 0} {
    puts stderr "Usage: $argv0 user \[user...]"
@@ -204,8 +229,13 @@ master process, and it can only perform "search" operations on the table. The
 server can pass the key back via STTP but without STAPI you have to maintain
 two ctable objects, using code like:
 <pre>
-remote_ctable sttp://localhost:1234/table m
+remote_ctable sttp://localhost:1234/passwd m
 table create r reader [m attach [pid]]
+
+...
+
+set rows [m count]
+r search -username root -array_with_nulls a -code { puts $a(uid) }
 </pre>
 And then remembering to use the STTP conection to the master table (m) or
 the shared memory reader table (r) depending on whether you're using
@@ -213,11 +243,11 @@ the shared memory reader table (r) depending on whether you're using
 <p>
 The "st_shared" package hides this:
 <pre>
-<i>package require st_shared</i>
+<span class=change>package require st_shared</span>
 
 source show_user.tcl
 
-<i>set pwtab [::stapi::connect shared://localhost:3100/passwd]</i>
+<span class=change>set pwtab [::stapi::connect shared://localhost:3100/passwd]</span>
 
 if {[llength $argv] == 0} {
    puts stderr "Usage: $argv0 user \[user...]"
@@ -287,3 +317,5 @@ The search options required are:
 <li>-key
 <li>-code
 </ul>
+</BODY>
+</HTML>
