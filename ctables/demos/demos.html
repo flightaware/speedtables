@@ -178,7 +178,7 @@ CREATE TABLE passwd (
 To populate it, we can use the ctable we loaded up in the first example:
 <pre>
 package require ctable
-package require Pgtcl
+<span class=change>package require Pgtcl</span>
 
 source passwd_table.tcl
 
@@ -186,7 +186,7 @@ set pwtab [u_passwd create #auto]
 
 load_pwfile $pwtab /etc/passwd
 
-set conn [pg_connect -conninfo $login_info]
+<span class=change>set conn [pg_connect -conninfo $login_info]
 
 set r [pg_exec $conn "COPY passwd FROM stdin with DELIMITER as '\t';"]
 if {"[pg_result $r -status]" == "PGRES_COPY_IN"} {
@@ -195,7 +195,7 @@ if {"[pg_result $r -status]" == "PGRES_COPY_IN"} {
 } else {
   puts stderr [pg_result $r -error]
 }
-pg_result $r -clear
+pg_result $r -clear</span>
 </pre>
 To use this table in PostgreSQL instead of the speed table server, we load
 up the <tt>sql:</tt> method like so:
