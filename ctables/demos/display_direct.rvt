@@ -1,5 +1,4 @@
 <?
-package require DIO
 package require ctable
 package require st_display
 
@@ -17,7 +16,7 @@ set display [::STDisplay #auto -table $pwtab]
 $display rowfunctions ""
 $display functions "List Search"
 
-$display field user
+$display field username -text "User Name"
 $display field uid	-text UID
 $display field gid	-text GID
 $display field fullname -text "Full Name"

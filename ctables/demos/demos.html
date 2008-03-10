@@ -268,7 +268,6 @@ so requires Rivet to run. The simplest example of STDisplay is based on the
 first simple Speed Table example:
 <pre>
 &lt;?
-package require DIO
 package require ctable
 package require st_display
 
@@ -297,6 +296,201 @@ $display field shell
 $display show
 ?&gt;
 </pre>
+This produces a straightforward table view:
+<p>
+<!-- BEGIN IMPORT -->
+<TABLE WIDTH="80%" CLASS="DIO" align=center>
+<TR CLASS=DIO>
+<TD VALIGN="center" CLASS="DIO" bgcolor=#dddddd border=4px>
+<TABLE BORDER=0 WIDTH=100% CLASS=DIOForm>
+<TR CLASS=DIOForm>
+<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>
+<DIV STYLE='display:none'>
+
+<form  action="/stdemo/display_direct.rvt" method="get">
+</DIV>
+<input type="hidden" name="mode" value="List" />
+<input type="hidden" name="query" value="" />
+<input type="submit" name="submit" class="DIORowFunctionButton" value="Show All" />
+<DIV STYLE='display:none'>
+</form>
+</DIV>
+</TD>
+<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>
+<DIV STYLE='display:none'>
+<form  action="/stdemo/display_direct.rvt" method="get">
+</DIV>
+&nbsp;
+<input type="hidden" name="ct_sel" value="" />
+Select:
+<select name="by"  class="DIOMainSearchBy">
+
+<option value="-column-">-column-
+<option value="User Name">User Name
+<option value="UID">UID
+<option value="GID">GID
+<option value="Full Name">Full Name
+<option value="Home">Home
+<option value="Shell">Shell
+</select>
+</TD>
+<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>
+<select name="how" >
+<option value="=">=
+<option value="<"><
+<option value="<="><=
+<option value=">">>
+<option value=">=">>=
+<option value="<>"><>
+
+</select>
+</TD>
+<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>
+<input type="text" name="query" class="DIOMainQuery" value="" />
+</TD>
+<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=100% NOWRAP>
+<input type="submit" name="mode" class="DIOForm" value="+" />
+<input type="submit" name="mode" class="DIOMainSubmitButton" value="Search" />
+</TD></TR>
+<DIV STYLE='display:none'>
+</form>
+</DIV>
+</TABLE>
+<!-- @@@@ Calling ::request::sTDisplay0 List -->
+<P>
+<TABLE WIDTH="100%" CLASS="DIONavButtons">
+<TR CLASS="DIONavButtons">
+
+<TD CLASS="DIONavButtons">
+<FONT SIZE=-1>
+38 records; page:
+1&nbsp;
+<A HREF="display_direct.rvt?mode=List&query=&page=2">2</A>&nbsp;
+</FONT>
+</TD>
+</TR>
+</TABLE>
+<BR/>
+<TABLE BORDER WIDTH="100%" CLASS="DIORowHeader">
+<TR CLASS=DIORowHeader>
+<TH CLASS="DIORowHeader" WIDTH=16%><A HREF="display_direct.rvt?mode=List&query=&sort=username">User Name</A></TH>
+<TH CLASS="DIORowHeader" WIDTH=16%><A HREF="display_direct.rvt?mode=List&query=&sort=uid">UID</A></TH>
+
+<TH CLASS="DIORowHeader" WIDTH=16%><A HREF="display_direct.rvt?mode=List&query=&sort=gid">GID</A></TH>
+<TH CLASS="DIORowHeader" WIDTH=16%><A HREF="display_direct.rvt?mode=List&query=&sort=fullname">Full Name</A></TH>
+<TH CLASS="DIORowHeader" WIDTH=16%><A HREF="display_direct.rvt?mode=List&query=&sort=home">Home</A></TH>
+<TH CLASS="DIORowHeader" WIDTH=16%><A HREF="display_direct.rvt?mode=List&query=&sort=shell">Shell</A></TH>
+</TR>
+<TR CLASS="DIORowField">
+<TD CLASS="DIORowField" NOWRAP>mailcatcher</TD>
+<TD CLASS="DIORowField" NOWRAP>2525</TD>
+<TD CLASS="DIORowField" NOWRAP>2525</TD>
+<TD CLASS="DIORowField" NOWRAP>SC Mail Catcher</TD>
+
+<TD CLASS="DIORowField" NOWRAP>/usr/home/mailcatcher</TD>
+<TD CLASS="DIORowField" NOWRAP>/bin/bash</TD>
+</TR>
+<TR CLASS="DIORowFieldAlt">
+<TD CLASS="DIORowFieldAlt" NOWRAP>postfix</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>125</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>125</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>Postfix Mail System</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>/var/spool/postfix</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>/sbin/nologin</TD>
+
+</TR>
+<TR CLASS="DIORowField">
+<TD CLASS="DIORowField" NOWRAP>vmail</TD>
+<TD CLASS="DIORowField" NOWRAP>11184</TD>
+<TD CLASS="DIORowField" NOWRAP>2110</TD>
+<TD CLASS="DIORowField" NOWRAP>VMail Owner</TD>
+<TD CLASS="DIORowField" NOWRAP>/var/qmail/maildirs</TD>
+<TD CLASS="DIORowField" NOWRAP>/bin/true</TD>
+</TR>
+<TR CLASS="DIORowFieldAlt">
+<TD CLASS="DIORowFieldAlt" NOWRAP>ldap</TD>
+
+<TD CLASS="DIORowFieldAlt" NOWRAP>90</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>90</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>the openldap server</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>/nonexistent</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>/bin/bash</TD>
+</TR>
+<TR CLASS="DIORowField">
+<TD CLASS="DIORowField" NOWRAP>cyrus</TD>
+<TD CLASS="DIORowField" NOWRAP>60</TD>
+<TD CLASS="DIORowField" NOWRAP>60</TD>
+
+<TD CLASS="DIORowField" NOWRAP>the cyrus mail server</TD>
+<TD CLASS="DIORowField" NOWRAP>/nonexistent</TD>
+<TD CLASS="DIORowField" NOWRAP>/sbin/nologin</TD>
+</TR>
+
+<TR CLASS="DIORowFieldAlt">
+<TD border=none bgcolor=#aaaaaa align=center CLASS="DIORowFieldAlt" colspan=6>... several rows skipped ...</TD>
+</TR>
+
+<TR CLASS="DIORowField">
+<TD CLASS="DIORowField" NOWRAP>uucp</TD>
+<TD CLASS="DIORowField" NOWRAP>66</TD>
+<TD CLASS="DIORowField" NOWRAP>66</TD>
+<TD CLASS="DIORowField" NOWRAP>UUCP pseudo-user</TD>
+<TD CLASS="DIORowField" NOWRAP>/var/spool/uucppublic</TD>
+<TD CLASS="DIORowField" NOWRAP>/usr/libexec/uucp/uucico</TD>
+</TR>
+<TR CLASS="DIORowFieldAlt">
+<TD CLASS="DIORowFieldAlt" NOWRAP>_pflogd</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>64</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>64</TD>
+
+<TD CLASS="DIORowFieldAlt" NOWRAP>pflogd privsep user</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>/var/empty</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>/usr/sbin/nologin</TD>
+</TR>
+<TR CLASS="DIORowField">
+<TD CLASS="DIORowField" NOWRAP>proxy</TD>
+<TD CLASS="DIORowField" NOWRAP>62</TD>
+<TD CLASS="DIORowField" NOWRAP>62</TD>
+<TD CLASS="DIORowField" NOWRAP>Packet Filter pseudo-user</TD>
+<TD CLASS="DIORowField" NOWRAP>/nonexistent</TD>
+
+<TD CLASS="DIORowField" NOWRAP>/usr/sbin/nologin</TD>
+</TR>
+<TR CLASS="DIORowFieldAlt">
+<TD CLASS="DIORowFieldAlt" NOWRAP>bind</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>53</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>53</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>Bind Sandbox</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>/</TD>
+<TD CLASS="DIORowFieldAlt" NOWRAP>/sbin/nologin</TD>
+</TR>
+
+<TR CLASS="DIORowField">
+<TD CLASS="DIORowField" NOWRAP>mailnull</TD>
+<TD CLASS="DIORowField" NOWRAP>26</TD>
+<TD CLASS="DIORowField" NOWRAP>26</TD>
+<TD CLASS="DIORowField" NOWRAP>Sendmail Default User</TD>
+<TD CLASS="DIORowField" NOWRAP>/var/spool/mqueue</TD>
+<TD CLASS="DIORowField" NOWRAP>/sbin/nologin</TD>
+</TR>
+</TABLE>
+<BR/>
+<TABLE WIDTH="100%" CLASS="DIONavButtons">
+
+<TR CLASS="DIONavButtons">
+<TD CLASS="DIONavButtons">
+<FONT SIZE=-1>
+Go to page
+1&nbsp;
+<A HREF="display_direct.rvt?mode=List&query=&page=2">2</A>&nbsp;
+</FONT>
+</TD>
+</TR>
+</TABLE>
+</TD>
+</TR>
+</TABLE>
+<!--END IMPORT-->
 <p>
 STDisplay will work with any STAPI object that provides a minimal set of STAPI
 methods. You could use any of the standard STAPI front ends -- speed tables,
