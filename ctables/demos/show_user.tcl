@@ -21,7 +21,7 @@ proc search_passwd {tab id proc} {
     return [
 	$tab search \
 	    -compare [list [list = $field $id]] \
-	    -array_get_with_nulls list \
-	    -code {$proc $list}
+	    -array_get_with_nulls row \
+	    -code {$proc $row}
     ]
 }

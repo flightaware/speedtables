@@ -654,7 +654,7 @@
 <p class="p14"><span class="s1">If -tab is specified then the string provided will be used as the tab.</span></p>
 <p class="p20"><span class="s1"><b><i>BUG - We do not currently quote any tabs that occur in the data, so if there are tab characters in any of the strings in a row, that row will not be read back in properly.<span class="Apple-converted-space">  </span>In fact, we will generate an error when attempting to read such a row. In most cases it should be possible to select a tab separator that does not occur in any field to avoid this.</i></b></span></p>
 <p class="p19"><span class="s1"><i>read_tabsep</i></span></p>
-<p class="p29"><span class="s1">x read_tabsep channel ?-glob pattern? ?-nokeys? ?-with_field_names? ?-tab string? ?field...?</span></p>
+<p class="p29"><span class="s1">x read_tabsep channel ?-glob pattern? ?-nokeys? ?-with_field_names? ?-tab string? ?-skip pattern? ?field...?</span></p>
 <p class="p14"><span class="s1">Read tab-separated entries from a channel, with a list of fields specified, or all fields if none are specified.</span></p>
 <p class="p29"><span class="s1">set fp [open /tmp/output.tsv r]</span></p>
 <p class="p29"><span class="s1">x read_tabsep $fp</span></p>
@@ -663,9 +663,10 @@
 <p class="p14"><span class="s1">It's an error if the number of fields read doesn't match the number expected.</span></p>
 <p class="p14"><span class="s1">If the glob pattern is defined, it's applied to the key (first field in the row) and if it doesn't match, the row is not inserted.</span></p>
 <p class="p14"><span class="s1">If </span><span class="s7">-tab string</span><span class="s1"> is specified, then the string provided will be used as the tab separator. There is no explicit limit on the length of the string, so you can use something like </span><span class="s7">-tab {%JULIE@ANDREWS%}</span><span class="s1"> with <i>read_tabsep</i> and <i>write_tabsep</i> (or <i>search -write_tabsep</i>) to reduce the possibility of a conflict.</span></p>
-<p class="p14"><span class="s1">If </span><span class="s7">-with_field_names</span><span class="s1"> is specified and the argument to it is nonzero, the first row read is expected to be a tab-separated list of field names, and Speedtables will read that line and use its contents to determine which fields each of the following lines of tab-separated values will be stored as.<span class="Apple-converted-space">  </span>(This is the counterpart to the </span><span class="s7">-with_field_names</span><span class="s1"> argument to speedtables’s <i>search</i> method when invoked with the </span><span class="s7">-write_tabsep</span><span class="s1"> option.)</span></p>
-<p class="p40"><span class="s1">If -nokeys is specified, the first field of each row is not used as the key -- rather, the key is taken from the provided fields (as if <i>makekey</i> was called for each row), and if there is no key it is automatically created as an ascending integer starting from 0. The last key generated will be returned as the value of <i>read_tabsep</i>.</span></p>
-<p class="p40"><span class="s1">If you subsequently do another </span><span class="s7">read_tabsep</span><span class="s1"> with -nokeys specified, the auto key will continue from where it left off.<span class="Apple-converted-space">  </span>If you invoke the table’s reset method, the auto key will reset to zero.</span></p>
+<p class="p14"><span class="s1">if </span><span class="s7">-skip pattern</span><span class="s1"> is specified, then lines matching that pattern are ignored. This is sometimes necessary for files containing comments.</span></p>
+<p class="p14"><span class="s1">If </span><span class="s7">-with_field_names</span><span class="s1"> is specified, the first row read is expected to be a tab-separated list of field names, and Speedtables will read that line and use its contents to determine which fields each of the following lines of tab-separated values will be stored as.<span class="Apple-converted-space">  </span>(This is the counterpart to the </span><span class="s7">-with_field_names</span><span class="s1"> argument to speedtables’s <i>search</i> method when invoked with the </span><span class="s7">-write_tabsep</span><span class="s1"> option.)</span></p>
+<p class="p40"><span class="s1">If </span><span class="s7">-nokeys</span><span class="s1"> is specified, the first field of each row is not used as the key -- rather, the key is taken from the provided fields (as if <i>makekey</i> was called for each row), and if there is no key it is automatically created as an ascending integer starting from 0. The last key generated will be returned as the value of <i>read_tabsep</i>.</span></p>
+<p class="p40"><span class="s1">If you subsequently do another <i>read_tabsep</i> with -nokeys specified, the auto key will continue from where it left off.<span class="Apple-converted-space">  </span>If you invoke the table’s reset method, the auto key will reset to zero.</span></p>
 <p class="p14"><span class="s1">If you later want to insert at the end of the table, you need to use <i>store</i> rather than <i>set</i>.</span></p>
 <p class="p14"><span class="s1"><i>read_tabsep</i> stops when it reaches end of file OR when it reads an empty line.<span class="Apple-converted-space">  </span>Since you must have a key and at least one field, this is safe.<span class="Apple-converted-space">  </span>However it might not be safe with </span><span class="s7">-nokeys</span><span class="s1">.</span></p>
 <p class="p14"><span class="s1">The nice thing about it is you can indicate end of input with an empty line and then do something else with the data that follows.</span></p>
@@ -736,7 +737,7 @@
 <p class="p47"><span class="s1"></span><br></p>
 <p class="p30"><span class="s1">package require speedtable_client</span></p>
 <p class="p47"><span class="s1"></span><br></p>
-<p class="p30"><span class="s1">remote_speedtable speedtable://127.0.0.1/dumbData t</span></p>
+<p class="p30"><span class="s1">remote_ctable sttp://127.0.0.1/dumbData t</span></p>
 <p class="p47"><span class="s1"></span><br></p>
 <p class="p30"><span class="s1">t search -sort -coolness -limit 5 -key key -array_get_with_nulls data -code {</span></p>
 <p class="p30"><span class="s1"><span class="Apple-converted-space">     </span>puts “$key -&gt; $data”<span class="Apple-converted-space"> </span></span></p>
@@ -744,9 +745,9 @@
 <p class="p48"><span class="s1"></span><br></p>
 <p class="p24"><span class="s1">Example Server Code</span></p>
 <p class="p47"><span class="s1"></span><br></p>
-<p class="p30"><span class="s1">package require speedtable_server</span></p>
+<p class="p30"><span class="s1">package require ctable_server</span></p>
 <p class="p47"><span class="s1"></span><br></p>
-<p class="p30"><span class="s1">::speedtable_server::register speedtable://*/dumbData t</span></p>
+<p class="p30"><span class="s1">::ctable_server::register sttp://*/dumbData t</span></p>
 <p class="p49"><span class="s1"></span><br></p>
 <p class="p44"><span class="s1">That’s all there is to it.<span class="Apple-converted-space">  </span>You have to allow the Tcl event loop to run, either by doing a <i>vwait </i>or by periodically calling <i>update</i> if your application is not event-loop driven, but as long as you do so, your app will be able to server out speedtables.</span></p>
 <p class="p24"><span class="s1">Client-Server Performance</span></p>
@@ -1407,7 +1408,7 @@
 <p class="p14"><span class="s1">NOTE that all the records must be accepted by PostgreSQL, i.e. not violate any constraints, etc, or none of them will be.</span></p>
 <p class="p14"><span class="s1">Karl Lehenbauer</span></p>
 <p class="p14"><span class="s1">7/19/06 off-and-on through 1/07 and counting...</span></p>
-<p class="p14"><span class="s1">(last edit March 5, 2008 12:00 PM)</span></p>
+<p class="p14"><span class="s1">(last edit March 11, 2008 2:38 PM)</span></p>
 <p class="p14"><span class="s1">Acknowledgements</span></p>
 <p class="p14"><span class="s1">I would like to acknowledge Peter da Silva, the first outside user of speed tables and the first person to use them in real production code with millions of rows of data.</span></p>
 <p class="p14"><span class="s1">His insight and experience greatly contribute to the design and evolution of the technology.<span class="Apple-converted-space">  </span>In particular, thanks to him it is easier to use, more capable, faster, and more memory-efficient.</span></p>
@@ -1415,7 +1416,7 @@
 <p class="p14"><span class="s1">In addition, the query optimizer was completely his idea and implementation.</span></p>
 <p class="p69"><span class="s1"><sup>1 It is common to see ten or twenty times the space consumed by the data itself used up by the Tcl objects, lists, arrays, etc, used to hold them.<span class="Apple-converted-space">  </span>Even on a modern machine, using 20 gigabytes of memory to store a gigabyte of data is at a minimum kind of gross and, at worst, renders the solution unusable.)2 Additional data types can be added, although over Speed Tables’ evolution it has become an increasingly complicated undertaking.3<span class="Apple-converted-space">  </span>It feels a bit clumsy to have an external key like this, and we can pretty easily make the field be a part of the row itself, which seems better.<span class="Apple-converted-space">  </span>It has generally proven useful to have some kind of unique key for each row although we can and do synthesize our own and if we’re willing to write it, explicitly support tables with no unique keys at all.4 Fairly analogous to stored procedures in a SQL database, Tcl code running on the server’s interpreter could perform multiple speed table actions in one invocation, reducing client/server communications overhead and any delays associated with it.</sup></span></p>
 <p class="p1"><span class="s1"><span class="Apple-tab-span">	</span></span></p>
-<p class="p70"><span class="s1">7</span></p>
-<p class="p14"><span class="s1">8</span></p>
+<p class="p70"><span class="s1">35</span></p>
+<p class="p14"><span class="s1">36</span></p>
 </body>
 </html>

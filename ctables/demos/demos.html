@@ -19,8 +19,9 @@ fred:*:1616:1616:Fred Smith:/home/fred:/bin/tcsh
 </pre>
 To represent these in a speed table, we'll create a table like this:
 <pre>
+CExtension U_passwd {
   CTable u_passwd {
-    varstring username indexed 1 notnull 1
+    varstring username unique 1 indexed 1 notnull 1
     varstring passwd
     int       uid      indexed 1 notnull 1
     int       gid      notnull 1
@@ -28,9 +29,27 @@ To represent these in a speed table, we'll create a table like this:
     varstring home     notnull 1
     varstring shell
   }
+}
 </pre>
+This creates a C Extension package named "U_passwd", containing one
+C Speed Table (CTable) named "u_passwd". The package created always
+starts with an uppercase letter.
+<p>
+The table u_passwd contains 7 fields: username, passwd, uid, gid, fullname
+(we know the GCOS field is not just a full name, this is an example), home
+directory, and shell. The passwd field in most modern UNIX systems is not
+used directly, and we won't reference it further.
+<p>
+Fields have types: varstring is a variable length string, and int is a
+32-bit integer. Fields have parameters, a name-value list, so to enable
+then you have to set them to a non-zero value.
+<p>
+This table has an anonymous key, that can be referenced as "_key", because
+we are going to make it a shared memory table later and shared memory tables
+can only be searched by skiplist-indexed fields.
+<p>
 In a full scale application we'd have a variety of methods to load and edit
-this table, but we'll load it from /etc/passwd using read_tabsep. Specifying ":" as the tab and ignoring comment lines with "skip" allows the file to be easily read:
+this table, but we'll load it from /etc/passwd using read_tabsep:
 <pre>
 proc load_pwfile {tab file} {
     set fp [open $file r]
@@ -38,6 +57,11 @@ proc load_pwfile {tab file} {
     close $fp
 }
 </pre>
+The <i>read_tabsep</i> method is a convenient mechanism for reading a variety
+of data sources quickly and efficiently. Here we're setting the <i>tab</I> string to ":" and skipping lines that begin with a "#". It is also used internally
+in client-server tables, and for quickly reading data from PostgreSQl
+databases.
+<p>
 Once the file is loaded into a table we will search for users in the table with a little search procedure that does a callback for each :
 <pre>
 proc search_passwd {tab id proc} {
@@ -50,18 +74,28 @@ proc search_passwd {tab id proc} {
     return [
         $tab search \
             -compare [list [list = $field $id]] \
-            -array_get_with_nulls list \
-            -code {$proc $list}
+            -array_get_with_nulls row \
+            -code {$proc $row}
     ]
 }
+<p>
+The <i>search</i> operation is the most powerful tool in speed tables. It can
+be used to search the table using any combination of fields and values, using
+a lisp-like prefix syntax. Each element in the comparison list is an expression
+in the form {operator field value...}. Operators include basic comparison
+operations such as "=", "<", and ">", as well as ranges and sets.
 </pre>
-The search can be performed on any fields, for example let's say you reserve
+For example let's say you reserve
 user IDs below 1000 for "role" accounts like webmaster, and you want to check
 for users over 1000 that are really "role" accounts. You can search for
 accounts with a home directory outside "/home" but a user ID over 999, and
-so use <tt>search -compare {{>= uid 1000} {notmatch "/home/*" $home}}</tt>.
+so use
+<tt>search -compare {{>= uid 1000} {notmatch "/home/*" $home}}</tt>.
+You can also search on a set of names with
+<tt>search -compare {{in username root daemon operator}}</tt>.
 <p>
-When a user is found we can use a simple callback routine. The direct 1:1
+When a user is found this procedure uses a simple callback routine.
+The direct 1:1
 mapping between name-value lists, Tcl arrays, and speed table rows is
 convenient here.
 <pre>
@@ -94,6 +128,12 @@ foreach id $argv {
     }
 }
 </pre>
+Speed tables follow a class/object design
+(though they are written in C, not C++),
+with the class of a table being the creator table (eg, <tt>u_passwd</tt>) and
+the <i>create</i> method creating a new Tcl command that is a instance of the
+class. The subcommands for the table object are methods, and that's how we 
+refer to them.
 <H2>Client-server Speedtables</H2>
 of course loading the password file every time you want to look up a user
 is rather inefficient, so we can create a speed table server. Turning this
@@ -114,6 +154,9 @@ load_pwfile passwd /etc/passwd
 
 ::ctable_server::serverwait</span>
 </pre>
+This is basically the same program as the first example, with the changed
+lines hilighted.
+<p>
 The client code is similarly simple. Instead of building our own speed table
 we connect to the server and use it via the speed table transfer protocol,
 STTP:
@@ -501,6 +544,7 @@ example, iTcl. The methods that need to be implemented are:
 <li>count
 <li>search
 <li>array_get_with_nulls
+<li>key (if not provided as an argument)
 <li>store (unless read-only)
 <li>delete (unless read-only)
 </ul>

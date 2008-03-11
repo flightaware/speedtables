@@ -1,0 +1,26 @@
+<!-- $Id$ -->
+<HTML>
+<HEAD>
+<title>Speed Tables Howto</title>
+<style type=text/css>
+pre { margin-left: 2cm; margin-right: 2cm; border: 4px solid #dddddd; background-color: #dddddd }
+.change { background-color: #aaaaaa ; color: #000088; }
+</style>
+</HEAD>
+<BODY>
+<H2>How to find the number of rows matching a value</H2>
+The result of a search is the number of matching rows.
+<pre>set count [$table search -compare {{= fieldname value}}]</pre>
+<H2>How to find the lowest (highest) value of a field</H2>
+Sort by the field name, with a limit of 1.
+<pre># To find the lowest value, sort ascending.
+$table search -fields fieldname -get row -sort fieldname -limit 1 -code {
+    set lowest [lindex $row 0]
+}
+
+# To find the highest value, sort descending
+$table search -fields fieldname -get row -sort -fieldname -limit 1 -code {
+    set lowest [lindex $row 0]
+}</pre>
+</BODY>
+</HTML>

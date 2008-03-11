@@ -2,7 +2,7 @@
 
 package require ctable
 
-CExtension U_pwfiles 1.0 {
+CExtension U_passwd 1.0 {
 
   CTable u_passwd {
     varstring username indexed 1 notnull 1
@@ -16,7 +16,7 @@ CExtension U_pwfiles 1.0 {
 
 }
 
-package require U_pwfiles
+package require U_passwd
 
 proc load_pwfile {tab file} {
     set fp [open $file r]
