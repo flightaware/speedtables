@@ -678,7 +678,8 @@ foreach field [x fields] {
 <dt><i>write_tabsep  </i><dd>
 <p>DEPRECATED (use search -write_tabsep)</p>
 <pre>
-x write_tabsep channel ?-glob pattern? ?-nokeys? ?-with_field_names? ?-tab string? ?field...?
+x write_tabsep channel ?-glob pattern? ?-nokeys? ?-with_field_names? \
+    ?-tab string? ?field...?
 </pre>
 <p>Write the table tab-separated to a channel, with the names of desired fields specified, else all fields if none are specified.</p>
 <pre>
