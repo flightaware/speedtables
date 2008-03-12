@@ -27,7 +27,8 @@ dd div.blue-indent {margin-left: 1cm }
 dd div.blue-block {margin-left: 1cm}
 dd p.blue-block {margin-left: 1cm}
 dd ul li {margin-left: 0}
-body {font-family: Verdana, Arial, Helvetica, sans-serif}
+body {font-family: Verdana, Arial, Helvetica, sans-serif; margin-right: 1cm;}
+dt {font-size: 110%; color: #0088aa}
 </style>
 </HEAD>
   </style>
@@ -177,9 +178,9 @@ SpeedTable animation_characters {
 <p>No matter how you capitalize it, the package name with be the first character of your C extension name capitalized and the rest mapped to lowercase.</p>
 <p>The name of the C extension follows the CExtension keyword, followed by a version number, and then a code body containing table definitions.</p>
 <H3>Loading Your Speed Table-Generated C Extension</H3>
-<p>After sourcing in the above definition, you can do a </span><span class="code">package require Animinfo</span> or </span><span class="code">package require Animinfo 1.1</span> and Tcl will load the extension and make it available.</p>
+<p>After sourcing in the above definition, you can do a <tt>package require Animinfo</tt> or <tt>package require Animinfo 1.1</tt> and Tcl will load the extension and make it available.</p>
 <p>For efficiency's sake, we detect whether or not the C extension has been altered since the last time it was generated as a shared library, and avoid the compilation and linking phase when it isn't necessary.</p>
-<p>Sourcing the above code body and doing a </span><span class="code">package require Animinfo</span> will create one new command,<i> animation_characters</i>, corresponding to the defined table. We call this command a <i>meta table</i> or a <i>creator table</i>.</p>
+<p>Sourcing the above code body and doing a <tt>package require Animinfo</tt> will create one new command,<i> animation_characters</i>, corresponding to the defined table. We call this command a <i>meta table</i> or a <i>creator table</i>.</p>
 <p><span class="code">animation_characters create t</span> creates a new object, <b>t</b>, that is a Tcl command that will manage and manipulate zero or more rows of the <i>animation_characters</i> table.</p>
 <div class="blue-indent">One meta table can create many speed tables</div>
 <p class="blue-block">You can create additional instances of the table using the meta table's <i>create</i> method. All tables created from the same meta table operate independently of each other, although they share the meta table data structure that speed table implementation code uses to understand and operate on the tables.</p>
@@ -241,7 +242,7 @@ set fp [open save.tsv]
 t search -write_tabsep $fp
 close $fp
 </pre>
-<p>Want to restrict the results to a certain set of fields? Use the </span><span class="code">-fields</span> option followed by a list of the names of the fields you want.</p>
+<p>Want to restrict the results to a certain set of fields? Use the <tt>-fields</tt> option followed by a list of the names of the fields you want.</p>
 <pre>
 t search -write_tabsep $fp \
 -fields {name show coolness}
@@ -265,7 +266,7 @@ default null value for all tables of this table type to, in this
 case, \N</p>
 <p class="bug">Bug: This should be settable on a per-table basis.</p>
 <p><i>animation_characters method foo bar</i> - this will register a new method named <i>foo</i> and then invoke the proc <i>bar</i> with the arguments being the name of the object followed by whatever arguments were passed.</p>
-<p>For example, if after executing </span><span class="code">animation_characters method foo bar</span> and creating an instance of the <i>animation_characters</i> table named <b>t</b>, if you executed</p>
+<p>For example, if after executing <tt>animation_characters method foo bar</tt> and creating an instance of the <i>animation_characters</i> table named <b>t</b>, if you executed</p>
 <pre>
    t foo a b c d
 </pre>
@@ -281,7 +282,7 @@ CTableBuildPath /tmp
 <div class="blue">This chapter enumerates all of the defined methods that are available to interact with Speed Tables, with examples.</div>
 <p>Now the nitty gritty... The following built-in methods are available as arguments to each instance of a speed table:</p>
 <p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep, key, makekey, store, share, getprop, attach</i></p>
-<p>For the examples, assume we have done a "</span><span class="code">cable_info create x</span>"</p>
+<p>For the examples, assume we have done a "<tt>cable_info create x</tt>"</p>
 <dl>
 <dt><i>set</i><dd>
 <pre>
@@ -305,7 +306,14 @@ x set key ?-nocomplain? keyValueList
 <pre>
 <span class="s10">% </span>x set key [array get dataArray]
 </pre>
-<p>By default it is an error to attempt to set a field in a row that does not exist. However, if </span><span class="code">-nocomplain</span> is specified as the first argument, such errors are suppressed, hence all matching fields are set and any keys that do not exist in the table are silently ignored. This is useful when an array contains some fields that you want to store in a speedtable row but may contain additional fields that you do not want to store but which, without </span><span class="code">-nocomplain</span>, you'd have to remove from the array prior to invoking </span><span class="s7">set</span>.</p>
+<p>By default it is an error to attempt to set a field in a row
+that does not exist. However, if <tt>-nocomplain</tt> is specified,
+such errors are suppressed, hence all matching fields are set and
+any keys that do not exist in the table are silently ignored. This
+is useful when an array contains some fields that you want to store
+in a speedtable row but may contain additional fields that you do
+not want to store but which, without <tt>-nocomplain</tt>, you'd
+have to remove from the array prior to invoking <tt>set</tt>.</p>
 <dt><i>store</i><dd>
 <pre>
 x store ?-nocomplain? field value ?field value?
@@ -341,7 +349,7 @@ x makekey {ip 10.2.3.1 name host1}
 <dt><i>field</i><dd>
 <p>"field" returns information about the values that defined the field. You can use this command to retrieve all the key-value pairs that define a field.</p>
 <p>Since we accept (and ignore) arguments to field definitions for keys we don't recognize, you can define your own key-value pairs in field definitions inside of speed table definitions and access them using this method.</p>
-<p>Following the name of the field should be one of the keywords</span><span class="code"> getprop</span>, </span><span class="code">properties</span>, or </span><span class="s7">proplist</span>. </span><span class="s7">Properties</span> will return the names of all of the properties as a Tcl list. </span><span class="s7">Proplist</span> will return the names and values of all the properties as a Tcl list, in what we would call "array set" format. </span><span class="s7">Getprop</span> will return the value associated with the key passed as an argument.</p>
+<p>Following the name of the field should be one of the keywords <tt>getprop</tt>, <tt>properties</tt>, or <tt>proplist</tt>. <tt>properties</tt> will return the names of all of the properties as a Tcl list. <tt>proplist</tt> will return the names and values of all the properties as a Tcl list, in what we would call "array set" format. <tt>getprop</tt> will return the value associated with the key passed as an argument.</p>
 <pre>
 <span>% </span>$ctable field $fieldName proplist
 <b>default 1 name alive type boolean</b>
@@ -457,7 +465,7 @@ $speedtable search ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? ?-re
 <dt>-tab string<dd>
 <p>Specify the separator string for write_tabsep (default "\t").</p>
 <dt>-with_field_names 1<dd>
-<p>If you are doing -write_tabsep, </span><span class="code">-with_field_names 1</span> will cause the first line emitted to be a tab-separated list of field names.</p>
+<p>If you are doing -write_tabsep, <tt>-with_field_names 1</tt> will cause the first line emitted to be a tab-separated list of field names.</p>
 <dt>-key keyVar<dd>
 <dt>-get listVar<dd>
 <dt>-array arrayName<dd>
@@ -466,17 +474,17 @@ $speedtable search ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? ?-re
 <dt>-array_get_with_nulls listVar<dd>
 <dt>-code codeBody<dd>
 <p>Run scripting code on matching rows.</p>
-<p>If </span><span class="code">-key</span> is specified, the key value of each matching row is written into the variable specified as the argument that follows it.</p>
-<p>If </span><span class="code">-get</span> is specified, the fields of the matching row are written into the variable specified as the argument to -get. If </span><span class="code">-fields</span> is specified, you get those fields in the same order. If </span><span class="s7">-fields</span> is not specified, you get all the fields in the order they were defined. If you have any question about the order of the fields, just ask the speed table with </span><span class="s7">$table fields</span>.</p>
-<p><span class="code">-array_get</span> works like </span><span class="code">-get</span> except that the field names and field values are written into the specified variable as a list, in a manner that <i>array get</i> can load into an array. I call this "array set" format. Fields that are null are not retrieved with -array_get.</p>
-<p><span class="code">-array_get_with_nulls</span> pulls all the fields, substituting the null value (by default, an empty string) for any fields that are null.</p>
-<p>Note it is a common bug to use </span><span class="code">-array_get</span> in a </span><span class="code">-code</span> loop, array set the returned list of key-value pairs into an array, and not <i>unset</i> the array before resuming the loop, resulting in null variables not being unset -- that is, from a previous row match, field x had a value, and in the current row, it doesn't.</p>
+<p>If <tt>-key</tt> is specified, the key value of each matching row is written into the variable specified as the argument that follows it.</p>
+<p>If <tt>-get</tt> is specified, the fields of the matching row are written into the variable specified as the argument to -get. If <tt>-fields</tt> is specified, you get those fields in the same order. If <tt>-fields</tt> is not specified, you get all the fields in the order they were defined. If you have any question about the order of the fields, just ask the speed table with <tt>$table fields</tt>.</p>
+<p><tt>-array_get</tt> works like <tt>-get</tt> except that the field names and field values are written into the specified variable as a list, in a manner that <i>array get</i> can load into an array. I call this "array set" format. Fields that are null are not retrieved with -array_get.</p>
+<p><tt>-array_get_with_nulls</tt> pulls all the fields, substituting the null value (by default, an empty string) for any fields that are null.</p>
+<p>Note it is a common bug to use <tt>-array_get</tt> in a <tt>-code</tt> loop, array set the returned list of key-value pairs into an array, and not <i>unset</i> the array before resuming the loop, resulting in null variables not being unset -- that is, from a previous row match, field x had a value, and in the current row, it doesn't.</p>
 <p>If you haven't unset your array, and you "array get" the new result into the array, the previous value of x will still be there. So either unset (-nocomplain is a useful, not widely known optional argument to unset) or use array_get_with_nulls.</p>
 <p>Better yet would be to just use -array or -array_with_nulls, both of which directly put the stuff in an array on your behalf and do the right thing with respect to null values.</p>
-<p><span class="code">-array</span> sets field names and field values into the named array. Any fields that are null are specifically removed (unset) from the array.</p>
+<p><tt>-array</tt> sets field names and field values into the named array. Any fields that are null are specifically removed (unset) from the array.</p>
 <p>Thus, if you use -array to and you with to access a field can be null, you need to check to see if the field exists (using [info exists array(fieldName)], etc) before trying to look at its value.</p>
 <p>If you don't want to do that, consider using -array_with_nulls instead.</p>
-<p><span class="code">-array_with_nulls</span> sets field names and field values into the named array. Any fields that are null are set into the array as the null value (by default, an empty string), as set by the <i>null_value</i> method of the creator table.</p>
+<p><tt>-array_with_nulls</tt> sets field names and field values into the named array. Any fields that are null are set into the array as the null value (by default, an empty string), as set by the <i>null_value</i> method of the creator table.</p>
 <dt>-compare list<dd>
 <p>Perform a comparison to select rows.</p>
 <p>Compare expressions are specified as a list of lists. Each list consists of an operator and one or more arguments.</p>
@@ -524,9 +532,9 @@ $speed table search -compare {{&gt; coolness 50} \
 <p>The "in" search expression, when used as the first search term on an indexed field has very high performance, in particular with client-server ctables, as it is much faster to go find many rows in one query than to repeatedly cause a TCP/IP command/response roundtrip on a per-row basis.</p>
 </dl>
 <dt>-poll_interval interval<dd>
-<p>Perform an </span><span class="code">update</span> operation every </span><span class="code">interval</span> rows, to allow background processing to work in the background while a long search is going on.</p>
+<p>Perform an <tt>update</tt> operation every <tt>interval</tt> rows, to allow background processing to work in the background while a long search is going on.</p>
 <dt>-poll_code {code}<dd>
-<p>Perform the specified </span><span class="code">code</span> every </span><span class="code">-poll_interval</span> rows. Errors from the code will be handled by the </span><span class="s7">bgerror</span> mechanism. If no poll interval is specified then a default (1024) is used.</p>
+<p>Perform the specified <tt>code</tt> every <tt>-poll_interval</tt> rows. Errors from the code will be handled by the </tt>bgerror</tt> mechanism. If no poll interval is specified then a default (1024) is used.</p>
 
 </dl>
 
@@ -554,7 +562,7 @@ $speedtable search \
 <dt><i>foreach</i><dd>
 <p>DEPRECATED (use "search" instead)</p>
 <pre>
-<span> </span>x foreach varName ?pattern? codeBody
+x foreach varName ?pattern? codeBody
 </pre>
 <p>Iterate over all of the rows in the table, or just the rows in the table matching a string match wildcard, executing tcl code on each of them.</p>
 <p>Example:</p>
@@ -572,13 +580,15 @@ $speedtable search \
 <dt><i>incr</i><dd>
 <p>Increment the specified numeric values, returning a list of the new incremented values</p>
 <pre>
-<span>% </span>x incr $key a 4 b 5
+% x incr $key a 4 b 5
 </pre>
 <p>...will increment $key's a field by 4 and b field by 5, returning a list containing the new incremented values of a and b.</p>
 <dt><i>type</i><dd>
 <p>Return the "type" of the object, i.e. the name of the object-creating command that created it.</p>
-<p>% x type</p>
-<p>cable_info</p>
+<pre>
+% x type
+<b>cable_info</b>
+</pre>
 <dt><i>import_postgres_result</i><dd>
 <pre>
 x import_postgres_result handle ?-nokeys? ?-nocomplain?
@@ -589,35 +599,34 @@ x import_postgres_result handle ?-nokeys? ?-nocomplain?
 <p>This is extremely fast as it does not do any intermediate Tcl evaluation on a per-row basis.</p>
 <p>How you use it is, first, execute some kind of query:</p>
 <pre>
-<span> </span> set res [pg_exec $connection "select * from mytable"]
+set res [pg_exec $connection "select * from mytable"]
 </pre>
-<p>(You can also use </span><span class="code">pg_exec_prepared</span> or even the asynchronous <i>Pgtcl</i> commands </span><span class="code">pg_sendquery</span> and </span><span class="s7">pg_sendquery_prepared</span> in association with</p>
-<p> </span><span class="code">pg_getresult</span> -- see the <i>Pgtcl</i> documentation for more info.)</p>
+<p>(You can also use <tt>pg_exec_prepared</tt> or even the asynchronous <i>Pgtcl</i> commands <tt>pg_sendquery</tt> and </tt>pg_sendquery_prepared</tt> in association with <tt>pg_getresult</tt> -- see the <i>Pgtcl</i> documentation for more info.)</p>
 <p> Check for an error...</p>
 <pre>
-<span> </span> if {[pg_result $res -status] != "PGRES_RESULT_OK"} {...}
+if {[pg_result $res -status] != "PGRES_RESULT_OK"} {...}
 </pre>
 <p> ...and then do...</p>
 <pre>
-<span> </span>x import_postgres_result $res
+x import_postgres_result $res
 </pre>
 <div class="blue-indent">Importing PostgreSQL Results Is Pretty Fast</div>
 <p class="blue-block">On a 2 GHz AMD64 we are able to import about 200,000 10-element rows per CPU second, i.e. around 5 microseconds per row. Importing goes more slowly if one or more fields of the speed table has had an index created for it.</p>
 <dt><i>fieldtype</i><dd>
 <p>Return the datatype of the named field.</p>
 <pre>
-<span> </span>foreach field [x fields] {
+foreach field [x fields] {
  puts "$field type is [x fieldtype $field]"
  }
-<span> </span><b><i>ip type is inet</i></b>
-<b><i> mac type is mac</i></b>
-<b><i> name type is varstring</i></b>
-<b><i> address type is varstring</i></b>
-<b><i> addressNumber type is varstring</i></b>
-<b><i> geos type is varstring</i></b>
-<b><i> i type is int</i></b>
-<b><i> j type is int</i></b>
-<b><i> ij type is long</i></b>
+<b>ip type is inet</b>
+<b>mac type is mac</b>
+<b>name type is varstring</b>
+<b>address type is varstring</b>
+<b>addressNumber type is varstring</b>
+<b>geos type is varstring</b>
+<b>i type is int</b>
+<b>j type is int</b>
+<b>ij type is long</b>
 </pre>
 <dt><i>needs_quoting</i><dd>
 <p>Given a field name, return 1 if it might need quoting. For example, varstrings and strings may need quoting as they can contain any characters, while integers, floats, IP addresses, MAC addresses, etc, do not, as their contents are predictable and their input routines do not accept tabs.</p>
@@ -627,22 +636,18 @@ x import_postgres_result handle ?-nokeys? ?-nocomplain?
 <dt><i>reset</i><dd>
 <p>Clear everything out of the table. This deletes all of the rows in the table, freeing all memory allocated for the rows, the rows' hashtable entries, etc.</p>
 <pre>
-<span> % </span>x count
+% x count
+<b>652343</b>
+% x reset
+% x count
+<b>0</b>
 </pre>
-<p> 652343</p>
-<pre>
-<span> % </span>x reset
-<span> % </span>x count
-</pre>
-<p> 0</p>
 <dt><i>destroy</i><dd>
 <p>Delete all the rows in the table, free all of the memory, and destroy the object.</p>
 <pre>
-<span> % </span>x destroy
-</pre>
-<p> % </span><span class="code">x asdf</p>
-<pre>
-<span> </span><b> invalid command name "x"</b>
+% x destroy
+% x asdf
+<b> invalid command name "x"</b>
 </pre>
 <dt><i>share</i><dd>
 <dt><i>getprop</i><dd>
@@ -652,7 +657,7 @@ x import_postgres_result handle ?-nokeys? ?-nocomplain?
 <dt><i>statistics</i><dd>
 <p> Report information about the hash table such as the number of entries, number of buckets, bucket utilization, etc. It's fairly useless, but can give you a sense that the hash table code is pretty good.</p>
 <pre>
-<span>% </span>x</span><span class="s9"> </span>statistics
+% x statistics
 <b>1000000 entries in table, 1048576 buckets</b>
 <b>number of buckets with 0 entries: 407387</b>
 <b>number of buckets with 1 entries: 381489</b>
@@ -682,7 +687,7 @@ close $fp
 <p>The first field written will be the key, unless -nokeys is specified and the key value is not written to the destination.</p>
 <p>If -with_field_names is specified, then the names of the fields will be the first row output.</p>
 <p>If -tab is specified then the string provided will be used as the tab.</p>
-<p><b><i>BUG - We do not currently quote any tabs that occur in the data, so if there are tab characters in any of the strings in a row, that row will not be read back in properly. In fact, we will generate an error when attempting to read such a row. In most cases it should be possible to select a tab separator that does not occur in any field to avoid this.</i></b></p>
+<p class="bug">Bug: We do not currently quote any tabs that occur in the data, so if there are tab characters in any of the strings in a row, that row will not be read back in properly. In fact, we will generate an error when attempting to read such a row. In most cases it should be possible to select a tab separator that does not occur in any field to avoid this.</p>
 <dt><i>read_tabsep</i><dd>
 <pre>
 x read_tabsep channel ?-glob pattern? ?-nokeys? ?-with_field_names? ?-tab string? ?-skip pattern? ?field...?
@@ -695,14 +700,14 @@ close $fp
 </pre>
 <p>The first field is expected to be the key (unless -nokeys is specified) and is not included in the list of fields. So if you name five fields, for example, each row in the input file (or socket or whatever) should contain six elements.</p>
 <p>It's an error if the number of fields read doesn't match the number expected.</p>
-<p>If the glob pattern is defined, it's applied to the key (first field in the row) and if it doesn't match, the row is not inserted.</p>
-<p>If </span><span class="code">-tab string</span> is specified, then the string provided will be used as the tab separator. There is no explicit limit on the length of the string, so you can use something like </span><span class="code">-tab {%JULIE@ANDREWS%}</span> with <i>read_tabsep</i> and <i>write_tabsep</i> (or <i>search -write_tabsep</i>) to reduce the possibility of a conflict.</p>
-<p>if </span><span class="code">-skip pattern</span> is specified, then lines matching that pattern are ignored. This is sometimes necessary for files containing comments.</p>
-<p>If </span><span class="code">-with_field_names</span> is specified, the first row read is expected to be a tab-separated list of field names, and Speedtables will read that line and use its contents to determine which fields each of the following lines of tab-separated values will be stored as. (This is the counterpart to the </span><span class="code">-with_field_names</span> argument to speedtables's <i>search</i> method when invoked with the </span><span class="s7">-write_tabsep</span> option.)</p>
-<p>If </span><span class="code">-nokeys</span> is specified, the first field of each row is not used as the key -- rather, the key is taken from the provided fields (as if <i>makekey</i> was called for each row), and if there is no key it is automatically created as an ascending integer starting from 0. The last key generated will be returned as the value of <i>read_tabsep</i>.</p>
+<p>If the <tt>-glob pattern</tt> is defined, it's applied to the key (first field in the row) and if it doesn't match, the row is not inserted.</p>
+<p>If <tt>-tab string</tt> is specified, then the string provided will be used as the tab separator. There is no explicit limit on the length of the string, so you can use something like <tt>-tab {%JULIE@ANDREWS%}</tt> with <i>read_tabsep</i> and <i>write_tabsep</i> (or <i>search -write_tabsep</i>) to reduce the possibility of a conflict.</p>
+<p>if <tt>-skip pattern</tt> is specified, then lines matching that pattern are ignored. This is sometimes necessary for files containing comments.</p>
+<p>If <tt>-with_field_names</tt> is specified, the first row read is expected to be a tab-separated list of field names, and Speedtables will read that line and use its contents to determine which fields each of the following lines of tab-separated values will be stored as. (This is the counterpart to the <tt>-with_field_names<tt> argument to speedtables's <i>search</i> method when invoked with the </tt>-write_tabsep</tt> option.)</p>
+<p>If <tt>-nokeys</tt> is specified, the first field of each row is not used as the key -- rather, the key is taken from the provided fields (as if <i>makekey</i> was called for each row), and if there is no key it is automatically created as an ascending integer starting from 0. The last key generated will be returned as the value of <i>read_tabsep</i>.</p>
 <p>If you subsequently do another <i>read_tabsep</i> with -nokeys specified, the auto key will continue from where it left off. If you invoke the table's reset method, the auto key will reset to zero.</p>
 <p>If you later want to insert at the end of the table, you need to use <i>store</i> rather than <i>set</i>.</p>
-<p><i>read_tabsep</i> stops when it reaches end of file OR when it reads an empty line. Since you must have a key and at least one field, this is safe. However it might not be safe with </span><span class="code">-nokeys</span>.</p>
+<p><i>read_tabsep</i> stops when it reaches end of file OR when it reads an empty line. Since you must have a key and at least one field, this is safe. However it might not be safe with <tt>-nokeys</tt>.</p>
 <p>The nice thing about it is you can indicate end of input with an empty line and then do something else with the data that follows.</p>
 <dt><i>index</i><dd>
 <p>Index is used to create skip list indexes on fields in a table, which can be used to greatly speed up certain types of searches.</p>
@@ -723,12 +728,12 @@ x index dump foo
 x index count foo
 </pre>
 <p>...returns a count of the skip list for field "foo". This number should always match the row count of the table (x count). If it doesn't, there's a bug in index handling.</p>
-<p>x index span foo</p>
+<pre>x index span foo</pre>
 <p>...returns a list containing the lexically lowest entry and the lexically highest entry in the index. If there are no rows in the table, an empty list is returned.</p>
 <pre>
 x index indexable
 </pre>
-<p>...returns a (potentially empty) list of all of the field names that can have indexes created for them. Fields must be explicitly defined as indexable when the field is created with </span><span class="code">indexed 1</span> arguments. (This keeps us from incurring a lot of overhead creating various things to be ready to index any field for fields that just couldn't ever reasonably be used as an index anyway.</p>
+<p>...returns a (potentially empty) list of all of the field names that can have indexes created for them. Fields must be explicitly defined as indexable when the field is created with <tt>indexed 1</tt> arguments. (This keeps us from incurring a lot of overhead creating various things to be ready to index any field for fields that just couldn't ever reasonably be used as an index anyway.</p>
 <pre>
 x index indexed
 </pre>
@@ -738,7 +743,7 @@ x index indexed
 <div class="blue">This chapter explains how to make Speed Table searches go as fast as possible.</div>
 <p>An example of brute force searching that there isn't much getting around without adding fancy full-text search is unanchored text search. Even in this case, with our fast string search algorithm and quick traversal during brute-force search, we're seeing 60 nanoseconds per row or searching about sixteen million rows per CPU second on circa-2006 AMD64 machines.</p>
 <p>Although many optimizations are being performed by the speed table compiler, further performance improvements can be made without introducing huge new complexities, perturbations, etc.</p>
-<p>If you need to search for ranges of things, partial matches, straight equality of a field other than the key field, etc, you can use indexes and the "range", "=", and "in" compare functions to obtain huge search performance improvements over brute force, subject to a number of limitations: First, the table must have had an index created on that field using </span><span class="code">$speedtable index create $fieldName</span>. </p>
+<p>If you need to search for ranges of things, partial matches, straight equality of a field other than the key field, etc, you can use indexes and the "range", "=", and "in" compare functions to obtain huge search performance improvements over brute force, subject to a number of limitations: First, the table must have had an index created on that field using <tt>$speedtable index create $fieldName</tt>. </p>
 <div class="blue">Speed Table Query Optimizer</div>
 <p>The Speed Table Query Optimizer has been rolled in to search, and search+ has been deprecated. The "best" field in the query is used as the index, in this order:</p>
 <p>"<b>in</b>" has the highest priority, but the field used MUST be the key field or an indexed field.</p>
@@ -833,8 +838,8 @@ $ctable search -compare {in key $listOfRows} -array_with_nulls data {
 </div>
 <H3>STAPI support for ctable_server</H3>
 <p>The success of the ctable_server led to the creation of a generic URI-based API for the ctable server and for other ctable-compatible objects and classes. This API, STAPI, allows ctables, the ctable server, and other compatible objects to be used interchangably by applications.</p>
-<p>To open a table using the STAPI you need to </span><span class="code">package require </span>any packages needed for the STAPI connection method you need, then call</p> <p class="code">::stapi::connect method://server_spec/table_spec</p>
-<p>For the speedtable server, the method is </span><span class="code">ctable:</span> (as above) or</span><span class="code"> sttp</span>: (speed tables transfer protocol), and the URI syntax is exactly the same as in </span><span class="s7">remote_speedtable</p>
+<p>To open a table using the STAPI you need to <tt>package require </tt>any packages needed for the STAPI connection method you need, then call</p> <p class="code">::stapi::connect method://server_spec/table_spec</p>
+<p>For the speedtable server, the method is <tt>sttp:</tt> (speed tables transfer protocol), and the URI syntax is exactly the same as in <tt>remote_speedtable</tt></p>
 <p>As a special case, when the URI is not in URI format it is assumed to be the name of an already opened ctable.</p>
 <p>STAPI connection methods already defined a;so include sql, which provides direct access to PostgreSQL tables through pgsql as if they were ctables.</p>
 <p>STAPI is described in more detail in section 9.</p>
@@ -891,16 +896,14 @@ $ctable search -compare {in key $listOfRows} -array_with_nulls data {
 <dt>info<dd>
 <p>Returns some internal information about the share in a name-value list. The data includes size, flags, name, whether you're the creator <i>(master)</i>, and filename.</p>
 <dt>pools<dd>
-<p>Returns a list of information for fixed size memory pools in the shared segment. There will be at least two pools, the garbage pool (containing elements that have been freed but are still in use by at least one reader) and one pool the size of a ctable row is set up for each ctable. For each pool it will return the size of elements that the pool will manage, how many elements in each chunk of elements allocated at once, the total number of chunks allocated, and the number of free elements: </span><span class="code">{element_size elements_per_chunk chunks free_elements}</span> </p>
+<p>Returns a list of information for fixed size memory pools in the shared segment. There will be at least two pools, the garbage pool (containing elements that have been freed but are still in use by at least one reader) and one pool the size of a ctable row is set up for each ctable. For each pool it will return the size of elements that the pool will manage, how many elements in each chunk of elements allocated at once, the total number of chunks allocated, and the number of free elements: <tt>{element_size elements_per_chunk chunks free_elements}</tt> </p>
 <dt>pool element_size elements_per_chunk max_chunks<dd>
 <p>Creates a pool for objects of element_size bytes, allocated in elements_per_chunk chunks, up to a maximum of max_chunks. If max_chunks is zero it will extend to pool to the limit of the shared segment if necessary.</p>
 </dl>
 </dl>
 <H3>STAPI support for shared memory tables:</H3>
-<pre>
-package require st_shared
-::stapi::connect shared://port/table ?options?
-</pre>
+<p><tt>package require st_shared
+<br>::stapi::connect shared://port/table ?options?</tt></p>
 <p>Options:</p>
 <ul>
 <p>-build path ... directory containing the generated ctable package.</p>
@@ -940,9 +943,10 @@ $r destroy
 <p>st_server, a set of routines for automatically creating a ctable from an SQL table as a local read_only cache for the table, or as a workspace to be used for preparing rows to be inserted into the table. It's normally used in a ctable_server task providing a local cache for client processes.</p>
 <p>st_client, which provides the general interface for creating STAPI objects identified by URIs.</p>
 <H3>st_server</H3>
-<p><tt>
+<dl>
+<dt><tt>
 package require st_server<br>
-::stapi::init</i> </span>?options?</tt></p>
+::stapi::init ?options?</tt><dd>
 <p>Options:</p>
 <dl>
 <dt>-dir work_directory<dd>
@@ -954,15 +958,15 @@ package require st_server<br>
 <dt>-cache minutes<dd>
 <p>How long to treat a cached tsv file as "good"</p>
 </dl>
-<p><tt>::stapi::init_ctable name table_list where_clause ?columns|column...?</tt></p>
+<dt><tt>::stapi::init_ctable name table_list where_clause ?columns|column...?</tt><dd>
 <p>Initialize a cached speed table based on one or more SQL tables. If necessary, this builds a ctable based on the columns, and generates new SQL to read the table.</p>
 <p>Parameters:</p>
 <dl>
-<dt><p class="code">name<dd>
+<dt>name<dd>
 <p>base name of speed table</p>
-<dt><p class="code">table_list<dd>
+<dt>table_list<dd>
 <p>list of SQL tables to extract data from. If it's empty then use the base name of the speed table as the name of the SQL table.</p>
-<dt><p class="code">where_clause</span><span> <dd>
+<dt>where_clause<dd>
 <p>An optional SQL "WHERE" clause to limit the rows selected into the speed table, or an empty string</p>
 <dt><p class="code">columns<dd>
 <p>list of column definitions.</p>
@@ -981,19 +985,19 @@ speed table arguments for the field
 </ul>
 <p>(Only the field name is absolutely required.)</p>
 <p>If the type is missing or blank, it's assumed to be <i>varchar</i>. If the expression is missing or blank, it's assumed to be the same as the field name.</p>
-<p>In most cases the list of column definitions can be created by querying the SQL database itself using </span><span class="code">from_table</span>:</p>
+<p>In most cases the list of column definitions can be created by querying the SQL database itself using <tt>from_table</tt>:</p>
 </dl>
-<p><tt>::stapi::from_table table_name keys ?-option value?...</tt></p>
-<p>Generate a column list for </span><span class="code">init_ctable</span> by querying the SQL database for the table definition.</p>
+<dt><tt>::stapi::from_table table_name keys ?-option value?...</tt><dd>
+<p>Generate a column list for <tt>init_ctable</tt> by querying the SQL database for the table definition.</p>
 <dl>
-<dt>keys<dt>
+<dt>keys<dd>
 <p>a list of columns that define the key for the table</p>
-<p>Keys can be empty, to allow you to combine from_table lists with an appropriate "WHERE" clause to use </span><span class="code">init_ctable</span> to create a view that spans tables.</p>
+<p>Keys can be empty, to allow you to combine from_table lists with an appropriate "WHERE" clause to use <tt>init_ctable</tt> to create a view that spans tables.</p>
 </dl>
 <p>Options:</p>
 <dl>
 <dt>-with column<dd>
-<p>Include column name in table. If <i>any</i> </span><span class="code">-with</span> clauses are provided, only the named columns will be included.</p>
+<p>Include column name in table. If <i>any</i> <tt>-with</tt> clauses are provided, only the named columns will be included.</p>
 <dt>-without column<dd>
 <p>Exclude column name from table. You must not provide both "-with" and "-without" options.</p>
 <dt>-index column<dd>
@@ -1005,7 +1009,7 @@ speed table arguments for the field
 <dt>-prefix text<dd>
 <p>If specified, prefix column names with "$prefix"</p>
 </dl>
-<p><tt>::stapi::open_cached name ?pattern? ?-opt val?...</tt></p>
+<dt><tt>::stapi::open_cached name ?pattern? ?-opt val?...</tt><dd>
 <p>Open an initialized speed table, maintaining a local cache of the underlying SQL table in a .tsv file in the workdir.</p>
 <p>Options</p>
 <dl>
@@ -1016,24 +1020,25 @@ speed table arguments for the field
 <dt>-col name<dd>
 <p>Name of column in the table that contains the last_changed time of each entry, if any. This is used as an optimization to only load modified lines when the schema supports that.</p>
 <dt>-index field_name<dd>
-<p>Name of a field to create an index on. Multiple </span><span class="code">-index</span> entries are allowed.</p>
+<p>Name of a field to create an index on. Multiple <tt>-index</tt> entries are allowed.</p>
 </dl>
-<p><tt>::stapi::refresh_ctable ctable ?last_read? ?err?</tt></p>
-<p>Update new rows from SQL for speed table </span><span class="code">ctable</span>.</p>
-<p>If </span><span class="code">last_read</span> is non-zero, use that rather than last modify time of the cache file.</p>
-<p>If </span><span class="code">err</span> is provided, it will return success or failure of the SQL request and put the error in <i>$err</i>, otherwise it will generate a Tcl error for SQL errors.</p>
-<p>This uses the parameters set up in </span><span class="code">open_cached</span>, and if there is no column in the table that can be used to determine the last change time, then the whole table will be re-read.</p>
-<p><tt>::stapi::save_ctable ctable ?tsv_file?</tt></p>
-<p>Save a table locally on disk. If the</span><span class="code"> tsv_file</span> is provided, it writes to that file. If not, it locates and locks the existing tsv file for the table, writes it, and unlocks it. This does not save the table back to the SQL data source.</p>
-<p><tt>::stapi::remove_tsv_file table_name
-::stapi::remove_tcl_file table_name</tt></p>
+<dt><tt>::stapi::refresh_ctable ctable ?last_read? ?err?</tt><dd>
+<p>Update new rows from SQL for speed table <tt>ctable</tt>.</p>
+<p>If <tt>last_read</tt> is non-zero, use that rather than last modify time of the cache file.</p>
+<p>If <tt>err</tt> is provided, it will return success or failure of the SQL request and put the error in <i>$err</i>, otherwise it will generate a Tcl error for SQL errors.</p>
+<p>This uses the parameters set up in <tt>open_cached</tt>, and if there is no column in the table that can be used to determine the last change time, then the whole table will be re-read.</p>
+<dt><tt>::stapi::save_ctable ctable ?tsv_file?</tt><dd>
+<p>Save a table locally on disk. If the<tt> tsv_file</tt> is provided, it writes to that file. If not, it locates and locks the existing tsv file for the table, writes it, and unlocks it. This does not save the table back to the SQL data source.</p>
+<dt><tt>::stapi::remove_tsv_file table_name
+<br>::stapi::remove_tcl_file table_name</tt><dd>
 <p>Remove the cached <b>tcl</b> or <b>tsv</b> files, which will force the cache to be reread (if the <b>tsv</b> file is missing) or reconstructed using SQL queries (if the <b>tcl</b> file is missing). These are not normally used directly, but are available if the table is known to be out of date.</p>
-<p><tt>::stapi::open_raw_ctable name</tt></p>
-<p>Open an initialized speed table (as in </span><span class="code">open_cached</span>) but don't fetch anything from SQL. This is used internally by </span><span class="code">open_cached</span>, and is also useful for setting up temporary tables and workspaces.</p>
-
+<dt><tt>::stapi::open_raw_ctable name</tt><dd>
+<p>Open an initialized speed table (as in <tt>open_cached</tt>) but don't fetch anything from SQL. This is used internally by <tt>open_cached</tt>, and is also useful for setting up temporary tables and workspaces.</p>
+</dl>
 <H3>st_client</H3>
 <p>st_client implements the ::stapi::connect front end for ctables and other speedtable API objects.</p>
-<p><tt>::stapi::connect uri ?-name value...?</tt></p>
+<dl>
+<dt><tt>::stapi::connect uri ?-name value...?</tt><dd>
 <p>Connect to a speed table server or other database providing a speed table interface via a URI.  Returns an open speed table.</p>
 <p>Options:</p>
 <dl>
@@ -1047,22 +1052,28 @@ speed table arguments for the field
 <p>One of -key or -keys/-keysep should be provided. Depending on the underlying object, -keys may not be compatible and STAPI will need to create a wrapper function.</p>
 <p>If neither is provided, some STAPI capabilities may not be available.</p>
 
-<p><tt>::stapi::register method transport_handler</tt></p>
+<dt><tt>::stapi::register method transport_handler</tt><dd>
 <p> register a transport method for ::stapi::connect.</p>
+</dl>
 <H3>Using a ctable server via sttp (client/server)</H3>
-<p><tt>package require <i>st_client</i></tt></p>
-<p><b>sttp://[host:port]/[dir/]table[/stuff][?stuff]</b></p>
+<dl>
+<dt><tt>package require st_client
+<br><b>sttp://[host:port]/[dir/]table[/stuff][?stuff]</b></p>
+</dl>
 <H3>Using a ctable server via sttp (shared memory)</H3>
-<p><tt>package require <i>st_shared</i></tt></p>
-<p><b>shared://port/[dir/]table[/stuff][?stuff]</b></p>
+<dl>
+<dt><tt>package require st_shared
+<br><b>shared://port/[dir/]table[/stuff][?stuff]</b></tt><dd>
 <p>Access a speed table server on localhost, using shared memory for the "search" method and sttp: for other methods.</p>
 <p>The speed table must reside on the same machine for shared memory table access to be used. Concurrent access and update of shared memory speed tables is supported and provides a mechanism to use multiple processors to access a table concurrently. Like, really concurrently, whereas pure client/server table access is inherently single threaded.</p>
 <p>The ctable built by the server must be in auto_path, or in the directory defined by the "-build" option.</p>
+</dl>
 <H3>Using a PostgreSQL database directly</H3>
-<p><tt>package require <i>st_client_pgtcl</i></tt>
+<dl>
+<dt><tt>package require st_client_pgtcl
    <br>::stapi::init_conn connection <i>...or...</i>
-   <br>::stapi::init_DIO ?db? ?user?</tt></p>
-<p><b>sql://connection/table[/col[:type]/col...][?param&amp;param...]</b></p>
+   <br>::stapi::init_DIO ?db? ?user?</tt>
+<br><b>sql://connection/table[/col[:type]/col...][?param&amp;param...]</b></tt><dd>
 <p>Create a stapi interface to a PostgreSQL table</p>
 <dl>
 <dt>connection:<dd>
@@ -1086,90 +1097,102 @@ Define the key in terms of a list of columns.
 <p>Pull in all the columns from "users", using login as the key.</p>
 <p class="code"><b>sql:///users/login/password</b></p>
 <p>Pull in login and password from "users", using login as the key.</p>
+</dl>
 <H3>Using an already opened speed table</H3>
-<p><tt>package require st_client</tt></p>
-<p><b>name</b> (no method)</p>
-<p>If the URI is not URI format, it assumes it's an object that provides stapi semantics already... typically a ctable, an already-opened ctable_client connection, or the result of a previous call to ::stapi::connect. It queries the object using the </span><span class="code">methods</span> command, and if necessary creates a wrapper around the ctable to implement the extra methods that STTP provides.</p>
+<dl>
+<dt><tt>package require st_client</tt>
+<br><b>name</b></tt> (no method)<dd>
+<p>If the URI is not URI format, it assumes it's an object that provides stapi semantics already... typically a ctable, an already-opened ctable_client connection, or the result of a previous call to ::stapi::connect. It queries the object using the <tt>methods</tt> command, and if necessary creates a wrapper around the ctable to implement the extra methods that STTP provides.</p>
 <p>Required methods to avoid the creation of a wrapper:</p>
 <ul>
 <li>key
 <li>makekey
 </ul>
+</dl>
 <H3>stapi::extend - the sttp API extensions to ctables</H3>
-<p>These extensions may be required for packages like STdisplay, but may not be provided by all speedtable-compatible packages, so ::stapi::extend can create a wrapper object when needed.</p>
-<p><tt>::stapi::extend::connect object key-list ?-keysep string?</tt></p>
+<p>These extensions may be required for packages like STdisplay, which may need methods that are not be provided by all speedtable-compatible packages, so ::stapi::extend creates a wrapper object when needed.</p>
+<dl>
+<dt><tt>::stapi::extend::connect object key-list ?-keysep string?</tt><dd>
 <p>This is also called internally by ::stapi::connect if the "-key" or "-keys" option is provided.</p>
-<p>If the <i>object</i> was created by ::stapi::extend::connect, or if it can use the <tt>methods</tt> call to determine that the object provides all the necessary methods, then the STAPI object is returned immediately. That makes it always safe to use this on an opened speedtable. but it can not be used to change the parameters of an existing STAPI object.</p>
+<p>If the <i>object</i> was created by ::stapi::extend::connect, or if it can use the <tt>methods</tt> call to determine that the object provides all the necessary methods, then the STAPI object is returned immediately. That makes it always safe to use this on an opened speedtable.</p>
+<p>Note: this does not to change any parameters of an existing STAPI object.</p>
 <p>Otherwise, this behaves identically to calling ::stapi::connect with the -key/-keys argument, and creates a wrapper object that understands at least the <tt>key</tt>, <tt>makekey</tt>, and <tt>store</tt> methods.</p>
+</dl>
 <H2> 10 -  STDisplay - Speed Table Display Functions for the World Wide Web</H2>
 <p>From the speed table API, <i>stDisplay</i>, speed table display functions for the world wide web. This code is derived from Rivet's <b>diodisplay.tcl</b>.</p>
 <pre>
 set display [::STDisplay #auto ?-confvar value? ... \
- -table table ?-keyfields key_list?]
-<span class="Apple-converted-space">     </span>or
-set display [::STDisplay #auto ?-confvar value? ... \
- -uri uri]
+    -table table ?-keyfields key_list?]
 </pre>
-<p>One of </span><span class="code">-table</span> or </span><span class="code">-uri</span> must be provided.</p>
-<p><span>-table</span> - use already opened table.</p>
-<p>If the table isn't STAPI-compatible it will use ::stapi::extend::connect to wrap it and in this case </span><span class="code">keyfields</span> must be provided.</p>
-<p><span>-uri</span> - Use ::stapi::connect to connect to a ctable from a URI.</p>
+<p>or</p>
+<pre>
+set display [::STDisplay #auto ?-confvar value? ... \
+    -uri uri]
+</pre>
+<p>One of <tt>-table</tt> or <tt>-uri</tt> must be provided.</p>
+<p>Options:</p>
+<dl>
+<dt>-table<dd>Use already opened table.
+<p>If the table isn't STAPI-compatible it will use ::stapi::extend::connect to wrap it and in this case <tt>keyfields</tt> must be provided.</p>
+<dt>-uri<dd>Use ::stapi::connect to connect to a ctable using a URI.
 <p>Any valid STAPI URI can be used.</p>
-<p>Other config variables:</p>
-<p>-debug</span><span class="s13"> 0-9</p>
+<dt>-debug 0-9</dd>
 <p>Set debug level</p>
-<p><span>-csvfile</span> filename</p>
+<dt>-csvfile filename<dd>
 <p>Name of CSV file to generate.</p>
-<p>-csvredirect</span><span class="s13"> ?0|1?</p>
+<p>-csvredirect ?0|1?</p>
 <p>If enabled, then the CSV file is downloaded immediately using a redirect.</p>
-<p><span>-key</span> field_name</p>
+<dt>-key field_name<dd>
 <p>Field to use as a key</p>
-<p><span>-title</span> string</p>
+<dt>-title string<dd>
 <p>Title of table.</p>
-<p><span>-arrows</span> {up down}</p>
+<dt>-arrows {up down}<dd>
 <p>Symbols or HTML fragments to use for ascending and descending sort of a table column.</p>
-<p>-pagesize</span><span class="s13"> integer</p>
+<p>-pagesize integer</p>
 <p>Number of rows displayed per page.</p>
-<p><span>-functions</span> {Search List Add Edit Delete Details}</p>
+<dt>-functions {Search List Add Edit Delete Details}<dd>
 <p>Functions shown on the top of the display.</p>
-<p><span>-rowfunctions</span> {Details Edit Delete}</p>
+<dt>-rowfunctions {Details Edit Delete}<dd>
 <p>Functions shown at the end of the row.</p>
+</dl>
+
 <H3>Methods for $display</H3>
-<p>$display </span><span>show</p>
+<dl>
+<dt>$display show<dd>
 <p>Render all HTML for the page. Destroys $display.</p>
-<p>$display </span><span>destroy</p>
+<dt>$display destroy<dd>
 <p>Destroys $display</p>
-<p>$display </span><span>state</p>
-<p>Returns a list of name-value pairs that represent the current state of the query, as CGI variables, for populating external links. The counterpart to </span><span>hidden</p>
-<p class="code"><span>$display </span><span class="s14">functions</span><span class="s9"> </span>{?Add? ?Show? ...}</p>
+<dt>$display state<dd>
+<p>Returns a list of name-value pairs that represent the current state of the query, as CGI variables, for populating external links. The counterpart to hidden</p>
+<dt>$display functions {?Add? ?Show? ...}<dd>
 <p>Equivalent to the -functions configuration variable - enable global functions, to control the functions available in the search bar. The possible functions are <i>Search</i>, <i>List</i>, <i>Add</i>, <i>Edit</i>, <i>Delete</i> and <i>Details</i>.</p>
-<p class="code"><span>$display </span><span class="s14">rowfunctions</span><span class="s9"> </span>{?Edit? ?Delete? ...}</p>
+<dt>$display rowfunctions {?Edit? ?Delete? ...}<dd>
 <p>Equivalent to the -rowfunctions configuration variable - enable row functions, to control the functions available in the search bar. The possible functions are <i>Edit</i>, <i>Delete</i> and <i>Details</i>.</p>
-<p class="code"><span>$display </span><span class="s14">field</span><span class="s9"> </span>name</span><span class="s9"> </span>?-configvar value?</span><span class="s9">...</p>
+<dt>$display field name ?-configvar value?...<dd>
 <p>Define a field</p>
-<p class="code"><span>$display </span><span class="s14">alias</span><span class="s9"> </span>name</span><span class="s9"> </span>?field?</p>
+<dt>$display alias name ?field?<dd>
 <p>Define an alias for an existing field. Aliases are used to create multiple filtered columns based on the same field.</p>
-<p class="code"><span>$display </span><span class="s14">filter</span><span class="s9"> </span>name</span><span class="s9"> </span>?proc? ?column?</p>
-<p>Filter column <i>name</i> through <span class="code">[proc $<i>value_of_field</i> ...]</span> before displaying. If any <span class="code">columns</span> are provided the values of these columns will be appended to the filter.</p>
-<p class="code"><span>$display</span><span class="s14"> csvfilter</span><span class="s9"> </span>name</span><span class="s9"> </span>?proc? ?column?</p>
-<p>Filter column <i>name</i> through <span class="code">[proc $<i>value_of_field</i>]</span> on generating a CSV file, like filter.</p>
-<p class="code">$display unfilter name ?proc?</p>
-<p>Filter entered text through <span class="code">[$proc text]</span> before using to search table. This allows the user to enter (for example) a device name for a field that expects an IP address.</p>
-<p class="code"><span>$display </span><span class="s14">order</span><span class="s9"> </span>name</span><span class="s9"> </span>$order</p>
+<dt>$display filter name ?proc? ?column?<dd>
+<p>Filter column <i>name</i> through [proc $<i>value_of_field</i> ...] before displaying. If any columns are provided the values of these columns will be appended to the filter.</p>
+<dt>$display csvfilter name ?proc? ?column?<dd>
+<p>Filter column <i>name</i> through [proc $<i>value_of_field</i>] on generating a CSV file, like filter.</p>
+<dt>$display unfilter name ?proc?<dd>
+<p>Filter entered text through [$proc text] before using to search table. This allows the user to enter (for example) a device name for a field that expects an IP address.</p>
+<dt>$display order name $order<dd>
 <p>Set sort order for field.</p>
-<p class="code"><span>$display </span><span class="s14">case</span><span class="s9"> </span>name</span><span class="s9"> </span>$case</p>
+<dt>$display case name $case<dd>
 <p>Set whether the column can be matched uppercase or lowercase when doing a case-independent match.</p>
-<p class="code"><span>$display </span><span class="s14">hovertext</span><span class="s9"> </span>name</span><span class="s9"> </span>$text</p>
+<dt>$display hovertext name $text<dd>
 <p>Set text to be displayed when hovering the cursor over the title of the column.</p>
-<p class="code"><span>$display </span><span class="s14">blankval</span><span class="s9"> </span>name</span><span class="s9"> </span>$blank</p>
+<dt>$display blankval name $blank<dd>
 <p>Value to treat as a null value and display as an empty cell.</p>
-<p>$display </span><span>limit</span> $limit</p>
+<dt>$display limit $limit<dd>
 <p>Set search terms to limit the displayed portion of the ctable. The limit is a list of {column_name value ?column_name value?}.</p>
-<p>$display </span><span>attributes</span> name $attribute_list</p>
+<dt>$display attributes name $attribute_list<dd>
 <p>Set attributes (eg "bgcolor=blue") for field</p>
-<p>$display </span><span>hidden</span> $cgivar $value</p>
+<dt>$display hidden $cgivar $value<dd>
 <p>This is used to pass any additional CGI variables the page will require through the links generated by STDisplay. This method may be invoked for each value</p>
-<p></p>
+</dl>
 <H2> 11 -  C Code Generated and C Routines Created</H2>
 			</p><br>
 <div class="blue">This chapter describes internal implementation details of Speed Tables. You can skip this section unless you're interested in finding out how Speed Tables work internally.</div>
@@ -1178,72 +1201,54 @@ set display [::STDisplay #auto ?-confvar value? ... \
 <p>For the above cable_info table defined, the following C struct is created:</p>
 <pre>
 struct cable_info {
- TAILQ_ENTRY(cable_info) _link;
- struct in_addr ip;
- struct ether_addr  mac;
- char  *name;
- int  _nameLength;
- char  *address;
- int  _addressLength;
- char  *addressNumber;
- int  _addressNumberLength;
- char  *geos;
- int  _geosLength;
- int  i;
- int  j;
- long ij;
- struct Tcl_Obj  *extraStuff;
- unsigned int _ipIsNull:1;
- unsigned int _macIsNull:1;
- unsigned int _nameIsNull:1;
- unsigned int _addressIsNull:1;
- unsigned int _addressNumberIsNull:1;
- unsigned int _geosIsNull:1;
- unsigned int _iIsNull:1;
- unsigned int _jIsNull:1;
- unsigned int _ijIsNull:1;
- unsigned int _extraStuffIsNull:1;
+    TAILQ_ENTRY(cable_info) _link;
+    struct in_addr ip;
+    struct ether_addr  mac;
+    char  *name;
+    int  _nameLength;
+    char  *address;
+    int  _addressLength;
+    char  *addressNumber;
+    int  _addressNumberLength;
+    char  *geos;
+    int  _geosLength;
+    int  i;
+    int  j;
+    long ij;
+    struct Tcl_Obj  *extraStuff;
+    unsigned int _ipIsNull:1;
+    unsigned int _macIsNull:1;
+    unsigned int _nameIsNull:1;
+    unsigned int _addressIsNull:1;
+    unsigned int _addressNumberIsNull:1;
+    unsigned int _geosIsNull:1;
+    unsigned int _iIsNull:1;
+    unsigned int _jIsNull:1;
+    unsigned int _ijIsNull:1;
+    unsigned int _extraStuffIsNull:1;
 };
 </pre>
 <p>Note that varstrings are <i>char *</i> pointers. We allocate the space for whatever string is stored and store the address of that allocated space. Fixed-length strings are generated inline.</p>
 <p>The null field bits and booleans are all generated together and should be stored efficiently by the compiler. We rely on the C compiler to do the right thing with regards to word-aligning fields as needed for efficiency.</p>
-<p>You can examine the C code generated -- it's quite readable. If you didn't know better, you might think it was written by a person rather than a program. (Several times when working on speed tables I've started editing the generated code rather than the code that's generating it, by mistake.)</p>
+<p>You can examine the C code generated -- it's quite readable. Possibly too readable: several times when working on speed tables I've started editing the generated code rather than the code that's generating it, by mistake.</p>
 <p>Each table-defining command created has a <i>CTableCreatorTable</i> associated with it, for example:</p>
 <pre>
 struct CTableCreatorTable {
- Tcl_HashTable  *registeredProspeed tablePtr;
- long unsigned int nextAutoCounter;
- int nFields;
- int nLinkedLists;
- CONST char  **fieldNames;
- Tcl_Obj **nameObjList;
- int  *fieldList;
- enum ctable_types *fieldTypes;
- int  *fieldsThatNeedQuoting;
- struct ctableFieldInfo **fields;
- void *(*make_empty_row) ();
- int (*set) (Tcl_Interp *interp, struct CTableTable *ctable, Tcl_Obj *dataObj
-, void *row, int field, int indexCtl);
- int (*set_null) (Tcl_Interp *interp, struct CTable *ctable, void *row,
-int field, int indexCtl);
- Tcl_Obj *(*get) (Tcl_Interp *interp, void *row, int field);
- CONST char *(*get_string) (const void *pointer, int field, int *lengthPtr, T
-cl_Obj *utilityObj);
- Tcl_Obj *(*gen_list) (Tcl_Interp *interp, void *pointer);
- Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, void *pointer);
- Tcl_Obj *(*gen_nonnull_keyvalue_list) (Tcl_Interp *interp, void *pointer);
- int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int
- field);
- int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, voi
-d *p, int field);
- int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destList
-Obj, void *p, int field);
- void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums,
- int nFields, Tcl_DString *dsPtr, int noKey);
- int (*search_compare) (Tcl_Interp *interp, struct CTableSearchStruct *search
-Control, void *pointer, int tailoredWalk);
- int (*sort_compare) (void *clientData, const void *hashEntryPtr1, const void
- *hashEntryPtr2);
+    Tcl_HashTable     *registeredProspeed tablePtr;
+    long unsigned int  nextAutoCounter;
+    int                nFields;
+    int                nLinkedLists;
+    CONST char       **fieldNames;
+    Tcl_Obj          **nameObjList;
+    int               *fieldList;
+    enum ctable_types *fieldTypes;
+    int               *fieldsThatNeedQuoting;
+    struct ctableFieldInfo **fields;
+    void              *(*make_empty_row) ();
+    int               (*set) (Tcl_Interp *interp, struct CTableTable *ctable,
+                              Tcl_Obj *dataObj, void *row, int field,
+                              int indexCtl);
+... and other accessor functions ...
 };
 </pre>
 <p>The registered proc table is how we handle registering methods, and the <i>nextAutoCounter</i> is how we can generate unique names for instances of the table when using "#auto".</p>
@@ -1253,16 +1258,16 @@ Control, void *pointer, int tailoredWalk);
 <p>A number of the fields defined above are being consolidated into the <i>CTableFieldInfo struct</i>, which is defined for each field and contains the field name, name object, field number, type number, whether or not it needs quoting, its compare function (for indexing the the like, something we generate for each field), and its index number (which index of the array of doubly linked list elements built into each row), if indexed, else -1.</p>
 <p>Finally, a number of pointers to functions to do things to the speed table are defined. This is cool stuff. As I began to code the complex sorting and indexing code, it started getting hard to keep my head wrapped around it all. Trying to custom-generate all that search code made complicated code even more complicated. Standardizing the search code to not be custom generated at all and to access the custom-generated aspects of the different Speed Tables through these function pointers.</p>
 <p>Function pointers are provided to create an empty row, set a field of a row to a value, set a field of a row to null, get the native value of a field from a row as a Tcl object, and get a string representation of a field from a row. Additional function pointers are provided to get the contents of a row as a Tcl list and as a key-value Tcl list, with or without null values, to append the contents of a field to a list, to append the name of a field and the contents of a row's field to a list, and some other stuff like that.</p>
-<p>Each instance of the table created with "create" has a speedtableTable associated with it:</p>
+<p>Each instance of the table created with "create" has a CTableTable associated with it:</p>
 <pre>
 struct CTableTable {
- struct CTableCreatorTable *creatorTable;
- Tcl_HashTable  *keyTablePtr;
- Tcl_Command commandInfo;
- long  count;
- jsw_skip_t  **skipLists;
- struct ctable_baseRow *ll_head;
- int nLinkedLists;
+    struct CTableCreatorTable *creatorTable;
+    Tcl_HashTable             *keyTablePtr;
+    Tcl_Command                commandInfo;
+    long                       count;
+    jsw_skip_t               **skipLists;
+    struct ctable_baseRow     *ll_head;
+    int                        nLinkedLists;
 };
 </pre>
 <p>This contains a pointer to the meta table (creatorTable), a hash table that we use to store and fetch keys, a command info struct that we use to delete our created command from the Tcl interpreter when it's told to destroy itself, the row count, a pointer to an array of pointers to skip lists, one for each field that has an index defined for it (it's NULL otherwise).</p>
@@ -1271,60 +1276,58 @@ struct CTableTable {
 <pre>
 #define CABLE_INFO_NFIELDS 10
 static CONST char *cable_info_fields[] = {
- "ip",
- "mac",
- "name",
- "address",
- "addressNumber",
- "geos",
- "i",
- "j",
- "ij",
- "extraStuff",
- (char *) NULL
+    "ip",
+    "mac",
+    "name",
+    "address",
+    "addressNumber",
+    "geos",
+    "i",
+    "j",
+    "ij",
+    "extraStuff",
+    (char *) NULL
 };
-</pre>
 
-<pre>
 enum cable_info_fields {
- FIELD_CABLE_INFO_IP,
- FIELD_CABLE_INFO_MAC,
- FIELD_CABLE_INFO_NAME,
- FIELD_CABLE_INFO_ADDRESS,
- FIELD_CABLE_INFO_ADDRESSNUMBER,
- FIELD_CABLE_INFO_GEOS,
- FIELD_CABLE_INFO_I,
- FIELD_CABLE_INFO_J,
- FIELD_CABLE_INFO_IJ,
- FIELD_CABLE_INFO_EXTRASTUFF
-};
-The types of each field are emitted as an array and whether or not fields need quoting:
-enum ctable_types cable_info_types[] = {
- CTABLE_TYPE_INET,
- CTABLE_TYPE_MAC,
- CTABLE_TYPE_VARSTRING,
- CTABLE_TYPE_VARSTRING,
- CTABLE_TYPE_VARSTRING,
- CTABLE_TYPE_VARSTRING,
- CTABLE_TYPE_INT,
- CTABLE_TYPE_INT,
- CTABLE_TYPE_LONG,
- CTABLE_TYPE_TCLOBJ
+    FIELD_CABLE_INFO_IP,
+    FIELD_CABLE_INFO_MAC,
+    FIELD_CABLE_INFO_NAME,
+    FIELD_CABLE_INFO_ADDRESS,
+    FIELD_CABLE_INFO_ADDRESSNUMBER,
+    FIELD_CABLE_INFO_GEOS,
+    FIELD_CABLE_INFO_I,
+    FIELD_CABLE_INFO_J,
+    FIELD_CABLE_INFO_IJ,
+    FIELD_CABLE_INFO_EXTRASTUFF
 };
 </pre>
-
+The types of each field are emitted as an array and whether or not fields need quoting:
 <pre>
+enum ctable_types cable_info_types[] = {
+    CTABLE_TYPE_INET,
+    CTABLE_TYPE_MAC,
+    CTABLE_TYPE_VARSTRING,
+    CTABLE_TYPE_VARSTRING,
+    CTABLE_TYPE_VARSTRING,
+    CTABLE_TYPE_VARSTRING,
+    CTABLE_TYPE_INT,
+    CTABLE_TYPE_INT,
+    CTABLE_TYPE_LONG,
+    CTABLE_TYPE_TCLOBJ
+};
+
 int cable_info_needs_quoting[] = {
- 0,
- 0,
- 1,
- 1,
- 1,
- 1,
- 0,
- 0,
- 0,
- 1
+    0,
+    0,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    1
 };
 </pre>
 <p>A <i>setup routine</i> is defined that is automatically run once when the extension is loaded, for example, cable_info_setup creates some Tcl objects containing the names of all of the fields and stuff like that.</p>
@@ -1349,7 +1352,14 @@ int cable_info_needs_quoting[] = {
 <p><b>*_get_string</b> - This is particularly useful for the C coder. It takes a pointer to an instance of the structure, a field number, a pointer to an integer, and a pointer to a Tcl object and returns a string representation of the requested field. The Tcl object is used for certain conversions and hence can be considered a reusable utility object. The length of the string returned is set into the pointed-to integer.</p>
 <p>Example:</p>
 <pre>
-<span> </span>CONST char *cable_info_get_string (struct cable_info *cable_info_ptr, int field, int *lengthPtr, Tcl_Obj *utilityObj) {...}
+CONST char *cable_info_get_string (
+    struct cable_info *cable_info_ptr,
+    int field,
+    int *lengthPtr,
+    Tcl_Obj *utilityObj)
+{
+    ...
+}
 </pre>
 <p>For fixed strings and varstrings, no copying is performed -- a pointer to the row's string is returned. Hence they must be considered to be constants by any of your code that retrieves them.</p>
 <p><b>*_delete_all_rows</b> - give a pointer to the StructTable for an instance, delete all the rows.</p>
@@ -1371,7 +1381,7 @@ int cable_info_needs_quoting[] = {
 set ::ctable::showCompilerCommands 1
 </pre>
 <p>Do this after your "package require speedtable" and before you declare your C extensions.</p>
-<p>How we invoke the compiler can be found in <b>gentable.tcl</b>. We currently only support FreeBSD and Mac OS X, and a general solution will likely involve producing a GNU configure.in script and running autoconf, configure, etc. We'd love some help on this.</p>
+<p>How we invoke the compiler can be found in <span type="file">gentable.tcl</span>. We currently only support FreeBSD and Mac OS X, and a general solution will likely involve producing a GNU configure.in script and running autoconf, configure, etc. We'd love some help on this.</p>
 <H3>Simple Syntax Errors May Cause Compiler Errors</H3>
 <p>Most syntax errors in a C extension definition will be caught by speed tables and reported. When sourcing a speed table definition, you may get the message</p>
 <pre>
@@ -1389,7 +1399,7 @@ set ::ctable::showCompilerCommands 1
 <pre>
 set ::ctable::genCompilerDebug 1
 </pre>
-<p>Ideally you'll also build Tcl with debugging enabled. When building Tcl, add </span><span class="code">--enable-symbols</span> to your configure options to get a Tcl library that you can run your debugger over.</p>
+<p>Ideally you'll also build Tcl with debugging enabled. When building Tcl, add <tt>--enable-symbols</tt> to your configure options to get a Tcl library that you can run your debugger over.</p>
 <p>Run gdb on tclsh and when you hit your segmentation violation or whatever, if all is well, gdb should be on the line where the trap occurred and let you poke around all of the C variables and structures and the like.</p>
 <p>If gdb can't find any symbols, try moving up through some stack frames (see gdb's documentation for more information). If in the speed tables routines you aren't getting file name and line number information and access to your local variables and the like, you probably haven't managed to build it with debugging enabled. Turn on showing compiler commands and make sure you see <b>-g</b> being specified when the commands are being run.</p>
 <p>If you don't see the compiler being run, try deleting the contents of your build directory. That'll trigger a regeneration and recompile of the speed table code for your extension.</p>
@@ -1403,7 +1413,7 @@ set fp [open t.out w]
 t search -write_tabsep $fp
 close $fp
 </pre>
-<p><span>This copies the entire table <b>t</b> to the file </span><span class="file">t.out</span><span class="s9">. Note that</span> you could as easily have specified an open socket or any other sort of Tcl channel that might exist in place of the file. You could restrict what gets copied using addition search options like </span><span class="code">-compare {{&gt; severity 90}} -fields {name device severity}.</p>
+<p><span>This copies the entire table <b>t</b> to the file <span class="file">t.out</span>. Note that you could as easily have specified an open socket or any other sort of Tcl channel that might exist in place of the file. You could restrict what gets copied using addition search options like <tt>-compare {{&gt; severity 90}} -fields {name device severity}.</tt></p>
 <H3>Load a Speed Table using read_tabsep</H3>
 <pre>
 tableType create t
@@ -1473,7 +1483,7 @@ close $fp
 <p>NOTE that all the records must be accepted by PostgreSQL, i.e. not violate any constraints, etc, or none of them will be.</p>
 <p>Karl Lehenbauer</p>
 <p>7/19/06 off-and-on through 1/07 and counting...</p>
-<p>(last edit March 11, 2008 2:38 PM)</p>
+
 <p>Acknowledgements</p>
 <p>I would like to acknowledge Peter da Silva, the first outside user of speed tables and the first person to use them in real production code with millions of rows of data.</p>
 <p>His insight and experience greatly contribute to the design and evolution of the technology. In particular, thanks to him it is easier to use, more capable, faster, and more memory-efficient.</p>
