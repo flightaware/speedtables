@@ -5,4 +5,5 @@ setup:
 
 clean:
 	rm -rf build
+	rm manual
 

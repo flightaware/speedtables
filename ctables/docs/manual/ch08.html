@@ -1,0 +1,106 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<H2> 8 -  Shared Memory Speed Tables</H2>
+<p>Client-server speed tables can take a fairly big performance hit, as a sizable amount of Tcl code gets executed to make the remote speed table function like a local one.</p>
+<p>While they're still pretty fast, server actions are inherently serialized because of the single-threaded access model afforded using standard Tcl fileevent actions within the Tcl event model.</p>
+<p>When the speed table resides on the same machine as the client, and particularly in this era of relatively inexpensive multiprocessor systems, it would be highly desirable for a client to be able to access the speed table directly through shared memory, bypassing the server entirely.</p>
+<p>This work was undertaken in the summer of '07 by Peter da Silva. The goal was to provide a way for same-server clients to access the speed table through shared memory while retaining the ability to build and use speed tables without using shared memory at all.</p>
+<p>Tricky synchronization issues surfaced immediately. For instance, what should we do if a row gets changed or added while a search is being performed? We don't want to completely lock out access to the table during a search. Thus we have to really deal with database updates during searches, which raise referential integrity issues and garbage collection / dangling pointer issues. Many searches, such as ones involving results sorting, collecting a set of pointers to the rows that have matched. Those rows cannot disappear behind search's back.</p>
+<p>Also the code was already in heavy production with tables containing tens of millions of rows. This work had to be rock solid or it wouldn't be usable.</p>
+<p>To simplify the problem, we decided to funnel writes through the client/server mechanism and only allows reads and searches to occur through shared memory.</p>
+<p>Our approach is to maintain metadata about in-progress searches in shared memory and have a cycle number that increases as the database is updated. When a search begins, the client copies the current cycle number to a word in shared memory allocated for it by the server. As normal activity causes rows to be modified, updated. or deleted by the server the cycle they were modified on is stored in the row. If rows (or any other shared memory object, such as strings) are deleted, they are added to a garbage pool along with the current cycle, but not actually freed for reuse until the server garbage collects them on a later cycle.</p>
+<p>If the client detects that a row it's examining has been modified since it started its search, it restarts the search operation. The server makes sure to update pointers within shared memory in an order such that the client will never step into a partially modified structure. This allows the whole operation to proceed without explicit locks, so long as pointer and cycle updates are atomic and ordered.</p>
+<p>Garbage collection is performed by locating deleted memory elements that have a cycle number is lower than the cycle number of any client currently performing a search.</p>
+<p>New options to the ctable "create" command:</p>
+<dl>
+
+<dt><i>$ctable create name master list</i><dd>
+<p>Creates a new master table based on the parameters in the list:</p>
+<dl>
+<dt>name tablename (optional)<dd>
+<p>The shared memory segment has a small write-once symbol table that is used to locate individual ctables and other objects in shared mem.</p>
+<dt> file filename (required)<dd>
+<p>Multiple tables can be mapped in the same file, distinguished by the ctable name or the name provided in the "name" option.</p>
+<dt> size bytes (required)<dd>
+<p>Used to create the file, or if it's already mapped it checks if it's at least this big.</p>
+<dt> flags list<dd>
+<p>The only shared memory flags implemented are sync/nosync (default nosync) and core/nocore (default core).</p>
+</dl>
+<dt><i>$ctable create name reader list</i><dd>
+<p>The list provided is collected from the master table (already opened in another process) through the attach command (below).</p>
+<p>This attaches to an existing shared memory segment based on the information in the list, then searches for the reader cycle tagged by the process ID provided to attach, and creates a reader-mode ctable. This table contains a pointer to the master ctable in shared memory, data copied from the master, and other bookkeeping elements. </p>
+</dl>
+<p>New ctable commmands:</p>
+<dl>
+
+<dt><i>$ctable attach pid</i><dd>
+<p>Only valid for a master shared ctable, Creates a cycle entry for the process pid, and returns a list of parameters that describe how to attach to the ctable. Currently {file $file name $name}, where "file" is the file to map and "name" is the name of the shared ctable in the directory.</p>
+<dt><i>$ctable getprop</i><dd>
+<p>With no names, returns a name-value list of properties of the ctable, whatever is needed for reflection.</p>
+<p>Currently type, extension, and key. These are needed for the STAPI glue for shared tables.</p>
+<dt><i>$ctable getprop name ...</i><dd>
+<p>With names, returns a list of only those properties.</p>
+<dt><i>$ctable share<br>$ctable share command ?options?</i><dd>
+<p>The "share" extension actually stands apart from the ctable extension and Tcl. It provides the shared memory segments and handles memory allocation from the segments. It's unlikely to be useful to use the explicit share form except in internal debugging.
+<p>The following commands are meaningful for ctable shares:</p>
+<dl>
+<dt>names<dd>
+<p>Returns a list of named objects in the share. These are not necessarily ctables, they may be string variables or objects created by other libraries.</p>
+<dt>set name string <i>(master only)</i><dd>
+<p>Sets a shared string variable, for passing additional environment or context to readers.</p>
+<dt>get name<dd>
+<p>Gets the value of a string set with "set".</p>
+<dt>info<dd>
+<p>Returns some internal information about the share in a name-value list. The data includes size, flags, name, whether you're the creator <i>(master)</i>, and filename.</p>
+<dt>pools<dd>
+<p>Returns a list of information for fixed size memory pools in the shared segment. There will be at least two pools, the garbage pool (containing elements that have been freed but are still in use by at least one reader) and one pool the size of a ctable row is set up for each ctable. For each pool it will return the size of elements that the pool will manage, how many elements in each chunk of elements allocated at once, the total number of chunks allocated, and the number of free elements: <tt>{element_size elements_per_chunk chunks free_elements}</tt> </p>
+<dt>pool element_size elements_per_chunk max_chunks<dd>
+<p>Creates a pool for objects of element_size bytes, allocated in elements_per_chunk chunks, up to a maximum of max_chunks. If max_chunks is zero it will extend to pool to the limit of the shared segment if necessary.</p>
+</dl>
+</dl>
+<H3>STAPI support for shared memory tables:</H3>
+<p><tt>package require st_shared
+<br>::stapi::connect shared://port/table ?options?</tt></p>
+<p>Options:</p>
+<ul>
+<p>-build path ... directory containing the generated ctable package.</p>
+</ul>
+<p>Connect to a ctable on localhost as a ctable_server client, and then open a parallel shared memory client for the same ctable. These connections are hidden behind a STAPI wrapper, so all ctable commands can be used: shared memory will be used for read-only "search" commands, and the ctable_server TCP connection will be used for all other commands.</p>
+<p>Server example:</p>
+<pre>
+top_brands_nokey_m create m master file sharefile.dat
+   [...]
+::ctable_server::register sttp://*:1616/master m
+   [...]
+if !$tcl_interactive { ::ctable_server::serverwait }
+</pre>
+<p>This is just like a normal ctable server, except that the ctable itself is a shared memory master table.</p>
+<p>Client example:</p>
+<pre>
+package require st_shared
+   [...]
+
+# Connect to the server, using the shared ctable
+# extension created by the server in the directory
+# "build". Returns a stapi object.
+set r [::stapi::connect shared://1616/master -build build]
+
+# This command is performed using shared memory.
+$r search -compare {{= name phred}} -key k -code {puts $k}
+
+# This command is performed using TCP
+$r set fred $row
+
+# Close the reader and disconnect from the server.
+$r destroy
+</pre>
+<p></p>
+</body>
+</html>

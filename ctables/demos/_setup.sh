@@ -6,3 +6,4 @@ do
   chmod +x $file
 done
 
+ln -s ../docs/manual manual

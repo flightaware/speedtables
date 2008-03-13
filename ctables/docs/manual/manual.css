@@ -1,0 +1,97 @@
+h2 {
+	color: #006699;
+	font-size: 20pt; 
+}
+h3 {
+	margin-left: 1cm;
+	color: #006699;
+	font-size: 14pt; 
+}
+pre {
+	margin-left: 2cm;
+	margin-right: 2cm;
+	border: 4px solid #dddddd;
+	background-color: #dddddd 
+}
+p {
+	margin-left: 1cm; 
+}
+div.blue {
+	margin-left: 1cm;
+	color: #0088aa;
+	font-size: 18pt;
+}
+div.blue-indent {
+	margin-left: 2cm;
+	color: #0088aa;
+	font-size: 15pt;
+}
+p.blue-block {
+	margin-left: 2cm;
+	margin-right: 2cm;
+	background-color: #00ddff;
+	border: solid 4px #00ddff
+}
+div.blue-block {
+	margin-top: 4px;
+	margin-left: 2cm;
+	margin-right: 2cm;
+	background-color: #00ddff;
+	border: solid 4px #00ddff
+}
+div.blue-block p {
+	margin-left: 0;
+	margin-bottom: 0 
+}
+div.blue-block p:first-child {
+	margin-top: 0 
+}
+li {
+	margin-left: 1cm 
+}
+li p {
+	margin-left: 0 
+}
+dl {
+	margin-left: 1cm 
+}
+dd p {
+	margin-left: 0 
+}
+dd p:first-child {
+	margin-top: 0 
+}
+p.bug {
+	font-size: 90%;
+	font-style: italic;
+	font-weight: bold; 
+}
+dd dl {
+	margin-left: 0.5cm 
+}
+dd pre {
+	margin-left: 1cm 
+}
+dd div.blue-indent {
+	margin-left: 1cm 
+}
+dd div.blue-block {
+	margin-left: 1cm
+}
+dd p.blue-block {
+	margin-left: 1cm
+}
+dd ul li {
+	margin-left: 0
+}
+body {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	margin-right: 1cm;
+}
+dt {
+	font-size: 110%;
+	color: #0088aa
+}
+p.foot {
+	font-size: 75%
+}

@@ -1,0 +1,89 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<H2> 14 -  Examples</H2>
+<div class="blue">This chapter contains numerous examples of using speed tables.</div>
+<H3>Copy Speed Table Search Results to a Tab-Separated File</H3>
+<pre>
+tableType create t
+...
+set fp [open t.out w]
+t search -write_tabsep $fp
+close $fp
+</pre>
+<p><span>This copies the entire table <b>t</b> to the file <span class="file">t.out</span>. Note that you could as easily have specified an open socket or any other sort of Tcl channel that might exist in place of the file. You could restrict what gets copied using addition search options like <tt>-compare {{&gt; severity 90}} -fields {name device severity}.</tt></p>
+<H3>Load a Speed Table using read_tabsep</H3>
+<pre>
+tableType create t
+set fp [open t.out r]
+t read_tabsep $fp
+close $fp
+</pre>
+<H3>Using Copy In For Super Fast Speed Table-to-PostgreSQL Transfers</H3>
+<p>Here's the PostgreSQL syntax for copying from a file (or stdin) to a table:</p>
+
+<pre>
+ COPY tablename [ ( column [, ...] ) ]
+ FROM { 'filename' | STDIN }
+ [ [ WITH ] 
+  [ BINARY ]
+  [ OIDS ]
+  [ DELIMITER [ AS ] 'delimiter' ]
+  [ NULL [ AS ] 'null string' ]
+  [ CSV [ HEADER ]
+   [ QUOTE [ AS ] 'quote' ] 
+   [ ESCAPE [ AS ] 'escape' ]
+   [ FORCE NOT NULL column [, ...] ]
+</pre>
+
+<p>Here's an example of taking a speed table and copying it it to a PostgreSQL table.</p>
+<pre>
+<span class="code"> </span>package require Pgtcl
+ source cpescan.ct
+ package require Cpe_scan
+ cpe_scan null_value \\N
+ cpe_scan create cpe
+ set fp [open junk]
+ cpe read_tabsep $fp
+ close $fp
+ puts [cpe count]
+ set db [pg_connect www]
+ #
+ # note double-backslashing on the null value and that we set the null value
+ # to match the null_value set with the speed table.
+ #
+ set res [pg_exec $db "copy kfoo from stdin with delimiter as '\t' null as '\\\\N'"]
+ #
+ # after you've started it, you expect the postgres response handle's status
+ # to be PGRES_COPY_IN
+ #
+ if {[pg_result $res -status] != "PGRES_COPY_IN"} {
+ puts "[pg_result $res -status] - bailing"
+ puts "[pg_result $res -error]"
+ exit
+ }
+ #
+ # next you use the write_tabsep method of the speed table to write 
+ # TO THE DATABASE HANDLE
+ #
+ #cpe write_tabsep $db ip_address status ubr
+ cpe write_tabsep $db
+ #
+ # then send a special EOF sequence.
+ #
+ puts $db "\\."
+ #
+ # the result handle previously returned will now have magically changed
+ # its status to the normal PGRES_COMMAND_OK response.
+ #
+ puts [pg_result $res -status]
+</pre>
+<p>NOTE that all the records must be accepted by PostgreSQL, i.e. not violate any constraints, etc, or none of them will be.</p>
+</BODY>
+</HTML>

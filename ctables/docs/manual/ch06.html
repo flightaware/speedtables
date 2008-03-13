@@ -1,0 +1,24 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<H2> 6 -  Special Notes On How To Make Searches Go Fast</H2>
+<div class="blue">This chapter explains how to make Speed Table searches go as fast as possible.</div>
+<p>An example of brute force searching that there isn't much getting around without adding fancy full-text search is unanchored text search. Even in this case, with our fast string search algorithm and quick traversal during brute-force search, we're seeing 60 nanoseconds per row or searching about sixteen million rows per CPU second on circa-2006 AMD64 machines.</p>
+<p>Although many optimizations are being performed by the speed table compiler, further performance improvements can be made without introducing huge new complexities, perturbations, etc.</p>
+<p>If you need to search for ranges of things, partial matches, straight equality of a field other than the key field, etc, you can use indexes and the "range", "=", and "in" compare functions to obtain huge search performance improvements over brute force, subject to a number of limitations: First, the table must have had an index created on that field using <tt>$speedtable index create $fieldName</tt>. </p>
+<div class="blue">Speed Table Query Optimizer</div>
+<p>The Speed Table Query Optimizer has been rolled in to search, and search+ has been deprecated. The "best" field in the query is used as the index, in this order:</p>
+<p>"<b>in</b>" has the highest priority, but the field used MUST be the key field or an indexed field.</p>
+<p>"<b>=</b>" has the next highest priority.</p>
+<p>"<b>&lt;</b>", "<b>&lt;=</b>", or "<b>&gt;=</b>" come next.</p>
+<p>"<b>&gt;</b>" comes after these</p>
+<p>All other searches are last priority.</p>
+<p>In an ordered search, with an increasing sort, the sort field gets chosen when possible to avoid manually sorting the results after finding them.</p>
+</body>
+</html>

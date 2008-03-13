@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<H2> 3 -  Speed Table Data Types</H2>
+<div class="blue">This chapter explains the various data types that can be used to create fields in a speed table.</div>
+<p>The following data types are available</span><a href=#1>[1]</a>:</p>
+<ul>
+<li> <i>boolean</i> - a single 0/1 bit
+<li> <i>varstring</i> - a variable-length string
+<li> <i>fixedstring</i> - a fixed-length string
+<li> <i>short</i> - a short integer
+<li> <i>int</i> - a machine native integer
+<li> <i>long</i> - a machine native long
+<li> <i>wide</i> - a 64-bit wide integer (Tcl Wide)
+<li> <i>float</i> - a floating point number
+<li> <i>double</i> - a double-precision floating point number
+<li> <i>char</i> - a single character (deprecation likely)
+<li> mac - an ethernet MAC address
+<li> <i>inet</i> - an internet IP address
+<li> <i>tclobj</i> - a Tcl object... more on this powerful capability later
+<li> <i>key</i> - not really a type, this is an alias for the row's key.
+</ul>
+<p>Fields are defined by the data type followed by the field name, for example...</p>
+<pre>double longitude</pre>
+<p>...to define a double-precision field named longitude.</p>
+<p>Field definitions can followed by one or more key-value pairs that define additional attributes about the field. Supported attributes include</p>
+<dl>
+<dt><i>indexed </i><dd>
+<p>If indexed is specified with a true (nonzero) value, the code generated for the speed table will include support for generating, maintaining, and using a skip list index on the field being defined.</p>
+<p>Indexed traversal can be performed in conjunction with the speed table's search functions to accelerate searches and avoid sorts. Defaults to "indexed 0" aka the field is not generated with index support.</p>
+<p>Indexed support is not provided for boolean fields.</p>
+<dt><i>notnull</i><dd>
+<p>If notnull is specified with a true (nonzero) value, the code generated for the speed table will have code for maintaining an out-of-band null/not-null status suppressed, resulting in a substantial performance increase for fields for which out-of-band null support is not needed. Defaults to "notnull 0" aka null values are supported.</p>
+<dt><i>default</i><dd>
+<p>If default is specified, the following value is defined as the default value and will be set into rows that are created when the field does not have a value assigned.</p>
+<p>There is no default default value, however if no default value is defined and the field is declared as notnull, strings will default to empty and numbers will default to zero.</p>
+<dt><i>length</i><dd>
+<p>Currently only valid for fixedstring fields, length specifies the length of the field in bytes. There is no default length; length must be specified for fixedstring fields.</p>
+<dt><i>unique</i><dd>
+<p>If unique is specified with a true value, the field is defined as indexed ,and an index has been created and is in existence for this field for the current table, a unique check will be performed on this field upon insertion into the speed table.</p>
+<p class="bug">Bug: Unique checks are not currently being performed as of 12/31/06.</p>
+<p class="bug">Bug: String search matching functions don't yet work for fixedstrings and fixedstrings have not had a lot of use as of 12/31/06.</p>
+</dl>
+<a name=1><p class="foot">[1] Additional data types can be added, although over Speed Tables' evolution it has become an increasingly complicated undertaking.</p>
+</body>
+</html>

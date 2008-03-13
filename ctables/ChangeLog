@@ -1,6 +1,10 @@
 
 $Id$
 
+3/13/2008 peter
+    * Imported pages manual into more easily manageable HTML as
+      docs/manual.
+
 3/06/2008 peter
     * Fixed import_tabsep - need to remove key column from list of field IDs
       passed to set_from_tabsep.
