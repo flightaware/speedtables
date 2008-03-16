@@ -3,11 +3,29 @@
 <HEAD>
 <title>Speed Tables Examples</title>
 <style type=text/css>
-pre { margin-left: 2cm; margin-right: 2cm; border: 4px solid #dddddd; background-color: #dddddd }
-.change { background-color: #aaaaaa ; color: #000088; }
+h2 {
+	margin-left: -1cm;
+        color: #006699;
+        font-size: 20pt; 
+}
+div.content {
+	margin-left: 1cm;
+	margin-right: 1cm
+}
+pre {
+	margin-left: 1cm;
+	margin-right: 1cm;
+	border: 4px solid #dddddd;
+	background-color: #dddddd
+}
+.change {
+	background-color: #aaaaaa ;
+	color: #000088;
+}
 </style>
 </HEAD>
 <BODY>
+<div class=content>
 <H2>Speed Tables Examples</H2>
 To demonstrate how speed tables, the speed table transfer protocol, and stapi
 works, let's build a table based on something that should be familiar to most
@@ -127,6 +145,8 @@ foreach id $argv {
         puts stderr "$id: not found"
     }
 }
+
+$pwtab destroy
 </pre>
 Speed tables follow a class/object design
 (though they are written in C, not C++),
@@ -152,10 +172,12 @@ load_pwfile passwd /etc/passwd
 
 <span class=change>::ctable_server::register sttp://*:3100/passwd passwd
 
-::ctable_server::serverwait</span>
+::ctable_server::serverwait
+
+passwd destroy</span>
 </pre>
 This is basically the same program as the first example, with the changed
-lines hilighted.
+lines hilighted. Most of the examples are going to be like this.
 <p>
 The client code is similarly simple. Instead of building our own speed table
 we connect to the server and use it via the speed table transfer protocol,
@@ -177,6 +199,8 @@ foreach id $argv {
         puts stderr "$id: not found"
     }
 }
+
+<span class=change>passwd</span> destroy
 </pre>
 <H2>Speed Table API</H2>
 <p>
@@ -202,6 +226,8 @@ foreach id $argv {
         puts stderr "$id: not found"
     }
 }
+
+$pwtab destroy
 </pre>
 The package "st_client" pulls in the STAPI connection code and registers the <tt>sttp:</tt> method with it. Each method has been defined as a separate package so you don't have to pull in connection code for methods you're not using.
 <H2>SQL Access Method</H2>
@@ -239,9 +265,12 @@ if {"[pg_result $r -status]" == "PGRES_COPY_IN"} {
   puts stderr [pg_result $r -error]
 }
 pg_result $r -clear</span>
+
+$pwtab destroy
 </pre>
 To use this table in PostgreSQL instead of the speed table server, we load
-up the <tt>sql:</tt> method like so:
+up the <tt>sql:</tt> method with <tt>package require st_client_pgtcl</tt>
+and connect to an sql: table.
 <pre>
 <span class=change>package require st_client_pgtcl</span>
 
@@ -261,51 +290,19 @@ foreach id $argv {
         puts stderr "$id: not found"
     }
 }
+
+$pwtab destroy
 </pre>
 The <tt>sql:</tt> connection method in STAPI reads the database to find the
 structure of the table and converts the Speed Table search term into an SQL
 query and performs the same callbacks as the original search.
-<H2>Shared Memory Speed Tables</H2>
-The other major use of STAPI is for shared memory speed tables. The shared
-memory interface requires that the client get a connection token from the
-master process, and it can only perform "search" operations on the table. The
-server can pass the key back via STTP but without STAPI you have to maintain
-two ctable objects, using code like:
-<pre>
-remote_ctable sttp://localhost:1234/passwd m
-table create r reader [m attach [pid]]
-
-...
-
-set rows [m count]
-r search -username root -array_with_nulls a -code { puts $a(uid) }
-</pre>
-And then remembering to use the STTP conection to the master table (m) or
-the shared memory reader table (r) depending on whether you're using
-<tt>search</tt> or not.
 <p>
-The "st_shared" package hides this:
-<pre>
-<span class=change>package require st_shared</span>
-
-source show_user.tcl
-
-<span class=change>set pwtab [::stapi::connect shared://localhost:3100/passwd]</span>
-
-if {[llength $argv] == 0} {
-   puts stderr "Usage: $argv0 user \[user...]"
-   exit 2
-}
-
-foreach id $argv {
-    if {[search_passwd $pwtab $id show_user] == 0} {
-        puts stderr "$id: not found"
-    }
-}
-</pre>
-STAPI keeps track of both tables and calls the appropriate one for each method.
+To use other database back ends instead of postgresql would be a matter of
+copying and modifying <tt>client/pgtcl.c</tt>. There should not be major
+changes necessary for any SQL back end, other than the code that queries the
+database to deduce the table structure.
 <H2>Speed Tables Display</H2>
-STTP also includes a web interface to speedtables, based on the DIODisplay
+STAPI also includes a web interface to speedtables, based on the DIODisplay
 package from Rivet. STDisplay currently uses the Rivet form and CGI procedures
 so requires Rivet to run. The simplest example of STDisplay is based on the
 first simple Speed Table example:
@@ -337,6 +334,8 @@ $display field home
 $display field shell
 
 $display show
+
+$pwtab destroy
 ?&gt;
 </pre>
 This produces a straightforward table view:
@@ -558,5 +557,109 @@ The search options required are:
 <li>-offset
 <li>-limit
 </ul>
+
+<H2>Shared Memory Speed Tables</H2>
+The other major use of STAPI is for shared memory speed tables. The shared
+memory interface requires that the client get a connection token from the
+master process, and it can only perform "search" operations on the table. The
+server changes from the previous example are minimal:
+<pre>
+package require ctable
+package require ctable_server
+
+source passwd_table.tcl
+
+u_passwd create passwd <span class=change>master file passwd.dat size 20M</span>
+
+load_pwfile passwd /etc/passwd
+
+::ctable_server::register sttp://*:3100/passwd passwd
+
+::ctable_server::serverwait
+
+passwd destroy
+</pre>
+The story on the client side is quite different, since you have to connect to
+the server and then attach a slave "reader" table to the shared memory
+segment for shared-memory search access. The "attach" method hides most of the
+details, but you still need 
+<pre>
+<span class=change>package require ctable_client
+package require U_passwd
+
+remote_ctable sttp://localhost:3100/passwd master
+u_passwd create slave reader [master attach [pid]]</span>
+
+if {[llength $argv] == 0} {
+   puts stderr "Usage: $argv0 user \[user...]"
+   exit 2
+}
+
+foreach id $argv {
+    if {[search_passwd <span class=change>slave</span> $id show_user] == 0} {
+        puts stderr "$id: not found"
+    }
+}
+
+<span class=change>slave destroy
+master destroy</span>
+</pre>
+And then remembering to use the STTP conection to the master table (master) or
+the shared memory reader table (slave) depending on whether you're using
+<tt>search</tt> or not. For our example program this would not be all
+that significant, since it only uses search, but any other ctable methods
+would fail on the reader. For example, you could not use Speed Tables Display
+directly on a shared memory table.
+<p>
+The "st_shared" package hides this detail:
+<pre>
+<span class=change>package require st_shared</span>
+
+source show_user.tcl
+
+<span class=change>set pwtab [::stapi::connect shared://localhost:3100/passwd]</span>
+
+if {[llength $argv] == 0} {
+   puts stderr "Usage: $argv0 user \[user...]"
+   exit 2
+}
+
+foreach id $argv {
+    if {[search_passwd $pwtab $id show_user] == 0} {
+        puts stderr "$id: not found"
+    }
+}
+
+$pwtab destroy
+</pre>
+STAPI keeps track of both tables and calls the appropriate one for each method.
+So the STDisplay example on a shared memory speed table would become:
+<pre>
+&lt;?
+<span class=change>package require st_shared</span>
+package require st_display
+
+<span class=change>set pwtab [::stapi::connect shared://localhost:3100/passwd]</span>
+
+set display [::STDisplay #auto -table $pwtab]
+
+# Read-only, suppress editing functions
+$display rowfunctions ""
+$display functions "List Search"
+
+# Fields to display
+$display field username -text "User Name"
+$display field uid      -text UID
+$display field gid      -text GID
+$display field fullname -text "Full Name"
+$display field home
+$display field shell
+
+$display show
+
+$pwtab destroy
+?&gt;
+</pre>
+</div>
 </BODY>
 </HTML>

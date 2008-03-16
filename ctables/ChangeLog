@@ -1,6 +1,10 @@
 
 $Id$
 
+3/16/2008 peter
+    * rearranged the examples in the "demos" subdirectory, and fixed some bugs
+      in them.
+
 3/13/2008 peter
     * Imported pages manual into more easily manageable HTML as
       docs/manual.
