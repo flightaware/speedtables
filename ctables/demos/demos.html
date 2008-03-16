@@ -244,30 +244,6 @@ CREATE TABLE passwd (
     shell       varchar
 );
 </pre>
-To populate it, we can use the ctable we loaded up in the first example:
-<pre>
-package require ctable
-<span class=change>package require Pgtcl</span>
-
-source passwd_table.tcl
-
-set pwtab [u_passwd create #auto]
-
-load_pwfile $pwtab /etc/passwd
-
-<span class=change>set conn [pg_connect -conninfo $login_info]
-
-set r [pg_exec $conn "COPY passwd FROM stdin with DELIMITER as '\t';"]
-if {"[pg_result $r -status]" == "PGRES_COPY_IN"} {
-  $pwtab search -write_tabsep $conn -nokeys 1
-  puts $conn "\\."
-} else {
-  puts stderr [pg_result $r -error]
-}
-pg_result $r -clear</span>
-
-$pwtab destroy
-</pre>
 To use this table in PostgreSQL instead of the speed table server, we load
 up the <tt>sql:</tt> method with <tt>package require st_client_pgtcl</tt>
 and connect to an sql: table.
@@ -297,6 +273,46 @@ The <tt>sql:</tt> connection method in STAPI reads the database to find the
 structure of the table and converts the Speed Table search term into an SQL
 query and performs the same callbacks as the original search.
 <p>
+To populate the password table in SQL, for example when converting from flat
+files to an SQL database... we <i>should</i> be able to use the ctable loading
+routine from the first example:
+<pre>
+<span class=change>package require st_client_pgtcl
+
+::stapi::init_conn [pg_connect -conninfo $login_info]
+
+set pwtab [::stapi::connect sql:///passwd?_key=username]</span>
+
+load_pwfile $pwtab /etc/passwd
+
+$pwtab destroy
+</pre>
+Unfortunately, we have not yet implemented read_tabsep for sql: tables, so
+you have to load up a local speed table and write_tabsep it to SQL like the
+example from Chapter 13 of the manual.
+<pre>
+package require ctable
+<span class=change>package require Pgtcl</span>
+
+source passwd_table.tcl
+
+set pwtab [u_passwd create #auto]
+
+load_pwfile $pwtab /etc/passwd
+
+<span class=change>set conn [pg_connect -conninfo $login_info]
+
+set r [pg_exec $conn "COPY passwd FROM stdin WITH DELIMITER AS '\t' NULL AS '\\\\N';"]
+if {"[pg_result $r -status]" == "PGRES_COPY_IN"} {
+  $pwtab search -write_tabsep $conn -nokeys 1
+  puts $conn "\\."
+} else {
+  puts stderr [pg_result $r -error]
+}
+pg_result $r -clear</span>
+
+$pwtab destroy
+</pre>
 To use other database back ends instead of postgresql would be a matter of
 copying and modifying <tt>client/pgtcl.c</tt>. There should not be major
 changes necessary for any SQL back end, other than the code that queries the
