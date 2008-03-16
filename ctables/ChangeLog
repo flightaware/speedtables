@@ -4,6 +4,8 @@ $Id$
 3/16/2008 peter
     * rearranged the examples in the "demos" subdirectory, and fixed some bugs
       in them.
+    * Simplified logic parsing arguments for read_tabsep and got rid of
+      duplicate error message that was out of sync.
 
 3/13/2008 peter
     * Imported pages manual into more easily manageable HTML as

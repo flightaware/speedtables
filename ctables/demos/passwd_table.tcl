@@ -20,7 +20,7 @@ package require U_passwd
 
 proc load_pwfile {tab file} {
     set fp [open $file r]
-    $tab read_tabsep $fp -tab ":" -skip "#" -nokeys
+    $tab read_tabsep $fp -tab ":" -skip "#*" -nokeys
     close $fp
 }
 

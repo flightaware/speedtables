@@ -944,14 +944,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int		 nocomplain = 0;
 	char		*skip = NULL;
 
-	if (objc < 3) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-tab string? ?-with_field_names? ?-skip pattern? ?field field...?");
-	  return TCL_ERROR;
-	}
-
-	objc -= 3;
-
-	while (objc > 0) {
+	while (objIdx < objc) {
 	    char *possibleSwitch;
 
 	    possibleSwitch = Tcl_GetString(objv[objIdx]);
@@ -959,41 +952,33 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	    if (strcmp (possibleSwitch, "-glob") == 0) {
 		objIdx++;
-	        if (objc == 1) {
+	        if (objIdx >= objc) {
 		    Tcl_AppendResult (interp, "-glob not followed by pattern", (char *)NULL);
 		    return TCL_ERROR;
 		}
 		pattern = Tcl_GetString (objv[objIdx++]);
-		objc -= 2;
 	    } else if (strcmp (possibleSwitch, "-tab") == 0) {
 		objIdx++;
-		objc--;
-	        if (objc <= 0) {
+	        if (objIdx >= objc) {
 		    Tcl_AppendResult (interp, "-tab not followed by tab string", (char *)NULL);
 		    return TCL_ERROR;
 		}
 		sepstr = Tcl_GetString (objv[objIdx++]);
-		objc--;
 	    } else if (strcmp (possibleSwitch, "-skip") == 0) {
 		objIdx++;
-		objc--;
-	        if (objc <= 0) {
+	        if (objIdx >= objc) {
 		    Tcl_AppendResult (interp, "-skip not followed by pattern", (char *)NULL);
 		    return TCL_ERROR;
 		}
 		skip = Tcl_GetString (objv[objIdx++]);
-		objc--;
 	    } else if (strcmp (possibleSwitch, "-nokeys") == 0) {
 		objIdx++;
-		objc--;
 		noKeys = 1;
 	    } else if (strcmp (possibleSwitch, "-with_field_names") == 0) {
 		objIdx++;
-		objc--;
 		withFieldNames = 1;
 	    } else if (optIndex != OPT_WRITE_TABSEP && strcmp (possibleSwitch, "-nocomplain") == 0) {
 		objIdx++;
-		objc--;
 		nocomplain = 1;
 	    } else {
 		Tcl_AppendResult (interp, "unknown switch: ", possibleSwitch, (char *)NULL);
@@ -1001,13 +986,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    }
 	}
 
-	if (objc > $nFields) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-with_field_names? ?field field...?");
-          Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
+	nFields = objc - objIdx;
+
+	if (nFields < 0 || nFields > $nFields) {
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-tab string? ?-with_field_names? ?-skip pattern? ?field field...?");
+	  if (nFields > 0) {
+              Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
+	  }
 	  return TCL_ERROR;
 	}
 
-	if (objc == 0) {
+	if (nFields == 0) {
 	    if (optIndex != OPT_WRITE_TABSEP && withFieldNames) {
 		nFields = $nFields;
 	    } else {
@@ -1022,7 +1011,6 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		Tcl_AppendResult(interp, "Can not specify explicit field names when reading with \"-with_field_names\"", (char *)NULL);
 		return TCL_ERROR;
 	    }
-	    nFields = objc;
 	    for (i = 0; i < objc; i++) {
 	        if (Tcl_GetIndexFromObj (interp, objv[objIdx++], ${table}_fields, "field", TCL_EXACT, &fieldIds[i]) != TCL_OK) {
 		    if(nocomplain) {
@@ -1052,9 +1040,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
   }
 
   fprintf(stderr,
-	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d, %d, \"%s\");\n",
+	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d, %d, \"%s\", /%s/);\n",
 	optIndex == OPT_WRITE_TABSEP ? "export" : "import",
-	channel, buffer, nFields, pattern, noKeys, withFieldNames, sepstr
+	channel, buffer, nFields, pattern, noKeys, withFieldNames, sepstr, skip
   );
 }
 #endif
