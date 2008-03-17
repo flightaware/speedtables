@@ -214,6 +214,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 		array set actions $actionData
 		set firstLine 1
 
+		set result ""
 		while {[gets $sock line] >= 0} {
 		    if {$line == "\\."} {
 			break
@@ -221,7 +222,15 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 #puts "processing line '$line'"
 
 		    if {[info exists actions(-write_tabsep)]} {
-			puts $actions(-write_tabsep) $line
+			set status [catch {
+			    puts $actions(-write_tabsep) $line
+			} error]
+			if {$status == 1} {
+			    set savedInfo $::errorInfo
+			    set savedCode $::errorCode
+			    remote_ctable_cache_disconnect $cttpUrl $sock
+			    error $result $savedInfo $savedCode
+			}
 		    } elseif {[info exists actions(-code)]} {
 			if {$firstLine} {
 			    set firstLine 0
@@ -264,10 +273,28 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 #puts "executing '$dataCmd'"
 #puts "executing '$actions(-code)'"
 
-			uplevel #$callerLevel "
-			    $dataCmd
-			    $actions(-code)
-			"
+			set status [catch {
+			    uplevel #$callerLevel "
+			        $dataCmd
+			        $actions(-code)
+			    "
+			} result]
+
+			# TCL_ERROR
+			if {$status == 1} {
+			    set savedInfo $::errorInfo
+			    set savedCode $::errorCode
+			    remote_ctable_cache_disconnect $cttpUrl $sock
+			    error $result $savedInfo $savedCode
+			}
+
+ 			# TCL_RETURN/TCL_BREAK
+			if {$status == 2 || $status == 3} {
+			    remote_ctable_cache_disconnect $cttpUrl $sock
+			    return $result
+			}
+
+			# TCL_OK or TCL_CONTINUE just keep going
 		    } else {
 			error "no action, need -write_tabsep or -code: $actionData"
 		    }
@@ -275,6 +302,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 		if {[get_response $sock line] <= 0} {
 		    error "$cttpUrl: unexpected EOF from server after multiline response"
 		}
+		return $result
 	    }
 
 	    default {

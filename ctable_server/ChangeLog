@@ -2,6 +2,10 @@
 
 $Id$
 
+3/16/08 peter
+    Made the corresponding changes to the client side to close the
+    connection to the server on an error.
+
 1/29/08 peter
     * Added "sttp" utility command for sending commands to a ctable server
       from a shell script
