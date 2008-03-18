@@ -96,13 +96,14 @@ proc search_passwd {tab id proc} {
             -code {$proc $row}
     ]
 }
+</pre>
 <p>
 The <i>search</i> operation is the most powerful tool in speed tables. It can
 be used to search the table using any combination of fields and values, using
 a lisp-like prefix syntax. Each element in the comparison list is an expression
 in the form {operator field value...}. Operators include basic comparison
 operations such as "=", "<", and ">", as well as ranges and sets.
-</pre>
+</p>
 For example let's say you reserve
 user IDs below 1000 for "role" accounts like webmaster, and you want to check
 for users over 1000 that are really "role" accounts. You can search for
