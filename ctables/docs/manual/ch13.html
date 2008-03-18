@@ -197,3 +197,24 @@ set fp [open transaction_log.txt a]
 t search -compare {{= _dirty 1}} -write_tabsep $fp -update {_dirty 0}
 close $fp
 </pre>
+<H3>Loading partial tables</H3>
+<p>Loading partial tables can be a useful technique to save memory. Loading
+partial tables from SQL is easy - you simply <tt>SELECT</tt> only those rows
+that you want. When loading a tab separated file, though, you can sometimes
+benefit from a careful choice of keys. Since the key is an arbitrary string
+you can carefully select a key, for example you could incorporate the time
+in the key:</p>
+<pre>
+t set [clock format [clock seconds] -format "%Y%m%d.[incr sequence]"] $record
+</pre>
+<p>After writing or logging (as in the previous example) rows to a file, you could
+then pull ip records created in a specific month:</p>
+<pre>
+set fp [open audit.log r]
+t read_tabsep $fp -glob "200801*"
+close $fp
+</pre>
+<p>Other useful keys could be based on an IP address or a user name. In
+one application we used the MAC address and matched on the last two
+hex digits to pull in a reasonably well-distributed sample of cable
+modems to poll.</p>
