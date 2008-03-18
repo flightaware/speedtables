@@ -8,6 +8,10 @@ h2 {
         color: #006699;
         font-size: 20pt; 
 }
+h3 {
+	color: #006699;
+	font-size: 14pt; 
+}
 div.content {
 	margin-left: 1cm;
 	margin-right: 1cm
@@ -155,7 +159,7 @@ with the class of a table being the creator table (eg, <tt>u_passwd</tt>) and
 the <i>create</i> method creating a new Tcl command that is a instance of the
 class. The subcommands for the table object are methods, and that's how we 
 refer to them.
-<H2>Client-server Speedtables</H2>
+<H3>Client-server Speedtables</H2>
 of course loading the password file every time you want to look up a user
 is rather inefficient, so we can create a speed table server. Turning this
 program into a server is easy, we load the speed table server package, and
@@ -203,7 +207,7 @@ foreach id $argv {
 
 <span class=change>passwd</span> destroy
 </pre>
-<H2>Speed Table API</H2>
+<H3>Speed Table API</H2>
 <p>
 None of the code in show_user.tcl needs to know that it's operating on a
 remote table instead of a local one. This can be generalised even further,
@@ -231,7 +235,7 @@ foreach id $argv {
 $pwtab destroy
 </pre>
 The package "st_client" pulls in the STAPI connection code and registers the <tt>sttp:</tt> method with it. Each method has been defined as a separate package so you don't have to pull in connection code for methods you're not using.
-<H2>SQL Access Method</H2>
+<H3>SQL Access Method</H2>
 This doesn't seem to be much of a change, and it isn't. But now let's say we
 need to connect to an SQL server that's using this SQL table:
 <pre>
@@ -318,7 +322,7 @@ To use other database back ends instead of postgresql would be a matter of
 copying and modifying <tt>client/pgtcl.c</tt>. There should not be major
 changes necessary for any SQL back end, other than the code that queries the
 database to deduce the table structure.
-<H2>Speed Tables Display</H2>
+<H3>Speed Tables Display</H2>
 STAPI also includes a web interface to speedtables, based on the DIODisplay
 package from Rivet. STDisplay currently uses the Rivet form and CGI procedures
 so requires Rivet to run. The simplest example of STDisplay is based on the
@@ -575,7 +579,7 @@ The search options required are:
 <li>-limit
 </ul>
 
-<H2>Shared Memory Speed Tables</H2>
+<H3>Shared Memory Speed Tables</H2>
 The other major use of STAPI is for shared memory speed tables. The shared
 memory interface requires that the client get a connection token from the
 master process, and it can only perform "search" operations on the table. The
