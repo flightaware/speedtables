@@ -123,3 +123,48 @@ puts [pg_result $res -status]
 <p>NOTE that all the records must be accepted by PostgreSQL, i.e. not violate any constraints, etc, or none of them will be.</p>
 </BODY>
 </HTML>
+<H3>Automatically number records</H3>
+<p>Often you don't actually care what the key for a record is, so long as each
+new record has a unique key. In SQL you use the <tt>INSERT</tt> operation to
+add records, and <tt>UPDATE</tt> to modify them. In Speed Tables the <i>set</i>
+method can both create and modify records, depending on whether the key you
+are using exists or not. There is also a <i>store</i> operation, which does
+not take an explicit key. If it finds the key in the record you are inserting,
+it uses it, otherwise it generates a new numeric key, and returns the key it
+used. The name for the key, if the table does not have a <tt>key</tt>
+field explicitly named, is "_key".</p>
+<pre>
+% t store name "New character" show "The newbie show"
+<b>1</b>
+
+# Store also accepts the name-value list as a single parameter, just like set.
+% t store {name "Another character" show "The newbie show"}
+<b>2</b>
+
+# The special field name _key refers to the anonymous key.
+% t store _key 1 alive 0
+<b>1</b>
+</pre>
+<p>You can also load tab-separated files using the same auto-number
+sequence. Read_tabsep will return the last automatic key used.</p>
+<pre>
+% set fp [open newbie-show-extra.txt r]
+% t read_tabsep $fp -nokeys
+<b>76</b>
+% close $fp
+</pre>
+<H3>Saving modified records to a log.</H3>
+<p>The special name <tt>_dirty</tt> is another pseudo-field. It's set to 1
+when a record is modified, and can be reset to zero.</p>
+<pre>
+% t search -compare {{= -dirty 1}}
+<b>78</b>
+</pre>
+<p>to append the modied records only to a file, and clear the <tt>_dirty</tt>
+fields at the same time, you can use <tt>search -write_tabsep ... -update</tt>:
+<pre>
+set fp [open transaction_log.txt a]
+t search -compare {{= _dirty 1}} -write_tabsep $fp -update {_dirty 0}
+close $fp
+</pre>
+
