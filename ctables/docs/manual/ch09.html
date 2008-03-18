@@ -3,12 +3,12 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta http-equiv="Content-Style-Type" content="text/css">
-  <title>Speed Tables</title>
+  <title>Speed Tables API - STAPI</title>
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
-<H2> 9 -  stapi - Speed Table API</H2>
-<p>STAPI allows the speedtables API, originally implemented in ctables, to be used for a variety of table-like objects. This includes remote ctables through ctable_server and SQL databases. There are two main sets of routines in STAPI, and they're not normally used together.</p>
+<H2> 9 - STAPI - Speed Tables API</H2>
+<p>STAPI allows the Speed Tables API, originally implemented in ctables, to be used for a variety of table-like objects. This includes remote ctables through ctable_server and SQL databases. There are two main sets of routines in STAPI, and they're not normally used together.</p>
 <p>st_server, a set of routines for automatically creating a ctable from an SQL table as a local read_only cache for the table, or as a workspace to be used for preparing rows to be inserted into the table. It's normally used in a ctable_server task providing a local cache for client processes.</p>
 <p>st_client, which provides the general interface for creating STAPI objects identified by URIs.</p>
 <H3>st_server</H3>
