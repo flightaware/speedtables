@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
-<H2> 3 -  Speed Table Data Types</H2>
-<div class="blue">This chapter explains the various data types that can be used to create fields in a speed table.</div>
+<H2> 3 -  Speed Table Fields and Data Types</H2>
+<div class="blue">This chapter explains the various types of fields that can be contained in a speed table.</div>
 <p>The following data types are available</span><a href=#1>[1]</a>:</p>
 <ul>
 <li> <i>boolean</i> - a single 0/1 bit
@@ -44,9 +44,18 @@
 <p>Currently only valid for fixedstring fields, length specifies the length of the field in bytes. There is no default length; length must be specified for fixedstring fields.</p>
 <dt><i>unique</i><dd>
 <p>If unique is specified with a true value, the field is defined as indexed ,and an index has been created and is in existence for this field for the current table, a unique check will be performed on this field upon insertion into the speed table.</p>
+</dl>
+<p>There are additional special fields that all tables may have:</p>
+<dl>
+<dt>_key<dd>
+<p>If the key is not given an explicit alias in the table, then there is
+an additional field named <i>_key</i> automatically created.</p>
+<dt>_dirty<dd>
+<p>This is a boolean, set to 1 when any record in the field is modified. It
+may be manually cleared.</p>
+</dl>
 <p class="bug">Bug: Unique checks are not currently being performed as of 12/31/06.</p>
 <p class="bug">Bug: String search matching functions don't yet work for fixedstrings and fixedstrings have not had a lot of use as of 12/31/06.</p>
-</dl>
 <a name=1><p class="foot">[1] Additional data types can be added, although over Speed Tables' evolution it has become an increasingly complicated undertaking.</p>
 </body>
 </html>

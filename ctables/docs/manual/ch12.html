@@ -40,5 +40,29 @@ set ::ctable::genCompilerDebug 1
 <p>Run gdb on tclsh and when you hit your segmentation violation or whatever, if all is well, gdb should be on the line where the trap occurred and let you poke around all of the C variables and structures and the like.</p>
 <p>If gdb can't find any symbols, try moving up through some stack frames (see gdb's documentation for more information). If in the speed tables routines you aren't getting file name and line number information and access to your local variables and the like, you probably haven't managed to build it with debugging enabled. Turn on showing compiler commands and make sure you see <b>-g</b> being specified when the commands are being run.</p>
 <p>If you don't see the compiler being run, try deleting the contents of your build directory. That'll trigger a regeneration and recompile of the speed table code for your extension.</p>
+<H3>Speed table configuration variables</H3>
+<p>There are a number of variables that can be set to change the behavior of
+Speed Tables. Many of these are useful for debugging. They are glovally configured in the file <tt>config.tcl</tt> in the Speed Tables installation
+directory. You can also change them after loading SpeedTables, for example:</p>
+<pre>
+set ::ctable::genCompilerDebug 1
+</pre>
+<dl>
+<dt>errorDebug<dd>
+<p>This disables the trapping of errors into ::ctable::get_error_info</p>
+<dt>genCompilerDebug<dd>
+<p>This builds and links the generated speed table with debug libraries.</p>
+<dt>memDebug<dd>
+<p>this in addition includes the memory debug libraries, if available, and
+enables the <i>memory</i> method.</p>
+<dt>showCompilerCommands<dd>
+<p>Displays the compile commands.</p>
+<dt>withPgtcl<dd>
+<p>Includes pgtcl support, normally 1 on FreeBSD, 0 on OSX.</p>
+<dt>withSharedTables<dd>
+<p>Includes support for shared memory tables, including the <tt>master</tt> and <tt>reader</tt> commands for the <i>create</i> method, and the <i>share</i> method. Normally true.</p>
+<dt>withDirty<dd>
+<p>Include support for the <tt>_dirty</tt> pseudo-field. Normally 1.</p>
+</dl>
 </BODY>
 </HTML>
