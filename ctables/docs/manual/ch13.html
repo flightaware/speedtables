@@ -10,10 +10,21 @@
 <H2> 13 - Speed Tables Examples</H2>
 <div class="blue">This chapter contains numerous examples of using speed tables.</div>
 <H3>Find the number of rows matching a value</H2>
-<p>The result of a search is the number of matching rows.</p>
+<p>If the field is indexed, you can use <i>index count</i></p>
+<pre>
+set count [$table index count fieldname]
+</pre>
+<p>otherwise the
+result of a search is the number of matching rows.</p>
 <pre>set count [$table search -compare {{= fieldname value}}]</pre>
 <H3>Find the lowest (highest) value of a field</H2>
-<p>Sort by the field, with a limit of 1.</p>
+<p>If the field is indexed, you can use <i>index span</i>:</p>
+<pre>
+set span [$table index span fieldname]
+set lowest [lindex $span 0]
+set highest [lindex $span 1]
+</pre>
+<p>otherwise, sort by the field, with a limit of 1.</p>
 <pre># To find the lowest value, sort ascending.
 $table search -fields fieldname -get row -sort fieldname -limit 1 -code {
     set lowest [lindex $row 0]
@@ -21,7 +32,7 @@ $table search -fields fieldname -get row -sort fieldname -limit 1 -code {
 
 # To find the highest value, sort descending
 $table search -fields fieldname -get row -sort -fieldname -limit 1 -code {
-    set lowest [lindex $row 0]
+    set highest [lindex $row 0]
 }</pre>
 <H3>Copy Speed Table Search Results to a Tab-Separated File</H3>
 <pre>
@@ -42,10 +53,29 @@ close $fp
 </pre>
 <H3>Load a Speed Table using read_tabsep</H3>
 <pre>
-tableType create t
-set fp [open t.out r]
+set fp [open new_anim_characters.txt r]
 t read_tabsep $fp
 close $fp
+</pre>
+<p>When reading a large table, it may be faster to drop the indexes before
+reading the table, and recreate them afterwards:</p>
+<pre>
+t index drop name
+t index from show
+set fp [open really_big_file r]
+t read_tabsep $fp
+close $fp
+t index create name
+t index create show
+</pre>
+<p>Or, if you don't know all the indexes:</p>
+<pre>
+set indexed [t index indexed]
+foreach f $indexed [t index drop $f]
+set fp [open really_big_file r]
+t read_tabsep $fp
+close $fp
+foreach f $indexed [t index create $f]
 </pre>
 <H3>Using Copy In For Super Fast Speed Table-to-PostgreSQL Transfers</H3>
 <p>Here's the PostgreSQL syntax for copying from a file (or stdin) to a table:</p>
@@ -167,4 +197,3 @@ set fp [open transaction_log.txt a]
 t search -compare {{= _dirty 1}} -write_tabsep $fp -update {_dirty 0}
 close $fp
 </pre>
-
