@@ -10,12 +10,7 @@
 <H2> 13 - Speed Tables Examples</H2>
 <div class="blue">This chapter contains numerous examples of using speed tables.</div>
 <H3>Find the number of rows matching a value</H2>
-<p>If the field is indexed, you can use <i>index count</i></p>
-<pre>
-set count [$table index count fieldname]
-</pre>
-<p>otherwise the
-result of a search is the number of matching rows.</p>
+<p>The result of a search is the number of matching rows.</p>
 <pre>set count [$table search -compare {{= fieldname value}}]</pre>
 <H3>Find the lowest (highest) value of a field</H2>
 <p>If the field is indexed, you can use <i>index span</i>:</p>
