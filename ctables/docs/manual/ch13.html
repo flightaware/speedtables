@@ -72,8 +72,8 @@ t read_tabsep $fp
 close $fp
 foreach f $indexed [t index create $f]
 </pre>
-<H3>Using Copy In For Super Fast Speed Table-to-PostgreSQL Transfers</H3>
-<p>Here's the PostgreSQL syntax for copying from a file (or stdin) to a table:</p>
+<H3>Exporting a Speed Table to PostgreSQL</H3>
+<p>PostgreSQL supports copying from a file (or standard input) to a table:</p>
 <pre>
  COPY tablename [ ( column [, ...] ) ]
  FROM { 'filename' | STDIN }
@@ -144,10 +144,29 @@ puts $db "\\."
 # its status to the normal PGRES_COMMAND_OK response.
 #
 puts [pg_result $res -status]
+
+# And clean up
+pg_result $res -clear
 </pre>
 <p>NOTE that all the records must be accepted by PostgreSQL, i.e. not violate any constraints, etc, or none of them will be.</p>
 </BODY>
 </HTML>
+
+<H3>Importing a Speed Table from PostgreSQL</H3>
+<p>The complementary operation is simpler. You use <tt>pg_exec</tt>
+(or <tt>pg_exec_prepared</tt> or even the
+asynchronous <i>Pgtcl</i> commands <tt>pg_sendquery</tt> and
+</tt>pg_sendquery_prepared</tt> in association with
+<tt>pg_getresult</tt> -- see the <i>Pgtcl</i> documentation for more info),
+then if it's successful use <i>import_postgres_result</i>.</p>
+<pre>
+set res [pg_exec $conn "select * from cpe_scan_info"]
+if {[pg_result $res -status] == "PGRES_RESULT_OK"} {
+    cpe_scan import_postgres_result $res
+}
+pg_result $res clear
+</pre>
+
 <H3>Automatically number records</H3>
 <p>Often you don't actually care what the key for a record is, so long as each
 new record has a unique key. In SQL you use the <tt>INSERT</tt> operation to
