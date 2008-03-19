@@ -417,7 +417,7 @@ close $fp
 <dt><i>read_tabsep</i><dd>
 <pre>
 x read_tabsep channel ?-glob pattern? ?-nokeys? ?-with_field_names? \
-    ?-tab string? ?-skip pattern? ?field...?
+    ?-tab string? ?-skip pattern? ?-term pattern? ?field...?
 </pre>
 <p>Read tab-separated entries from a channel, with a list of fields specified, or all fields if none are specified.</p>
 <pre>
@@ -434,8 +434,10 @@ close $fp
 <p>If <tt>-nokeys</tt> is specified, the first field of each row is not used as the key -- rather, the key is taken from the provided fields (as if <i>makekey</i> was called for each row), and if there is no key it is automatically created as an ascending integer starting from 0. The last key generated will be returned as the value of <i>read_tabsep</i>.</p>
 <p>If you subsequently do another <i>read_tabsep</i> with -nokeys specified, the auto key will continue from where it left off. If you invoke the table's reset method, the auto key will reset to zero.</p>
 <p>If you later want to insert at the end of the table, you need to use <i>store</i> rather than <i>set</i>.</p>
-<p><i>read_tabsep</i> stops when it reaches end of file OR when it reads an empty line. Since you must have a key and at least one field, this is safe. However it might not be safe with <tt>-nokeys</tt>.</p>
-<p>The nice thing about it is you can indicate end of input with an empty line and then do something else with the data that follows.</p>
+<p><i>read_tabsep</i> stops when it reaches end of file OR when it reads an empty line.
+The nice thing about it is you can indicate end of input with an empty line and then do something else with the data that follows.
+Since you must have a key and at least one field, this is safe. However it might not be safe with <tt>-nokeys</tt>.</p>
+<p>With <tt>-term pattern</tt> then read_tabsep will instead terminate on a line that matches <tt>pattern</tt>. For example, to emulate SQL "COPY FROM stdin" you could use <tt>-term "\\."</tt>.</p>
 <dt><i>index</i><dd>
 <p>Index is used to create skip list indexes on fields in a table, which can be used to greatly speed up certain types of searches.</p>
 <pre>
