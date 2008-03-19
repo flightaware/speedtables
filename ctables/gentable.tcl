@@ -1831,7 +1831,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr) {
+${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *term) {
     Tcl_Channel             channel;
     int                     mode;
     Tcl_DString             dString;
@@ -1886,6 +1886,14 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     }
 
     Tcl_DStringFree (&dString);
+
+    if(term) {
+	if (Tcl_WriteChars (channel, term, strlen(term)) < 0 || Tcl_WriteChars(channel, "\n", 1) < 0) {
+	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
+	    return TCL_ERROR;
+	}
+    }
+
     return TCL_OK;
 }
 
@@ -1963,7 +1971,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, int nocomplain) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj;
@@ -2029,9 +2037,13 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
 	do {
             Tcl_SetStringObj (lineObj, "", 0);
-            if (Tcl_GetsObj (channel, lineObj) <= 0) goto done;
+	    if (Tcl_GetsObj (channel, lineObj) <= 0) {
+		if(term == NULL) goto done;
+	    }
 
 	    string = Tcl_GetString (lineObj);
+
+	    if(term && term[0] && Tcl_StringCaseMatch (string, term, 1)) goto done;
 	} while(skip && Tcl_StringMatch(string, skip));
 
 	// if pattern exists, see if it does not match key and if so, skip

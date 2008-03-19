@@ -257,7 +257,7 @@ and connect to an sql: table.
 
 source show_user.tcl
 
-<span class=change>::stapi::init_conn [pg_connect -conninfo $login_info]
+<span class=change>::stapi::set_conn [pg_connect -conninfo $login_info]
 
 set pwtab [::stapi::connect sql:///passwd?_key=username]</span>
 
@@ -284,7 +284,7 @@ routine from the first example:
 <pre>
 <span class=change>package require st_client_pgtcl
 
-::stapi::init_conn [pg_connect -conninfo $login_info]
+::stapi::set_conn [pg_connect -conninfo $login_info]
 
 set pwtab [::stapi::connect sql:///passwd?_key=username]</span>
 

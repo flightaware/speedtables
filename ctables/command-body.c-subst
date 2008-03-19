@@ -943,6 +943,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	char		*sepstr = "\t";
 	int		 nocomplain = 0;
 	char		*skip = NULL;
+	char		*term = NULL;
 
 	while (objIdx < objc) {
 	    char *possibleSwitch;
@@ -965,12 +966,23 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		}
 		sepstr = Tcl_GetString (objv[objIdx++]);
 	    } else if (strcmp (possibleSwitch, "-skip") == 0) {
+		if(optIndex != OPT_READ_TABSEP) {
+		    Tcl_AppendResult (interp, "-skip does not make sense for write_tabsep", (char *)NULL);
+		    return TCL_ERROR;
+		}
 		objIdx++;
 	        if (objIdx >= objc) {
 		    Tcl_AppendResult (interp, "-skip not followed by pattern", (char *)NULL);
 		    return TCL_ERROR;
 		}
 		skip = Tcl_GetString (objv[objIdx++]);
+	    } else if (strcmp (possibleSwitch, "-term") == 0) {
+		objIdx++;
+	        if (objIdx >= objc) {
+		    Tcl_AppendResult (interp, "-term not followed by pattern", (char *)NULL);
+		    return TCL_ERROR;
+		}
+		term = Tcl_GetString (objv[objIdx++]);
 	    } else if (strcmp (possibleSwitch, "-nokeys") == 0) {
 		objIdx++;
 		noKeys = 1;
@@ -989,7 +1001,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	nFields = objc - objIdx;
 
 	if (nFields < 0 || nFields > $nFields) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-tab string? ?-with_field_names? ?-skip pattern? ?field field...?");
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-tab string? ?-with_field_names? ?-skip pattern? ?-term pattern? ?field field...?");
 	  if (nFields > 0) {
               Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
 	  }
@@ -1040,17 +1052,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
   }
 
   fprintf(stderr,
-	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d, %d, \"%s\", /%s/);\n",
+	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d, %d, \"%s\", /%s/, /%s/);\n",
 	optIndex == OPT_WRITE_TABSEP ? "export" : "import",
-	channel, buffer, nFields, pattern, noKeys, withFieldNames, sepstr, skip
+	channel, buffer, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term
   );
 }
 #endif
 
 	if (optIndex == OPT_WRITE_TABSEP) {
-	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr);
+	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, term);
 	} else if(optIndex == OPT_READ_TABSEP) {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, nocomplain);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain);
 	}
 
 	break;

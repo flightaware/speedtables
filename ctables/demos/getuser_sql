@@ -2,11 +2,11 @@
 
 # $Id$
 
-package require st_client_pgtcl
+package require st_client_postgres
 
 source show_user.tcl
 
-::stapi::init_conn [pg_connect -conninfo "dbname=www user=www"]
+::stapi::set_conn [pg_connect -conninfo "dbname=www user=www"]
 
 set pwtab [::stapi::connect sql:///passwd?_key=user]
 
