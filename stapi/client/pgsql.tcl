@@ -379,7 +379,7 @@ namespace eval ::stapi {
     if {![info exists search(-code)] &&
 	![info exists search(-key)] &&
 	![info exists search(-array_get_with_nulls)] &&
-	![info exists search(-array_with_nulls)} {
+	![info exists search(-array_with_nulls)]} {
 	set search(-countOnly) 1
     }
     set sql [${ns}::search_to_sql search]

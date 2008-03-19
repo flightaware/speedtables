@@ -24,6 +24,7 @@
 package require Itcl
 package require form
 package require st_client
+package require stapi_extend
 
 #
 # Only load ::csv:: if it's actually wanted.
