@@ -197,6 +197,81 @@ sequence. Read_tabsep will return the last automatic key used.</p>
 <b>76</b>
 % close $fp
 </pre>
+<H3>Using a Speed Table to buffer database operations</H3>
+<p>To reduce the overhead of database operations, Speed Tables can be used to efficiently buffer inserts or other operations on a table, by duplicating the structure of the SQL table with a CTABLE.</p>
+<pre>
+::stapi::set_conn $conn
+
+#
+# Fetch the table definition from SQL
+#
+set table_columns [::stapi::from_table sql_table key_column]
+
+#
+# Prepare a buffer table
+#
+::stapi::init_ctable buffer sql_table {} $table_columns
+
+#
+# Open the buffer table
+#
+::stapi::open_raw_ctable buffer
+
+#
+# Set the buffer's null value to "\N" for teh SQL import
+#
+[buffer type] null_value "\\N"
+
+#
+# Example insert routine:
+#    Insert a name-value list of rows into the buffered table
+#
+proc insert_buffered {args} {
+    buffer store $args
+}
+
+#
+# Flush the buffer in the background every $frequency seconds
+#
+proc flush_buffer {$conn freqency} {
+    if {[buffer count] > 0} {
+        set r [
+	    pg_exec $db "copy sql_table from stdin with delimiter as '\t' null as '\\\\N'"
+	]
+
+        if {"[pg_result $r -status]" != "PGRES_COPY_IN"} {
+	    set error [pg_result $r -error]
+	} else {
+	    #
+	    # The "-delete" operation will atomically write the buffer and
+	    # empty it
+	    #
+	    buffer search -write_tabsep $db -delete 1
+	    puts $conn "\\."
+
+	    if {"[pg_result $r -status]" != "PGRES_COMMAND_OK"} {
+	        set error [pg_result $r -error]
+	    }
+	}
+	pg_result $r -clear
+
+	if [info exists error] {
+	    error $error
+	}
+    }
+
+    # Flush the buffer again
+    after [expr $freq * 1000] [list flush_buffer $conn $frequency]
+}
+</pre>
+<p>If there is a limit to the rate that records should be written, then you
+can put a limit on the write_tabset command. If the order doesn't matter
+then this will efficiently write up to 1000 records and delete the records
+that were written:</p>
+<pre>
+buffer search -write_tabsep $db -limit 1000 -delete 1
+</pre>
+
 <H3>Saving modified records to a log.</H3>
 <p>The special name <tt>_dirty</tt> is another pseudo-field. It's set to 1
 when a record is modified, and can be reset to zero.</p>
