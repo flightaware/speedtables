@@ -311,6 +311,24 @@ set fp [open transaction_log.txt a]
 t search -compare {{= _dirty 1}} -write_tabsep $fp -update {_dirty 0}
 close $fp
 </pre>
+
+<H3>Updating a secondary index</H3>
+<p>If you maintain a secondary index for a field, for example using a setter
+method as described in chapter 6, it will be necessary to
+update it after reading multiple records from a file or database. You can
+use the <tt>_dirty</tt> pseudo-field to update changed records.</p>
+<pre>
+# Don't forget to buffer the search, since you're modifying the table in place.
+anim_characters search \
+  -compare {{= _dirty 1}} \
+  -update {_dirty 0} \
+  -buffer 1 \
+  -key k -get row -fields name \
+  -code {
+      anim_characters set $k search_name [string tolower [lindex $row 0]]
+  }
+</pre>
+
 <H3>Loading partial tables</H3>
 <p>Loading partial tables can be a useful technique to save memory. Loading
 partial tables from SQL is easy - you simply <tt>SELECT</tt> only those rows
