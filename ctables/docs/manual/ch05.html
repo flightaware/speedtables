@@ -190,7 +190,10 @@ $table search \
     ?-compare list? ?-offset offset? ?-limit limit? \
     ?-code codeBody? ?-key keyVar? ?-get varName? \
     ?-array_get varName? ?-array_get_with_nulls varName? \
-    ?-write_tabsep channel? ?-tab string? ?-with_field_names 0|1?
+    ?-array varName? ?-array_with_nulls varName? \
+    ?-write_tabsep channel? ?-tab string? ?-with_field_names 0|1? \
+    ?-nokeys 0|1? ?-delete 0|1? ?-buffer 0|1? ?-update {field value}? \
+    ?-poll_interval interval? ?-poll_code codeBody?
 </pre>
 <p>Search options:</p>
 <dl>
