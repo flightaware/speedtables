@@ -74,11 +74,32 @@ if {"[t get aol]" != "{} AOL 3248"} {
     error "got [list [t get aol]] expected {{} AOL 3248}"
 }
 
+
 puts "second suck"
 suck_in_top_brands
 
 if {[t count] != 100} {
     error "expected count of 100 but got [t count]"
 }
+
+puts "reorder test"
+set fp [open /tmp/wonky_brands.tsv w]
+t search -write_tabsep $fp -with_field_names 1 -fields {name rank value}
+close $fp
+
+t reset
+
+set fp [open /tmp/wonky_brands.tsv r]
+t read_tabsep $fp -with_field_names
+close $fp
+
+if {[t count] != 100} {
+    error "expected count of 100 but got [t count]"
+}
+
+if {"[t get aol]" != "82 AOL 3248"} {
+    error "got [list [t get aol]] expected {82 AOL 3248}"
+}
+
 puts "finished"
 

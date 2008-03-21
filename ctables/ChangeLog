@@ -2,6 +2,9 @@
 $Id$
 
 3/21/2008 peter
+    * Allow extra fields in read_tabsep when -with_field_names -nocomplain.
+
+3/21/2008 peter
     * Rearranged the manual as multiple chapters.
     * Added documentation for search options -buffer, -delete, and -update.
     * Fixed many many documentation bugs.

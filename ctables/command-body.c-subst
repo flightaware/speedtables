@@ -931,7 +931,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_WRITE_TABSEP:
       case OPT_READ_TABSEP: {
-        int              fieldIds[$nFields];
+        int             *fieldIds = NULL;
 	int              i;
 	int              objIdx = 3;
 	int              nFields = 0;
@@ -999,18 +999,14 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	nFields = objc - objIdx;
 
-	if (nFields < 0 || nFields > $nFields) {
+	if (nFields < 0) {
 	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-tab string? ?-with_field_names? ?-skip pattern? ?-term pattern? ?field field...?");
-	  if (nFields > 0) {
-              Tcl_AppendResult (interp, " More fields requested than exist in record", (char *)NULL);
-	  }
 	  return TCL_ERROR;
 	}
 
 	if (nFields == 0) {
-	    if (optIndex != OPT_WRITE_TABSEP && withFieldNames) {
-		nFields = $nFields;
-	    } else {
+	    if (optIndex == OPT_WRITE_TABSEP || !withFieldNames) {
+		fieldIds = (int *)ckalloc($nFields * sizeof (*fieldIds));
 	        for (nFields = i = 0; i < $nFields; i++) {
 		    if(!is_hidden_name(${table}_fields,i)) {
 	                fieldIds[nFields++] = i;
@@ -1022,11 +1018,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		Tcl_AppendResult(interp, "Can not specify explicit field names when reading with \"-with_field_names\"", (char *)NULL);
 		return TCL_ERROR;
 	    }
+	    fieldIds = (int *)ckalloc(nFields * sizeof(*fieldIds));
 	    for (i = 0; i < objc; i++) {
 	        if (Tcl_GetIndexFromObj (interp, objv[objIdx++], ${table}_fields, "field", TCL_EXACT, &fieldIds[i]) != TCL_OK) {
 		    if(nocomplain) {
 			fieldIds[i] = -1;
 		    } else {
+			ckfree((void *)fieldIds);
 		        return TCL_ERROR;
 		    }
 		}
@@ -1040,14 +1038,16 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
   char buffer[9999];
   char *s=buffer;
   
-  for(i = 0; i < nFields; i++) {
-    sprintf(s, "%d, ", fieldIds[i]);
-    s += strlen(s);
-  }
-  if(s > buffer) {
-    --s;
-    --s;
-    *s = 0;
+  if(fieldIds) {
+    for(i = 0; i < nFields; i++) {
+      sprintf(s, "%d, ", fieldIds[i]);
+      s += strlen(s);
+    }
+    if(s > buffer) {
+      --s;
+      --s;
+      *s = 0;
+    }
   }
 
   fprintf(stderr,
@@ -1063,6 +1063,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	} else if(optIndex == OPT_READ_TABSEP) {
 	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain);
 	}
+
+	if(fieldIds) ckfree((void *)fieldIds);
 
 	break;
       }

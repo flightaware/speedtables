@@ -1777,22 +1777,30 @@ ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *ds
 }
 
 int
-${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsPtr, int *fieldNums, int *noKeysPtr, char *sepstr, int nocomplain)
+${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsPtr, int **fieldNumsPtr, int *noKeysPtr, char *sepstr, int nocomplain)
 {
-    int i;
-    int field;
-    char *tab;
-    char save = '\0';
-    int seplen = strlen(sepstr);
+    int    i;
+    int    field;
+    char  *tab;
+    char   save = '\0';
+    int    seplen = strlen(sepstr);
+    int   *fieldNums = NULL;
+    char  *s;
+    int    nColumns;
 
     *noKeysPtr = 1;
+
+    // find the number of fields and allocate space
+    nColumns = 2;
+    s = string;
+    while((s = strstr(s, sepstr))) {
+	nColumns++;
+	s += strlen(sepstr);
+    }
+    fieldNums = (int *)ckalloc(nColumns * sizeof(*fieldNums));
+
     field = 0;
     while(string) {
-	if(field > *nFieldsPtr) {
-            Tcl_AppendResult (interp, "Field name row specifies more fields than in ${table}", (char *)NULL);
-            return TCL_ERROR;
-	}
-
 	if ( (tab = strstr(string, sepstr)) ) {
 	    save = *tab;
 	    *tab = 0;
@@ -1810,6 +1818,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 		    i = -1;
 		} else {
                     Tcl_AppendResult (interp, "Unknown field \"", string, "\" in ${table}", (char *)NULL);
+		    ckfree((void *)fieldNums);
                     return TCL_ERROR;
 		}
             }
@@ -1826,6 +1835,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
     }
 
     *nFieldsPtr = field;
+    *fieldNumsPtr = fieldNums;
 
     return TCL_OK;
 }
@@ -1974,7 +1984,7 @@ int
 ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain) {
     Tcl_Channel      channel;
     int              mode;
-    Tcl_Obj         *lineObj;
+    Tcl_Obj         *lineObj = NULL;
     char            *string;
     int              recordNumber = 0;
     char             keyNumberString[32];
@@ -1983,6 +1993,8 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     int		     seplen = strlen(sepstr);
     char	     save = '\0';
     int		     col;
+    int		    *newFieldNums = NULL;
+    int	             status = TCL_OK;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -2007,10 +2019,11 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	    string = Tcl_GetString (lineObj);
 	} while(skip && Tcl_StringMatch(string, skip));
 
-	if (${table}_get_fields_from_tabsep(interp, string, &nFields, fieldNums, &noKeys, sepstr, nocomplain) == TCL_ERROR) {
-	    Tcl_DecrRefCount (lineObj);
-	    return TCL_ERROR;
+	if (${table}_get_fields_from_tabsep(interp, string, &nFields, &newFieldNums, &noKeys, sepstr, nocomplain) == TCL_ERROR) {
+	    status = TCL_ERROR;
+	    goto cleanup;
 	}
+	fieldNums = newFieldNums;
     }
 
     if(noKeys) {
@@ -2067,24 +2080,32 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn, sepstr) == TCL_ERROR) {
 	    char lineNumberString[32];
 
-	    Tcl_DecrRefCount (lineObj);
 	    sprintf (lineNumberString, "%d", recordNumber + 1);
             Tcl_AppendResult (interp, " while reading line ", lineNumberString, " of input", (char *)NULL);
-	    return TCL_ERROR;
+	    status = TCL_ERROR;
+	    goto cleanup;
 	}
 
 	recordNumber++;
     }
 done:
 
-    Tcl_DecrRefCount (lineObj);
-
     if(noKeys)
     {
        sprintf (keyNumberString, "%d", ctable->autoRowNumber - 1);
        Tcl_SetObjResult (interp, Tcl_NewStringObj (keyNumberString, -1));
     }
-    return TCL_OK;
+
+cleanup:
+    if(lineObj) {
+	Tcl_DecrRefCount (lineObj);
+    }
+
+    if(newFieldNums) {
+	ckfree((void *)newFieldNums);
+    }
+
+    return status;
 }
 }
 
