@@ -185,7 +185,7 @@ x makekey {ip 10.2.3.1 name host1}
 </div>
 <p>Search is a powerful element of the speed tables tool that can be leveraged to do a number of the things traditionally done with database systems that incur much more overhead.</p>
 <pre>
-$speedtable search \
+$table search \
     ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? \
     ?-compare list? ?-offset offset? ?-limit limit? \
     ?-code codeBody? ?-key keyVar? ?-get varName? \
@@ -241,7 +241,7 @@ $speedtable search \
 <p>When the search is being performed, for each row all of the expressions are evaluated left to right and form a logical "and". That is, if any of the expressions fail, the row is skipped.</p>
 <p>Here's an example:</p>
 <pre>
-$speed table search -compare {{&gt; coolness 50} \
+$table search -compare {{&gt; coolness 50} \
 {&gt; hipness 50}} ...
 </pre>
 <p>In this case you're selecting every row where coolness is greater than 50 and hipness is greater than 50.</p>
@@ -302,20 +302,22 @@ $speed table search -compare {{&gt; coolness 50} \
 <p>Search Examples:</p>
 <p>Write everything in the table tab-separated to channel $channel</p>
 <pre>
-$speed table search -write_tabsep $channel
+$table search -write_tabsep $channel
 </pre>
 <p>Write everything in the table with coolness &gt; 50 and hipness &gt; 50:</p>
 <pre>
-$speedtable search -write_tabsep $channel \
- -compare {{&gt; coolness 50} {&gt; hipness 50}}
+$table search -write_tabsep $channel \
+  -compare {{&gt; coolness 50} {&gt; hipness 50}}
 </pre>
-<p>Run some code every everything in the table matching above:</p>
+<p>Create some code to populate a Tcl array for every record in the table matching above:</p>
 <pre>
-$speedtable search \
- -compare {{&gt; coolness 50} {&gt; hipness 50}} \
- -key key -array_get data -code {
-  puts "key -&gt; $key, data -&gt; $data"
- }
+set fp [open oldschool.tcl w]
+$table search \
+  -compare {{&gt; coolness 50} {&gt; hipness 50}} \
+  -key key -array_get data -code {
+      puts $fp [concat [list array set array($key)] $data]
+  }
+close $fp
 </pre>
 
 <dt><i>search+</i><dd>
