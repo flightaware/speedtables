@@ -281,6 +281,17 @@ $speed table search -compare {{&gt; coolness 50} \
 <p>Expression compares true if the field's value appears in the value list.  </p>
 <p>The "in" search expression, when used as the first search term on an indexed field has very high performance, in particular with client-server ctables, as it is much faster to go find many rows in one query than to repeatedly cause a TCP/IP command/response roundtrip on a per-row basis.</p>
 </dl>
+<dt>-buffer 1<dd>
+<p>Modifying the index being followed from the code body of a search can have undefined behavior. You may miss entries, visit entries twice, or possibly even crash the program. to avoid this, you can use a buffered search. The <tt>-buffer</tt> option transactionalizes the operation, at the cost of allocating a temporary internal array for the matched rows.</p>
+<p>The <tt>-delete</tt> and <tt>-update</tt> options are automatically transactionalized when necessary. The <tt>-sort</tt> option uses the transaction buffer for sorting, so there is no additional overhead for <tt>-buffer</tt> on a sorted search unless the sort is optimized out by the query optimizer. Searches on shared memory tables are always buffered.</p>
+<p>Note: It is not safe to delete rows from the code body of a search, whether buffered or not. Use the <tt>-delete</tt> option instead.</p>
+<p class=bug>Bug: The table should lock out deletes during a search.</p>
+<p class=bug>Bug: Indexes should be checked and the indexed field should be locked, so that modifying it unbuffered is defined as an error.</p>
+<dt>-delete 1<dd>
+<p>Delete the matched records.</p>
+<dt>-update {field value}<dd>
+<p>Update the named field to a new value.</p>
+<p>
 <dt>-poll_interval interval<dd>
 <p>Perform an <tt>update</tt> operation every <tt>interval</tt> rows, to allow background processing to work in the background while a long search is going on.</p>
 <dt>-poll_code {code}<dd>

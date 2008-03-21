@@ -1,6 +1,13 @@
 
 $Id$
 
+3/21/2008 peter
+    * Rearranged the manual as multiple chapters.
+    * Added documentation for search options -buffer, -delete, and -update.
+    * Fixed many many documentation bugs.
+    * Added many examples.
+    * Fixed some corner cases to match the documentation.
+
 3/16/2008 peter
     * rearranged the examples in the "demos" subdirectory, and fixed some bugs
       in them.

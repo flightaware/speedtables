@@ -11,14 +11,45 @@
 <div class="blue">This chapter explains how to make Speed Table searches go as fast as possible.</div>
 <p>An example of brute force searching that there isn't much getting around without adding fancy full-text search is unanchored text search. Even in this case, with our fast string search algorithm and quick traversal during brute-force search, we're seeing 60 nanoseconds per row or searching about sixteen million rows per CPU second on circa-2006 AMD64 machines.</p>
 <p>Although many optimizations are being performed by the speed table compiler, further performance improvements can be made without introducing huge new complexities, perturbations, etc.</p>
-<p>If you need to search for ranges of things, partial matches, straight equality of a field other than the key field, etc, you can use indexes and the "range", "=", and "in" compare functions to obtain huge search performance improvements over brute force, subject to a number of limitations: First, the table must have had an index created on that field using <tt>$speedtable index create $fieldName</tt>. </p>
+<p>If you need to search for ranges of things, partial matches, straight equality of a field other than the key field, etc, you can use indexes and the "range", "=", and "in" compare functions to obtain huge search performance improvements over brute force, if the table has an index created on that field using <tt>$speedtable index create $fieldName</tt>, or the search involves an exact match for the key. Indexes may also be used for some relative and case-sensitive matches. For example:</p>
+<pre>
+# make sure we have an index
+anim_characters index create name
+
+# fast search on name index
+anim_characters search -compare {{match_case name "Space*"}} ...
+
+# brute-force search - the index is on the actual string, so it's not used in
+# case-insensitive match.
+anim_characters search -compare {{match name "Space*"}} ...
+
+# brute-force search - the index can only be used 
+anim_characters search -compare {{match_case name "*Ghost"}} ...
+</pre>
+<p>If you need to do a case-independent search on the table, create a new field
+that has the "search name" in it. To enforce this, create a method for setting
+the name:</p>
+<pre>
+proc set_name {table key name} {
+    $table set $key name $name search_name [string tolower $name]
+}
+[anim_characters type] method name set_name
+
+// ...
+
+anim_characters name fred "Fred Flintstone"
+</pre>
+<p>You can also improve search performance by using the <tt>-index</tt> option to search to bias the query optimizer to prefer a specific index to scan</p>
 <div class="blue">Speed Table Query Optimizer</div>
 <p>The Speed Table Query Optimizer has been rolled in to search, and search+ has been deprecated. The "best" field in the query is used as the index, in this order:</p>
-<p>"<b>in</b>" has the highest priority, but the field used MUST be the key field or an indexed field.</p>
-<p>"<b>=</b>" has the next highest priority.</p>
-<p>"<b>&lt;</b>", "<b>&lt;=</b>", or "<b>&gt;=</b>" come next.</p>
-<p>"<b>&gt;</b>" comes after these</p>
+<p>"<b>in</b>" has the highest priority, and works for both the key and indexes.</p>
+<p>"<b>=</b>" has the next highest priority, and works for both the key and indexes.</p>
+<p>"<b>range</b>" on indexes come next.</p>
+<p>Anchored "<b>match</b>" on indexed strings come next.</p>
+<p>"<b>&lt;</b>", "<b>&lt;=</b>", or "<b>&gt;=</b>" on indexes come next.</p>
+<p>"<b>&gt;</b>" on indexes comes after these</p>
 <p>All other searches are last priority.</p>
 <p>In an ordered search, with an increasing sort, the sort field gets chosen when possible to avoid manually sorting the results after finding them.</p>
 </body>
-</html>
+<p>When multiple fields have the same priority, the field specified in the <tt>-index</p> search option, then the first in the compare list wins</p>
+<p>The query optimizer will also short-circuit the <tt>-sort</tt> option if the search can be performed on an ascending sort key, and rely on the index being ordered instead of performing a second sort step.</p>
