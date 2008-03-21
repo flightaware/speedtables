@@ -18,52 +18,62 @@
 <p>Our approach is to maintain metadata about in-progress searches in shared memory and have a cycle number that increases as the database is updated. When a search begins, the client copies the current cycle number to a word in shared memory allocated for it by the server. As normal activity causes rows to be modified, updated. or deleted by the server the cycle they were modified on is stored in the row. If rows (or any other shared memory object, such as strings) are deleted, they are added to a garbage pool along with the current cycle, but not actually freed for reuse until the server garbage collects them on a later cycle.</p>
 <p>If the client detects that a row it's examining has been modified since it started its search, it restarts the search operation. The server makes sure to update pointers within shared memory in an order such that the client will never step into a partially modified structure. This allows the whole operation to proceed without explicit locks, so long as pointer and cycle updates are atomic and ordered.</p>
 <p>Garbage collection is performed by locating deleted memory elements that have a cycle number is lower than the cycle number of any client currently performing a search.</p>
-<p>New options to the ctable "create" command:</p>
-<dl>
 
-<dt><i>$ctable create name master list</i><dd>
+<p>New methods to the meta-table (class) command:</p>
+<dl>
+<dt>create <i>name</i> master <i>list</i><dd>
 <p>Creates a new master table based on the parameters in the list:</p>
 <dl>
-<dt>name tablename (optional)<dd>
+<dt>name <i>tableName</i><dd>
 <p>The shared memory segment has a small write-once symbol table that is used to locate individual ctables and other objects in shared mem.</p>
-<dt> file filename (required)<dd>
+<dt>file <i>fileName</i> (required)<dd>
 <p>Multiple tables can be mapped in the same file, distinguished by the ctable name or the name provided in the "name" option.</p>
-<dt> size bytes (required)<dd>
+<dt>size <i>bytes</i> (required)<dd>
 <p>Used to create the file, or if it's already mapped it checks if it's at least this big.</p>
-<dt> flags list<dd>
+<dt>flags <i>flagList</i><dd>
 <p>The only shared memory flags implemented are sync/nosync (default nosync) and core/nocore (default core).</p>
 </dl>
-<dt><i>$ctable create name reader list</i><dd>
+<dt>create <i>tableName</i> reader <i>list</i><dd>
 <p>The list provided is collected from the master table (already opened in another process) through the attach command (below).</p>
 <p>This attaches to an existing shared memory segment based on the information in the list, then searches for the reader cycle tagged by the process ID provided to attach, and creates a reader-mode ctable. This table contains a pointer to the master ctable in shared memory, data copied from the master, and other bookkeeping elements. </p>
 </dl>
-<p>New ctable commmands:</p>
+
+<p>New speed table methods:</p>
 <dl>
 
-<dt><i>$ctable attach pid</i><dd>
-<p>Only valid for a master shared ctable, Creates a cycle entry for the process pid, and returns a list of parameters that describe how to attach to the ctable. Currently {file $file name $name}, where "file" is the file to map and "name" is the name of the shared ctable in the directory.</p>
-<dt><i>$ctable getprop</i><dd>
+<dt>attach <i>pid</i><dd>
+<p>Only valid for a master shared table, Creates a structure in the shared memory segment for the process <tt>pid</tt>, and returns a list of parameters that will be passed to the reader to tell it how to connect to the shared memory segment.</p>
+
+<dt>getprop<dd>
+<dt>getprop <i>propName ?propName?...</i><dd>
 <p>With no names, returns a name-value list of properties of the ctable, whatever is needed for reflection.</p>
-<p>Currently type, extension, and key. These are needed for the STAPI glue for shared tables.</p>
-<dt><i>$ctable getprop name ...</i><dd>
+<p>Currently the properties available are type, extension, and key. These are needed for reflection on shared tables.</p>
 <p>With names, returns a list of only those properties.</p>
-<dt><i>$ctable share<br>$ctable share command ?options?</i><dd>
+
+<dt>share<dd>
+<dt>share <i>command ?options?</i><dd>
 <p>The "share" extension actually stands apart from the ctable extension and Tcl. It provides the shared memory segments and handles memory allocation from the segments. It's unlikely to be useful to use the explicit share form except in internal debugging.
 <p>The following commands are meaningful for ctable shares:</p>
 <dl>
 <dt>names<dd>
 <p>Returns a list of named objects in the share. These are not necessarily ctables, they may be string variables or objects created by other libraries.</p>
-<dt>set name string <i>(master only)</i><dd>
+<dt>set <i>name string</i> (master only)<dd>
 <p>Sets a shared string variable, for passing additional environment or context to readers.</p>
-<dt>get name<dd>
+
+<dt>get <i>name</i><dd>
 <p>Gets the value of a string set with "set".</p>
+
 <dt>info<dd>
 <p>Returns some internal information about the share in a name-value list. The data includes size, flags, name, whether you're the creator <i>(master)</i>, and filename.</p>
+
 <dt>pools<dd>
 <p>Returns a list of information for fixed size memory pools in the shared segment. There will be at least two pools, the garbage pool (containing elements that have been freed but are still in use by at least one reader) and one pool the size of a ctable row is set up for each ctable. For each pool it will return the size of elements that the pool will manage, how many elements in each chunk of elements allocated at once, the total number of chunks allocated, and the number of free elements: <tt>{element_size elements_per_chunk chunks free_elements}</tt> </p>
-<dt>pool element_size elements_per_chunk max_chunks<dd>
+
+<dt>pool <i>element_size elements_per_chunk max_chunks</i> (master only)<dd>
 <p>Creates a pool for objects of element_size bytes, allocated in elements_per_chunk chunks, up to a maximum of max_chunks. If max_chunks is zero it will extend to pool to the limit of the shared segment if necessary.</p>
+
 </dl>
+
 </dl>
 <H3>STAPI support for shared memory tables:</H3>
 <p><tt>package require st_shared

@@ -49,7 +49,13 @@ anim_characters name fred "Fred Flintstone"
 <p>"<b>&lt;</b>", "<b>&lt;=</b>", or "<b>&gt;=</b>" on indexes come next.</p>
 <p>"<b>&gt;</b>" on indexes comes after these</p>
 <p>All other searches are last priority.</p>
-<p>In an ordered search, with an increasing sort, the sort field gets chosen when possible to avoid manually sorting the results after finding them.</p>
+<p>In an ordered search, an ascending sort field gets chosen when this makes it possible to avoid manually sorting the results after finding them. This may save allocating a transaction buffer, and avoids a separate sort operation after the search is complete.</p>
+<p>Any field specified in the <tt>-index</tt> search option is tried first, then the compare list is checked in order, so if you have multiple fields that might be used as an index put the ones that will have the most effect on reducing the size of the search first.</p>
+<pre>
+# Most characters have coolness of at least 5, but few are younger than 10,
+# so check age first
+set fp [open cool_kids.tsv w]
+anim_characters search -compare {{< age 10} {>= coolness 5}} -write_tabsep $fp
+close $fp
+</pre>
 </body>
-<p>When multiple fields have the same priority, the field specified in the <tt>-index</tt> search option, then the first in the compare list wins</p>
-<p>The query optimizer will also short-circuit the <tt>-sort</tt> option if the search can be performed on an ascending sort key, and rely on the index being ordered instead of performing a second sort step.</p>
