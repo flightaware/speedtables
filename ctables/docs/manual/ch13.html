@@ -318,6 +318,11 @@ method as described in chapter 6, it will be necessary to
 update it after reading multiple records from a file or database. You can
 use the <tt>_dirty</tt> pseudo-field to update changed records.</p>
 <pre>
+# Load the new show
+set fp [open $showname.txt r]
+anim_characters read_tabsep $fp
+close $fp
+
 # Don't forget to buffer the search, since you're modifying the table in place.
 anim_characters search \
   -compare {{= _dirty 1}} \
