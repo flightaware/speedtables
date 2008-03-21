@@ -9,8 +9,26 @@
 <body>
 <H2> 5 -  Methods for Manipulating Speed Tables</H2>
 <div class="blue">This chapter enumerates all of the defined methods that are available to interact with Speed Tables, with examples.</div>
-<p>Now the nitty gritty... The following built-in methods are available as arguments to each instance of a speed table:</p>
-<p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep, key, makekey, store, share, getprop, attach</i></p>
+<H3>Meta-table Methods</H3>
+<p>The following methods are available as arguments to the meta-table (class)
+of the Speed Table:</p>
+<dl>
+<dt>create table_name ?master|reader ?name value?...?<dd>
+<p>Create a new table instance. The syntax for master or reader shared memory tables are described in chapter 8</p>
+<dt>cextension<dd>
+<p>dump the code used to define the C Extension that created the table.</p>
+<dt>info<dd><p>Reserved for future use</p>
+<dt>method method_name method_proc<dd>
+<p>Register a new method into the class. When the table is called with the
+named method, the arguments are passed to the named proc. The proc will
+be invoked with the table as its first argument, followed by any method
+arguments.
+<dt>null_value ?value?<dd>
+<p>Define or fetch the null value for a class.</p>
+</dl>
+<H3> Table Methods </H3>
+<p>The following built-in methods are available as arguments to each instance of a speed table:</p>
+<p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep</i>, <i>key</i>, <i>makekey</i>, <i>store</i>, <i>share</i>, <i>getprop</i>, <i>attach</i></p>
 <p>For the examples, assume we have done a "<tt>cable_info create x</tt>"</p>
 <dl>
 <dt><i>set</i><dd>

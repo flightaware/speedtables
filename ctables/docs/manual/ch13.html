@@ -29,7 +29,31 @@ $table search -fields fieldname -get row -sort fieldname -limit 1 -code {
 $table search -fields fieldname -get row -sort -fieldname -limit 1 -code {
     set highest [lindex $row 0]
 }</pre>
-<H3>Copy Speed Table Search Results to a Tab-Separated File</H3>
+<H3>Find the meta-table (class) or definition for a speed table</H3>
+<pre>
+set meta_table [table type]
+
+set definition [$meta_table cextension]
+</pre>
+<H3>Define a new method for a Speed Table</H3>
+<pre>
+proc field_max {table field} {
+    if {[lsearch [$table field indexed] $field] != -1} {
+	return [lindex [$table index span $field] 1]
+    } else {
+	set max ""
+        $table search -sort -$field -limit 1 -code { set max $field }
+	return $max
+    }
+}
+
+[anim_characters type] method max field_max
+
+puts "Oldest character is [anim_characters max age]"
+</pre>
+<H3>Copy Speed Table to a File</H3>
+<p>The <tt>-write_tabsep</tt> option to <i>search</i> lets you write all
+or part of a Speed Table to a file</p>
 <pre>
 tableType create t
 ...
@@ -46,7 +70,8 @@ t search \
     -write_tabsep $fp
 close $fp
 </pre>
-<H3>Load a Speed Table using read_tabsep</H3>
+<H3>Load a Speed Table from a file</H3>
+<p>Given a token-separated file, you use the <i>read_tabsep</i> method.</p>
 <pre>
 set fp [open new_anim_characters.txt r]
 t read_tabsep $fp

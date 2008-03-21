@@ -8,20 +8,35 @@ of gentable that the stuff was built with hasn't altered.  This way if
 the build previously failed for some reason or the version of gentable
 got updated, that we still regenerate the shared library.
 
+[peter] I think this is done.
+
 Have a way to find out if a field is null out-of-band, that is, some kind of
 method called is_null or the like that will tell if you if a field or fields
 is null.
+
+[peter] What context is this in?  Something like:
+	% table field is_null $key $field
+	% table is_null $key $field
 
 It's easy to make the null_value setting be local to an instance of the
 table and not global to all tables of a specific type.  tbl_ptr is defined
 in the big case statement -- 
 
+[peter] I looked into this and it is hard. There's references to the null
+	all through the code, including from routines that are not passed
+	the ctable struct.
+
 be able to import from an array, including only specific variables
 NO - no easy way to get names of an array from C and anyway you can just
 do a foo set $key field $array(field) field2 $array(field2), etc.
 
+[peter] foo set $key -nocomplain [array get array]
+
 Add a way for someone doing a CTable definition to specify additional
 files to include.
+
+[peter] What does this mean?
+	Examples?
 
 Add a way to write methods in C and add additional C code to the stuff
 being generated, from the CTable definition.  This may also involve generating
@@ -32,8 +47,13 @@ code in some kind of quoted ctable definition.
 Make set return a 1 if it created the row and a 0 if it already exists.
 (Uh, not sure how valuable this actually is.)
 
+[peter] This is kind of transaction-ish.
+	I think it's worth doing, it's certainly easy.
+
 Do something like GNU autoconf/configure or dig compiler switches, etc, out
 of tclConfig.sh.
+
+[peter] Partly done.
 
 fixed strings allocate one more character than requested
 
@@ -41,16 +61,23 @@ provide a way for a ctable to provide a complete replayable definition
 of itself.  Prefer to compile this into the C code so there's no way
 it can get off from whatever files are in the vicinity.
 
+[peter] Done: meta_table cextension
+
 implement btree-style index option for fields with both unique and not-unique
 styles.
 
+[peter] obviated by skiplists?
+
 Adopt TclX's test structure and make lots more tests.
+
+[peter] what does this mean?
 
 In the _comp routine for varstring, if the pointer is NULL use the
 default value for the field.
 
------
+[peter] Think this is done.
 
+----
 
 read_tabsep can fail but add a thing where you can specify -error proc and
 if it's going to fail and the error proc has been specified, it'll call
@@ -70,6 +97,7 @@ If it gets another error on the same column, then it'll error out.
 
 Add a bytearray object.
 
+[peter] or use the tcl object type?
 ---
 
 Perhaps limit strings to 64K bytes to use shorts for the length and allocated
@@ -78,6 +106,8 @@ length.
 Make skip lists support enforcement of unique constraint as they originally did.
 
 Write the compiler debug flag into the stuff we look at to see if anything got changed, requiring a recompile of the speedtable definitions.
+
+[peter] I've done this, and added a number of other flags that change things.
 
 ----
 
@@ -110,13 +140,20 @@ constraint violation.
 
 I also want to do the callout thing for errors real soon.
 
+[peter] This would also happen on a typecheck from a row being set.
+
 ---
 
 Also I want to add some new options to search/search+ such as
 
     -delete 1 -- delete matching rows
 
+[peter] done
+
     -into tableName -- copy matching fields from matching rows into table
+
+[peter] I wonder how hard it would be to make a ctable act like an input
+	channel, so one ctable could write-tabsep to another.
 
 ---
 
@@ -130,6 +167,9 @@ as the hash keys.
 
 make delete_all_rows use the linked list [0] rather than walking the hash table.
 make "names" method do the same.
+
+[peter] Since walking the hash table is faster than walking the skiplist,
+	this is probably not a good idea.
 
 make a speed table driver package that has all the non-generated source
 like searching, sorting, hash tables, skip lists, etc, into a shared
@@ -151,6 +191,8 @@ explicitly be unset from the array, although it might be desirable to have
 a switch to cause null fields to be set into the array with the default
 value.
 
+[peter] This is done.
+
 --
 
 possibly store the first values set for a varstring when a new row is
@@ -162,6 +204,8 @@ value is set in that is the same size or smaller.
 also peter suggested using fields that are part of a varstring in a speedtable
 row in the fields themselves if they're short enough, like 4 or 8 or
 maybe 12 bytes.
+
+[peter] I suspect the extra checks would make this slower.
 
 --
 
@@ -190,6 +234,8 @@ which we need because our linked list routines are dumb.
 Switch to better linked list routines and save a pointer for ever row plus
 a pointer for every indexable field in a row.
 
+[peter] Be careful here, making the list handling smarter may break shared
+	lists.
 
 --
 
@@ -201,12 +247,13 @@ If we're going to call the delete routine, we're going to need to make sure
 that hashEntry.key is NULL and that we check it before freeing it in the
 delete routine.
 
-
 ----
 
 Prepared searches
 
 Provide a way to cache the entire search created by ctable_SetupSearch.
+
+[peter] I wonder if the Tcl_Obj caching could be used here?
 
 Within that, provide a way to change the values of the synthesized rows
 that are part of the search components.
@@ -271,6 +318,10 @@ to creator.  DONE
 ---
 
 Change read_tabsep to take "-keys 0|1" and "-include_field_names 0|1"
+
+[peter] DONE
+	It's not a list of arguments like in search, so these are -nokeys
+	and -with_field_names.
 
 ---
 

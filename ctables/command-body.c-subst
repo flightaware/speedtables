@@ -849,7 +849,6 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  for (field = firstColumn; field < nFields; field++) {
 	      fieldName = PQfname (res, field);
 
-
 	      Tcl_SetStringObj (fieldNameObj, fieldName, -1);
 
 	      if (Tcl_GetIndexFromObj (interp, fieldNameObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
