@@ -7,7 +7,7 @@ source index-defaults.ct
 package require Indef
 
 # set to 1 to create some spiciness
-set spicy_brains 0
+set spicy_brains 1
 
 set t [indef create #auto]
 
