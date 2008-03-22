@@ -1,6 +1,9 @@
 
 $Id$
 
+3/22/2008 peter
+    * Ignore duplicate key columns in read_tabsep.
+
 3/21/2008 peter
     * Allow extra fields in read_tabsep when -with_field_names -nocomplain.
 

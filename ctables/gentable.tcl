@@ -1729,6 +1729,22 @@ ${table}_get_string (const void *vPointer, int field, int *lengthPtr, Tcl_Obj *u
 #####
 
 variable tabSepFunctionsSource {
+
+void ${table}_dumpFieldNums(int *fieldNums, int nFields, char *msg)
+{
+    int i;
+
+    fprintf(stderr, "%s, %d fields: ", msg, nFields);
+
+    for(i = 0; i < nFields; i++) {
+	int num = fieldNums[i];
+	if(num == -1) fprintf(stderr, "* ");
+	else fprintf(stderr, "%d=%s ", num, ${table}_fields[num]);
+    }
+
+    fprintf(stderr, "\n");
+}
+
 void
 ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, char *sepstr) {
     int              i;
@@ -1787,6 +1803,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
     int   *fieldNums = NULL;
     char  *s;
     int    nColumns;
+    int    keyCol = -1;
 
     *noKeysPtr = 1;
 
@@ -1808,6 +1825,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 
 	if(*noKeysPtr && field == 0 && strcmp(string, "_key") == 0) {
 	    *noKeysPtr = 0;
+	    keyCol = 0;
 	} else {
 	    int num = -1;
 	    for(i = 0; ${table}_fields[i]; i++) {
@@ -1822,6 +1840,13 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 		ckfree((void *)fieldNums);
                 return TCL_ERROR;
             }
+
+	    if(num == ${table}_keyField) {
+		if(keyCol>= 0)
+		    num = -1;
+		else
+		    keyCol = num;
+	    }
 
 	    fieldNums[field++] = num;
 	}
@@ -2048,6 +2073,8 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     }
     if(col != i)
 	nFields--;
+
+//${table}_dumpFieldNums(fieldNums, nFields, "after key check");
 
     while (1) {
 	char            *key;
