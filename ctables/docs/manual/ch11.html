@@ -1,4 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -7,6 +8,9 @@
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch10.html">Back</a><a href=index.html>Index</a><a href="ch12.html">Next</a></div>
+<!-- %END LINKS% -->
 <H2> 11 - Speed Tables Internals</H2>
 <div class="blue">This chapter describes internal implementation details of Speed Tables. You can skip this section unless you're interested in finding out how Speed Tables work internally.</div>
 <H3>C Code Generated and C Routines Created</H2>
@@ -184,5 +188,8 @@ CONST char *cable_info_get_string (
 <p>if (row-&gt;severity &gt; 90 &amp;&amp; row-&gt;timeUnavailable &gt; 900) return 1;</p>
 <p>...and that gets compiled into a specifically invokable search that will be faster than our more general searches that aren't pre-compiled.</p>
 <p>This will require generating an include file containing the structure definition, function definitions for the C routines you'd be calling, and many other things currently going straight into the C code.</p>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch10.html">Back</a><a href=index.html>Index</a><a href="ch12.html">Next</a></div>
+<!-- %END LINKS% -->
 </BODY>
 </HTML>

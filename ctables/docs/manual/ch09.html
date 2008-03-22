@@ -1,4 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -7,6 +8,9 @@
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch08.html">Back</a><a href=index.html>Index</a><a href="ch10.html">Next</a></div>
+<!-- %END LINKS% -->
 <H2> 9 - STAPI - Speed Tables API</H2>
 <p>STAPI allows the Speed Tables API, originally implemented in ctables, to be used for a variety of table-like objects. This includes remote ctables through ctable_server and SQL databases. There are two main sets of routines in STAPI, and they're not normally used together.</p>
 <p>st_server, a set of routines for automatically creating a ctable from an SQL table as a local read_only cache for the table, or as a workspace to be used for preparing rows to be inserted into the table. It's normally used in a ctable_server task providing a local cache for client processes.</p>
@@ -187,5 +191,8 @@ Define the key in terms of a list of columns.
 <p>Note: this does not to change any parameters of an existing STAPI object.</p>
 <p>Otherwise, this behaves identically to calling ::stapi::connect with the -key/-keys argument, and creates a wrapper object that understands at least the <tt>key</tt>, <tt>makekey</tt>, and <tt>store</tt> methods.</p>
 </dl>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch08.html">Back</a><a href=index.html>Index</a><a href="ch10.html">Next</a></div>
+<!-- %END LINKS% -->
 </BODY>
 </HTML>

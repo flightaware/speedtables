@@ -1,4 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -7,6 +8,9 @@
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch07.html">Back</a><a href=index.html>Index</a><a href="ch09.html">Next</a></div>
+<!-- %END LINKS% -->
 <H2> 8 -  Shared Memory Speed Tables</H2>
 <p>Client-server speed tables can take a fairly big performance hit, as a sizable amount of Tcl code gets executed to make the remote speed table function like a local one.</p>
 <p>While they're still pretty fast, server actions are inherently serialized because of the single-threaded access model afforded using standard Tcl fileevent actions within the Tcl event model.</p>
@@ -111,6 +115,8 @@ $r set fred $row
 # Close the reader and disconnect from the server.
 $r destroy
 </pre>
-<p></p>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch07.html">Back</a><a href=index.html>Index</a><a href="ch09.html">Next</a></div>
+<!-- %END LINKS% -->
 </body>
 </html>

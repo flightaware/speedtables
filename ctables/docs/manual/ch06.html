@@ -1,4 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -7,6 +8,9 @@
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch05.html">Back</a><a href=index.html>Index</a><a href="ch07.html">Next</a></div>
+<!-- %END LINKS% -->
 <H2> 6 -  Special Notes On How To Make Searches Go Fast</H2>
 <div class="blue">This chapter explains how to make Speed Table searches go as fast as possible.</div>
 <p>An example of brute force searching that there isn't much getting around without adding fancy full-text search is unanchored text search. Even in this case, with our fast string search algorithm and quick traversal during brute-force search, we're seeing 60 nanoseconds per row or searching about sixteen million rows per CPU second on circa-2006 AMD64 machines.</p>
@@ -57,5 +61,8 @@ anim_characters name fred "Fred Flintstone"
 set fp [open cool_kids.tsv w]
 anim_characters search -compare {{< age 10} {>= coolness 5}} -write_tabsep $fp
 close $fp
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch05.html">Back</a><a href=index.html>Index</a><a href="ch07.html">Next</a></div>
+<!-- %END LINKS% -->
 </pre>
 </body>

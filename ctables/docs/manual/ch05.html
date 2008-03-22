@@ -1,4 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -7,6 +8,9 @@
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch04.html">Back</a><a href=index.html>Index</a><a href="ch06.html">Next</a></div>
+<!-- %END LINKS% -->
 <H2> 5 -  Methods for Manipulating Speed Tables</H2>
 <div class="blue">This chapter enumerates all of the defined methods that are available to interact with Speed Tables, with examples.</div>
 <H3>Meta-table Methods</H3>
@@ -375,7 +379,9 @@ if {[pg_result $res -status] != "PGRES_RESULT_OK"} {... error handling ...}
 x import_postgres_result $res
 </pre>
 <div class="blue-indent">Importing PostgreSQL Results Is Pretty Fast</div>
-<p class="blue-block">On a 2 GHz AMD64 we are able to import about 200,000 10-element rows per CPU second, i.e. around 5 microseconds per row. Importing goes more slowly if one or more fields of the speed table has had an index created for it.</p>
+<div class="blue-block">
+<p>On a 2 GHz AMD64 we are able to import about 200,000 10-element rows per CPU second, i.e. around 5 microseconds per row. Importing goes more slowly if one or more fields of the speed table has had an index created for it.</p>
+</div>
 
 <dt>fieldtype <i>fieldName</i><dd>
 <p>Return the datatype of the named field.</p>
@@ -530,5 +536,8 @@ x index indexed
 </pre>
 <p>...returns a (potentially empty) list of all of the field names in table x that current have an index in existence for them, meaning that index create has been invoked on that field.</p>
 </dl>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch04.html">Back</a><a href=index.html>Index</a><a href="ch06.html">Next</a></div>
+<!-- %END LINKS% -->
 </body>
 </html>

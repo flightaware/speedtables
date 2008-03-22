@@ -1,4 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -7,6 +8,9 @@
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch03.html">Back</a><a href=index.html>Index</a><a href="ch05.html">Next</a></div>
+<!-- %END LINKS% -->
 <H2> 4 -  An Example Speed Table Definition</H2>
 <div class="blue">This chapter provides an example speed table definition, explains it, and shows some basic usage of a speed table.</div>
 <pre>
@@ -37,7 +41,9 @@ CExtension animinfo 1.1 {
 <p>Sourcing the above code body and doing a <tt>package require Animinfo</tt> will create one new command,<i> animation_characters</i>, corresponding to the defined table. We call this command a <i>meta table</i> or a <i>creator table</i>.</p>
 <p><span class="code">animation_characters create t</span> creates a new object, <b>t</b>, that is a Tcl command that will manage and manipulate zero or more rows of the <i>animation_characters</i> table.</p>
 <div class="blue-indent">One meta table can create many speed tables</div>
-<p class="blue-block">You can create additional instances of the table using the meta table's <i>create</i> method. All tables created from the same meta table operate independently of each other, although they share the meta table data structure that speed table implementation code uses to understand and operate on the tables.</p>
+<div class="blue-block">
+<p>You can create additional instances of the table using the meta table's <i>create</i> method. All tables created from the same meta table operate independently of each other, although they share the meta table data structure that speed table implementation code uses to understand and operate on the tables.</p>
+</div>
 <p>You can also say...</p>
 <pre>
  set obj [animation_characters create #auto]
@@ -133,5 +139,8 @@ CTableBuildPath /tmp
 <p>Note that the specified build path is appended to the Tcl library search path variable, <i>auto_path</i>, if it isn't already in there.</p>
 <p class="bug">Bug: - Tcl appears to examine a shared library name and stop at the first numeric digit in an apparently somewhat inadequate attempt to make sure it doesn't include shared library version numbers in the expected *_Init and*_SafeInit function names for the library being generated. Consequently when you're defining a C extension via the CExtension command, do not include any digits in your C extension's name.</p>
 <a name="1"><p class="foot">[1] It feels a bit clumsy to have an external key like this, and we are working on making the key a part of the row itself, which seems better.  Currently the "key" data type is used, and if no "key" is defined then the pseudo-field "_key" is created.</p>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch03.html">Back</a><a href=index.html>Index</a><a href="ch05.html">Next</a></div>
+<!-- %END LINKS% -->
 </body>
 </html>

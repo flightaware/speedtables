@@ -1,4 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -7,6 +8,9 @@
   <link rel="stylesheet" href="manual.css">
 </head>
 <body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch06.html">Back</a><a href=index.html>Index</a><a href="ch08.html">Next</a></div>
+<!-- %END LINKS% -->
 <H2> 7 -  Client-Server Speed Tables</H2>
 <div class="blue">This chapter describes the rationale for creating a client-server interface to Speed Tables, explains the pluses and minuses of the current implementation, explains how to use the client interface, and gives an example of how to use it.</div>
 <p>Tables created with Speed Tables, as currently implemented, are local to the Tcl interpreter that created them.</p>
@@ -99,5 +103,8 @@ $ctable search -compare {in key $listOfRows} -array_with_nulls data {
 <p>STAPI connection methods already defined a;so include sql, which provides direct access to PostgreSQL tables through pgsql as if they were ctables.</p>
 <p>STAPI is described in more detail in section 9.</p>
 <a name=1><p class="foot">[1] Fairly analogous to stored procedures in a SQL database, Tcl code running on the server's interpreter could perform multiple speed table actions in one invocation, reducing client/server communications overhead and any delays associated with it.</p>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch06.html">Back</a><a href=index.html>Index</a><a href="ch08.html">Next</a></div>
+<!-- %END LINKS% -->
 </body>
 </html>
