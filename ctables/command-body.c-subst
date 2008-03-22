@@ -1039,19 +1039,20 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
   char *s=buffer;
   
   if(fieldIds) {
+    *s++ = '{';
     for(i = 0; i < nFields; i++) {
-      sprintf(s, "%d, ", fieldIds[i]);
+      if(i) { *s++ = ','; *s++ = ' '; }
+      sprintf(s, "%d", fieldIds[i]);
       s += strlen(s);
     }
-    if(s > buffer) {
-      --s;
-      --s;
-      *s = 0;
-    }
+    *s++ = '}';
+    *s = 0;
+  } else {
+    sprintf(buffer, "(null)");
   }
 
   fprintf(stderr,
-	"${table}_%s_tabsep (interp, ctable, %s, {%s}, %d, \"%s\", %d, %d, \"%s\", /%s/, /%s/);\n",
+	"${table}_%s_tabsep (interp, ctable, %s, %s, %d, \"%s\", %d, %d, \"%s\", /%s/, /%s/);\n",
 	optIndex == OPT_WRITE_TABSEP ? "export" : "import",
 	channel, buffer, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term
   );

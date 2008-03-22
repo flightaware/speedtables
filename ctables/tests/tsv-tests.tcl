@@ -101,5 +101,27 @@ if {"[t get aol]" != "82 AOL 3248"} {
     error "got [list [t get aol]] expected {82 AOL 3248}"
 }
 
+puts "nocomplain test"
+# gen up a dummy file
+set fp [open /tmp/extra_brands.tsv w]
+puts $fp "_key\tname\tcharm\trank\tserial\tvalue"
+t search -key k -array_with_nulls a -code {
+	puts $fp "$k\t$a(name)\t[expr {int(rand() * 10.0 + 1)}]\t$a(rank)\t[clock seconds]\t$a(value)"
+}
+close $fp
+t reset
+
+set fp [open /tmp/extra_brands.tsv r]
+t read_tabsep $fp -nocomplain -with_field_names
+close $fp
+
+if {[t count] != 100} {
+    error "expected count of 100 but got [t count]"
+}
+
+if {"[t get aol]" != "82 AOL 3248"} {
+    error "got [list [t get aol]] expected {82 AOL 3248}"
+}
+
 puts "finished"
 

@@ -1809,21 +1809,21 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 	if(*noKeysPtr && field == 0 && strcmp(string, "_key") == 0) {
 	    *noKeysPtr = 0;
 	} else {
-	    for(i = 0; ${table}_fields[i]; i++)
-	        if(strcmp(string, ${table}_fields[i]) == 0)
+	    int num = -1;
+	    for(i = 0; ${table}_fields[i]; i++) {
+	        if(strcmp(string, ${table}_fields[i]) == 0) {
+		    num = i;
 		    break;
-
-	    if(!${table}_fields[i]) {
-		if(nocomplain) {
-		    i = -1;
-		} else {
-                    Tcl_AppendResult (interp, "Unknown field \"", string, "\" in ${table}", (char *)NULL);
-		    ckfree((void *)fieldNums);
-                    return TCL_ERROR;
 		}
+	    }
+
+	    if(!nocomplain && num == -1) {
+                Tcl_AppendResult (interp, "Unknown field \"", string, "\" in ${table}", (char *)NULL);
+		ckfree((void *)fieldNums);
+                return TCL_ERROR;
             }
 
-	    fieldNums[field++] = i;
+	    fieldNums[field++] = num;
 	}
 
 	if(tab) {
@@ -1961,7 +1961,11 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	} else {
 	    field = "";
 	}
-	if(i == keyColumn || fieldIds[col] == -1) {
+	if(i == keyColumn) {
+	    continue;
+	}
+	if(fieldIds[col] == -1) {
+	    col++;
 	    continue;
 	}
 	Tcl_SetStringObj (utilityObj, field, -1);
