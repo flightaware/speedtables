@@ -337,6 +337,8 @@ anim_characters search \
       anim_characters set $k search_name [string tolower [lindex $row 0]]
   }
 </pre>
+<p>Note: this technique can not be used with client-server tables: you have
+to run the code on the server, perhaps by registering a method.</p>
 
 <H3>Loading partial tables</H3>
 <p>Loading partial tables can be a useful technique to save memory. Loading
