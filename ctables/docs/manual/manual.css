@@ -97,8 +97,16 @@ pre .change {
 	font-size: 133%;
 	color: #0088aa;
 }
-.index dd {
-	margin: 4px;
+.index * td:first-child {
+	text-align: right;
+	vertical-align: top;
+}
+.index * dl {
+	margin-left: 0.5cm;
+	font-size: 10pt;
+}
+.index * dt {
+	color: black;
 }
 .index * a {
 	padding-left: 2px;
