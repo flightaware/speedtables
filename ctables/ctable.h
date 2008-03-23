@@ -33,6 +33,10 @@
 #include "shared.c"
 
 #define DEFAULT_SHARED_SIZE (1024*1024*4)
+
+// How often do we allow the shared memory search to restart
+#define MAX_RESTARTS 1000
+
 #endif
 
 // these types must line up with ctableTypes in gentable.tcl

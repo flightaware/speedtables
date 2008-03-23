@@ -1,8 +1,13 @@
 
 $Id$
 
+3/23/2008
+    * Limit restarts on shared search to 1000 cycles.
+
 3/22/2008 peter
     * Ignore duplicate key columns in read_tabsep.
+    * Don't generate a key column in search -write_tabsep if there's
+      already one there.
 
 3/21/2008 peter
     * Allow extra fields in read_tabsep when -with_field_names -nocomplain.

@@ -609,8 +609,17 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search
 	fields = search->retrieveFields;
     }
 
+    // Force "noKeys" if we're dumping the key anyway
     if (!search->noKeys) {
-        Tcl_DStringAppend (&dString, "_key", 4);
+        for (i = 0; i < nFields; i++) {
+	    if(fields[i] == creator->keyField) {
+		search->noKeys = 1;
+		break;
+	    }
+	}
+
+        if (!search->noKeys)
+            Tcl_DStringAppend (&dString, "_key", 4);
     }
 
     for (i = 0; i < nFields; i++) {
@@ -1143,6 +1152,14 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     } else {
 restart_search:
 	num_restarts++;
+
+	// Check for indefinite deferral
+	if(MAX_RESTARTS > 0 && num_restarts > MAX_RESTARTS) {
+	    Tcl_AppendResult (interp, "restart count exceeded", (char *) NULL);
+	    finalResult = TCL_ERROR;
+	    goto clean_and_return;
+	}
+
 	// re-initialise and de-allocate and clean up, we're going through the
 	// while exercise again...
 
