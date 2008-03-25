@@ -1,6 +1,9 @@
 
 $Id$
 
+3/25/2008
+    * Update docs & examples to match changes to STDisplay
+
 3/23/2008
     * Limit restarts on shared search to 1000 cycles.
 

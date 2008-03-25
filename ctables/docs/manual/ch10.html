@@ -33,7 +33,7 @@ set display [::STDisplay #auto ?-confvar value? ... \
 <p>Set debug level</p>
 <dt>-csvfile filename<dd>
 <p>Name of CSV file to generate.</p>
-<dt>-csvredirect ?0|1?</dd>
+<dt>-csvredirect 0|1</dd>
 <p>If enabled, then the CSV file is downloaded immediately using a redirect.</p>
 <dt>-key field_name<dd>
 <p>Field to use as a key</p>
@@ -41,7 +41,11 @@ set display [::STDisplay #auto ?-confvar value? ... \
 <p>Title of table.</p>
 <dt>-arrows {up down}<dd>
 <p>Symbols or HTML fragments to use for ascending and descending sort of a table column.</p>
-<p>-pagesize integer</p>
+<dt>-readonly 0|1<dd>
+<p>If true, this is a read-only table, clear the "Edit" and "Delete" functions.</p>
+<dt>-details 1|0<dd>
+<p>If true (default), provide the 'Details' function</p>
+<dt>-pagesize integer<dd>
 <p>Number of rows displayed per page.</p>
 <dt>-functions {Search List Add Edit Delete Details}<dd>
 <p>Functions shown on the top of the display.</p>

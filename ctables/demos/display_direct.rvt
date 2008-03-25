@@ -10,18 +10,14 @@ set pwtab [u_passwd create #auto]
 
 load_pwfile $pwtab /etc/passwd
 
-set display [::STDisplay #auto -table $pwtab]
+set display [::STDisplay #auto -table $pwtab -readonly 1 -details 0]
 
-# Not editable, so kill the row functions an limit the functions
-$display rowfunctions ""
-$display functions "List Search"
-
-$display field username -text "User Name"
-$display field uid	-text UID
-$display field gid	-text GID
-$display field fullname -text "Full Name"
-$display field home
-$display field shell
+#$display field username -text "User Name"
+#$display field uid	-text UID
+#$display field gid	-text GID
+#$display field fullname -text "Full Name"
+#$display field home
+#$display field shell
 
 $display show
 ?>
