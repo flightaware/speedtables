@@ -371,15 +371,23 @@ catch { ::itcl::delete class STDisplay }
 	    return -code error "No fields defined for display."
 	}
 
-	# If readonly get rid of Edit and Delete
-	# If no details, get rid of Details
-	set skipfunctions {}
+	# If readonly get rid of write functions, sanitize mode
 	if {$readonly} {
-	    lappend skipfunctions Edit Delete
-	}
+	    set skipfunctions $writefunctions
+	    if [info exists response(mode)] {
+	        if {[lsearch $writefunctions $response(mode)]} {
+		    set response(mode) List
+		}
+	    }
+	} else {
+	    set skipfunctions {}
+ 	}
+
+	# If no details, get rid of Details
 	if {!$details} {
 	    lappend skipfunctions Details
 	}
+
 	if {[llength $skipfunctions]} {
 	    foreach list {functions rowfunctions} {
 	        set new {}
@@ -2108,6 +2116,7 @@ catch { ::itcl::delete class STDisplay }
     protected variable allnames		{}
     protected variable NameTextMap
     protected variable FieldNameMap
+    protected variable writefunctions { Add Edit Delete Save DoDelete }
     public variable allfunctions {
 	Search
 	List
