@@ -1,5 +1,8 @@
 $Id$
 
+3/25/2008
+    Several fixes in key handling in STDisplay
+
 3/04/2008 peter
     Make "List" the default for STDisplay.
 
