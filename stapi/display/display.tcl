@@ -318,7 +318,7 @@ catch { ::itcl::delete class STDisplay }
     }
 
     # FName - convert a display or column to a field name
-    protected method FName {fld} {
+    protected method FName {fld {complain 1}} {
 	if {[info exists NameTextMap($fld)]} {
 	    set fld $NameTextMap($fld)
 	}
@@ -326,13 +326,17 @@ catch { ::itcl::delete class STDisplay }
 	    set fld $FieldNameMap($fld)
 	}
 	if {![lsearch $fields $fld]} {
-	    return -code error "No field name for $fld"
+	    if {$complain} {
+	        return -code error "No field name for $fld"
+	    } else {
+		return ""
+	    }
 	}
 	return $fld
     }
 
     # CName - convert a field or column to a canonical name
-    protected method CName {fld} {
+    protected method CName {fld {complain 1}} {
 	if {[info exists NameTextMap($fld)]} {
 	    return $NameTextMap($fld)
 	}
@@ -343,7 +347,10 @@ catch { ::itcl::delete class STDisplay }
 	    if {"$fld" == "-key-"} {
 	        return "_key"
 	    }
-	    return -code error "No field name for $fld"
+	    if {$complain} {
+	        return -code error "No field name for $fld"
+	    }
+	    return ""
 	}
 	return [$fld name]
     }
@@ -1462,8 +1469,10 @@ catch { ::itcl::delete class STDisplay }
 
     method request_to_sort {} {
 	if {[info exists response(sort)] && ![lempty $response(sort)]} {
-	    set name $response(sort)
-	    if [info exists FieldNameMap($name)] {
+	    set name [CName $response(sort) 0]
+	    if {"$name" == ""} {
+		unset response(sort)
+	    } else {
 		set rev 0
 	        if {[info exists response(rev)] && $response(rev)} {
 		    set rev 1
@@ -1475,8 +1484,6 @@ catch { ::itcl::delete class STDisplay }
 		}
 
 		return [list [parse_order $name $ord $rev]]
-	    } else {
-		unset response(sort)
 	    }
 	}
 
@@ -1713,10 +1720,7 @@ catch { ::itcl::delete class STDisplay }
 
 	# Don't try and write readonly values.
         foreach name [array names storeArray] {
-	  if {![info exists FieldNameMap($name)]} {
-	    return -code error "Field $name does not exist."
-	  }
-	  if [$FieldNameMap($name) readonly] {
+	  if [[FName $name] readonly] {
 	    unset storeArray($name)
 	  }
         }
@@ -1832,10 +1836,7 @@ catch { ::itcl::delete class STDisplay }
     private method names2fields {nameList} {
 	set fieldList {}
 	foreach name $nameList {
-	    if ![info exists FieldNameMap($name)] {
-		return -code error "Field $name does not exist."
-	    }
-	    lappend fieldList $FieldNameMap($name)
+	    lappend fieldList [FName $name]
 	}
 	return $fieldList
     }
