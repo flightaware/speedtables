@@ -95,7 +95,7 @@ t index create show
 <p>Or, if you don't know all the indexes:</p>
 <pre>
 set indexed [t index indexed]
-foreach f $indexed [t index drop $f]
+foreach f $indexed {t index drop $f}
 set fp [open really_big_file r]
 t read_tabsep $fp
 close $fp
