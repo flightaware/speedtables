@@ -45,7 +45,7 @@ set ::ctable::genCompilerDebug 1
 <p>If you don't see the compiler being run, try deleting the contents of your build directory. That'll trigger a regeneration and recompile of the speed table code for your extension.</p>
 <H3>Speed table configuration variables</H3>
 <p>There are a number of variables that can be set to change the behavior of
-Speed Tables. Many of these are useful for debugging. They are glovally configured in the file <tt>config.tcl</tt> in the Speed Tables installation
+Speed Tables. Many of these are useful for debugging. They are globally configured in the file <tt>config.tcl</tt> in the Speed Tables installation
 directory. You can also change them after loading SpeedTables, for example:</p>
 <pre>
 set ::ctable::genCompilerDebug 1
@@ -63,10 +63,12 @@ enables the <i>memory</i> method.</p>
 <dt>withPgtcl<dd>
 <p>Includes pgtcl support, normally 1 on FreeBSD, 0 on OSX.</p>
 <dt>withSharedTables<dd>
-<p>Includes support for shared memory tables, including the <tt>master</tt> and <tt>reader</tt> commands for the <i>create</i> method, and the <i>share</i> method. Normally true.</p>
+<p>Includes support for shared memory tables, including the <tt>master</tt> and <tt>reader</tt> commands for the <i>create</i> method, and the <i>share</i> method. Normally 1.</p>
 <dt>withDirty<dd>
 <p>Include support for the <tt>_dirty</tt> pseudo-field. Normally 1.</p>
 </dl>
+<p>Changing these variables should trigger a rebuild of the table. If it
+doesn't, that's a bug, do let us know.</p>
 <!-- INSERT LOGO -->
 <!-- %BEGIN LINKS% -->
 <div class=links><a href="ch11.html">Back</a><a href=index.html>Index</a><a href="ch13.html">Next</a></div>
