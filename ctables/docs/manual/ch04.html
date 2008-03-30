@@ -139,6 +139,7 @@ CTableBuildPath /tmp
 <p>Note that the specified build path is appended to the Tcl library search path variable, <i>auto_path</i>, if it isn't already in there.</p>
 <p class="bug">Bug: - Tcl appears to examine a shared library name and stop at the first numeric digit in an apparently somewhat inadequate attempt to make sure it doesn't include shared library version numbers in the expected *_Init and*_SafeInit function names for the library being generated. Consequently when you're defining a C extension via the CExtension command, do not include any digits in your C extension's name.</p>
 <a name="1"><p class="foot">[1] It feels a bit clumsy to have an external key like this, and we are working on making the key a part of the row itself, which seems better.  Currently the "key" data type is used, and if no "key" is defined then the pseudo-field "_key" is created.</p>
+<!-- INSERT LOGO -->
 <!-- %BEGIN LINKS% -->
 <div class=links><a href="ch03.html">Back</a><a href=index.html>Index</a><a href="ch05.html">Next</a></div>
 <!-- %END LINKS% -->

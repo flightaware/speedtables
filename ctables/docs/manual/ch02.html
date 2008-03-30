@@ -55,6 +55,7 @@ more than you need, and sometimes much more than you need.
 <p class="blue-block">Speed tables is used as the realtime database for a monitoring system that polls millions of devices every few minutes. Device status and performance data is kept in speed tables. Information about the status of devices is continually "swept" to the SQL database at a sustainable rate. The loss of even a sizable number of scan results in the event of a crash is not a serious problem, as within a few minutes of starting up, the system will have obtained fresh data by newly polling the devices.</p>
 <p>Speed tables supports defining skip list-based indexes on one or more fields in a row, providing multi-hundred-fold speed improvements for many searches. Fields that are not declared to be indexable do not have any code generated to check for the existence of indexes, etc, when they are changed, one of a number of optimizations performed to make speed tables fast.</p>
 <a name=1><p class="foot">[1] It is common to see ten or twenty times the space consumed by the data itself used up by the Tcl objects, lists, arrays, etc, used to hold them. Even on a modern machine, using 20 gigabytes of memory to store a gigabyte of data is at a minimum kind of gross and, at worst, renders the solution unusable.)</p></a>
+<!-- INSERT LOGO -->
 <!-- %BEGIN LINKS% -->
 <div class=links><a href="ch01.html">Back</a><a href=index.html>Index</a><a href="ch03.html">Next</a></div>
 <!-- %END LINKS% -->

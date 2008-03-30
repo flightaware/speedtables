@@ -121,3 +121,16 @@ pre .change {
 	border: 2px solid #0088aa;
 	margin: 0px;
 }
+.logo {
+	margin-left: -1cm;
+	float: left;
+	padding: 4px;
+}
+.logo-left {
+	float: left;
+	padding: 4px;
+}
+.logo-right {
+	float: right;
+	padding: 4px;
+}
