@@ -99,7 +99,7 @@ foreach f $indexed [t index drop $f]
 set fp [open really_big_file r]
 t read_tabsep $fp
 close $fp
-foreach f $indexed [t index create $f]
+foreach f $indexed {t index create $f}
 </pre>
 <H3>Exporting a Speed Table to PostgreSQL</H3>
 <p>PostgreSQL supports copying from a file (or standard input) to a table:</p>
