@@ -96,9 +96,19 @@ $ctable search -compare {in key $listOfRows} -array_with_nulls data {
 </div>
 
 <H3>Differences between local and client-server Speed Tables</H3>
+<p>These methods do not work or work differently:</p>
+<dl>
+<dt>foreach (deprecated)<dd>
+<p>Not implemented.</p>
+<dt>search<dd>
 <p>The server is single-threaded, so you can't use it from inside a
 <tt>search</tt> code body at all. Avoid constructs like <tt>$table search ... -code { $table set ... }</tt>.</p>
 <p>There is no provision for passing nulls back from the server, so you should only use <tt>-array_with_nulls</tt> and <tt>-array_get_with_nulls</tt> in <i>search</i>.</p>
+<dt>import_postgres_result<dd>
+<dt>read_tabsep<dd>
+<dt>write_tabsep<dd>
+<p>Not implemented.</p>
+</dl>
 <p>These additional methods are provided by the server:</p>
 <dl>
 <dt>shutdown ?-nowait?<dd>
