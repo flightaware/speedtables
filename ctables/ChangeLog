@@ -1,6 +1,11 @@
 
 $Id$
 
+3/30/2008
+    * Generate home page for speedtables.sourceforge.net
+    * Remove duplicate legacy documentation from outside the manual.
+      + Import what's necessary FROm that doc into the manual.
+
 3/25/2008
     * Update docs & examples to match changes to STDisplay
 
