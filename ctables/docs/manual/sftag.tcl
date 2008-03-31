@@ -14,7 +14,7 @@ lappend filenames index.html manual.css
 set build sourceforge
 
 # From https://sourceforge.net/project/admin/logo.php?group_id=205759
-set logo {<a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=205759&amp;type=1" width="88" height="31" border="0" alt="SourceForge.net Logo" /></a>}
+set logo {<a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=205759\&amp;type=1" width="88" height="31" border="0" alt="SourceForge.net Logo" /></a>}
 
 set logo_right "<!-- %BEGIN LOGO% -->\n<span class=logo-right>$logo</span>\n<!-- %END LOGO% -->"
 set logo_left "<!-- %BEGIN LOGO% -->\n<span class=logo-left>$logo</span>\n<!-- %END LOGO% -->"
