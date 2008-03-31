@@ -2,6 +2,10 @@
 
 $Id$
 
+3/30/08 peter
+    Remove old and in some cases incorrect README files, and updated the
+    manual to match.
+
 3/16/08 peter
     Made the corresponding changes to the client side to close the
     connection to the server on an error.
