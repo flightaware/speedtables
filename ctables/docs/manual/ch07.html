@@ -105,6 +105,12 @@ $ctable search -compare {in key $listOfRows} -array_with_nulls data {
 <p>Terminates the server after waiting for all active client connections to complete. The <tt>-nowait</tt> option disables this waiting period and closes all client connections <i>immediately</i>.</p>
 <dt>redirect <i>remoteURL</i> ?-shutdown?<dd>
 <p>Client connections are redirected to a new sttp: URL. If the <tt>-shutdown</tt> option is provided, the server terminates after the last client disconnects</p>
+<p>
+Typical usage for redirection would be to reload a long-running ctable with
+an updated copy of an SQL table. It may be more efficient to load a new ctable
+than to update one in place, if incremental updates aren't possible, or
+you may need to keep serving requests while initializing the new table.
+</p>
 <dt>info ?-verbose?<dd>
 <p>Returns the server version followed by the list of extended commands. The <tt>-verbose</tt> option returns the commands and command arguments.</p>
 <dt>tables<dd>
@@ -116,7 +122,7 @@ $ctable search -compare {in key $listOfRows} -array_with_nulls data {
 <dt>eval <i>codeBlock</i><dd>
 <p>Only applicable if eval is enabled for this table.</p>
 <dt>trigger <i>?method? ?proc?</i><dd>
-<p><b>Server only</b>, creates a new method for the ctable server. The <i>proc</i> is called as <tt>proc <i>URL tableName method ?args...?</i></tt>. This is done <i>before</i> the underlying Speed Table or STAPI table is accessed, and allows the Speed Table server to front-end table types that do not support the <i>method</i> meta-table method.</p>
+<p><b>Server only</b>, creates a new method for the ctable server. The <i>proc</i> is called as <tt>proc URL tableName method ?args...?</tt>. This is done <i>before</i> the underlying Speed Table or STAPI table is accessed, and allows the Speed Table server to front-end table types that do not support the <i>method</i> meta-table method. If the <i>proc</i> returns with <tt>return -break</tt> the underlying table will not be called at all.</p>
 </dl>
 
 <H3>STAPI support for ctable_server</H3>
