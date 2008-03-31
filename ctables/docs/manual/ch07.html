@@ -20,7 +20,6 @@
 <p>Early in our work it became clear that we needed a client-server way to talk to Speed Tables that was highly compatible with accessing Speed Tables natively.</p>
 <p>The simplicity and uniformity of the speed tables interface and the rigorous use of key-value pairs as arguments to search made it possible to implement a Speed Tables client and server in around 500 lines of Tcl code. This code implements the Speed Table Transfer Protocol (STTP).</p>
 <p>This implementation provides near-identical behavior for client-server Speed Tables as direct Speed Tables for <i>get, set, array_get, array_get_with_nulls, exists, delete, count, type, fields, fieldtype, needs_quoting, names, reset, destroy, statistics, </i>and<i> search</i>.</p>
-<p>The main exception is that it is not possible to call speedtable commands from within a code body running in a search, unless you use the shared-memory search to speed things up.</p>
 <div class="blue-indent">Authentication, lack thereof</div>
 <div class="blue-block">
 <p>The current implementation of the speed table server does <b>no authentication</b>, so it is only appropriate for use behind a firewall or with a protection mechanism "in front of" it.</p>
@@ -95,6 +94,31 @@ $ctable search -compare {in key $listOfRows} -array_with_nulls data {
 <p>Note that -array_with_nulls retrieves null fields. STTP passes rows around internally as token separated files, and hence when used in client-server speed tables there is no equivalent to -array or -array_get.</p>
 <p>Because tab-separated data doesn't have an out-of-band facility for communicating that a field is null, null values must be communicated in-band.</p>
 </div>
+
+<H3>Differences between local and client-server Speed Tables</H3>
+<p>The server is single-threaded, so you can't use it from inside a
+<tt>search</tt> code body at all. Avoid constructs like <tt>$table search ... -code { $table set ... }</tt>.</p>
+<p>There is no provision for passing nulls back from the server, so you should only use <tt>-array_with_nulls</tt> and <tt>-array_get_with_nulls</tt> in <i>search</i>.</p>
+<p>These additional methods are provided by the server:</p>
+<dl>
+<dt>shutdown ?-nowait?<dd>
+<p>Terminates the server after waiting for all active client connections to complete. The <tt>-nowait</tt> option disables this waiting period and closes all client connections <i>immediately</i>.</p>
+<dt>redirect <i>remoteURL</i> ?-shutdown?<dd>
+<p>Client connections are redirected to a new sttp: URL. If the <tt>-shutdown</tt> option is provided, the server terminates after the last client disconnects</p>
+<dt>info ?-verbose?<dd>
+<p>Returns the server version followed by the list of extended commands. The <tt>-verbose</tt> option returns the commands and command arguments.</p>
+<dt>tables<dd>
+<p>Returns a list of tables supported by this server</p>
+<dt>tablemakers<dd>
+<p>Returns a list of table types supported by this server</p>
+<dt>create <i>tableName</i><dd>
+<p>Only applicable to a tablemaker. Creates a new table named <i>tableName</i>.</p>
+<dt>eval <i>codeBlock</i><dd>
+<p>Only applicable if eval is enabled for this table.</p>
+<dt>trigger <i>?method? ?proc?</i><dd>
+<p><b>Server only</b>, creates a new method for the ctable server. The <i>proc</i> is called as <tt>proc <i>URL tableName method ?args...?</i></tt>. This is done <i>before</i> the underlying Speed Table or STAPI table is accessed, and allows the Speed Table server to front-end table types that do not support the <i>method</i> meta-table method.</p>
+</dl>
+
 <H3>STAPI support for ctable_server</H3>
 <p>The success of the ctable_server led to the creation of a generic URI-based API for the ctable server and for other ctable-compatible objects and classes. This API, STAPI, allows ctables, the ctable server, and other compatible objects to be used interchangably by applications.</p>
 <p>To open a table using the STAPI you need to <tt>package require </tt>any packages needed for the STAPI connection method you need, then call</p> <p class="code">::stapi::connect method://server_spec/table_spec</p>
