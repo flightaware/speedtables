@@ -2162,6 +2162,10 @@ proc table {name} {
     set fieldList ""
     unset -nocomplain keyField
     unset -nocomplain keyFieldName
+
+    foreach var [info vars ::ctable::fields::*] {
+        unset -nocomplain $var
+    }
 }
 
 #
@@ -5460,10 +5464,6 @@ proc CExtension {name version code} {
     set ::ctable::extension $name
     set ::ctable::extensionVersion $version
     set ::ctable::tables ""
-
-    foreach var [info vars ::ctable::fields::*] {
-        unset -nocomplain $var
-    }
 
     if {[catch {namespace eval ::ctable $code} result] == 1} {
         set ::ctable::ctableErrorInfo $errorInfo

@@ -1,6 +1,10 @@
 
 $Id$
 
+4/4/2008
+    * Move re-initialization of ::ctable::fields:: from CExtension to
+      CTable
+
 3/30/2008
     * Generate home page for speedtables.sourceforge.net
     * Remove duplicate legacy documentation from outside the manual.
