@@ -356,7 +356,11 @@ catch { ::itcl::delete class STDisplay }
 	}
 	if {[lsearch $fields $fld] < 0} {
 	    if {"$fld" == "-key-"} {
-	        return "_key"
+		if {[llength $keyfields] == 1} {
+	            return [lindex $keyfields 0]
+		} else {
+		    return _key
+		}
 	    }
 	    if {$complain} {
 	        return -code error "No field name for $fld"
