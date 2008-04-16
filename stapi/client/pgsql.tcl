@@ -254,7 +254,7 @@ namespace eval ::stapi {
   proc sql_ctable_key {level ns cmd args} {
     set keys [set ${ns}::key]
     if {[llength $keys] == 1} {
-      return [lindex $key 0]
+      return [lindex $keys 0]
     } else {
       return "_key"
     }
