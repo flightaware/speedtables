@@ -1450,7 +1450,7 @@ catch { ::itcl::delete class STDisplay }
 	puts "</TABLE>"
     }
 
-    protected method parse_order {name list reverse} {
+    protected method parse_order {name list {reverse 0}} {
 	set descending 0
 	foreach word $list {
 	    if [info exists nextvar] {
@@ -1501,8 +1501,14 @@ catch { ::itcl::delete class STDisplay }
 	    }
 	}
 
-	if {![lempty $defaultsortfield]} {
-	    return [list $defaultsortfield]
+	if {"$defaultsortfield" != ""} {
+	    if [regexp {^-(.*)} $defaultsortfield _ name] {
+		set ord descending
+	    } else {
+		set ord ascending
+		set name $defaultsortfield
+	    }
+	    return [list [parse_order [CName $name] $ord]]
 	}
 
 	return {}
