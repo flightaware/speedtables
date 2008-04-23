@@ -429,7 +429,7 @@ $handleNullIndex
 # gen_null_check_during_set_source - generate standard null checking
 #  for a set
 #
-proc gen_null_check_during_set_source {table fieldName} {
+proc gen_null_check_during_set_source {table fieldName {elseCase ""}} {
     variable nullCheckDuringSetSource
     variable nullIndexDuringSetSource
     variable fields
@@ -437,7 +437,7 @@ proc gen_null_check_during_set_source {table fieldName} {
     upvar ::ctable::fields::$fieldName field
 
     if {[info exists field(notnull)] && $field(notnull)} {
-        return ""
+        return $elseCase
     }
 
     if {[info exists field(indexed)] && $field(indexed)} {
@@ -446,7 +446,11 @@ proc gen_null_check_during_set_source {table fieldName} {
         set handleNullIndex ""
     }
 
-    return [string range [subst -nobackslashes -nocommands $nullCheckDuringSetSource] 1 end-1]
+    if {"$elseCase" != ""} {
+	set elseCase " else $elseCase"
+    }
+
+    return [string range [subst -nobackslashes -nocommands $nullCheckDuringSetSource] 1 end-1]$elseCase
 }
 
 variable unsetNullDuringSetSource {
@@ -564,13 +568,13 @@ proc gen_ctable_insert_into_index {fieldName} {
 #
 variable boolSetSource {
       case $optname: {
-        int boolean;
+        int boolean = 0;
 
-[gen_null_check_during_set_source $table $fieldName]
-        if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
-            Tcl_AppendResult (interp, " while converting $fieldName", (char *)NULL);
+[gen_null_check_during_set_source $table $fieldName \
+        "if (Tcl_GetBooleanFromObj (interp, obj, &boolean) == TCL_ERROR) {
+            Tcl_AppendResult (interp, \" while converting $fieldName\", (char *)NULL);
             return TCL_ERROR;
-        }
+        }"]
 [gen_unset_null_during_set_source $table $fieldName \
 	"if (row->$fieldName == boolean)
 	    return TCL_OK;"]
@@ -589,11 +593,11 @@ variable boolSetSource {
 variable numberSetSource {
       case $optname: {
         $typeText value;
-[gen_null_check_during_set_source $table $fieldName]
-	if ($getObjCmd (interp, obj, &value) == TCL_ERROR) {
-	    Tcl_AppendResult (interp, " while converting $fieldName", (char *)NULL);
+[gen_null_check_during_set_source $table $fieldName \
+	"if ($getObjCmd (interp, obj, &value) == TCL_ERROR) {
+	    Tcl_AppendResult (interp, \" while converting $fieldName\", (char *)NULL);
 	    return TCL_ERROR;
-	}
+	}"]
 [gen_unset_null_during_set_source $table $fieldName \
 	"if (row->$fieldName == value)
 	    return TCL_OK;"]
@@ -787,12 +791,12 @@ variable fixedstringSetSource {
 #
 variable inetSetSource {
       case $optname: {
-        struct in_addr value;
-[gen_null_check_during_set_source $table $fieldName]
-	if (!inet_aton (Tcl_GetString (obj), &value)) {
-	    Tcl_AppendResult (interp, "expected IP address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$fieldName\\"", (char *)NULL);
+        struct in_addr value = {INADDR_ANY};
+[gen_null_check_during_set_source $table $fieldName \
+	"if (!inet_aton (Tcl_GetString (obj), &value)) {
+	    Tcl_AppendResult (interp, \"expected IP address but got \\\"\", Tcl_GetString (obj), \"\\\" parsing field \\\"$fieldName\\\"\", (char *)NULL);
 	    return TCL_ERROR;
-	}
+	}"]
 [gen_unset_null_during_set_source $table $fieldName \
 	"if (memcmp (&row->$fieldName, &value, sizeof (struct in_addr)) == 0)
             return TCL_OK;"]
@@ -810,13 +814,15 @@ variable inetSetSource {
 #
 variable macSetSource {
       case $optname: {
-        struct ether_addr *mac;
-[gen_null_check_during_set_source $table $fieldName]
-	mac = ether_aton (Tcl_GetString (obj));
-	if (mac == (struct ether_addr *) NULL) {
-	    Tcl_AppendResult (interp, "expected MAC address but got \\"", Tcl_GetString (obj), "\\" parsing field \\"$fieldName\\"", (char *)NULL);
-	    return TCL_ERROR;
-	}
+        struct ether_addr *mac = (struct ether_addr *) NULL;
+[gen_null_check_during_set_source $table $fieldName \
+	"{
+	    mac = ether_aton (Tcl_GetString (obj));
+	    if (mac == (struct ether_addr *) NULL) {
+	        Tcl_AppendResult (interp, \"expected MAC address but got \\\"\", Tcl_GetString (obj), \"\\\" parsing field \\\"$fieldName\\\"\", (char *)NULL);
+	        return TCL_ERROR;
+	    }
+	}"]
 
 [gen_unset_null_during_set_source $table $fieldName \
 	"if (memcmp (&row->$fieldName, mac, sizeof (struct ether_addr)) == 0)
@@ -840,9 +846,11 @@ variable tclobjSetSource {
 	    Tcl_DecrRefCount (row->$fieldName);
 	    row->$fieldName = NULL;
 	}
-[gen_null_check_during_set_source $table $fieldName]
-	row->$fieldName = obj;
-	Tcl_IncrRefCount (obj);
+[gen_null_check_during_set_source $table $fieldName \
+	"{
+	    row->$fieldName = obj;
+	    Tcl_IncrRefCount (obj);
+	}"]
 [gen_unset_null_during_set_source $table $fieldName]
 	break;
       }
@@ -1995,8 +2003,12 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	}
 	Tcl_SetStringObj (utilityObj, field, -1);
 	if (${table}_set (interp, ctable, utilityObj, row, fieldIds[col++], indexCtl) == TCL_ERROR) {
-	    Tcl_DecrRefCount (utilityObj);
-	    return TCL_ERROR;
+	    if (${table}_string_is_null(field)) {
+	        Tcl_ResetResult (interp);
+	    } else {
+	        Tcl_DecrRefCount (utilityObj);
+	        return TCL_ERROR;
+	    }
 	}
     }
 
@@ -2705,6 +2717,19 @@ int ${table}_obj_is_null(Tcl_Obj *obj) {
 
     return (strncmp (nullValueString, objString, nullValueLength) == 0);
 }
+
+int ${table}_string_is_null(char *string) {
+    char     *nullValueString;
+    int       nullValueLength;
+
+     nullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullValueLength);
+
+    if (*nullValueString != *string) {
+        return 0;
+    }
+
+    return (strcmp (nullValueString, string) == 0);
+}
 }
 
 #
@@ -2957,8 +2982,7 @@ proc emit_set_varstring_field {table fieldName default defaultLength} {
 proc emit_set_fixedstring_field {fieldName length} {
     variable fixedstringSetSource
     variable table
-    variable nullCheckDuringSetSource
-      
+
     set optname [field_to_enum $fieldName]
 
     emit [string range [subst $fixedstringSetSource] 1 end-1]

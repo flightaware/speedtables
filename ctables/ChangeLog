@@ -1,19 +1,24 @@
 
 $Id$
 
-4/4/2008
+4/22/2008 peter
+    * Clean up checks for nulls
+    * Ignore error from ${table}_set in ${table}_set_from_tabsep
+      if ${table}_string_is_null(field)
+
+4/4/2008 peter
     * Move re-initialization of ::ctable::fields:: from CExtension to
       CTable
 
-3/30/2008
+3/30/2008 peter
     * Generate home page for speedtables.sourceforge.net
     * Remove duplicate legacy documentation from outside the manual.
       + Import what's necessary FROm that doc into the manual.
 
-3/25/2008
+3/25/2008 peter
     * Update docs & examples to match changes to STDisplay
 
-3/23/2008
+3/23/2008 peter
     * Limit restarts on shared search to 1000 cycles.
 
 3/22/2008 peter
