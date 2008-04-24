@@ -1941,7 +1941,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int keyColumn, char *sepstr) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int keyColumn, char *sepstr, char *nullString) {
     struct $table *row;
     char          *key;
     char          *field;
@@ -1992,8 +1992,9 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	        string += seplen;
 	    }
 	} else {
-	    field = "";
+	    field = nullString ? nullString : "";
 	}
+
 	if(i == keyColumn) {
 	    continue;
 	}
@@ -2001,15 +2002,21 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	    col++;
 	    continue;
 	}
-	Tcl_SetStringObj (utilityObj, field, -1);
-	if (${table}_set (interp, ctable, utilityObj, row, fieldIds[col++], indexCtl) == TCL_ERROR) {
-	    if (${table}_string_is_null(field)) {
-	        Tcl_ResetResult (interp);
-	    } else {
+
+	if(nullString == NULL ||
+	   ${table}_nullable_fields[fieldIds[col]] == 0 ||
+	   (field != nullString &&
+	    field[0] != nullString[0] &&
+	    strcmp(field, nullString) != 0)
+	) {
+	    Tcl_SetStringObj (utilityObj, field, -1);
+	    if (${table}_set (interp, ctable, utilityObj, row, fieldIds[col], indexCtl) == TCL_ERROR) {
 	        Tcl_DecrRefCount (utilityObj);
 	        return TCL_ERROR;
 	    }
 	}
+
+	col++;
     }
 
     if (indexCtl == CTABLE_INDEX_NEW)
@@ -2022,7 +2029,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = NULL;
@@ -2036,6 +2043,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     int		     col;
     int		    *newFieldNums = NULL;
     int	             status = TCL_OK;
+    char	    *nullString = NULL;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -2087,6 +2095,11 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	nFields--;
 
 //${table}_dumpFieldNums(fieldNums, nFields, "after key check");
+    if(withNulls) {
+	int nullLen;
+
+	nullString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullLen);
+    }
 
     while (1) {
 	char            *key;
@@ -2120,7 +2133,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	    }
 	}
 
-	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn, sepstr) == TCL_ERROR) {
+	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn, sepstr, nullString) == TCL_ERROR) {
 	    char lineNumberString[32];
 
 	    sprintf (lineNumberString, "%d", recordNumber + 1);
@@ -2718,18 +2731,6 @@ int ${table}_obj_is_null(Tcl_Obj *obj) {
     return (strncmp (nullValueString, objString, nullValueLength) == 0);
 }
 
-int ${table}_string_is_null(char *string) {
-    char     *nullValueString;
-    int       nullValueLength;
-
-     nullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullValueLength);
-
-    if (*nullValueString != *string) {
-        return 0;
-    }
-
-    return (strcmp (nullValueString, string) == 0);
-}
 }
 
 #
@@ -4187,6 +4188,26 @@ proc gen_field_names {} {
 	    lappend defaultStrings ""
 	}
     }
+    emit ""
+
+    set nullableList {}
+
+    foreach myField $fieldList {
+	upvar ::ctable::fields::$myField field
+
+        set value 1
+        if {[info exists field(notnull)] && $field(notnull)} {
+	    set value 0
+        }
+	if {[info exists field(default)]} {
+	    set value 1
+	}
+
+	lappend nullableList $value
+    }
+
+    emit "// define fields that may be null"
+    emit "int ${table}_nullable_fields\[] = { [join $nullableList ", "] };"
     emit ""
 
     if {$withSharedTables} {

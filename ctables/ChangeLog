@@ -1,6 +1,15 @@
 
 $Id$
 
+4/23/2008 peter
+    * Back out change of 4/22
+    * Add struct to track "nullable" fields (either default value or
+      not non-null)
+    * Add "-with_nulls" to read_tabsep (to retain compatibility with
+      existing stapi behavior):
+      + Don't even insert nulls into the table if the value is null and
+        the field is nullable.
+
 4/22/2008 peter
     * Clean up checks for nulls
     * Ignore error from ${table}_set in ${table}_set_from_tabsep

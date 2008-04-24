@@ -939,6 +939,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	char            *channel;
 	int              noKeys = 0;
 	int		 withFieldNames = 0;
+	int		 withNulls = 0;
 	char		*sepstr = "\t";
 	int		 nocomplain = 0;
 	char		*skip = NULL;
@@ -988,6 +989,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    } else if (strcmp (possibleSwitch, "-with_field_names") == 0) {
 		objIdx++;
 		withFieldNames = 1;
+	    } else if (optIndex != OPT_WRITE_TABSEP && strcmp (possibleSwitch, "-with_nulls") == 0) {
+		objIdx++;
+		withNulls = 1;
 	    } else if (optIndex != OPT_WRITE_TABSEP && strcmp (possibleSwitch, "-nocomplain") == 0) {
 		objIdx++;
 		nocomplain = 1;
@@ -1062,7 +1066,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	if (optIndex == OPT_WRITE_TABSEP) {
 	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, term);
 	} else if(optIndex == OPT_READ_TABSEP) {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls);
 	}
 
 	if(fieldIds) ckfree((void *)fieldIds);

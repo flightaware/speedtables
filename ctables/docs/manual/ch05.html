@@ -477,6 +477,8 @@ close $fp
 <tt>-nokeys</tt>,
 <tt>-with_field_names</tt>,
     <tt>-tab <i>string</i></tt>,
+<tt>-with_nulls</tt>
+<tt>-nocomplain</tt>
 <tt>-skip <i>pattern</i></tt>, and
 <tt>-term <i>pattern</i></tt>.
 </pre>
@@ -499,6 +501,8 @@ close $fp
 You can indicate end of input with an empty line and then do something else with the data that follows.
 Since you must have a key and at least one field, this is safe. However it might not be safe with <tt>-nokeys</tt>.</p>
 <p>With <tt>-term pattern</tt> then read_tabsep will instead terminate on a line that matches <tt>pattern</tt>. For example, to emulate SQL "COPY FROM stdin" you could use <tt>-term "\\."</tt>.</p>
+<p>With <tt>-nocomplain</tt> then the file being read is allowed to specify columns that do not match fields</p>
+<p>Blank or missing fields literally insert empty strings unless <tt>-with_nulls</tt> is set, indicating that the file was created with null values.</p>
 
 <dt>index create <i>fieldName</i><dd>
 <dt>index drop <i>fieldName</i><dd>
