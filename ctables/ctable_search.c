@@ -586,6 +586,35 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 }
 
 //
+// ctable_checkForKey - check for a "key" field, and if there set the internal
+// noKeys flag to suppress the separate output of the "_key" field.
+//
+void ctable_checkForKey(CTable *ctable, CTableSearch *search)
+{
+    if (!search->noKeys) {
+	int		     i;
+        int                 *fields;
+        int                  nFields;
+        ctable_CreatorTable *creator = ctable->creator;
+
+        if (search->nRetrieveFields < 0) {
+	    fields = creator->publicFieldList;
+	    nFields = creator->nPublicFields;
+        } else {
+	    nFields = search->nRetrieveFields;
+	    fields = search->retrieveFields;
+        }
+
+        for (i = 0; i < nFields; i++) {
+	    if(fields[i] == creator->keyField) {
+		search->noKeys = 1;
+		break;
+	    }
+	}
+    }
+}
+
+//
 // ctable_WriteFieldNames - write field names from a search structure to
 //   the specified channel, tab-separated
 //
@@ -609,18 +638,9 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search
 	fields = search->retrieveFields;
     }
 
-    // Force "noKeys" if we're dumping the key anyway
-    if (!search->noKeys) {
-        for (i = 0; i < nFields; i++) {
-	    if(fields[i] == creator->keyField) {
-		search->noKeys = 1;
-		break;
-	    }
-	}
-
-        if (!search->noKeys)
-            Tcl_DStringAppend (&dString, "_key", 4);
-    }
+    // Generate key field if necessary
+    if (!search->noKeys)
+        Tcl_DStringAppend (&dString, "_key", 4);
 
     for (i = 0; i < nFields; i++) {
 	if (!search->noKeys || i != 0) {
@@ -2090,7 +2110,9 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	}
     }
 
-    if (search->action != CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
+    if (search->action == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
+	ctable_checkForKey(ctable, search);
+    } else {
 	if(search->writingTabsepIncludeFieldNames) {
 	    Tcl_AppendResult (interp, "can't use -with_field_names without -write_tabsep", (char *) NULL);
 	    return TCL_ERROR;

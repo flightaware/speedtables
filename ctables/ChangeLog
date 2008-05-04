@@ -1,6 +1,12 @@
 
 $Id$
 
+5/04/2008 peter
+    * Make the "_key writing" behavior consistent between search -write_tabset
+      with or without -with_field_names.
+      + Is this consistent with read_tabsep? Should the alternate behavior
+	be standard? See bug 1952116 on sourceforge.
+
 4/23/2008 peter
     * Back out change of 4/22
     * Add struct to track "nullable" fields (either default value or
