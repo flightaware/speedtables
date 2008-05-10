@@ -1524,16 +1524,19 @@ restart_search:
 	switch(skipStart) {
 
 	    case SKIP_START_EQ_ROW1: {
+if(!row1) panic("Can't happen! Row1 is null for '=' comparison.");
 		jsw_sfind (skipList, row1);
 		break;
 	    }
 
 	    case SKIP_START_GE_ROW1: {
+if(!row1) panic("Can't happen! Row1 is null for '>=' comparison.");
 		jsw_sfind_equal_or_greater (skipList, row1);
 		break;
 	    }
 
 	    case SKIP_START_GT_ROW1: {
+if(!row1) panic("Can't happen! Row1 is null for '>' comparison.");
 		jsw_sfind_equal_or_greater (skipList, row1);
 		while (1) {
                     if ((row = jsw_srow (skipList)) == NULL)
@@ -1582,8 +1585,11 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 		  }
 #endif
 
+		  row = inListRows[inIndex++];
+if(!row) panic("Can't happen, null row in 'in' comparison");
+
 		  // If there's a match for this row, break out of the loop
-                  if (jsw_sfind (skipList, inListRows[inIndex++]) != NULL)
+                  if (jsw_sfind (skipList, row) != NULL)
 		      break;
 	        }
 	    }
