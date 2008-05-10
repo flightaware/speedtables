@@ -1,6 +1,21 @@
 
 $Id$
 
+5/10/2008 peter
+    * Fix for sorting: was returning "success" on first null match on source
+      fields.
+      * The sort code seems to be doing a redundant set-or-check-result in
+	various places.
+    * Fix for sorting and searching: need to check for null value for varstring
+      even if varstring is non-null, because it's still being initialised to
+      null for default to save a bunch of copies of the default string.
+      * The code should maintain a "${table}_nullString" and default values
+	and use them instead of nulls, which sould save many checks in various
+	places in the code, but this can't be changed until all the code
+	is gone over to catch any more places where it uses ${fieldName}
+	instead of ${fieldName}IsNull or ${fieldName}_allocatedLength for
+	various purposes.
+
 5/04/2008 peter
     * Make the "_key writing" behavior consistent between search -write_tabset
       with or without -with_field_names.

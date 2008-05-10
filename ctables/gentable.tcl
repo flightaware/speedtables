@@ -864,12 +864,13 @@ variable tclobjSetSource {
 
 #
 # nullSortSource - code to be inserted when null values are permitted for the
-#  field
+#  field.
 #
 variable nullSortSource {
         if (row1->_${fieldName}IsNull) {
 	    if (row2->_${fieldName}IsNull) {
-	        return 0;
+		result = 0;
+	        break;
 	    }
 
 	    return direction;
@@ -889,8 +890,8 @@ proc gen_null_check_during_sort_comp {table fieldName} {
 
     upvar ::ctable::fields::$fieldName field
 
-    if {"$field(type)" == "varstring" && [info exists field(default)]} {
-	if {"$field(default)" == ""} {
+    if {"$field(type)" == "varstring"} {
+	if {![info exists field(default)] || "$field(default)" == ""} {
 	     set source $varstringSortCompareNullSource
 	} else {
 	     set source $varstringSortCompareDefaultSource
@@ -1006,12 +1007,13 @@ variable varstringSortCompareDefaultSource {
 #   for sorting
 #
 # note there's also a varstringCompareNullSource that's pretty close to this
-# but returns stuff rather than setting results and doing a break
+# but returns everything instead of just returning on non-match.
 #
 variable varstringSortCompareNullSource {
     if (!row1->$fieldName) {
 	if(!row2->$fieldName) {
-	    return 0;
+	    result = 0;
+	    break;
 	} else {
 	    return direction * -1;
 	}
@@ -1021,7 +1023,6 @@ variable varstringSortCompareNullSource {
 	}
     }
 }
-
 
 #
 # varstringSortSource - code we run subst over to generate a compare of 
@@ -4430,8 +4431,8 @@ proc gen_field_compare_null_check_source {table fieldName} {
     variable varstringCompareNullSource
     upvar ::ctable::fields::$fieldName field
 
-    if {"$field(type)" == "varstring" && [info exists field(default)]} {
-	if {"$field(default)" == ""} {
+    if {"$field(type)" == "varstring"} {
+	if {![info exists field(default)] || "$field(default)" == ""} {
 	     set source $varstringCompareNullSource
 	} else {
 	     set source $varstringCompareDefaultSource
@@ -4767,11 +4768,6 @@ variable sortCompareTrailerSource {
 	// compare a subordinate sort field (if there is one)
 	if (result != 0) {
 	    break;
-	}
-
-	// if this fields is sort-descending, flip the sense of the result
-	if (!sortControl->directions[i]) {
-	    result = -result;
 	}
     $rightCurly // end of for loop on sort fields
     return result;
