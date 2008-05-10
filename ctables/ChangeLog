@@ -2,6 +2,10 @@
 $Id$
 
 5/10/2008 peter
+    * Fix for searching: needed to check for null value for varstring and
+      replace it with a null value if a shortcut can't be found elsewhere.
+
+5/10/2008 peter
     * Fix for sorting: was returning "success" on first null match on source
       fields.
       * The sort code seems to be doing a redundant set-or-check-result in

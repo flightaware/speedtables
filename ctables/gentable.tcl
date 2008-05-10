@@ -1259,12 +1259,54 @@ variable numberCompSource {
 }
 
 #
+# Generate a declaration and an assignment to a string that may be a null
+# string with a default value. If shortcut is true then the case where the
+# string is null is taken care of elsewhere, otherwise we need to use the
+# default value (or the empty string).
+#
+proc gen_assign_string_with_default {table fieldName varName rowName shortcut} {
+    upvar ::ctable::fields::$fieldName field
+
+    if {$shortcut && !([info exists field(notnull)] && $field(notnull))} {
+	return "char *$varName = $rowName->$fieldName;"
+    }
+    if {[info exists field(default)]} {
+	set default "\"[cquote $field(default)]\""
+    } else {
+	set default "\"\""
+    }
+    return "char *$varName = $rowName->$fieldName ? $rowName->$fieldName : $default;"
+}
+
+#
+# Generate a declaration and an assignment to the length of a string that
+# might be null. If it's null AND the shortcut doesn't mean we've taken care
+# of this case elsewhere then use the length of the defaul value.
+#
+proc gen_assign_length_with_default {table fieldName varName rowName shortcut} {
+    upvar ::ctable::fields::$fieldName field
+
+    if {$shortcut && !([info exists field(notnull)] && $field(notnull))} {
+	return "int $varName = $rowName->_${fieldName}Length;"
+    }
+    if {[info exists field(default)]} {
+	set defaultLength [string length $field(default)]
+    } else {
+	set defaultLength 0
+    }
+    return "int $varName = $rowName->$fieldName ? $rowName->_${fieldName}Length : $defaultLength;"
+}
+
+#
 # varstringCompSource - code we run subst over to generate a compare of 
 # a string.
 #
 variable varstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
+	  [gen_assign_string_with_default $table $fieldName string row 1]
+	  [gen_assign_length_with_default $table $fieldName stringLength row 1]
+	  [gen_assign_string_with_default $table $fieldName string1 row1 0]
 
 [gen_standard_comp_null_check_source $table $fieldName]
 	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH) || (compType == CTABLE_COMP_MATCH_CASE) || (compType == CTABLE_COMP_NOTMATCH_CASE)) {
@@ -1279,7 +1321,7 @@ variable varstringCompSource {
 		  char *match;
 
 		  exclude = !matchMeansKeep;
-		  for (field = row->$fieldName, match = row1->$fieldName; *match != '*' && *match != '\0'; match++, field++) {
+		  for (field = string, match = string1; *match != '*' && *match != '\0'; match++, field++) {
 		      // printf("comparing '%c' and '%c'\n", *field, *match);
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
@@ -1296,11 +1338,11 @@ variable varstringCompSource {
 		  // if we got here it was anchored and we now know the score
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
-	          exclude = (boyer_moore_search (sm, (unsigned char *)row->$fieldName, row->_${fieldName}Length, sm->nocase) == NULL);
+	          exclude = (boyer_moore_search (sm, (unsigned char *)string, stringLength, sm->nocase) == NULL);
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
-	          exclude = !(Tcl_StringCaseMatch (row->$fieldName, row1->$fieldName, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
+	          exclude = !(Tcl_StringCaseMatch (string, string1, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
               } else {
@@ -1308,7 +1350,7 @@ variable varstringCompSource {
 	      }
 	  }
 
-          strcmpResult = strcmp (row->$fieldName, row1->$fieldName);
+          strcmpResult = strcmp (string, string1);
 [gen_standard_comp_switch_source $fieldName]
         }
 }
