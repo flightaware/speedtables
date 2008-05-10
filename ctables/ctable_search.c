@@ -264,6 +264,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 	if (Tcl_ListObjGetElements (interp, componentList[componentIdx], &termListCount, &termList) == TCL_ERROR) {
 	  err:
 	    ckfree ((char *)components);
+	    search->components = NULL;
 	    return TCL_ERROR;
 	}
 
