@@ -229,6 +229,8 @@ sequence. Read_tabsep will return the last automatic key used.</p>
 <H3>Using a Speed Table to buffer database operations</H3>
 <p>To reduce the overhead of database operations, Speed Tables can be used to efficiently buffer inserts or other operations on a table, by duplicating the structure of the SQL table with a CTABLE.</p>
 <pre>
+package require st_server
+
 ::stapi::set_conn $conn
 
 #
