@@ -44,7 +44,8 @@
 # OS-specific tweaks
     set sysFlags(Darwin) "-DCTABLE_NO_SYS_LIMITS"
 
-    if {$tcl_platform(os) == "Darwin"} {
+# Last minute safety catch
+    if {![info exists sysconfig(pgtclprefix)]} {
 	set withPgtcl 0
     }
 
