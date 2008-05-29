@@ -1,7 +1,7 @@
 
 all: check test
 
-check: test.ct test_server.tcl run_test.sh build
+check: test.ct test_server.tcl run_test.sh
 	@echo "# Ready"
 
 test: test_trigger.tcl test_methods.tcl test_restart.tcl

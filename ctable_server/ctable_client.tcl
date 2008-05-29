@@ -55,18 +55,13 @@ proc remote_ctable_destroy {cttpUrl} {
 #
 # remote_ctable_cache_disconnect - disconnect from a remote ctable server
 #
-proc remote_ctable_cache_disconnect {cttpUrl {sock ""}} {
+proc remote_ctable_cache_disconnect {cttpUrl} {
     variable ctableSockets
 
     if {[info exists ctableSockets($cttpUrl)]} {
-	close $ctableSockets($cttpUrl)
-	if {"$sock" == "$ctableSockets($cttpUrl)"} {
-	    set sock ""
-	}
+	set oldsock $ctableSockets($cttpUrl)
 	unset ctableSockets($cttpUrl)
-    }
-    if {"$sock" != ""} {
-	close $sock
+	close $oldsock
     }
 }
 
@@ -78,11 +73,12 @@ proc remote_ctable_cache_connect {cttpUrl} {
 
     # If there's a valid open socket
     if {[info exists ctableSockets($cttpUrl)]} {
-	if {![eof $ctableSockets($cttpUrl)]} {
-            return $ctableSockets($cttpUrl)
+	set oldsock $ctableSockets($cttpUrl)
+	if {![eof $oldsock]} {
+            return $oldsock
 	}
-	close $ctableSockets($cttpUrl)
 	unset ctableSockets($cttpUrl)
+	close $oldsock
     }
 
     lassign [::ctable_net::split_ctable_url $cttpUrl] host port dir remoteTable stuff
@@ -175,7 +171,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 	if {$i > 5} {
 	    error "$cttpUrl: $err"
 	}
-        remote_ctable_cache_disconnect $cttpUrl $sock
+        remote_ctable_cache_disconnect $cttpUrl
     
 	set sock [remote_ctable_cache_connect $cttpUrl]
     }
@@ -199,7 +195,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 		}
 # puts "[clock format [clock seconds]] redirect '$line'"
 # parray ctableLocalTableUrls
-		remote_ctable_cache_disconnect $cttpUrl $sock
+		remote_ctable_cache_disconnect $cttpUrl
 		set newCttpUrl [lindex $line 1]
 		if {[info exists ctableLocalTableUrls($cttpUrl)]} {
 		    set localTable $ctableLocalTableUrls($cttpUrl)
@@ -228,7 +224,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			if {$status == 1} {
 			    set savedInfo $::errorInfo
 			    set savedCode $::errorCode
-			    remote_ctable_cache_disconnect $cttpUrl $sock
+			    remote_ctable_cache_disconnect $cttpUrl
 			    error $result $savedInfo $savedCode
 			}
 		    } elseif {[info exists actions(-code)]} {
@@ -284,13 +280,13 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			if {$status == 1} {
 			    set savedInfo $::errorInfo
 			    set savedCode $::errorCode
-			    remote_ctable_cache_disconnect $cttpUrl $sock
+			    remote_ctable_cache_disconnect $cttpUrl
 			    error $result $savedInfo $savedCode
 			}
 
  			# TCL_RETURN/TCL_BREAK
 			if {$status == 2 || $status == 3} {
-			    remote_ctable_cache_disconnect $cttpUrl $sock
+			    remote_ctable_cache_disconnect $cttpUrl
 			    return $result
 			}
 
