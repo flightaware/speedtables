@@ -61,7 +61,7 @@ proc remote_ctable_cache_disconnect {cttpUrl} {
     if {[info exists ctableSockets($cttpUrl)]} {
 	set oldsock $ctableSockets($cttpUrl)
 	unset ctableSockets($cttpUrl)
-	close $oldsock
+	catch {close $oldsock}
     }
 }
 
@@ -78,7 +78,7 @@ proc remote_ctable_cache_connect {cttpUrl} {
             return $oldsock
 	}
 	unset ctableSockets($cttpUrl)
-	close $oldsock
+	catch {close $oldsock}
     }
 
     lassign [::ctable_net::split_ctable_url $cttpUrl] host port dir remoteTable stuff

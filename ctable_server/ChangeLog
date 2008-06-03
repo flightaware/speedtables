@@ -2,6 +2,16 @@
 
 $Id$
 
+6/3/08 karl
+    * Wrap close calls in remote_ctable_cache_connect and 
+      remote_ctable_cache_disconnect with a catch as we are either
+      disconnecting from a previously cached connection, where something
+      could have happened (like the connection getting broken) that
+      we don't care about any more.  
+
+      Also upon a cache connect attempt, if the socket is in eof state,
+      we close it and catch that too, to prevent tracebacks.
+
 3/30/08 peter
     Remove old and in some cases incorrect README files, and updated the
     manual to match.
