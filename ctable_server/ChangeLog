@@ -2,6 +2,13 @@
 
 $Id$
 
+6/7/8 peter
+    Use "-countOnly" to let the ctable server know it shouldn't use a
+    multiline response. NOTE - this is not a permanent fix, we really need
+    the client to tell the server that it's expecting a multiline response,
+    AND we need to extend the protocol to support this and make the whole
+    single/multi-line thing cleaner.
+
 6/3/08 karl
     * Wrap close calls in remote_ctable_cache_connect and 
       remote_ctable_cache_disconnect with a catch as we are either

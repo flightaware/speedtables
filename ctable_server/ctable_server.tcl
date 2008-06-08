@@ -481,8 +481,11 @@ proc remote_invoke {sock table line port} {
 
     set simpleCommand 1
     if [string match "search*" $command] {
-	if {[lsearch -exact $remoteArgs "-countOnly"] == -1} {
+	set index [lsearch -exact $remoteArgs "-countOnly"]
+	if {$index == -1} {
 	    set simpleCommand 0
+	} else {
+	    set remoteArgs [lreplace $remoteArgs $index [expr $index + 1]]
 	}
     }
 

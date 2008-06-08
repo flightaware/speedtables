@@ -2,7 +2,13 @@
 
 # $Id$
 
-TCLSH=/usr/local/bin/tclsh8.4
+for tclsh in /usr/local/bin/tclsh8.4 /usr/bin/tclsh8.4
+do
+  if [ -f $tclsh ]
+  then TCLSH=$tclsh; break
+  fi
+done
+
 URL=ctable://localhost:1984/test
 
 # Don't care what the result is

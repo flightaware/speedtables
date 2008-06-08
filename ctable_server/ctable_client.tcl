@@ -372,6 +372,10 @@ proc remote_ctable_invoke {localTableName level command} {
 
 	    set pairs(-with_field_names) 1
 	}
+
+	if {![info exists actions(-code)] && ![info exists actions(-write_tabsep)]} {
+	    set pairs(-countOnly) 1
+	}
 	set body [array get pairs]
 #puts "new body is '$body'"
 #puts "new actions is [array get actions]"
