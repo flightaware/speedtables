@@ -12,6 +12,10 @@ done
 URL=ctable://localhost:1984/test
 LOGFILE=${1:-server.log}
 
+case "$TCLSH" in
+  /usr/bin*) export TCLLIBPATH="$TCLLIBPATH /usr/local/lib";;
+esac
+
 echo "`date` $0 $*" >> $LOGFILE
 
 echo "`date` ../sttp $URL shutdown -nowait" >> $LOGFILE

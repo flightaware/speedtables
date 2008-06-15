@@ -18,14 +18,16 @@ package require Tclx
 #  myTable is now a command that works like a ctable except it's all
 #  client server behind your back.
 #
-proc remote_ctable {cttpUrl localTableName} {
+proc remote_ctable {cttpUrl localTableName args} {
     variable ctableUrls
     variable ctableLocalTableUrls
+    variable ctableOptions
 
 #puts stderr "define remote ctable: $localTableName -> $cttpUrl"
 
     set ctableUrls($localTableName) $cttpUrl
     set ctableLocalTableUrls($cttpUrl) $localTableName
+    set ctableOptions($cttpUrl) $args
 
     proc $localTableName {args} "
 	set level \[info level]; incr level -1
@@ -155,6 +157,8 @@ proc get_response {sock lineVar} {
 proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_redirect 0}} {
     variable ctableSockets
     variable ctableLocalTableUrls
+
+    check_cttp_timeout $cttpUrl
 
 #puts "actionData '$actionData'"
 
@@ -382,6 +386,36 @@ proc remote_ctable_invoke {localTableName level command} {
     }
 
     return [remote_ctable_send $cttpUrl [linsert $body 0 $cmd] [array get actions] $level $no_redirect]
+}
+
+#
+# Check for timeouts for socket connections in ctable.
+#
+proc check_cttp_timeout {cttpUrl} {
+    variable ctableOptions
+    if ![info exists ctableOptions($cttpUrl)] { return }
+
+    array set options $ctableOptions($cttpUrl)
+    if {![info exists options(-timeout)]} { return }
+    if {$options(-timeout) == 0} { return }
+
+    variable ctableTimeout
+    if [info exists ctableTimeout($cttpUrl)] {
+	catch {after cancel $ctableTimeout($cttpUrl)}
+	unset ctableTimeout($cttpUrl)
+    }
+    set ctableTimeout($cttpUrl) [
+	after $options(-timeout) [list handle_cttp_timeout $cttpUrl]
+    ]
+}
+
+#
+# Handle timeouts for socket connections
+#
+proc handle_cttp_timeout {cttpUrl} {
+    variable ctableTimeout
+    unset -nocomplain ctableTimeout($cttpUrl)
+    remote_ctable_cache_disconnect $cttpUrl
 }
 
 package provide ctable_client 1.0

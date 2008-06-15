@@ -2,6 +2,11 @@
 
 $Id$
 
+6/15/2008 peter
+    Added option "-timeout ms" to remote_ctable to have teh client close
+    the socket after it's been idle (no messages sent to the server) for
+    "ms" milliseconds.
+
 6/7/8 peter
     Use "-countOnly" to let the ctable server know it shouldn't use a
     multiline response. NOTE - this is not a permanent fix, we really need

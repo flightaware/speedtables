@@ -11,6 +11,10 @@ done
 
 URL=ctable://localhost:1984/test
 
+case "$TCLSH" in
+  /usr/bin*) export TCLLIBPATH="$TCLLIBPATH /usr/local/lib";;
+esac
+
 # Don't care what the result is
 ../sttp $URL shutdown -nowait > /dev/null 2>&1
 
