@@ -773,10 +773,12 @@ variable charSetSource {
 variable fixedstringSetSource {
       case $optname: {
 	char *string;
+	int   len;
 [gen_null_check_during_set_source $table $fieldName]
-	string = Tcl_GetString (obj);
+	string = Tcl_GetStringFromObj (obj, &len);
 [gen_unset_null_during_set_source $table $fieldName \
-	"if (*string == *row->$fieldName && strncmp(row->$fieldName, string, $length) == 0)
+	"if (len == 0 && [string length default]) string = \"$default\";
+	if (*string == *row->$fieldName && strncmp(row->$fieldName, string, $length) == 0)
 	    return TCL_OK;"]
 [gen_ctable_remove_from_index $fieldName]
 	strncpy (row->$fieldName, string, $length);
@@ -2306,6 +2308,14 @@ proc boolean {fieldName args} {
 proc fixedstring {fieldName length args} {
     array set field $args
 
+    # if it's defined notnull, it must have a default string
+    if {[info exists field(notnull)] && $field(notnull)} {
+	if {![info exists field(default)]} {
+	    error "fixedstring \"$fieldName\" is defined notnull but has no default string, which is required"
+	}
+    }
+
+    # if there's a default string, it must be the correct width
     if {[info exists field(default)]} {
         if {[string length $field(default)] != $length} {
 	    error "fixedstring \"$fieldName\" default string \"[cquote $field(default)]\" must match length \"$length\""
@@ -3026,6 +3036,14 @@ proc emit_set_varstring_field {table fieldName default defaultLength} {
 proc emit_set_fixedstring_field {fieldName length} {
     variable fixedstringSetSource
     variable table
+
+    upvar ::ctable::fields::$fieldName field
+
+    if {[info exists field(default)]} {
+	set default $field(default)
+    } else {
+	set default ""
+    }
 
     set optname [field_to_enum $fieldName]
 

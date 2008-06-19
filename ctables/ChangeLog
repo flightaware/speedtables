@@ -1,6 +1,13 @@
 
 $Id$
 
+6/19/2008 karl
+    * Require a default field to be defined if a fixedstring is being
+      defined with notnull set to 1.
+
+    * If a fixedstring is notnull and an empty string is passed in for
+      a set value, substitute the default string.
+
 5/10/2008 peter
     * Fix for searching: needed to check for null value for varstring and
       replace it with a null value if a shortcut can't be found elsewhere.
