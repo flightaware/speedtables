@@ -1,6 +1,10 @@
 
 $Id$
 
+6/23/2008 karl
+    * When sorting varstrings, properly handle the cases where either or
+      both string pointers are null.
+
 6/19/2008 karl
     * Require a default field to be defined if a fixedstring is being
       defined with notnull set to 1.

@@ -1033,6 +1033,20 @@ variable varstringSortCompareNullSource {
 variable varstringSortSource {
       case $fieldEnum: {
 [gen_null_check_during_sort_comp $table $fieldName]
+
+        if (row1->$fieldName == NULL) {
+	    if (row2->$fieldName == NULL) {
+	        result = 0;
+		break;
+	        return 0;
+	    }
+	    result = direction *  strcmp (${table}_defaultStrings\[$fieldEnum], row2->$fieldName);
+	    break;
+	} else if (row2->$fieldName == NULL) {
+	    result = direction * strcmp (row1->$fieldName, ${table}_defaultStrings\[$fieldEnum]);
+	    break;
+	}
+
         result = direction * strcmp (row1->$fieldName, row2->$fieldName);
 	break;
       }
@@ -4584,6 +4598,15 @@ variable numberFieldCompSource {
 # a string for use in searching, sorting, etc.
 #
 variable varstringFieldCompSource {
+    if (row1->$fieldName == NULL) {
+        if (row->$fieldName == NULL) {
+	    return 0;
+	}
+	return (strcmp (${table}_defaultStrings[$fieldToEnum], row2->$fieldName);
+    } else if (row2->$fieldName == NULL) {
+        return strcmp (row1->$fieldName, ${table}_defaultStrings[$fieldToEnum]);
+    }
+
     if (*row1->$fieldName != *row2->$fieldName) {
         if (*row1->$fieldName < *row2->$fieldName) {
 	    return -1;
@@ -4734,6 +4757,7 @@ proc gen_field_comp {fieldName} {
 	}
 
 	varstring {
+	    set fieldToEnum [field_to_enum $fieldName]
 	    emit [string range [subst -nobackslashes -nocommands $varstringFieldCompSource] 1 end-1]
 	}
 
@@ -4915,7 +4939,7 @@ proc gen_sort_comp {} {
 	    }
 
 	    varstring {
-		emit [string range [subst -nobackslashes $varstringSortSource] 1 end-1]
+		emit [string range [subst $varstringSortSource] 1 end-1]
 	    }
 
 	    boolean {
