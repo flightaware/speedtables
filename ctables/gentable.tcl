@@ -4599,10 +4599,10 @@ variable numberFieldCompSource {
 #
 variable varstringFieldCompSource {
     if (row1->$fieldName == NULL) {
-        if (row->$fieldName == NULL) {
+        if (row2->$fieldName == NULL) {
 	    return 0;
 	}
-	return (strcmp (${table}_defaultStrings[$fieldToEnum], row2->$fieldName);
+	return strcmp (${table}_defaultStrings[$fieldToEnum], row2->$fieldName);
     } else if (row2->$fieldName == NULL) {
         return strcmp (row1->$fieldName, ${table}_defaultStrings[$fieldToEnum]);
     }
