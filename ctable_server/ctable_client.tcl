@@ -273,12 +273,21 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 #puts "executing '$dataCmd'"
 #puts "executing '$actions(-code)'"
 
-			set status [catch {
-			    uplevel #$callerLevel "
+			namespace eval ::ctable_client:: "
+			    variable status {}
+			    variable result {}
+			    variable code {
 			        $dataCmd
 			        $actions(-code)
-			    "
-			} result]
+			    }
+			"
+			uplevel #$callerLevel "
+			    set ::ctable_client::status \[
+				catch \$::ctable_client::code ::ctable_client::result
+			    ]
+			"
+			set status $::ctable_client::status
+			set result $::ctable_client::result
 
 			# TCL_ERROR
 			if {$status == 1} {

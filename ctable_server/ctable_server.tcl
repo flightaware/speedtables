@@ -10,6 +10,8 @@ package require ctable_net
 namespace eval ::ctable_server {
   variable registeredCtables
 
+  variable bytesNeeded 0
+
   variable serverVersion 1.0
   variable protocolResponse ctable_server
 
@@ -226,72 +228,96 @@ proc remote_receive {sock myPort} {
     global errorCode errorInfo
     variable registeredCtableRedirects
     variable ctableUrlCache
+    variable incompleteLine
+    variable bytesNeeded
 
-### puts stderr "remote_receive '$sock' '$myPort'"
+### puts stderr "remote_receive '$sock' '$myPort'"; flush stderr
 
     if {[eof $sock]} {
 	handle_eof $sock
         return
     }
 
-    if {[gets $sock line] >= 0} {
+    if {$bytesNeeded > 0} {
+	set lineRead [read $sock $bytesNeeded]
+	set bytesRead [string length $lineRead]
+	incr bytesNeeded -$bytesRead
+	append incompleteLine $lineRead
+	if {$bytesNeeded > 0} {
+	    return
+	}
+	set line $incompleteLine
+    } else {
+        if {[gets $sock line] < 0} {
+	    handle_eof $sock
+	    return
+        }
 	if {"$line" == ""} {
 	    serverlog "blank line from $sock"
 	    return
 	}
 	# "#NNNN" means a multi-line request NNNN bytes long
 	if {"[string index $line 0]" == "#"} {
-	    set line [read $sock [string trim [string range $line 1 end]]]
-	}
-	lassign $line ctableUrl line 
-
-	if {![info exists ctableUrlCache($ctableUrl)]} {
-	    if [catch {
-	      lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
-	    } err] {
-	      serverlog "$ctableUrl: $err" $::errorInfo
-	      remote_send $sock [list e $err "" $::errorCode]
-	      return
+	    set bytesNeeded [string trim [string range $line 1 end]]
+	    set lineRead [read $sock $bytesNeeded]
+	    set bytesRead [string length $lineRead]
+	    incr bytesNeeded -$bytesRead
+	    if {$bytesNeeded > 0} {
+		set incompleteLine $lineRead
+		return
 	    }
+	    set line $lineRead
+	}
+    }
 
-	    if {[info exists registeredCtableRedirects($table:$myPort)]} {
+    lassign $line ctableUrl line 
+
+    if {![info exists ctableUrlCache($ctableUrl)]} {
+	if [catch {
+	    lassign [::ctable_net::split_ctable_url $ctableUrl] host port dir table options
+	} err] {
+	    serverlog "$ctableUrl: $err" $::errorInfo
+	    remote_send $sock [list e $err "" $::errorCode]
+	    return
+	}
+
+	if {[info exists registeredCtableRedirects($table:$myPort)]} {
 #puts "sending redirect to $sock, $ctableUrl -> $registeredCtableRedirects($table:$myPort)"
-		remote_send $sock [list r $registeredCtableRedirects($table:$myPort)]
-		return
-	    }
+	    remote_send $sock [list r $registeredCtableRedirects($table:$myPort)]
+	    return
+	}
 #puts "setting ctable url cache $ctableUrl -> $table"
-	    set ctableUrlCache($ctableUrl) $table
-	} else {
-	    set table $ctableUrlCache($ctableUrl)
+	set ctableUrlCache($ctableUrl) $table
+    } else {
+	set table $ctableUrlCache($ctableUrl)
+    }
+
+    if {[catch {remote_invoke $sock $table $line $myPort} result] == 1} {
+	set ec $::errorCode
+	set ei $::errorInfo
+
+	if {$ec == "ctable_quit"} {
+	    serverlog "$table: $result (done)"
+	    # We've already closed the socket, done
+	    return
 	}
 
-	if {[catch {remote_invoke $sock $table $line $myPort} result] == 1} {
-	    set ec $::errorCode
-	    set ei $::errorInfo
-
-	    if {$ec == "ctable_quit"} {
-		serverlog "$table: $result (done)"
-	        # We've already closed the socket, done
-		return
-	    }
-
-	    serverlog "$table: $result" \
+	serverlog "$table: $result" \
 		"In ($sock) $ctableUrl $line" $ei"
 
-	    variable hideErrorInfo
-	    if {$hideErrorInfo} {
-	        # look at errorInfo if you want to know more, don't send it
-	        # back to them -- it exposes stuff about us they don't care
-	        # about
-		set ei ""
-	    }
-
-	    ### puts stdout [list e $result $ei $ec]
-	    remote_send $sock [list e $result $ei $ec]
-	} else {
-	    ### puts stdout [list k $result]
-	    remote_send $sock [list k $result]
+	variable hideErrorInfo
+	if {$hideErrorInfo} {
+	    # look at errorInfo if you want to know more, don't send it
+	    # back to them -- it exposes stuff about us they don't care
+	    # about
+	    set ei ""
 	}
+
+	### puts stdout [list e $result $ei $ec]
+	remote_send $sock [list e $result $ei $ec]
+    } else {
+	### puts stdout [list k $result]
+	remote_send $sock [list k $result]
     }
 }
 
