@@ -10,7 +10,8 @@ package require ctable_net
 namespace eval ::ctable_server {
   variable registeredCtables
 
-  variable bytesNeeded 0
+  variable bytesNeeded
+  variable incompleteLine
 
   variable serverVersion 1.0
   variable protocolResponse ctable_server
@@ -238,15 +239,15 @@ proc remote_receive {sock myPort} {
         return
     }
 
-    if {$bytesNeeded > 0} {
-	set lineRead [read $sock $bytesNeeded]
+    if {[info exists bytesNeeded($sock)] && $bytesNeeded($sock) > 0} {
+	set lineRead [read $sock $bytesNeeded($sock)]
 	set bytesRead [string length $lineRead]
-	incr bytesNeeded -$bytesRead
-	append incompleteLine $lineRead
-	if {$bytesNeeded > 0} {
+	incr bytesNeeded($sock) -$bytesRead
+	append incompleteLine($sock) $lineRead
+	if {$bytesNeeded($sock) > 0} {
 	    return
 	}
-	set line $incompleteLine
+	set line $incompleteLine($sock)
     } else {
         if {[gets $sock line] < 0} {
 	    handle_eof $sock
@@ -258,12 +259,12 @@ proc remote_receive {sock myPort} {
 	}
 	# "#NNNN" means a multi-line request NNNN bytes long
 	if {"[string index $line 0]" == "#"} {
-	    set bytesNeeded [string trim [string range $line 1 end]]
-	    set lineRead [read $sock $bytesNeeded]
+	    set bytesNeeded($sock) [string trim [string range $line 1 end]]
+	    set lineRead [read $sock $bytesNeeded($sock)]
 	    set bytesRead [string length $lineRead]
-	    incr bytesNeeded -$bytesRead
-	    if {$bytesNeeded > 0} {
-		set incompleteLine $lineRead
+	    incr bytesNeeded($sock) -$bytesRead
+	    if {$bytesNeeded($sock) > 0} {
+		set incompleteLine($sock) $lineRead
 		return
 	    }
 	    set line $lineRead

@@ -2,7 +2,10 @@
 
 $Id$
 
-6/20/2008 peter
+7/1/2008 peter
+    bytesNeeded and incompleteLine need to be per-socket
+
+6/30/2008 peter
     Fixed handling of nonblocking channel in ctable_server.
 
     Committed change to handling of uplevel to try and fix break/return
