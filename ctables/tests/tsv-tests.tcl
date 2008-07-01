@@ -123,5 +123,28 @@ if {"[t get aol]" != "82 AOL 3248"} {
     error "got [list [t get aol]] expected {82 AOL 3248}"
 }
 
+t set tab name "tab\there" rank 66 value 66
+t set newline name "new\nline" rank 66 value 66
+
+set fp [open /tmp/quote_test.tsv w]
+t search -quote uri -write_tabsep $fp -with_field_names 1
+close $fp
+
+t reset
+
+set fp [open /tmp/quote_test.tsv r]
+t read_tabsep $fp -quote uri -with_field_names
+close $fp
+
+array set tmp [t array_get tab]
+if {"$tmp(name)" != "tab\there"} {
+    error "got [list $tmp(name)] expected [list "tab\there"]"
+}
+
+array set tmp [t array_get newline]
+if {"$tmp(name)" != "new\nline"} {
+    error "got [list $tmp(name)] expected [list "new\nline"]"
+}
+
 puts "finished"
 

@@ -39,6 +39,11 @@
 
 #endif
 
+// types of quoting for tabsep fields
+#define CTABLE_QUOTE_NONE 0
+#define CTABLE_QUOTE_URI 1
+#define CTABLE_QUOTE_STRICT_URI 2
+
 // these types must line up with ctableTypes in gentable.tcl
 enum ctable_types {
     CTABLE_TYPE_BOOLEAN,
@@ -272,6 +277,9 @@ typedef struct {
     // searching with sorting, and for completing a transaction after searching
     ctable_BaseRow                     **tranTable;
 
+    // how to quote quotable strings in write_tabsep
+    int					 quoteType;
+
 } CTableSearch;
 
 typedef struct {
@@ -321,7 +329,7 @@ typedef struct ctableCreatorTable {
     int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
-    void (*dstring_append_get_tabsep) (char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, char *sepstr);
+    void (*dstring_append_get_tabsep) (CONST char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, char *sepstr, int quoteType);
 
     int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
     int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);

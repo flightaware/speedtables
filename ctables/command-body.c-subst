@@ -944,6 +944,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int		 nocomplain = 0;
 	char		*skip = NULL;
 	char		*term = NULL;
+	int		 quoteType = CTABLE_QUOTE_NONE;
 
 	while (objIdx < objc) {
 	    char *possibleSwitch;
@@ -965,6 +966,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		    return TCL_ERROR;
 		}
 		sepstr = Tcl_GetString (objv[objIdx++]);
+	    } else if (strcmp (possibleSwitch, "-quote") == 0) {
+		objIdx++;
+	        if (objIdx >= objc) {
+		    Tcl_AppendResult (interp, "-quote not followed by quote type", (char *)NULL);
+		    return TCL_ERROR;
+		}
+	        quoteType = ctable_parseQuoteType(interp, objv[objIdx++]);
+	        if(quoteType < 0) {
+		    Tcl_AppendResult (interp, "in argument to -quote", NULL);
+		    return TCL_ERROR;
+	        }
 	    } else if (strcmp (possibleSwitch, "-skip") == 0) {
 		if(optIndex != OPT_READ_TABSEP) {
 		    Tcl_AppendResult (interp, "-skip does not make sense for write_tabsep", (char *)NULL);
@@ -1064,9 +1076,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #endif
 
 	if (optIndex == OPT_WRITE_TABSEP) {
-	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, term);
+	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, term, quoteType);
 	} else if(optIndex == OPT_READ_TABSEP) {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls, quoteType);
 	}
 
 	if(fieldIds) ckfree((void *)fieldIds);

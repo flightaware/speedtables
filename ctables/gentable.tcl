@@ -1813,7 +1813,7 @@ void ${table}_dumpFieldNums(int *fieldNums, int nFields, char *msg)
 }
 
 void
-${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, char *sepstr) {
+${table}_dstring_append_get_tabsep (CONST char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, char *sepstr, int quoteType) {
     int              i;
     CONST char      *string;
     int              nChars;
@@ -1821,7 +1821,12 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
     struct $table *row = vPointer;
 
     if (!noKeys) {
+	int copy = 0;
+	if(quoteType) {
+	    copy = ctable_quoteString(&key, NULL, quoteType, sepstr);
+	}
 	Tcl_DStringAppend (dsPtr, key, -1);
+	if(copy) ckfree((void *)key);
     }
 
     for (i = 0; i < nFields; i++) {
@@ -1831,10 +1836,13 @@ ${table}_dstring_append_get_tabsep (char *key, void *vPointer, int *fieldNums, i
 
 	string = ${table}_get_string (row, fieldNums[i], &nChars, utilityObj);
 	if (nChars != 0) {
-// printf("${table}_dstring_append_get_tabsep appending '%s'\n", string);
+	    int copy = 0;
+	    if (quoteType && ${table}_needs_quoting[fieldNums[i]]) {
+		copy = ctable_quoteString(&string, &nChars, quoteType, sepstr);
+	    }
 	    Tcl_DStringAppend (dsPtr, string, nChars);
+	    if(copy) ckfree((void *)string);
 	}
-// printf("${table}_dstring_append_get_tabsep i %d fieldNums[i] %d nChars %d\n", i, fieldNums[i], nChars);
     }
     Tcl_DStringAppend (dsPtr, "\n", 1);
     Tcl_DecrRefCount (utilityObj);
@@ -1933,7 +1941,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *term) {
+${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *term, int quoteType) {
     Tcl_Channel             channel;
     int                     mode;
     Tcl_DString             dString;
@@ -1978,7 +1986,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
         Tcl_DStringSetLength (&dString, 0);
 
-	${table}_dstring_append_get_tabsep (key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys, sepstr);
+	${table}_dstring_append_get_tabsep (key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys, sepstr, quoteType);
 
 	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
@@ -2000,7 +2008,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int keyColumn, char *sepstr, char *nullString) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int *fieldIds, int nFields, int keyColumn, char *sepstr, char *nullString, int quoteType) {
     struct $table *row;
     char          *key;
     char          *field;
@@ -2029,7 +2037,10 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 		*keyEnd = 0;
 	    }
 	    keyCopy = ckalloc(strlen(key)+1);
-	    strcpy(keyCopy, key);
+	    if(quoteType)
+		ctable_copyDequoted(keyCopy, key, -1, quoteType);
+	    else
+		strcpy(keyCopy, key);
 	    key = keyCopy;
 	    if(keyEnd) *keyEnd = save;
         }
@@ -2068,6 +2079,9 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 	    field[0] != nullString[0] &&
 	    strcmp(field, nullString) != 0)
 	) {
+	    if (${table}_needs_quoting[fieldIds[col]] && quoteType)
+		ctable_dequoteString(field, -1, quoteType);
+
 	    Tcl_SetStringObj (utilityObj, field, -1);
 	    if (${table}_set (interp, ctable, utilityObj, row, fieldIds[col], indexCtl) == TCL_ERROR) {
 	        Tcl_DecrRefCount (utilityObj);
@@ -2088,7 +2102,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls, int quoteType) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = NULL;
@@ -2192,7 +2206,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	    }
 	}
 
-	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn, sepstr, nullString) == TCL_ERROR) {
+	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn, sepstr, nullString, quoteType) == TCL_ERROR) {
 	    char lineNumberString[32];
 
 	    sprintf (lineNumberString, "%d", recordNumber + 1);
@@ -5514,7 +5528,7 @@ proc install_ch_files {includeDir} {
     set copyFiles {
 	ctable.h ctable_search.c ctable_lists.c ctable_batch.c
 	boyer_moore.c jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
-	speedtables.h speedtableHash.c
+	speedtables.h speedtableHash.c ctable_io.c
     }
 
     if {$withSharedTables} {
@@ -5622,6 +5636,8 @@ proc start_codegen {} {
     # This runs here so we have the log of where we got files from in
     # the right place
     ::ctable::install_ch_files [::ctable::target_path include]
+
+    ::ctable::emit "#include \"ctable_io.c\""
 
     ::ctable::emit "#include \"ctable_search.c\""
 
