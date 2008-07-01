@@ -5,6 +5,9 @@ $Id$
 6/20/2008 peter
     Fixed handling of nonblocking channel in ctable_server.
 
+    Committed change to handling of uplevel to try and fix break/return
+    breakage.
+
 6/15/2008 peter
     Added option "-timeout ms" to remote_ctable to have teh client close
     the socket after it's been idle (no messages sent to the server) for
