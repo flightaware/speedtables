@@ -86,9 +86,10 @@ int ctable_dequoteString(char *string, int length, int quoteType)
 int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj) {
     int                index;
     static CONST char *names[] = { "none", "uri", NULL };
+    static int         values[] = { CTABLE_QUOTE_NONE, CTABLE_QUOTE_URI };
 
     if (Tcl_GetIndexFromObj (interp, obj, names, "type", TCL_EXACT, &index) != TCL_OK)
 	return -1;
     else
-	return index;
+	return values[index];
 }

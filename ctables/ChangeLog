@@ -3,6 +3,7 @@ $Id$
 
 7/01/2008 peter
     * -quote uri option for read/write tabsep, first cut.
+    * Added tests for -quote stuff
 
 6/23/2008 karl
     * When sorting varstrings, properly handle the cases where either or
