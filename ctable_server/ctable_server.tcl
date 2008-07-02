@@ -22,6 +22,10 @@ namespace eval ::ctable_server {
 
   variable hideErrorInfo 1
 
+  variable extensions
+  variable quoteType
+  set extensions(quote) quoteType
+
   # eval? command	args
   variable serverCommands {
     0 shutdown		{[-nowait]}
@@ -33,6 +37,7 @@ namespace eval ::ctable_server {
     0 tables		""
     0 help		""
     0 methods		""
+    0 enable		"name ?value?"
     1 eval		{code}
     1 trigger		{?command? ?proc?}
   }
@@ -323,12 +328,15 @@ proc remote_receive {sock myPort} {
 }
 
 #
-# Send a response, and flush. If the response is multi-line send
-# as "# NNNN" followed by the NNNN-byte response.
+# Send a response, and flush. If the response is multi-line or long enough
+# to be potentially split, send as "# NNNN" followed by the NNNN-byte
+# response.
 #
 proc remote_send {sock line {multi 1}} {
-    if {$multi && [string match "*\n*" $line]} {
-	puts $sock "# [expr [string length $line] + 1]"
+    if {$multi} {
+	if {[string length $line] > 8192 || [string match "*\n*" $line]} {
+	    puts $sock "# [expr [string length $line] + 1]"
+	}
     }
     puts $sock $line
     flush $sock
@@ -425,6 +433,10 @@ proc remote_invoke {sock table line port} {
 	    return [serverInfo [string match "-v*" [lindex $remoteArgs 0]]]
 	}
 
+        "enable" {
+	    return [enable_extension $sock $remoteArgs]
+        }
+
 	"methods" {
     	    variable serverCommands
 	    set additional_result {}
@@ -501,7 +513,9 @@ proc remote_invoke {sock table line port} {
 	set cmd $triggerCode($command:$table)
 	lappend cmd $table $ctable $command
 	switch [catch [concat $cmd $remoteArgs] result] {
-	    1 { error $result $::errorInfo }
+	    1 { 
+		error $result $::errorInfo
+	    }
 	    2 { return $result }
 	}
     }
@@ -526,16 +540,46 @@ proc remote_invoke {sock table line port} {
 	return $result
     }
 
-    # else it's a complex search command:
+    # else it's a complex search command.
+
+    # Check if there's been a request for quoting
+    if {[info exists quoteType($sock)] && "$quoteType($sock)" != ""} {
+	lappend remoteArgs -quote $quoteType($sock)
+    }
+
+    # Set up the command to stream the results back
     set cmd [linsert $remoteArgs 0 $ctable $command -write_tabsep $sock]
-#puts "search command '$cmd'"
-#puts "start multiline response"
     remote_send $sock "m"
-#puts "evaling '$cmd'"
+
+    # pull the trigger
     set code [catch {eval $cmd} result]
+
     remote_send $sock "\\." 0
-    ### puts "start sent multiline terminal response"
+
+    # Return the end result
     return -code $code $result
+}
+
+#
+# Enable extensions by setting the variable specified in the extensions
+# array to the value specified in the command, or 1 if no value provided
+# returns 1 if the extension exists, 0 otherwise
+#
+proc enable_extension {sock list} {
+    variable extensions
+    set name [lindex $list 0]
+    if {[llength $list] > 1} {
+        set value [lindex $list 1]
+    } else {
+	set value 1
+    }
+    if [info exists extensions($name)] {
+	variable $extensions($name)
+	set $extensions($name)($sock) $value
+	return 1
+    } else {
+	return 0
+    }
 }
 
 proc serverlog {args} {

@@ -9,6 +9,7 @@
 
 package require ctable_net
 package require Tclx
+package require ncgi
 
 #
 # remote_ctable - declare a ctable as going to a remote host
@@ -59,12 +60,17 @@ proc remote_ctable_destroy {cttpUrl} {
 #
 proc remote_ctable_cache_disconnect {cttpUrl} {
     variable ctableSockets
+    variable remoteMethods
+    variable remoteQuote
 
     if {[info exists ctableSockets($cttpUrl)]} {
 	set oldsock $ctableSockets($cttpUrl)
 	unset ctableSockets($cttpUrl)
 	catch {close $oldsock}
     }
+
+    unset -nocomplain remoteMethods($cttpUrl)
+    unset -nocomplain remoteQuote($cttpUrl)
 }
 
 #
@@ -213,6 +219,12 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 	    "m" {
 		array set actions $actionData
 		set firstLine 1
+	        set dequoting 0
+		if [info exists actions(-quote)] {
+		    if {"$actions(-quote)" == "uri"} {
+			set dequoting 1
+		    }
+		}
 
 		set result ""
 		while {[gets $sock line] >= 0} {
@@ -238,13 +250,13 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			    continue
 			}
 
-#puts "fields '$fields' value '$line'"
 			set dataList ""
 			foreach var $fields value [split $line "\t"] {
-#puts "var '$var' value '$value"
+			    if {$dequoting} {
+				set value [::ncgi::decode $value]
+			    }
 			    if {$var == "_key"} {
 				if {[info exists actions(keyVar)]} {
-#puts "set $actions(keyVar) $value"
 				    uplevel #$callerLevel set $actions(keyVar) $value
 				}
 #
@@ -388,13 +400,68 @@ proc remote_ctable_invoke {localTableName level command} {
 
 	if {![info exists actions(-code)] && ![info exists actions(-write_tabsep)]} {
 	    set pairs(-countOnly) 1
+	} elseif {[remote_quote $cttpUrl uri]} {
+	    set actions(-quote) uri
+	    set pairs(-quote) uri
 	}
+
 	set body [array get pairs]
 #puts "new body is '$body'"
 #puts "new actions is [array get actions]"
     }
 
     return [remote_ctable_send $cttpUrl [linsert $body 0 $cmd] [array get actions] $level $no_redirect]
+}
+
+#
+# local enable for remote options we want to use
+#
+proc remote_enable {args} {
+    variable remoteEnable
+
+    foreach option $args {
+        set remoteEnable($option) 1
+    }
+}
+
+#
+# see if remote socket supports quoting, and if so set it
+#
+proc remote_quote {cttpUrl quoteType} {
+    variable remoteMethods
+    variable remoteQuote
+    variable remoteEnable
+
+    if {![info exists remoteEnable(quote)] || !$remoteEnable(quote)} {
+	return 0
+    }
+
+    if {![info exists remoteMethods($cttpUrl)]} {
+	set remoteMethods($cttpUrl) [remote_ctable_send $cttpUrl methods]
+    }
+
+    if {![string match "*enable*" $remoteMethods($cttpUrl)]} {
+	return 0
+    }
+
+    if {![info exists remoteQuote($cttpUrl)]} {
+	set remoteQuote($cttpUrl) ""
+    }
+
+    if {"$remoteQuote($cttpUrl)" == "none"} {
+	return 0
+    }
+
+    if {"$remoteQuote($cttpUrl)" == "$quoteType"} {
+	return 1
+    }
+
+    if {[remote_ctable_send $cttpUrl [list enable quote $quoteType]]} {
+	return 1
+    }
+
+    set remoteQuote($cttpUrl) "none"
+    return 0
 }
 
 #

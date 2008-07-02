@@ -5,6 +5,11 @@ $Id$
 7/1/2008 peter
     bytesNeeded and incompleteLine need to be per-socket
 
+    Commited change to use uri quoting in ctable_server and ::ncgi::decode
+    in ctable_client, to cgi-encode newline and tab in tabsep responses.
+
+    use "remote_enable quote" to enable this option.
+
 6/30/2008 peter
     Fixed handling of nonblocking channel in ctable_server.
 

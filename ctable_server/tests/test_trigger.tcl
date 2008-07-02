@@ -34,6 +34,7 @@ if [catch {
     }
 } err] {
    puts "Test failed - $err"
+   puts $::errorInfo
    set status 1
 }
 
