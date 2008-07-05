@@ -8,25 +8,63 @@
 //
 int ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, char *quotedChars)
 {
-    int i, j = 0;
-    CONST char *string = *stringPtr;
-    int length = stringLengthPtr ? *stringLengthPtr : strlen(string);
-    char *new = NULL;
+    int          i, j = 0;
+    CONST char  *string = *stringPtr;
+    int          length = stringLengthPtr ? *stringLengthPtr : strlen(string);
+    char        *new = NULL;
+    int		 quoteChar = '\0'; // no quote by default
+    int		 maxExpansion = 4; // worst possible worst case
+
+    static char *special = "\b\f\n\r\t\v\\";
+    static char *replace = "bfnrtv\\";
+
+    switch(quoteType) {
+	case CTABLE_QUOTE_URI:
+	case CTABLE_QUOTE_STRICT_URI:
+	    quoteChar = '%';
+	    maxExpansion = 3; // %xx
+	    break;
+	case CTABLE_QUOTE_ESCAPE:
+	    quoteChar = '\\';
+	    maxExpansion = 4; // \nnn
+	    break;
+	case CTABLE_QUOTE_NONE:
+	    return 0;
+    }
 
     if(!quotedChars) quotedChars = "\t";
 
     for(i = 0; i < length; i++) {
-	if(string[i] == '\n' || string[i] == '%' || strchr(quotedChars, string[i])) {
+	char c = string[i];
+	if(c == '\n' || c == quoteChar || strchr(quotedChars, c)) {
 	    if(!new) {
-	        new = ckalloc(3 * length + 1);
+	        new = ckalloc(maxExpansion * length + 1);
 	        for(j = 0; j < i; j++)
 		     new[j] = string[j];
 	    }
-	    // If more quote types are defined this will need to be modified
-	    sprintf(new+j, "%%%02x", string[i]);
-	    j += 3;
+	    switch(quoteType) {
+		case CTABLE_QUOTE_URI:
+		case CTABLE_QUOTE_STRICT_URI:
+		    sprintf(&new[j], "%%%02x", c);
+		    j += 3;
+		    break;
+		case CTABLE_QUOTE_ESCAPE: {
+		    char *off = strchr(special, c);
+		    new[j++] = '\\';
+		    if(off) {
+			new[j++] = replace[off - special];
+		    } else {
+			sprintf(&new[j], "%03o", c);
+			j += 3;
+		    }
+		    break;
+		}
+		case CTABLE_QUOTE_NONE: // can't happen
+		    new[j++] = c;  // but do something sane anyway
+		    break;
+	    }
 	} else if(new) {
-	    new[j++] = string[i];
+	    new[j++] = c;
 	}
     }
 
@@ -47,18 +85,54 @@ int ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
 {
     int i = 0, j = 0, c;
     if(length < 0) length = strlen(src);
+    int dequoteType = quoteType;
+    if(dequoteType == CTABLE_QUOTE_STRICT_URI)
+	dequoteType = CTABLE_QUOTE_URI;
+
+    if(quoteType == CTABLE_QUOTE_NONE) {
+	strncpy(dst, src, length);
+	return length;
+    }
 
     while(i < length) {
-	if(src[i] == '%') {
+	if(dequoteType == CTABLE_QUOTE_URI && src[i] == '%') {
 	    if(!isxdigit(src[i+1]) || !isxdigit(src[i+2])) {
 		if(quoteType == CTABLE_QUOTE_STRICT_URI) return -1;
 		else goto ignore;
 	    }
 
 	    c = src[i+3];
+	    src[i+3] = '\0';
 	    dst[j++] = strtol(&src[i+1], NULL, 16);
 	    src[i+3] = c;
 	    i += 3;
+	} else if(dequoteType == CTABLE_QUOTE_ESCAPE && src[i] == '\\') {
+	    c = src[++i];
+	    if(c >= '0' && c <= '7') {
+		int digit;
+		// Doing this longhand because I need to get to the end
+		// of the octal string anyway, but I don't know how long
+		// it is.
+		dst[j] = 0;
+		for(digit = 0; digit < 3; digit++) {
+			dst[j] = dst[j] * 8 + c - '0';
+			c = src[i];
+			if(c < '0' || c > '7') break;
+			i++;
+		}
+		j++;
+	    } else {
+	        switch(c) {
+		    case 'n': c = '\n'; break;
+		    case 't': c = '\t'; break;
+		    case 'r': c = '\r'; break;
+		    case 'b': c = '\b'; break;
+		    case 'f': c = '\f'; break;
+		    case 'v': c = '\v'; break;
+	        }
+		dst[j++] = c;
+		i++;
+	    }
 	} else {
 ignore:	    dst[j++] = src[i++];
 	}
@@ -80,16 +154,34 @@ int ctable_dequoteString(char *string, int length, int quoteType)
     return ctable_copyDequoted(string, string, length, quoteType);
 }
 
+static CONST char *ctable_quote_names[] = { "none", "uri", "escape", NULL };
+static int         ctable_quote_types[] = { CTABLE_QUOTE_NONE, CTABLE_QUOTE_URI, CTABLE_QUOTE_ESCAPE };
+
 //
 // Convert a type name to a quote type
 //
 int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj) {
-    int                index;
-    static CONST char *names[] = { "none", "uri", NULL };
-    static int         values[] = { CTABLE_QUOTE_NONE, CTABLE_QUOTE_URI };
+    int index;
 
-    if (Tcl_GetIndexFromObj (interp, obj, names, "type", TCL_EXACT, &index) != TCL_OK)
+    if (Tcl_GetIndexFromObj (interp, obj, ctable_quote_names, "type", TCL_EXACT, &index) != TCL_OK)
 	return -1;
     else
-	return values[index];
+	return ctable_quote_types[index];
 }
+
+//
+// Return a list of ctable quote type names (cache it, too)
+//
+Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp) {
+    static Tcl_Obj *result = NULL;
+
+    if (!result) {
+        int index;
+	result = Tcl_NewObj();
+        for(index = 0; ctable_quote_names[index]; index++)
+	    Tcl_ListObjAppendElement(interp, result, Tcl_NewStringObj(ctable_quote_names[index], -1));
+	Tcl_IncrRefCount(result);
+    }
+    return result;
+}
+

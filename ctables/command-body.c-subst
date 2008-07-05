@@ -163,13 +163,18 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       // reflection. Really supercedes "type".
       case OPT_GETPROP: {
 	  Tcl_Obj           *list = Tcl_NewObj();
-	  static CONST char *infoStrings[] = { "type", "$table", "extension", "$extension", "key", "$keyFieldName", NULL };
+	  Tcl_Obj	    *tmpobj;
+	  static CONST char *infoStrings[] = { "type", "$table", "extension", "$extension", "key", "$keyFieldName", "quote", "", NULL };
 	  int	             i;
 	  int                j;
 
 	  if(objc == 2) {
 	      for(i = 0; infoStrings[i]; i++) {
-		  if (Tcl_ListObjAppendElement (interp, list, Tcl_NewStringObj(infoStrings[i], -1)) == TCL_ERROR) {
+		  tmpobj = infoStrings[i][0]
+			 ? Tcl_NewStringObj(infoStrings[i], -1)
+			 : ctable_quoteTypeList(interp);
+
+		  if (Tcl_ListObjAppendElement (interp, list, tmpobj) == TCL_ERROR) {
 		      Tcl_AppendResult(interp, " (internal error)", NULL);
 		      return TCL_ERROR;
 		  }
@@ -181,7 +186,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      Tcl_AppendResult(interp, "Unknown property '", Tcl_GetString(objv[j]), "'.", NULL);
 		      return TCL_ERROR;
 		  }
-		  if (Tcl_ListObjAppendElement (interp, list, Tcl_NewStringObj(infoStrings[i+1], -1)) == TCL_ERROR) {
+		  tmpobj = infoStrings[i+1][0]
+			 ? Tcl_NewStringObj(infoStrings[i+1], -1)
+                         : ctable_quoteTypeList(interp);
+		  if (Tcl_ListObjAppendElement (interp, list, tmpobj) == TCL_ERROR) {
 		      Tcl_AppendResult(interp, " (internal error)", NULL);
 		      return TCL_ERROR;
 		  }

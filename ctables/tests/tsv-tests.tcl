@@ -123,6 +123,8 @@ if {"[t get aol]" != "82 AOL 3248"} {
     error "got [list [t get aol]] expected {82 AOL 3248}"
 }
 
+puts "quoting test {-quote uri}"
+
 t set tab name "tab\there" rank 66 value 66
 t set newline name "new\nline" rank 66 value 66
 
@@ -138,12 +140,34 @@ close $fp
 
 array set tmp [t array_get tab]
 if {"$tmp(name)" != "tab\there"} {
-    error "got [list $tmp(name)] expected [list "tab\there"]"
+    error "quote-uri: got [list $tmp(name)] expected [list "tab\there"]"
 }
 
 array set tmp [t array_get newline]
 if {"$tmp(name)" != "new\nline"} {
-    error "got [list $tmp(name)] expected [list "new\nline"]"
+    error "quote-uri: got [list $tmp(name)] expected [list "new\nline"]"
+}
+
+puts "quoting test {-quote escape}"
+
+set fp [open /tmp/escape_test.tsv w]
+t search -quote escape -write_tabsep $fp -with_field_names 1
+close $fp
+
+t reset
+
+set fp [open /tmp/escape_test.tsv r]
+t read_tabsep $fp -quote escape -with_field_names
+close $fp
+
+array set tmp [t array_get tab]
+if {"$tmp(name)" != "tab\there"} {
+    error "quote-escape: got [list $tmp(name)] expected [list "tab\there"]"
+}
+
+array set tmp [t array_get newline]
+if {"$tmp(name)" != "new\nline"} {
+    error "quote-escape: got [list $tmp(name)] expected [list "new\nline"]"
 }
 
 puts "finished"

@@ -43,6 +43,7 @@
 #define CTABLE_QUOTE_NONE 0
 #define CTABLE_QUOTE_URI 1
 #define CTABLE_QUOTE_STRICT_URI 2
+#define CTABLE_QUOTE_ESCAPE 3
 
 // these types must line up with ctableTypes in gentable.tcl
 enum ctable_types {
