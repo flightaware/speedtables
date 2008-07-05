@@ -232,12 +232,12 @@ $table search \
 <p>If you are doing -write_tabsep, <tt>-with_field_names 1</tt> will cause the first line emitted to be a tab-separated list of field names.</p>
 
 <dt>-quote <i>type</i><dd>
-<p>When performing -write_tabsep, use the quoting strategy <i>type</i>:
+<p>When performing -write_tabsep, use the quoting strategy <i>type</i>:</p>
 <ul>
 <li>none - default
 <li>uri - URI-encoding, percent followed by two hex digits.
 <li>escape - backslash-escape compatible with PostgreSQL.
-</ul>
+</ul><p></p>
 
 <dt>-key <i>keyVar</i><dd>
 <dt>-get <i>listVar</i><dd>
@@ -440,7 +440,7 @@ foreach field [x fields] {
 <li>extension - the package name for loading the table.
 <li>key - the name of the key field of the table.
 <li>quote - a list of quoting strategies supported by the table.
-</ul>
+</ul><p></p>
 
 <dt>share<dd>
 <dt>attach<dd>
@@ -486,7 +486,8 @@ close $fp
 <p>The first field written will be the key, unless -nokeys is specified and the key value is not written to the destination.</p>
 <p>If -with_field_names is specified, then the names of the fields will be the first row output.</p>
 <p>If -tab is specified then the string provided will be used as the tab.</p>
-<p class="bug">Bug: We do not currently quote any tabs that occur in the data, so if there are tab characters in any of the strings in a row, that row will not be read back in properly. In fact, we will generate an error when attempting to read such a row. In most cases it should be possible to select a tab separator that does not occur in any field to avoid this.</p>
+<p>The <tt>-quote type</tt> options are compatible with <tt>search -write_tabsep</tt></p>
+<p>For compatibility, the default quoting for tabs and newlines inside a field is "none". It is recommended that <tt>-quote escape</tt> or <tt>-quote uri</tt> is used for writing and reading tab-separated files.</p>
 
 <dt>read_tabsep <i>channel ?-option?... ?fieldName?...</i><dd>
 <p>Options are:
@@ -522,6 +523,7 @@ Since you must have a key and at least one field, this is safe. However it might
 <p>With <tt>-nocomplain</tt> then the file being read is allowed to specify columns that do not match fields</p>
 <p>Blank or missing fields literally insert empty strings unless <tt>-with_nulls</tt> is set, indicating that the file was created with null values.</p>
 <p>The <tt>-quote type</tt> options are compatible with <tt>search -write_tabsep</tt></p>
+<p>For compatibility, the default quoting for tabs and newlines inside a field is "none". It is recommended that <tt>-quote escape</tt> or <tt>-quote uri</tt> is used for writing and reading tab-separated files.</p>
 
 <dt>index create <i>fieldName</i><dd>
 <dt>index drop <i>fieldName</i><dd>
