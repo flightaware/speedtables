@@ -2,7 +2,7 @@
 
 # $Id$
 
-for tclsh in /usr/local/bin/tclsh8.4 /usr/bin/tclsh8.4
+for tclsh in /usr/bin/tclsh8.4 /usr/local/bin/tclsh8.4
 do
   if [ -f $tclsh ]
   then TCLSH=$tclsh; break
