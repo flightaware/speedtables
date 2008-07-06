@@ -323,7 +323,8 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 		if {[get_response $sock line] <= 0} {
 		    error "$cttpUrl: unexpected EOF from server after multiline response"
 		}
-		return $result
+		// We don't return here, we take the response from get_response
+		// and fall through to the next loop on "line".
 	    }
 
 	    default {
