@@ -250,6 +250,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			    continue
 			}
 
+			set codeList {}
 			set dataList ""
 			foreach var $fields value [split $line "\t"] {
 			    if {$dequoting} {
@@ -257,7 +258,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			    }
 			    if {$var == "_key"} {
 				if {[info exists actions(keyVar)]} {
-				    uplevel #$callerLevel set $actions(keyVar) $value
+				    lappend codeList [list set $actions(keyVar) $value]
 				}
 #
 # TODO - make sure the behavior with -get is consistent
@@ -276,11 +277,14 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			    }
 			}
 
-			if {$actions(action) == "-array" || $actions(action) == "-array_with_nulls"} {
-			    set dataCmd [list array set $actions(bodyVar) $dataList]
-			} else {
-			    set dataCmd [list set $actions(bodyVar) $dataList]
+			if [info exists actions(bodyVar)] {
+			    if {$actions(action) == "-array" || $actions(action) == "-array_with_nulls"} {
+			        lappend codeList [list array set $actions(bodyVar) $dataList]
+			    } else {
+			        lappend codeList [list set $actions(bodyVar) $dataList]
+			    }
 			}
+			lappend codeList $actions(-code)
 
 #puts "executing '$dataCmd'"
 #puts "executing '$actions(-code)'"
@@ -288,10 +292,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			namespace eval ::ctable_client:: "
 			    variable status {}
 			    variable result {}
-			    variable code {
-			        $dataCmd
-			        $actions(-code)
-			    }
+			    variable code [list [join $codeList "\n"]]
 			"
 			uplevel #$callerLevel "
 			    set ::ctable_client::status \[

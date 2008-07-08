@@ -2,6 +2,10 @@
 
 $Id$
 
+7/7/2008 peter
+    Various changes in ctable_client to handle proper assembling and quoting
+    when code doesn't contain a body command.
+
 7/1/2008 peter
     bytesNeeded and incompleteLine need to be per-socket
 

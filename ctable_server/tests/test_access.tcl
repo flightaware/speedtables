@@ -27,6 +27,40 @@ if [catch {
    puts ""
    puts "Test failed - $err"
    set status 1
+} else {
+   puts ""
+}
+
+if {$status} {
+   exit $status
+}
+
+puts "Error handling - server"
+c_test reset
+for {set i 0} {$i < 10} {incr i} {
+   c_test set id$i id $i name "line $i"
+}
+set expected_error "list must have an even number of elements"
+if [catch {c_test search -error} error] {
+   if {"$expected_error" != "$error"} {
+      puts "Expected [list $expected_error] got [list $error]"
+      set status 1
+   }
+} else {
+   puts "Expected [list $expected_error] got success"
+   set status 1
+}
+
+puts "Error handling - client"
+set expected_error "Testing error"
+if [catch {c_test search -key k -code { error $expected_error }} error] {
+   if {"$expected_error" != "$error"} {
+      puts "Expected [list $expected_error] got [list $error]"
+      set status 1
+   }
+} else {
+   puts "Expected [list $expected_error] got success"
+   set status 1
 }
 
 exit $status
