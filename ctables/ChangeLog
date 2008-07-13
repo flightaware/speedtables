@@ -3,6 +3,8 @@ $Id$
 
 7/13/2008 peter
     * Fixed handling of "-term"
+    * Added "$ctable type command" as alias for "[$ctable type] command" for
+      proxies.
 
 7/05/2008 peter
     * -quote escape option, compatible with postgresql.

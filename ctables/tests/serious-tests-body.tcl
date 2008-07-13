@@ -389,3 +389,13 @@ if {"[set result [nocomplain_test]]" != ""} {
     error "Nocomplain test returned '$result'"
 }
 puts "ok"
+
+puts -nonewline "Testing type command..."
+set tType [t type]
+set typeDef [$tType cextension]
+set tabDef [t type cextension]
+
+if {"$typeDef" != "$tabDef"} {
+    error "Type and table mismatch" [list $typeDef != $tabDef]
+}
+puts "ok"

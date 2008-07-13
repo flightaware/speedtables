@@ -57,6 +57,9 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
     return TCL_OK;
 }
 
+// Forward definition
+int ${table}MetaObjCmd(ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     CTable *ctable = (CTable *)cData;
@@ -155,7 +158,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_TYPE: {
-          Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
+	  if(objc==2)
+              Tcl_SetObjResult (interp, Tcl_NewStringObj ("$table", -1));
+	  else
+	      commandStatus = ${table}MetaObjCmd(cData, interp, objc-1, objv+1);
+
 	  break;
       }
 
