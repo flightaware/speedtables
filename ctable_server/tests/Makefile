@@ -19,3 +19,6 @@ restart: test_restart.tcl
 access: test_access.tcl
 	./run_test.sh access
 
+buffer: test_buffer.tcl
+	./run_test.sh buffer
+

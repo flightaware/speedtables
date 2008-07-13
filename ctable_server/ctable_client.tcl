@@ -246,6 +246,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			lappend localCommand -quote $actions(-quote)
 		    }
 		    lappend localCommand -with_field_names
+		    lappend localCommand -term {\\.}
 		    set status [catch $localCommand result]
 		    if {$status} {
 			return -code $status $result
@@ -253,11 +254,30 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 
 		    # handle composite actions for buffering
 		    if {[info exists actions(-code)] || [info exists actions(-write_tabsep)]} {
+			if [info exists actions(action)] {
+			    if [info exists actions(keyVar)] {
+				set actions(-key) $actions(keyVar)
+				unset actions(keyVar)
+			    }
+			    if [info exists actions(bodyVar)] {
+				set actions($actions(action)) $actions(bodyVar)
+				unset actions(bodyVar)
+			    }
+			    unset actions(action)
+			}
 			set localCommand [linsert [array get actions] 0 $localTable search]
 
-		        set status [catch $localCommand result]
-		        if {$status} {
-			    return -code $status $result
+		        #set status [catch $localCommand result]
+			namespace eval ::ctable_client [
+			    list set code $localCommand
+			]
+			uplevel #$callerLevel "
+			    set ::ctable_client::status \[
+				catch \$::ctable_client::code ::ctable_client::result
+			    ]
+			"
+		        if {$::ctable_client::status} {
+			    return -code $::ctable_client::status $::ctable_client::result
 		        }
 		    }
 
@@ -265,7 +285,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 		    if {[get_response $sock line] <= 0} {
 			error "$cttpUrl: unexpected EOF from server after multiline response"
 		    }
-		    break
+		    continue
 		}
 
 		set result ""
@@ -421,9 +441,28 @@ proc remote_ctable_invoke {localTableName level command} {
 	    set actions(-noKeys) $pairs(-noKeys)
 	}
 
-	if {[info exists actions(-into)]} {
-	    set actions(-into) $pairs(-into)
+	if {[info exists pairs(-into)]} {
+	    set localTable [
+		uplevel #$level [list namespace which $pairs(-into)]
+	    ]
+
 	    unset pairs(-into)
+	    set actions(-into) $localTable
+
+	    set pairs(-with_field_names) 1
+	}
+
+	if {[info exists pairs(-buffer)]} {
+	    set localTable [
+		uplevel #$level [list namespace which $pairs(-buffer)]
+	    ]
+
+	    unset pairs(-buffer)
+	    set actions(-into) $localTable
+
+	    $localTable reset
+
+	    set pairs(-with_field_names) 1
 	}
 
 	if {[info exists pairs(-code)]} {

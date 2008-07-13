@@ -2,6 +2,13 @@
 
 $Id$
 
+7/13/2008 peter
+    Implemented "search ... -into localTable" and "search ... -buffer localTable".
+
+    remoteTable search ... -into localTable is something I want to implement
+    for local ctables as well, as a "select into" operation. This will also
+    simplify loading tables with stapi sql: tables.
+
 7/7/2008 peter
     Various changes in ctable_client to handle proper assembling and quoting
     when code doesn't contain a body command.
