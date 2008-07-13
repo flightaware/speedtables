@@ -2180,7 +2180,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	do {
             Tcl_SetStringObj (lineObj, "", 0);
 	    if (Tcl_GetsObj (channel, lineObj) <= 0) {
-		if(term == NULL) goto done;
+		goto done;
 	    }
 
 	    string = Tcl_GetString (lineObj);

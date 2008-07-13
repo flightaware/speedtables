@@ -1,6 +1,9 @@
 
 $Id$
 
+7/13/2008 peter
+    * Fixed handling of "-term"
+
 7/05/2008 peter
     * -quote escape option, compatible with postgresql.
     * {$table getprop quote} to see what quoting is possible for the table.
