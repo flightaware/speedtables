@@ -226,6 +226,48 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 		    }
 		}
 
+		# This is used by "-into" and "-buffer" to read the response
+		# into a local ctable and then IF a -code or -write_tabsep is
+		# specified, perform that action.
+
+		if [info exists actions(-into)] {
+		    set localTable $actions(-into)
+		    set localCommand [list $localTable read_tabsep $sock]
+		    unset actions(-into)
+		    foreach option {-nokeys -nocomplain} {
+			if [info exists actions($option)] {
+			    if {$actions($option)} {
+			        lappend localCommand $option 
+			    }
+			    unset actions($option)
+			}
+		    }
+		    if {$dequoting} {
+			lappend localCommand -quote $actions(-quote)
+		    }
+		    lappend localCommand -with_field_names
+		    set status [catch $localCommand result]
+		    if {$status} {
+			return -code $status $result
+		    }
+
+		    # handle composite actions for buffering
+		    if {[info exists actions(-code)] || [info exists actions(-write_tabsep)]} {
+			set localCommand [linsert [array get actions] 0 $localTable search]
+
+		        set status [catch $localCommand result]
+		        if {$status} {
+			    return -code $status $result
+		        }
+		    }
+
+		    # get result from next response
+		    if {[get_response $sock line] <= 0} {
+			error "$cttpUrl: unexpected EOF from server after multiline response"
+		    }
+		    break
+		}
+
 		set result ""
 		while {[gets $sock line] >= 0} {
 		    if {$line == "\\."} {
@@ -379,6 +421,11 @@ proc remote_ctable_invoke {localTableName level command} {
 	    set actions(-noKeys) $pairs(-noKeys)
 	}
 
+	if {[info exists actions(-into)]} {
+	    set actions(-into) $pairs(-into)
+	    unset pairs(-into)
+	}
+
 	if {[info exists pairs(-code)]} {
 	    set actions(-code) $pairs(-code)
 	    unset pairs(-code)
@@ -400,7 +447,7 @@ proc remote_ctable_invoke {localTableName level command} {
 	    set pairs(-with_field_names) 1
 	}
 
-	if {![info exists actions(-code)] && ![info exists actions(-write_tabsep)]} {
+	if {![info exists actions(-into)] && ![info exists actions(-code)] && ![info exists actions(-write_tabsep)]} {
 	    set pairs(-countOnly) 1
 	} elseif {[remote_quote $cttpUrl uri]} {
 	    set actions(-quote) uri
