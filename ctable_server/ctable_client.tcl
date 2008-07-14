@@ -453,9 +453,13 @@ proc remote_ctable_invoke {localTableName level command} {
 	}
 
 	if {[info exists pairs(-buffer)]} {
-	    set localTable [
-		uplevel #$level [list namespace which $pairs(-buffer)]
-	    ]
+	    if {"$pairs(-buffer)" == "#auto"} {
+		set localTable [maketable $cttpUrl $sock]
+	    } else {
+	        set localTable [
+		    uplevel #$level [list namespace which $pairs(-buffer)]
+	        ]
+	    }
 
 	    unset pairs(-buffer)
 	    set actions(-into) $localTable
@@ -580,6 +584,20 @@ proc handle_cttp_timeout {cttpUrl} {
     variable ctableTimeout
     unset -nocomplain ctableTimeout($cttpUrl)
     remote_ctable_cache_disconnect $cttpUrl
+}
+
+proc maketable {cttpUrl sock} {
+  variable lastsocket
+  package require sttp_buffer
+
+  if [info exists lastsocket($cttpUrl)] {
+    if {"$lastsocket($cttpurl)" != "$sock"} {
+      ::sttp_buffer::forget $cttpUrl
+    }
+  }
+  set lastsocket($cttpUrl) $sock
+
+  return [::sttp_buffer::table $cttpUrl]
 }
 
 package provide ctable_client 1.0
