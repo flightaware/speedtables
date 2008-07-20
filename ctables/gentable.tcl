@@ -1826,7 +1826,10 @@ ${table}_dstring_append_get_tabsep (CONST char *key, void *vPointer, int *fieldN
 	    copy = ctable_quoteString(&key, NULL, quoteType, sepstr);
 	}
 	Tcl_DStringAppend (dsPtr, key, -1);
-	if(copy) ckfree((void *)key);
+	if(copy) {
+	    ckfree((void *)key);
+	    key = NULL;
+	}
     }
 
     for (i = 0; i < nFields; i++) {
@@ -1841,7 +1844,10 @@ ${table}_dstring_append_get_tabsep (CONST char *key, void *vPointer, int *fieldN
 		copy = ctable_quoteString(&string, &nChars, quoteType, sepstr);
 	    }
 	    Tcl_DStringAppend (dsPtr, string, nChars);
-	    if(copy) ckfree((void *)string);
+	    if(copy) {
+		ckfree((void *)string);
+		string = NULL;
+	    }
 	}
     }
     Tcl_DStringAppend (dsPtr, "\n", 1);
