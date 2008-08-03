@@ -29,6 +29,7 @@ all:
 	$(TCLSH) trans-tests.tcl
 	$(TCLSH) poll-tests.tcl
 	$(TCLSH) multitable-tests.tcl
+	$(TCLSH) index-compare.tcl
 
 indef:
 	-rm -r build

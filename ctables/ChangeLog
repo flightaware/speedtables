@@ -1,6 +1,10 @@
 
 $Id$
 
+8/03/2008 peter
+    * Fixed typo in optimization table for indexed search.
+    * Added test to cover all possible indexed searches.
+
 7/13/2008 peter
     * Fixed handling of "-term"
     * Added "$ctable type command" as alias for "[$ctable type] command" for

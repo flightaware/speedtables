@@ -983,7 +983,7 @@ static struct {
   {SKIP_START_EQ_ROW1,	SKIP_END_GT_ROW1, SKIP_NEXT_ROW,   6 }, // EQ
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NE
   {SKIP_START_GE_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_ROW,   2 }, // GE
-  {SKIP_START_GT_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_NONE,  1 }, // GT
+  {SKIP_START_GT_ROW1,	SKIP_END_NONE,	  SKIP_NEXT_ROW,   1 }, // GT
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // MATCH
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTMATCH
   {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_MATCH, 3 }, // MATCH_CASE
@@ -1393,7 +1393,7 @@ restart_search:
 		    break;
 		}
 		default: { // Can't happen
-		    panic("skipNext has unexpected value %d", skipNext);
+		    panic("skipNext has unexpected value %d (comparisonType == %d, skipStart == %d, skipEnd == %d, score == %d)", skipNext, comparisonType, skipStart, skipEnd, score);
 		}
 	    }
 
