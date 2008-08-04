@@ -36,6 +36,8 @@ proc re {list} {
   return [lindex $list [expr {int(rand() * [llength $list])}]]
 }
 
+puts -nonewline "populating tables..."
+
 for {set i 0} {$i < 100} {incr i} {
   if [expr {int(rand() * 2)}] {
     $t set $i id [re $foods]$i color [re $colors]
@@ -61,9 +63,13 @@ for {set i 0} {$i < 100} {incr i} {
   }
 }
 
+puts "DONE"
+
 test_index $t = color red
 test_index $t = flavor cheesy
 test_index $t > spiciness 5
+
+puts -nonewline "scrambling tables..."
 
 for {set i 0} {$i < 100} {incr i} {
   set j [expr {int(rand() * 100)}]
@@ -98,6 +104,8 @@ for {set i 0} {$i < 100} {incr i} {
   set j [expr {int(rand() * 100)}]
   $t set $j color [re $colors] flavor [re $flavors]
 }
+
+puts DONE
 
 test_index $t = color red
 test_index $t = flavor cheesy
