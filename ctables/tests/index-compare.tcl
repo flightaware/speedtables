@@ -12,13 +12,16 @@ set spicy_brains 1
 set t [indef create #auto]
 
 proc test_index {table args} {
+  puts -nonewline [info level 0]...
   set comp [list $args]
   set longway 0
   $table search -compare $comp -key dummy -code { incr longway }
   set shortway [$table search -compare $comp]
   if {"$shortway" != "$longway"} {
+    puts "FAIL"
     error "$table search -compare $comp - Longway was '$longway' shortway was '$shortway'"
   }
+  puts "OK"
 }
 
 $t index create color
