@@ -31,6 +31,10 @@ all:
 	$(TCLSH) multitable-tests.tcl
 	$(TCLSH) index-compare.tcl
 
+compare:
+	-rm -r build
+	$(TCLSH) index-compare.tcl
+
 indef:
 	-rm -r build
 	$(TCLSH) index-defaults.tcl

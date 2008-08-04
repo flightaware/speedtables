@@ -69,3 +69,5 @@ install: sysconfig.tcl
 sysconfig.tcl: mkConfig.sh config.tcl
 	./mkConfig.sh > sysconfig.tcl
 
+compare:
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make compare"
