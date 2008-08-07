@@ -57,7 +57,7 @@ stapitest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi"
 
 debug:
-	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb /usr/local/bin/tclsh8.4 -c tclsh8.4.core"
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb /usr/local/bin/tclsh8.4 -c tclsh8.4.*core"
 
 mdebug:
 	sh -c "export TCLLIBPATH=${TCLLIBPATH}; cd tests; gdb /usr/local/bin/tclsh8.4m -c tclsh8.4m.core"

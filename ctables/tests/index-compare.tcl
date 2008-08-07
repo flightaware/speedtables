@@ -12,7 +12,7 @@ set spicy_brains 1
 set t [indef create #auto]
 
 proc test_index {table args} {
-  puts -nonewline [info level 0]...
+  puts -nonewline [info level 0]...; flush stdout
   set comp [list $args]
   set longway 0
   $table search -compare $comp -key dummy -code { incr longway }
@@ -36,7 +36,7 @@ proc re {list} {
   return [lindex $list [expr {int(rand() * [llength $list])}]]
 }
 
-puts -nonewline "populating tables..."
+puts -nonewline "populating tables..."; flush stdout
 
 for {set i 0} {$i < 100} {incr i} {
   if [expr {int(rand() * 2)}] {
@@ -69,7 +69,7 @@ test_index $t = color red
 test_index $t = flavor cheesy
 test_index $t > spiciness 5
 
-puts -nonewline "scrambling tables..."
+puts -nonewline "scrambling tables..."; flush stdout
 
 for {set i 0} {$i < 100} {incr i} {
   set j [expr {int(rand() * 100)}]
