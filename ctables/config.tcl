@@ -10,7 +10,7 @@
     set genCompilerDebug 1
     # set to 1 to link to mem debug libraries
     set memDebug 0
-    # Set to 0 to import the skiplist code without inline
+    # Set to 0 to import some code without inline.
     set fullInline 1
 
     # set to 1 to show compiler commands
