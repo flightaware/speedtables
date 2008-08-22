@@ -3434,6 +3434,38 @@ proc gen_set_null_function {table} {
 }
 
 #
+# gen_is_null_function - emit C routine to test if a specific field is null
+#  in a given table and row
+#
+proc gen_is_null_function {table} {
+    variable fieldList
+    variable leftCurly
+    variable rightCurly
+
+    emit "int"
+    emit "${table}_is_null (struct $table *row, int field) $leftCurly"
+
+    emit "    switch ((enum ${table}_fields) field) $leftCurly"
+
+    foreach myField $fieldList {
+	upvar ::ctable::fields::$myField field
+
+        set optname [field_to_enum $myField]
+
+	if {!([info exists field(notnull)] && $field(notnull))} {
+	    emit "        case [field_to_enum $myField]:"
+	    emit "            return row->_${myField}IsNull;"
+	}
+    }
+
+    emit "        default:"
+    emit "            return 0;"
+    emit "    $rightCurly"
+    emit "$rightCurly"
+    emit ""
+}
+
+#
 # put_metatable_source - emit the code to define the meta table (table-defining
 # command)
 #
@@ -3741,6 +3773,8 @@ proc gen_code {} {
     gen_set_function $table
 
     gen_set_null_function $table
+
+    gen_is_null_function $table
 
     gen_get_function $table
 
