@@ -1,6 +1,9 @@
 
 $Id$
 
+8/21/2008 peter
+    * Added [$ctable null] and [$ctable isnull]
+
 8/03/2008 peter
     * Fixed typo in optimization table for indexed search.
     * Added test to cover all possible indexed searches.

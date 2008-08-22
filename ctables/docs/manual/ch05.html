@@ -415,6 +415,27 @@ foreach field [x fields] {
 <p>Return a list of all of the keys in the table. This is fine for small tables but can be inefficient for large tables as it generates a list containing each key, so a 650K table will generate a list containing 650K elements -- in such a case we recommend that you use <i>search</i> instead.</p>
 <p>This should probably be deprecated.</p>
 
+<dt>null <i>key</i><dd>
+<p>Return a list of the fields for the row with the key <i>key</i> that
+are null.</p>
+<pre>
+% x null
+foo
+</pre>
+<dt>null <i>key</i> <i>field ?field?...</i><dd>
+<p>Set the named fields for the indicated row to null</p>
+<pre>
+% x null baz
+% x null
+foo baz
+</pre>
+<dt>isnull <i>key</i> <i>field ?field?...</i><dd>
+<p>Test if the field(s) for the indicated row are null.</p>
+<pre>
+% x isnull foo bar
+1 0
+</pre>
+
 <dt>reset<dd>
 <p>Clear everything out of the table. This deletes all of the rows in the table, freeing all memory allocated for the rows, the rows' hashtable entries, etc.</p>
 <pre>

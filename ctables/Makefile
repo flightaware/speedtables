@@ -71,3 +71,6 @@ sysconfig.tcl: mkConfig.sh config.tcl
 
 compare:
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make compare"
+
+null:
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make null"
