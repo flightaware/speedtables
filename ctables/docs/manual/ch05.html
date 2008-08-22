@@ -419,20 +419,20 @@ foreach field [x fields] {
 <p>Return a list of the fields for the row with the key <i>key</i> that
 are null.</p>
 <pre>
-% x null
+% x null 1337
 foo
 </pre>
 <dt>null <i>key</i> <i>field ?field?...</i><dd>
 <p>Set the named fields for the indicated row to null</p>
 <pre>
-% x null baz
-% x null
+% x null 1337 baz
+% x null 1337
 foo baz
 </pre>
 <dt>isnull <i>key</i> <i>field ?field?...</i><dd>
 <p>Test if the field(s) for the indicated row are null.</p>
 <pre>
-% x isnull foo bar
+% x isnull 1337 foo bar
 1 0
 </pre>
 
