@@ -309,7 +309,7 @@ namespace eval ::stapi {
     set sql "SELECT [join $select ,] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     append sql " LIMIT 1;"
-    return [sql_get_one_tuple $sql]
+    return [sql_get_one_tuple $sql -nocomplain]
   }
 
   proc sql_ctable_agwn {level ns cmd val args} {
@@ -610,13 +610,17 @@ namespace eval ::stapi {
     return $sql
   }
 
-  proc sql_get_one_tuple {req} {
+  proc sql_get_one_tuple {req {opt ""}} {
     set pg_res [pg_exec [conn] $req]
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
     } elseif {[pg_result $pg_res -numTuples] == 0} {
-      set ok 0
-      set err "No match"
+      if {"$opt" == "-nocomplain"} {
+	set result ""
+      } else
+        set ok 0
+        set err "No match"
+      }
     } else {
       set result [pg_result $pg_res -getTuple 0]
     }

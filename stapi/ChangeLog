@@ -1,5 +1,10 @@
 $Id$
 
+9/17/2008 peter
+    Added "-nocomplain" option to sql_get_one_tuple to allow for ctable
+    array_get_with_nulls to return "" for a missing key rather than
+    erroring out.
+
 3/25/2008
     Several fixes in key handling in STDisplay
 
