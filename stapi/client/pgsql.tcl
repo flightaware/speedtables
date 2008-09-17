@@ -617,7 +617,7 @@ namespace eval ::stapi {
     } elseif {[pg_result $pg_res -numTuples] == 0} {
       if {"$opt" == "-nocomplain"} {
 	set result ""
-      } else
+      } else {
         set ok 0
         set err "No match"
       }
