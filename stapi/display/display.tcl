@@ -78,7 +78,7 @@ catch { ::itcl::delete class STDisplay }
 	    set keyfields [list $key]
 	  } else {
 	    set mlist [$table methods]
-	    if {[lsearch $mlist "key"]} {
+	    if {[lsearch $mlist "key"] >= 0} {
 	      set keyfields [list [$table key]]
 	    } else {
 	      set keyfields [$table keys]
@@ -163,8 +163,8 @@ catch { ::itcl::delete class STDisplay }
     # etc.
     #
     method is_function {name} {
-	if {[lsearch $functions $name] > -1} { return 1 }
-	if {[lsearch $allfunctions $name] > -1} { return 1 }
+	if {[lsearch $functions $name] >= 0} { return 1 }
+	if {[lsearch $allfunctions $name] >= 0} { return 1 }
 	return 0
     }
 
@@ -336,7 +336,7 @@ catch { ::itcl::delete class STDisplay }
 	if {[info exists FieldNameMap($fld)]} {
 	    set fld $FieldNameMap($fld)
 	}
-	if {![lsearch $fields $fld]} {
+	if {[lsearch $fields $fld] < 0} {
 	    if {$complain} {
 	        return -code error "No field name for $fld"
 	    } else {
@@ -531,7 +531,7 @@ catch { ::itcl::delete class STDisplay }
 	set selection [get_selection $all]
 	if {"$op" == "-"} {
 	    set first [lsearch $selection $val]
-	    if {$first != -1} {
+	    if {$first >= 0} {
 		set selection [lreplace $selection $first $first]
 	    }
 	}
@@ -550,7 +550,7 @@ catch { ::itcl::delete class STDisplay }
 
 	# Just copy the rest
  	foreach cgi_var {query by how sort rev num} {
-  	    if {[lsearch $args $cgi_var] == -1} {
+  	    if {[lsearch $args $cgi_var] < 0} {
   	        if [info exists response($cgi_var)] {
 		    $f hidden $cgi_var -value [escape_cgi $response($cgi_var)]
   	        }
@@ -944,7 +944,7 @@ catch { ::itcl::delete class STDisplay }
 
         ## If there's a list of sortfields, it's only sortable if it's in that
 	if {![lempty $sortfields]} {
-	    if {[lsearch $sortfields $name] == -1} {
+	    if {[lsearch $sortfields $name] < 0} {
 		return 0
 	    }
 	}
@@ -956,7 +956,7 @@ catch { ::itcl::delete class STDisplay }
      ## Check field's "searchability"
      protected method searchable {name} {
 	## If it's marked as searchable
-	if {[lsearch $searchfields $name] == -1} {
+	if {[lsearch $searchfields $name] < 0} {
 	    return 1
 	}
 
@@ -1346,7 +1346,7 @@ catch { ::itcl::delete class STDisplay }
 	set selfunctions {}
 	foreach f $functions {
 	    if {"$f" != "List"} {
-	        if {[lsearch $skipfunctions $f] == -1} {
+	        if {[lsearch $skipfunctions $f] < 0} {
 		    lappend selfunctions $f
 		}
 	    } else {
@@ -1646,7 +1646,7 @@ catch { ::itcl::delete class STDisplay }
 	    }
 
 	    set search [list $how $name $what]
-	    if {[lsearch $new_list $search] == -1} {
+	    if {[lsearch $new_list $search] < 0} {
 	        lappend new_list [list $how $name $what]
 	    }
 	}
@@ -2437,7 +2437,7 @@ catch { ::itcl::delete class ::STDisplayField_boolean }
     #
     method boolean_value {} {
 	set val [string tolower $value]
-	if {[lsearch -exact $values $val] > -1} { return 1 }
+	if {[lsearch -exact $values $val] >= 0} { return 1 }
 	return 0
     }
 

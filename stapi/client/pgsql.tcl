@@ -295,11 +295,11 @@ namespace eval ::stapi {
     return 0
   }
 
-  proc sql_ctable_get {level ns cmd val args} {
-    if ![llength $args] {
-      set args [set ${ns}::fields]
+  proc sql_create_sql {ns val slist} {
+    if ![llength $slist] {
+      set slist [set ${ns}::fields]
     }
-    foreach arg $args {
+    foreach arg $slist {
       if [info exists ${ns}::sql($arg)] {
 	lappend select [set ${ns}::sql($arg)]
       } else {
@@ -309,16 +309,30 @@ namespace eval ::stapi {
     set sql "SELECT [join $select ,] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     append sql " LIMIT 1;"
-    return [sql_get_one_tuple $sql -nocomplain]
+    return $sql
   }
 
-  proc sql_ctable_agwn {level ns cmd val args} {
-    if ![llength $args] {
-      set args [set ${ns}::fields]
+  # Get list - return empty list for no data, SQL error is error
+  proc sql_ctable_get {level ns cmd val args} {
+    set sql [sql_create_sql $ns $val $args]
+    set result ""
+    if {![sql_get_one_tuple $sql result]} {
+      error $result
     }
-    set vals [eval [list sql_ctable_get $level $ns $cmd $val] $args]
-    foreach arg $args val $vals {
-      lappend result $arg $val
+    return $result
+  }
+
+  # Get name-value list - return empty list for no data, SQL error is error
+  proc sql_ctable_agwn {level ns cmd val args} {
+    set sql [sql_create_sql $ns $val $args]
+    set result {}
+    switch -- [sql_get_one_tuple $sql vals] {
+      1 {
+        foreach arg $args val $vals {
+          lappend result $arg $val
+        }
+      }
+      0 { error $vals }
     }
     return $result
   }
@@ -610,23 +624,37 @@ namespace eval ::stapi {
     return $sql
   }
 
-  proc sql_get_one_tuple {req {opt ""}} {
+  # Get one tuple from request
+  # Two calling sequences:
+  #   set result [sql_get_one_tuple $sql]
+  #      No data is an error (No Match)
+  #   set status [sql_set_one_tuple $sql result]
+  #      status ==  1 - success
+  #      status == -1 - No data,  *result not modified*
+  #      status ==  0 - SQL error, result is error string
+  #
+  proc sql_get_one_tuple {req {_result ""}} {
+    if [string length $_result] {
+      upvar 1 $_result result
+    }
     set pg_res [pg_exec [conn] $req]
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
     } elseif {[pg_result $pg_res -numTuples] == 0} {
-      if {"$opt" == "-nocomplain"} {
-	set result ""
-      } else {
-        set ok 0
-        set err "No match"
-      }
+      set ok -1
     } else {
       set result [pg_result $pg_res -getTuple 0]
     }
     pg_result $pg_res -clear
 
-    if !$ok {
+    if [string length $_result] {
+      if {$ok == 0} {
+	set result $err
+      }
+      return $ok
+    }
+      
+    if {$ok <= 0} {
       set errinf "$err\nIn $req"
       return -code error -errorinfo $errinf $err
     }

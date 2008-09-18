@@ -1,5 +1,10 @@
 $Id$
 
+9/18/2008 peter
+    Split half of "sql_ctable_get" into "sql_create_sql" and use that from
+    "sql_ctable_agwn" instead of calling "sql_ctable_get", so that we can
+    distinguish "no data" from "empty list".
+
 9/17/2008 peter
     Added "-nocomplain" option to sql_get_one_tuple to allow for ctable
     array_get_with_nulls to return "" for a missing key rather than
