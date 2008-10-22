@@ -1,6 +1,12 @@
 
 $Id$
 
+10/20/2008 karl
+    * Changed 'while processing search code body', 'while processing
+      foreach code body' and 'while processing "in" compare function"
+      to use Tcl_AddErrorInfo instead of Tcl_AppendResult, so they
+      appear in the errorInfo traceback but not the error message itself.
+
 8/21/2008 peter
     * Added [$ctable null] and [$ctable isnull]
 
