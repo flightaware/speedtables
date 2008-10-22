@@ -1,6 +1,11 @@
 
 $Id$
 
+10/22/2008 karl
+    * Correct null checking for "tclobj" data type so that tclobj
+      fields that are null do not get defined when doing array_get,
+      etc.
+
 10/20/2008 karl
     * Changed 'while processing search code body', 'while processing
       foreach code body' and 'while processing "in" compare function"

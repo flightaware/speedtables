@@ -3916,7 +3916,11 @@ proc gen_new_obj {type fieldName} {
 	}
 
 	tclobj {
-	    return "((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
+	    if {![info exists field(notnull)] || !$field(notnull)} {
+		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : ((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
+	    } else {
+		return "((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
+	    }
 	}
 
 	default {
