@@ -1367,7 +1367,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 	      switch (Tcl_EvalObjEx (interp, objv[codeIndex], 0)) {
 	        case TCL_ERROR:
-		  Tcl_AddErrorInfo (interp, "while processing foreach code body");
+		  Tcl_AddErrorInfo (interp, "\n    while processing foreach code body");
 		  return TCL_ERROR;
 
 		case TCL_OK:

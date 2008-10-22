@@ -207,7 +207,7 @@ int ctable_CreateInRows(Tcl_Interp *interp, CTable *ctable, CTableSearchComponen
 	component->inListRows[i] = (*ctable->creator->make_empty_row) ();
 
 	if ((*ctable->creator->set) (interp, ctable, component->inListObj[i], component->inListRows[i], component->fieldID, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
-	    Tcl_AddErrorInfo (interp, "while processing \"in\" compare function");
+	    Tcl_AddErrorInfo (interp, "\n    while processing \"in\" compare function");
 	    return TCL_ERROR;
 	}
     }
@@ -571,7 +571,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	evalResult = Tcl_EvalObjEx (interp, search->codeBody, 0);
 	switch (evalResult) {
 	  case TCL_ERROR:
-	    Tcl_AddErrorInfo (interp, "while processing search code body");
+	    Tcl_AddErrorInfo (interp, "\n   while processing search code body");
 	    return TCL_ERROR;
 
 	  case TCL_OK:
