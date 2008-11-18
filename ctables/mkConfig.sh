@@ -5,7 +5,7 @@
 # Create sysconfig.tcl from tclConfig.sh and other things
 
 tcl_versions="8.4"
-tcl_prefixes="/usr/fa/lib/tcl /usr/local/lib/tcl /usr/lib/tcl /System/Library/Frameworks/Tcl.framework/Versions/ $*"
+tcl_prefixes="/usr/fa/lib /usr/local/lib/tcl /usr/lib/tcl /System/Library/Frameworks/Tcl.framework/Versions/ $*"
 
 pg_prefixes="/usr/fa /usr/local /usr/local/pgsql"
 
@@ -14,6 +14,12 @@ do
   for prefix in $tcl_prefixes
   do
     try="$prefix$version/tclConfig.sh"
+    if [ -f "$try" ]
+    then
+      config="$try"
+      break 2
+    fi
+    try="$prefix/tclConfig.sh"
     if [ -f "$try" ]
     then
       config="$try"
