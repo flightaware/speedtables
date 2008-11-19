@@ -5446,7 +5446,7 @@ proc compile {fileFragName version} {
 	    append ld_cmd " -L$dir"
 	}
 
-	append ld_cmd " -lpgtcl$pgtcl_ver -lpq"
+	append ld_cmd " -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq"
     }
 
     append ld_cmd " $sysconfig(ldflags) $stub"
