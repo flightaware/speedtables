@@ -216,8 +216,8 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->keyTablePtr = (ctable_HashTable *)ckalloc (sizeof (ctable_HashTable));
 
 	    ctable->count = 0;
-
 	    ctable->autoRowNumber = 0;
+	    ctable->destroying = 0;
 
 #ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
@@ -286,7 +286,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		use_name(ctable->share, share_name);
 #endif
 
-	    ctable->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) ctable, NULL);
+	    ctable->commandInfo = Tcl_CreateObjCommand (interp, commandName, ${table}ObjCmd, (ClientData) ctable, ${table}_cmdDeleteProc);
 
 	    Tcl_SetStringObj (Tcl_GetObjResult (interp), commandName, -1);
 	    if (baseNameLength) {

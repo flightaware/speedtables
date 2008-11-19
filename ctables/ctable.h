@@ -355,6 +355,7 @@ typedef struct ctableTable {
     ctable_BaseRow                      *ll_head;
 
     int                                  autoRowNumber;
+    int                                  destroying;
 #ifdef WITH_SHARED_TABLES
     int					 was_locked;
     char				*emptyString;

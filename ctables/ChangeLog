@@ -1,6 +1,17 @@
 
 $Id$
 
+11/18/2008 karl
+    * Make table-destroying code into its own C routine, 
+      ${table}_destroy_ctable, and make it callable with a null
+      interp pointer so that it can be called from a Tcl_CmdDeleteProc.
+
+      Create a Tcl_CmdDeleteProc named ${table}_cmdDeleteProc that
+      takes a pointer to the ctable through the clientData argument
+      and destroys it, and when creating a ctable, pass this function
+      as the deleteProc.  This arranges for the delete proc to get
+      called before the table is deleted from the interpreter.
+
 10/22/2008 karl
     * Correct null checking for "tclobj" data type so that tclobj
       fields that are null do not get defined when doing array_get,

@@ -1,5 +1,11 @@
 // $Id$
 
+// ctable table-specific function to delete all rows
+//
+// can be called with interp == NULL so it can be called from a Tcl
+// command deletion callback, which doesn't have an interpreter handle
+//
+//
 int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
     ctable_BaseRow           *row;
     ctable_BaseRow           *nextRow;
@@ -10,7 +16,9 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
 	if(final) {
 	    return TCL_OK;
 	} else {
-	    Tcl_AppendResult(interp, "Can't reset read-only shared table.", NULL);
+	    if (interp != NULL) {
+		Tcl_AppendResult(interp, "Can't reset read-only shared table.", NULL);
+	    }
 	    return TCL_ERROR;
 	}
     }
@@ -53,8 +61,66 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
 
     ctable->count = 0;
     ctable->autoRowNumber = 0;
+    ctable->destroying = 0;
 
     return TCL_OK;
+}
+
+// function to destroy a ctable
+//
+// can be called with interp == NULL so it can be called from a
+// Tcl command deletion callback, which doesn't have an interpreter handle
+//
+int ${table}_destroy_ctable (Tcl_Interp *interp, CTable *ctable)
+{
+    if (${table}_delete_all_rows (interp, ctable, 1) != TCL_OK) {
+	end_write(ctable);
+	return TCL_ERROR;
+    }
+
+#ifdef WITH_SHARED_TABLES
+    // We'll never need "ctable" again, so now we can trash it.
+    // And, possibly, unmap the file
+    if(ctable->share) {
+	// abandon reservation for name
+	release_name(ctable->share, ctable->share_name);
+
+	// unmap file (if all reservations abandoned)
+	unmap_file(ctable->share);
+    }
+#endif
+
+    if (interp != NULL) {
+	// mark that we're already destorying the ctable so that the
+	// delete callback will know not to recursively call us.
+	//
+	// this could occur when the "destroy" method is invoked,
+	// but we don't want to just invoke Tcl_DeleteCommandFromToken
+	// there as the call to ${table}_destroy_ctable could fail
+	// and we want to return that failure if we can.
+	// (If we're invoked because of a rename to {} or deletion
+	// of the interpreter, we have no ability to return an error)
+
+	ctable->destroying = 1;
+	Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
+    }
+
+    // return here so we don't risk touching ctable again.
+    return TCL_OK;
+}
+
+// delete proc for Tcl so that renaming a ctable to "" and/or deleteing
+// an interpreter will cause the table to be destroyed
+//
+void ${table}_cmdDeleteProc (ClientData clientData)
+{
+    CTable *ctable = (CTable *)clientData;
+
+    // if we're not in the middle of destroying the ctable, destroy it,
+    // else do nothing
+    if (!ctable->destroying) {
+	${table}_destroy_ctable (NULL, ctable);
+    }
 }
 
 // Forward definition
@@ -461,26 +527,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_DESTROY: {
-	  if (${table}_delete_all_rows (interp, ctable, 1) != TCL_OK) {
-	      end_write(ctable);
-	      return TCL_ERROR;
-	  }
-
-          Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
-
-#ifdef WITH_SHARED_TABLES
-	  // We'll never need "ctable" again, so now we can trash it.
-	  // And, possibly, unmap the file
-	  if(ctable->share) {
-	      // abandon reservation for name
-	      release_name(ctable->share, ctable->share_name);
-
-	      // unmap file (if all reservations abandoned)
-	      unmap_file(ctable->share);
-	  }
-#endif
-	  // return here so we don't risk touching ctable again.
-	  return TCL_OK;
+	  return ${table}_destroy_ctable (interp, ctable);
       }
 
       case OPT_ATTACH: {
