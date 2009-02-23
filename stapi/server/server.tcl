@@ -43,15 +43,18 @@ namespace eval ::stapi {
   variable sql2ctable
   array set sql2ctable {
     macaddr	mac
+    name        varstring
+    text        varstring
     varchar	varstring
+    oid         int
     integer	int
     timestamp	varstring
     float8	float
     float4	float
     float2	float
     int4	int
-    int2	int
-    bool	varstring
+    int2	short
+    bool	boolean
     geometry	varstring
   }
 

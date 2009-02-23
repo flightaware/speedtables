@@ -1,5 +1,20 @@
 $Id$
 
+2/2/2009 karl
+    Add support for the PostgreSQL "name" and "text" data types by mapping
+    them to ctable's "varstring".  
+
+    Add support for the PostgreSQL "oid" data type by mapping it to ctable's
+    "int".
+
+    Change the mapping for the PostgreSQL "int2" data type from the ctable
+    "int" to the ctable "short" type.
+
+    Change the mapping for the PostgreSQL "bool" data type from the ctable
+    "varstring" to the ctable "boolean", a huge win for booleans, dropping
+    their per-row overhead from a point, a length, and allocated memory
+    to a single bit.
+
 9/18/2008 peter
     Split half of "sql_ctable_get" into "sql_create_sql" and use that from
     "sql_ctable_agwn" instead of calling "sql_ctable_get", so that we can
