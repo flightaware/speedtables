@@ -1,7 +1,9 @@
 #
 #
+# Copyright (C) 2008 by FlightAware LLC.  All Rights Reserved
 # Copyright (C) 2006 by Superconnect, Ltd.  All Rights Reserved
 #
+# Open source under the Berkeley license
 #
 # $Id$
 #
@@ -14,6 +16,10 @@ namespace eval ::stapi {
   variable default_db
   variable dio_initted 0
 
+  #
+  # set_DIO - try to create a global DIO object ::DIO with a default connection
+  #  to the database.  OK to call over and over.
+  #
   proc set_DIO {{db ""} {user ""}} {
     variable dio_initted
     if $dio_initted {
@@ -47,11 +53,21 @@ namespace eval ::stapi {
     set dio_initted 1
   }
 
+  #
+  # set_conn - tell stapi what postgresql database connection object to
+  #  use for its database connection
+  #
   proc set_conn {new_conn} {
     variable pg_conn
     set pg_conn $new_conn
   }
 
+  #
+  # conn - get the database connection that stapi is supposed to use.
+  #
+  #  Do it by returning the connection defined in a call using set_conn
+  #  or obtain it from DIO if there's a DIO object to get it from
+  #
   proc conn {} {
     variable pg_conn
 
@@ -66,6 +82,12 @@ namespace eval ::stapi {
     return [DIO handle]
   }
 
+  #
+  # exec_sql - execute some SQL.  Handle the result object.  Require
+  #  it to succeed.  If it doesn't succeed, returns a Tcl error
+  #  with the error text from pg_result and the request that caused
+  #  it to happen
+  #
   proc exec_sql {request {_err ""}} {
     if [string length $_err] { upvar 1 $_err err }
 
@@ -83,6 +105,11 @@ namespace eval ::stapi {
     return 1
   }
 
+  #
+  # exec_sql_rows - like exec_sql except a variable passed in gets set
+  #  with either the number of tuples retrieved or the number of
+  #  tuples the command altered
+  #
   proc exec_sql_rows {request _rows {_err ""}} {
     if [string length $_err] { upvar 1 $_err err }
 
@@ -112,6 +139,10 @@ namespace eval ::stapi {
     return 1
   }
 
+  #
+  # get_columns - for the specified table, get each column's name and internal
+  #  type specification and return them as a list of pairs
+  #
   proc get_columns {table} {
     set sql "SELECT a.attnum, a.attname AS col, t.typname AS type
 		FROM pg_class c, pg_attribute a, pg_type t
@@ -129,6 +160,36 @@ namespace eval ::stapi {
     return $result
   }
 
+  #
+  # better_get_columns - for the specified table, get each columns's
+  # name, "real" type specification (like "character(5)" or 
+  # "character varying") and whether or not it is null (t/f) and
+  # return a list of triplets
+  #
+  proc better_get_columns {table} {
+    set sql "SELECT a.attnum, a.attname AS col,
+		pg_catalog.format_type(a.atttypid, a.atttypmod) as type,
+		a.attnotnull as not_null
+		FROM pg_class c, pg_attribute a, pg_type t
+		WHERE c.relname = '$table'
+		  and a.attnum > 0
+		  and a.attrelid = c.oid
+		  and a.atttypid = t.oid
+		ORDER BY a.attnum;"
+    pg_select [conn] $sql row {
+      lappend result $row(col) $row(type) $row(not_null)
+    }
+    if ![info exists result] {
+      return -code error "Can't get columns for $table"
+    }
+    return $result
+  }
+
+  #
+  # read_ctable_from_sql - specify a ctable and a SQL select statement and
+  #  this code invokes the SQL statement and loads the results into the
+  #  specified ctable
+  #
   proc read_ctable_from_sql {ctable sql {_err ""}} {
     if [string length $_err] { upvar 1 $_err err }
 

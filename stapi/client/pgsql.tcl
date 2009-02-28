@@ -1,13 +1,26 @@
+#
+# STAPI PostgreSQL Client
+#
+# This stuff adds sql:// as a stapi URI and provides a way to look at
+# PostgreSQL tables as if they are ctables
+#
 # $Id$
+#
 
 package require st_client
 package require st_postgres
 
 namespace eval ::stapi {
+  #
+  # make_sql_uri - given a table name and some optional arguments like
+  #  host, user, pass, db, keys, and key, construct a sql URI that
+  #  looks like sql://...
+  #
   proc make_sql_uri {table args} {
     while {[llength $args]} {
       set arg [lindex $args 0]
       set args [lrange $args 1 end]
+
       if {![regexp {^-(.*)} $arg _ opt]} {
 	lappend cols [uri_esc $arg /?]
       } else {
@@ -35,6 +48,7 @@ namespace eval ::stapi {
 	}
       }
     }
+
     set uri sql://
     if [info exists user] {
       if [info exists pass] {
@@ -42,22 +56,29 @@ namespace eval ::stapi {
       }
       append uri $user @
     }
+
     if [info exists host] {
       append uri $host :
     }
+
     if [info exists db] {
       append uri $db
     }
+
     append uri / [uri_esc $table /?]
     if [info exists cols] {
       append uri / [join $cols /]
     }
+
     if [info exists params] {
       append uri ? [join $params &]
     }
     return $uri
   }
 
+  #
+  # uri_esc - escape a string i think for passing in a URI/URL
+  #
   proc uri_esc {string {extra ""}} {
     foreach c [split "%\"'<> $extra" ""] {
       scan $c "%c" i
@@ -66,6 +87,9 @@ namespace eval ::stapi {
     return $string
   }
 
+  #
+  # uri_unesc - unescape a string after passing it through a URI/URL
+  #
   proc uri_unesc {string} {
     foreach c [split {\\$[} ""] {
       scan $c "%c" i
@@ -76,6 +100,10 @@ namespace eval ::stapi {
   }
 
   variable sqltable_seq 0
+
+  #
+  # connect_pgsql - connect to postgres by cracking a sql uri
+  #
   proc connect_pgsql {table {address "-"} args} {
     variable sqltable_seq
 
@@ -172,6 +200,9 @@ namespace eval ::stapi {
     set ns ::stapi::sqltable[incr sqltable_seq]
 
     namespace eval $ns {
+      #
+      # ctable - 
+      #
       proc ctable {args} {
 	set level [expr {[info level] - 1}]
 	eval [list ::stapi::sql_ctable $level [namespace current]] $args
@@ -227,9 +258,13 @@ namespace eval ::stapi {
     store			sql_ctable_store
   }
 
+  #
+  # sql_ctable -
+  #
   proc sql_ctable {level ns cmd args} {
     variable ctable_commands
     variable ctable_extended_commands
+
     if {[info exists ctable_commands($cmd)]} {
       set proc $ctable_commands($cmd)
     } elseif {[info exists ctable_extended_commands($cmd)]} {
@@ -237,12 +272,17 @@ namespace eval ::stapi {
     } else {
       set proc sql_ctable_unimplemented
     }
+
     return [eval [list $proc $level $ns $cmd] $args]
   }
 
+  #
+  # sql_ctable_methods -
+  #
   proc sql_ctable_methods {level ns cmd args} {
     variable ctable_commands
     variable ctable_extended_commands
+
     return [
       lsort [
         concat [array names ctable_commands] \
@@ -251,6 +291,9 @@ namespace eval ::stapi {
     ]
   }
 
+  #
+  # sql_ctable_key - 
+  #
   proc sql_ctable_key {level ns cmd args} {
     set keys [set ${ns}::key]
     if {[llength $keys] == 1} {
@@ -260,45 +303,70 @@ namespace eval ::stapi {
     }
   }
 
+  #
+  # sql_ctable_keys -
+  #
   proc sql_ctable_keys {level ns cmd args} {
     return [set ${ns}::key]
   }
 
+  #
+  # sql_ctable_makekey
+  #
   proc sql_ctable_makekey {level ns cmd args} {
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
+
     array set array $args
     set key [set ${ns}::key]
+
     if [info exists array($key)] {
       return $array($key)
     }
+
     if [info exists array(_key)] {
       return $array(_key)
     }
     return -code error "No key in list"
   }
 
+  #
+  # sql_ctable_unimplemented
+  #
   proc sql_ctable_unimplemented {level ns cmd args} {
     return -code error "Unimplemented command $cmd"
   }
 
+  #
+  # sql_ctable_ignore_null
+  #
   proc sql_ctable_ignore_null {args} {
     return ""
   }
 
+  #
+  # sql_ctable_ignore_true
+  #
   proc sql_ctable_ignore_true {args} {
     return 1
   }
 
+  #
+  # sql_ctable_ignore_false
+  #
   proc sql_ctable_ignore_false {args} {
     return 0
   }
 
+  #
+  # sql_create_sql
+  #
   proc sql_create_sql {ns val slist} {
     if ![llength $slist] {
       set slist [set ${ns}::fields]
     }
+
     foreach arg $slist {
       if [info exists ${ns}::sql($arg)] {
 	lappend select [set ${ns}::sql($arg)]
@@ -306,13 +374,19 @@ namespace eval ::stapi {
 	lappend select $arg
       }
     }
+
     set sql "SELECT [join $select ,] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     append sql " LIMIT 1;"
+
     return $sql
   }
 
+  #
+  # sql_ctable_get - implement ctable set operation on a postgres table
+  #
   # Get list - return empty list for no data, SQL error is error
+  #
   proc sql_ctable_get {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
     set result ""
@@ -322,7 +396,11 @@ namespace eval ::stapi {
     return $result
   }
 
+  #
+  # sql_ctable_agwn
+  #
   # Get name-value list - return empty list for no data, SQL error is error
+  #
   proc sql_ctable_agwn {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
     set result {}
@@ -337,6 +415,9 @@ namespace eval ::stapi {
     return $result
   }
 
+  #
+  # sql_ctable_exists - implement a ctable exists method for SQL tables
+  #
   proc sql_ctable_exists {level ns cmd val} {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
@@ -358,6 +439,9 @@ namespace eval ::stapi {
     return $result
   }
 
+  #
+  # sql_ctable_count - implement a ctable count method for SQL tables
+  #
   proc sql_ctable_count {level ns cmd args} {
     set sql "SELECT COUNT([set ${ns}::key]) FROM [set ${ns}::table_name]"
     if {[llength $args] == 1} {
@@ -367,14 +451,23 @@ namespace eval ::stapi {
     return [lindex [sql_get_one_tuple $sql] 0]
   }
 
+  #
+  # sql_ctable_fields - implement a ctables fields method for SQL tables
+  #
   proc sql_ctable_fields {level ns cmd args} {
     return [set ${ns}::fields]
   }
 
+  #
+  # sql_ctable_type - implement a ctables "type" method for SQL tables
+  #
   proc sql_ctable_type {level ns cmd args} {
     return sql:///[set ${ns}::table_name]
   }
 
+  #
+  # sql_ctable_fieldtype - implement a ctables "fieldtype" method for SQL tables
+  #
   proc sql_ctable_fieldtype {level ns cmd field} {
     if ![info exists ${ns}::types($field)] {
       return -code error "No such field: $field"
@@ -382,20 +475,26 @@ namespace eval ::stapi {
     return [set ${ns}::types($field)]
   }
 
+  #
+  # sql_ctable_search - implement a ctable search method for SQL tables
+  #
   proc sql_ctable_search {level ns cmd args} {
     array set search $args
     if [info exists search(-array_get)] {
       return -code error "Unimplemented: search -array_get"
     }
+
     if [info exists search(-array)] {
       return -code error "Unimplemented: search -array"
     }
+
     if {![info exists search(-code)] &&
 	![info exists search(-key)] &&
 	![info exists search(-array_get_with_nulls)] &&
 	![info exists search(-array_with_nulls)]} {
 	set search(-countOnly) 1
     }
+
     set sql [${ns}::search_to_sql search]
     if {[info exists search(-countOnly)]} {
       return [lindex [sql_get_one_tuple $sql] 0]
@@ -406,12 +505,15 @@ namespace eval ::stapi {
     if [info exists search(-array_with_nulls)] {
       set array $search(-array_with_nulls)
     }
+
     if [info exists search(-array_get_with_nulls)] {
       lappend code "set $search(-array_get_with_nulls) \[array get $array]"
     }
+
     if [info exists search(-key)] {
       lappend code "set $search(-key) \$${array}(__key)"
     }
+
     lappend code $search(-code)
     lappend code "incr ${ns}::select_count"
     set ${ns}::select_count 0
@@ -419,6 +521,9 @@ namespace eval ::stapi {
     return [set ${ns}::select_count]
   }
 
+  #
+  # sql_ctable_foreach - implement a ctable foreach method for SQL tables
+  #
   proc sql_ctable_foreach {level ns cmd keyvar value code} {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] ILIKE [::stapi::quote_glob $val];"
@@ -426,36 +531,51 @@ namespace eval ::stapi {
     uplevel #$level [list pg_select [conn] $sql __key $code]
   }
 
+  #
+  # sql_ctable_destroy - implement a ctable destroy method for SQL tables
+  #
   proc sql_ctable_destroy {level ns cmd args} {
     namespace delete $ns
   }
 
+  #
+  # sql_ctable_delete - implement a ctable delete method for SQL tables
+  #
   proc sql_ctable_delete {level ns cmd key args} {
     set sql "DELETE FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key];"
     return [exec_sql $sql]
   }
 
+  #
+  # sql_ctable_set - implement a ctable set method for SQL tables
+  #
   proc sql_ctable_set {level ns cmd key args} {
     if ![llength $args] {
       return
     }
+
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
+
     foreach {col value} $args {
       if [info exists ${ns}::sql($col)] {
 	set col [set ${ns}::sql($col)]
       }
+
       lappend assigns "$col = [pg_quote $value]"
       lappend cols $col
       lappend vals [pg_quote $value]
     }
+
     set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
     append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
     set rows 0
+
     if ![exec_sql_rows $sql rows] {
       return 0
     }
+
     if {$rows > 0} {
       return 1
     }
@@ -463,6 +583,9 @@ namespace eval ::stapi {
     return [exec_sql $sql]
   }
 
+  #
+  # sql_ctable_store - implement a ctable store method for SQL tables
+  #
   proc sql_ctable_store {level ns cmd args} {
     if {[llength $args] == 1} {
       set args [lindex $args 0]
@@ -474,10 +597,23 @@ namespace eval ::stapi {
     ]
   }
 
+  #
+  # sql_ctable_needs_quoting
+  #
   proc sql_ctable_needs_quoting {level ns cmd args} { sql_ctable_unimplemented }
+
+  #
+  # sql_ctable_names
+  #
   proc sql_ctable_names {level ns cmd args} { sql_ctable_unimplemented }
+
+  #
+  # sql_ctable_read_tabsep
+  #
   proc sql_ctable_read_tabsep {level ns cmd args} { sql_ctable_unimplemented }
 
+  #
+  # search_to_sql
   #
   # This is never evaluated directly, it's only copied into a namespace
   # with [info body], so variables are from $ns and anything in ::stapi
@@ -500,6 +636,7 @@ namespace eval ::stapi {
           lappend select "$key AS __key"
 	}
       }
+
       if [info exists req(-fields)] {
         set cols $req(fields)
       } else {
@@ -624,6 +761,9 @@ namespace eval ::stapi {
     return $sql
   }
 
+  #
+  # sql_get_one_tuple
+  #
   # Get one tuple from request
   # Two calling sequences:
   #   set result [sql_get_one_tuple $sql]
@@ -662,6 +802,9 @@ namespace eval ::stapi {
     return $result
   }
 
+  #
+  # quote_glob - 
+  #
   proc quote_glob {pattern} {
     regsub -all {[%_]} $pattern {\\&} pattern
     regsub -all {@} $pattern {@%} pattern
@@ -675,6 +818,9 @@ namespace eval ::stapi {
     return [pg_quote $pattern]
   }
 
+  #
+  # connect_sql
+  #
   # Helper routine to shortcut the business of creating a URI and connecting
   # with the same keys. Using this implicitly pulls in stapi::extend inside connect
   # if it hasn't already been pulled in.

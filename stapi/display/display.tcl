@@ -52,20 +52,24 @@ catch { ::itcl::delete class STDisplay }
 	  set table $ctable
 	  unset ctable
 	}
+
         # If it's not already an extended table, treat it like a URI
         if {[info exists table] && ![::stapi::extend::extended $table]} {
 	  set uri $table
 	  unset table
         }
+
 	if {![info exists table]} {
 	  if ![info exists uri] {
 	    return -code error "No table or uri"
 	  }
+
 	  if ![info exists keyfields] {
 	    if [info exists key] {
 	      set keyfields [list $key]
 	    }
 	  }
+
 	  if [info exists keyfields] {
 	    set table [::stapi::connect $uri -keys $keyfields]
 	  } else {
@@ -78,6 +82,7 @@ catch { ::itcl::delete class STDisplay }
 	    set keyfields [list $key]
 	  } else {
 	    set mlist [$table methods]
+
 	    if {[lsearch $mlist "key"] >= 0} {
 	      set keyfields [list [$table key]]
 	    } else {
@@ -122,6 +127,7 @@ catch { ::itcl::delete class STDisplay }
 
     method debug {args} {
 	set show $debug
+
 	if {"[lindex $args 0]" == "-force"} {
 	    set show 1
 	    set args [lrange $args 1 end]
@@ -333,9 +339,11 @@ catch { ::itcl::delete class STDisplay }
 	if {[info exists NameTextMap($fld)]} {
 	    set fld $NameTextMap($fld)
 	}
+
 	if {[info exists FieldNameMap($fld)]} {
 	    set fld $FieldNameMap($fld)
 	}
+
 	if {[lsearch $fields $fld] < 0} {
 	    if {$complain} {
 	        return -code error "No field name for $fld"
@@ -351,9 +359,11 @@ catch { ::itcl::delete class STDisplay }
 	if {[info exists NameTextMap($fld)]} {
 	    return $NameTextMap($fld)
 	}
+
 	if {[info exists FieldNameMap($fld)]} {
 	    return $fld
 	}
+
 	if {[lsearch $fields $fld] < 0} {
 	    if {"$fld" == "-key-"} {
 		if {[llength $keyfields] == 1} {
@@ -362,6 +372,7 @@ catch { ::itcl::delete class STDisplay }
 		    return _key
 		}
 	    }
+
 	    if {$complain} {
 	        return -code error "No field name for $fld"
 	    }
@@ -381,6 +392,7 @@ catch { ::itcl::delete class STDisplay }
 	            field $key -text [string totitle $text]
 		}
 	    }
+
 	    foreach fld [$table fields] {
 		if {[lsearch $keyfields $fld] < 0} {
 		    set text $fld
@@ -389,6 +401,7 @@ catch { ::itcl::delete class STDisplay }
 		}
 	    }
 	}
+
 	if {[llength $fields] <= 0} {
 	    return -code error "No fields defined for display."
 	}
@@ -529,12 +542,14 @@ catch { ::itcl::delete class STDisplay }
 	    set all 0
 	}
 	set selection [get_selection $all]
+
 	if {"$op" == "-"} {
 	    set first [lsearch $selection $val]
 	    if {$first >= 0} {
 		set selection [lreplace $selection $first $first]
 	    }
 	}
+
 	$f hidden ct_sel -value [escape_cgi $selection]
     }
 
@@ -542,6 +557,7 @@ catch { ::itcl::delete class STDisplay }
 	# Special cases first
 	if [info exists response(mode)] {
  	    set val $response(mode)
+
 	    if [string match {*[+ -]*} $val] {
 		set val [lindex {List Search} [info exists response(query)]]
 	    }
@@ -575,9 +591,11 @@ catch { ::itcl::delete class STDisplay }
 	hide_hidden_vars $form
 	hide_selection $form
 	$form hidden mode -value Save
+
 	if [info exists response(mode)] {
 	    $form hidden DIODfromMode -value [escape_cgi $response(mode)]
 	}
+
 	$form hidden DIODkey -value [escape_cgi [makekey array]]
 	puts {<TABLE CLASS="DIOForm">}
 
@@ -587,7 +605,11 @@ catch { ::itcl::delete class STDisplay }
 	# record (and it should), put that in as the default
 	foreach field $fields {
 	    set name [$field name]
-	    if [info exists alias($name)] { continue }
+
+	    if [info exists alias($name)] { 
+		continue
+	    }
+
 	    if {[info exists response(by)] && $response(by) == $name} {
 		if {![$field readonly] && $response(query) != ""} {
 		    $field value $response(query)
@@ -600,6 +622,7 @@ catch { ::itcl::delete class STDisplay }
 	puts "<TABLE CLASS=DIOFormSaveButton>"
 	puts "<TR CLASS=DIOFormSaveButton>"
 	puts "<TD CLASS=DIOFormSaveButton>"
+
 	if {![lempty $save]} {
 	    $form image save -src $save -class DIOFormSaveButton
 	} else {
@@ -607,6 +630,7 @@ catch { ::itcl::delete class STDisplay }
 	}
 	puts "</TD>"
 	puts "<TD CLASS=DIOFormSaveButton>"
+
 	if {![lempty $cancel]} {
 	    $form image cancel -src $cancel -class DIOFormSaveButton
 	} else {
@@ -639,8 +663,10 @@ catch { ::itcl::delete class STDisplay }
 	if {$first > $pages - 5} {
 	  set first [expr $pages - 5]
 	}
+
         if {$first > 1} {
 	  lappend pagelist 1 1
+
 	  if {$first > 10} {
 	    lappend pagelist ".." 0
 	    set mid [expr $first / 2]
@@ -649,9 +675,11 @@ catch { ::itcl::delete class STDisplay }
 	      lappend pagelist $quarter $quarter
 	      lappend pagelist ".." 0
 	    }
+
 	    if {$first < $pages - 4} {
 	      set first [expr $response(page) - 1]
 	    }
+
 	    lappend pagelist $mid $mid
 	    if {$first - $mid > 10 && $response(page) > $pages - 20} {
 	      lappend pagelist ".." 0
@@ -659,6 +687,7 @@ catch { ::itcl::delete class STDisplay }
 	      lappend pagelist $quarter $quarter
 	    }
 	  }
+
 	  if {$first > 3} {
 	    lappend pagelist ".." 0
 	  } elseif {$first > 2} {
@@ -667,19 +696,24 @@ catch { ::itcl::delete class STDisplay }
 	} else {
 	  set first 1
 	}
+
 	set last [expr $response(page) + 3]
 	if {$last < $pages - 10 && $last > 3} {
 	  set last [expr $response(page) + 1]
 	}
+
 	if {$last < 5} {
 	  set last 5
 	}
+
 	if {$last > $pages} {
 	  set last $pages
 	}
+
 	for {set i $first} {$i <= $last} {incr i} {
 	  lappend pagelist $i $i
 	}
+
 	if {$last < $pages} {
 	  if {$last < $pages - 2} {
 	    lappend pagelist ".." 0
@@ -687,6 +721,7 @@ catch { ::itcl::delete class STDisplay }
 	    incr last
 	    lappend pagelist $last $last
 	  }
+
 	  if {$last < $pages - 10} {
 	    set mid [expr ( $pages + $last ) / 2]
 	    if {$last < $mid - 10 && $response(page) < 20} {
@@ -694,6 +729,7 @@ catch { ::itcl::delete class STDisplay }
 	      lappend pagelist $quarter $quarter
 	      lappend pagelist ".." 0
 	    }
+
 	    lappend pagelist $mid $mid
 	    lappend pagelist ".." 0
 	    if {$mid < $pages - 20 && $response(page) < 20} {
@@ -711,11 +747,13 @@ catch { ::itcl::delete class STDisplay }
 	  } else {
 	    set html {<A HREF="}
 	    set list {}
+
 	    foreach var {mode query by how sort rev num} {
 	      if {[info exists response($var)]} {
 	        lappend list $var $response($var)
 	      }
 	    }
+
 	    lappend list page $p
 	    append html [document $list]
 	    append html "\">$n</A>"
@@ -726,21 +764,26 @@ catch { ::itcl::delete class STDisplay }
 	if {"$end" == "Bottom"} {
 	  puts "<BR/>"
 	}
+
 	set class [get_css_class TABLE DIONavButtons ${pref}NavButtons]
 	puts "<TABLE WIDTH=\"100%\" CLASS=\"$class\">"
 	puts "<TR CLASS=\"$class\">"
         puts "<TD CLASS=\"$class\">"
 	puts "<FONT SIZE=-1>"
+
 	if {"$end" == "Top"} {
 	  puts "$count records; page:"
 	} else {
 	  puts "Go to page"
 	}
+
 	foreach link $navbar {
 	  puts "$link&nbsp;"
 	}
+
         puts "</FONT>"
 	puts "</TD>"
+
 	if {"$end" == "Top" && $pages>10} {
 	  set f [::form #auto]
 	  $f start -method get
@@ -766,17 +809,22 @@ catch { ::itcl::delete class STDisplay }
 
     method rowheader {{total 0}} {
 	set fieldList $fields
-	if {![lempty $rowfields]} { set fieldList $rowfields }
+	if {![lempty $rowfields]} {
+	    set fieldList $rowfields
+	}
 
 	set rowcount 0
 
 	puts <P>
 
-	if {$topnav} { page_buttons Top $total }
+	if {$topnav} {
+	    page_buttons Top $total
+	}
 
 	puts {<TABLE BORDER WIDTH="100%" CLASS="DIORowHeader">}
 	puts "<TR CLASS=DIORowHeader>"
         set W [expr {100 / [llength $fieldList]}]
+
 	foreach field $fieldList {
 	    set name [$field name]
 	    set text [$field text]
@@ -784,28 +832,34 @@ catch { ::itcl::delete class STDisplay }
 	    regsub -all $labelsplit $text "<BR>" text
 	    set col_title ""
 	    set col_title_text $text
+
 	    if [info exists hovertext($name)] {
 		set col_title " title=\"$hovertext($name)\""
 		set col_title_text "<span$col_title>$text</span>"
 	    }
+
 	    if {![sortable $name]} {
 		set html $col_title_text
 	    } else {
 	        set html ""
 	        set list {}
+
 		foreach var {mode query by how num} {
 		    if {[info exists response($var)]} {
 			lappend list $var $response($var)
 			set sep "&"
 		    }
 		}
+
 	        lappend list sort $name
 		set a_attr ""
+
 		if {[info exists response(sort)] && "$response(sort)" == "$name"} {
 		    set rev 1
 		    if {[info exists response(rev)]} {
 			set rev [expr 1 - $response(rev)]
 		    }
+
 		    lappend list rev $rev
 		    append html "$col_title_text&nbsp;"
 
@@ -817,6 +871,7 @@ catch { ::itcl::delete class STDisplay }
 			    }
 			}
 		    }
+
 		    set text [lindex $arrows $desc]
 		    set a_attr " class=DIOArrow"
 		}
@@ -847,15 +902,19 @@ catch { ::itcl::delete class STDisplay }
 	set alt [altrow]
 
 	set fieldList $fields
-	if {![lempty $rowfields]} { set fieldList $rowfields }
+	if {![lempty $rowfields]} {
+	    set fieldList $rowfields
+	}
 
 	puts "<TR CLASS=\"DIORowField$alt\">"
 	foreach field $fieldList {
 	    set name [$field name]
 	    set column $name
+
 	    if [info exists alias($name)] {
 		set column $alias($name)
 	    }
+
 	    set class [get_css_class TD DIORowField$alt DIORowField$alt-$name]
 
 	    set text [column_value $name a]
@@ -863,6 +922,7 @@ catch { ::itcl::delete class STDisplay }
 	    if ![string length $text] {
 		set text "&nbsp;"
 	    }
+
 	    set attr NOWRAP
 	    if [info exists attributes($name)] {
 		append attr " $attributes($name) "
@@ -882,6 +942,7 @@ catch { ::itcl::delete class STDisplay }
 	    hide_selection $f
 	    $f hidden query -value [escape_cgi [makekey a]]
 	    $f hidden by -value [escape_cgi $key]
+
 	    if {[llength $rowfunctions] > 2} {
 	      $f select mode -values $rowfunctions -class DIORowFunctionSelect$alt
 	      $f submit submit -value "Go" -class DIORowFunctionButton$alt
@@ -906,6 +967,7 @@ catch { ::itcl::delete class STDisplay }
 
 	    set skip 0
 	    set row {}
+
 	    foreach field $fieldList {
 	        set name [$field name]
 	        if [info exists lastrow($name)] {
@@ -918,13 +980,16 @@ catch { ::itcl::delete class STDisplay }
 		    incr skip
 		}
 	    }
+
 	    if [llength $row] {
 		if {![lempty $rowfunctions] && "$rowfunctions" != "-"} {
 		    incr skip
 		}
+
 		if {$skip > 0} {
 		    lappend row "<TD CLASS=\"$rowclass\" span=$skip>&nbsp;</TD>"
 		}
+
 		puts "<TR CLASS=\"rowclass\">"
 		puts [join $row " "]
 		puts "</TR>"
@@ -932,7 +997,9 @@ catch { ::itcl::delete class STDisplay }
 	}
 	puts "</TABLE>"
 
-	if {$bottomnav} { page_buttons Bottom $total }
+	if {$bottomnav} {
+	   page_buttons Bottom $total
+       }
     }
 
     ## Check field's "sortability"
@@ -1018,11 +1085,13 @@ catch { ::itcl::delete class STDisplay }
         foreach val $values name $keyfields {
 	    lappend selector [list = $name $val]
         }
+
 	foreach {k v} $limit {
 	    regsub {^-} $k "" k
 	    lappend selector [list = $k $v]
 	    set array($k) $v
 	}
+
 	return 1
     }
 
@@ -1035,6 +1104,7 @@ catch { ::itcl::delete class STDisplay }
 	set changed 0
 	foreach list $compare {
 	    set op [lindex $list 0]
+
 	    if {"$op" == "<>"} {
 		    set list [concat {!=} [lrange $list 1 end]]
 		    set changed 1
@@ -1046,15 +1116,18 @@ catch { ::itcl::delete class STDisplay }
 		    l { append op _case; set fn tolower }
 		    x { append op _case }
 		}
+
 		set pat [lindex $list 2]
 		if [info exists fn] {
 		    set pat [string $fn $pat]
 		}
+
 		set list [concat $op [lindex $list 1] [list $pat]] 
 		set changed 1
 	    }
 	    lappend new_compare $list
 	}
+
 	if {$changed} {
 	    set compare $new_compare
 	}
@@ -1170,21 +1243,25 @@ catch { ::itcl::delete class STDisplay }
 
     method set_limit {_request {selector {}}} {
 	upvar 1 $_request request
+
 	if [info exists request(-compare)] {
 	    set request(-compare) [concat $request(-compare) $selector]
 	} else {
 	    set request(-compare) $selector
 	}
+
 	make_limit_selector {} request(-compare)
 	if [llength $request(-compare)] {
 	    return 1
         }
+
 	unset request(-compare)
 	return 0
     }
 
     method set_order {_request} {
 	upvar 1 $_request request
+
 	if {"[set sort [request_to_sort]]" != ""} {
 	    set request(-sort) $sort
 	}
@@ -1192,10 +1269,12 @@ catch { ::itcl::delete class STDisplay }
 
     method set_page {_request} {
 	upvar 1 $_request request
+
 	set recno [get_offset]
 	if {$recno > 0} {
 	    set request(-offset) $recno
 	}
+
 	if {$pagesize > 0} {
 	    set request(-limit) $pagesize
 	}
@@ -1232,13 +1311,16 @@ catch { ::itcl::delete class STDisplay }
 	    regsub -all { *<[^>]*> *} $label " " label
 	    lappend textlist $label
 	}
+
         if [info exists textlist] {
 	    puts $fp [::csv::join $textlist]
 	}
 
 	perform request -array_with_nulls a -key k -code {
+
 	    # If there's no fields defined, then use the columns we got from
 	    # the query and put their names out as the first line
+
 	    if {![llength $columns]} {
 		set columns [array names a]
 		puts $fp [::csv::join $columns]
@@ -1260,19 +1342,23 @@ catch { ::itcl::delete class STDisplay }
 	puts "<TR CLASS=DIOForm><TD CLASS=DIOForm VALIGN=MIDDLE WIDTH=100%>"
 	# save hidden vars
 	hide_hidden_vars $form
+
 	# save form vars so state isn't lost
 	foreach {n v} [state] {
 	    $form hidden $n -value [escape_cgi $v]
         }
+
 	# save search
 	hide_selection $form
 	# save query for generation
 	$form hidden ct_csv -value [escape_cgi $query]
+
         if $csvredirect {
 	    set csvlabel "Download CSV file"
 	} else {
 	    set csvlabel "Generate CSV file"
 	}
+
 	$form submit submit -value $csvlabel \
 			-class DIOMainSubmitButton
 

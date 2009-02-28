@@ -1,5 +1,16 @@
 $Id$
 
+2/28/2009 karl
+    Add new proc to st_postgres, better_get_columns, which returns triples
+    of all the columns of a table... their name, real SQL type (not
+    postgresql internal type as with get_columns), and whether the column
+    is defined "not null" or not.
+
+    Add comment headers to procs in many places.
+
+    Deconstipate the code by adding blank lines around "if" and "foreach"
+    bodies, a blank line between variable definitions and the code, etc.
+
 2/2/2009 karl
     Add support for the PostgreSQL "name" and "text" data types by mapping
     them to ctable's "varstring".  

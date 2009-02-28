@@ -248,14 +248,17 @@ namespace eval ::stapi {
       if {[llength $arg] > 3} {
         set options($field) [lrange $arg 3 end]
       }
+
       if {"$type" == ""} {
 	set type varchar
       }
+
       if ![info exists ctable_key] {
         set ctable_key $field
       } else {
         lappend fields $field $type
       }
+
       if {"$expr" == ""} {
 	lappend selected $field
       } else {
@@ -289,6 +292,7 @@ namespace eval ::stapi {
       if [info exists sql2ctable($t)] {
         set t $sql2ctable($t)
       }
+
       if [info exists options($n)] {
 	lappend ctable "$t\t[concat $n $options($n)];"
       } else {
@@ -372,12 +376,15 @@ namespace eval ::stapi {
 	}
       }
     }
+
     if {[llength $args] == 0} {
       return -code error "No columns specified"
     }
+
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
+
     if {[llength $args] <= 1} {
       return -code error "Not enough columns specified"
     }
@@ -386,15 +393,19 @@ namespace eval ::stapi {
     if {$temp} {
       append create_sql " TEMP"
     }
+
     append create_sql " TABLE $table_name"
+
     foreach column $args {
       foreach {field type} $column { break }
       lappend code "$field $type"
     }
+
     append create_sql " ([join $code ", "])"
     if {"$tablespace" != ""} {
       append create_sql " TABLESPACE $tablespace"
     }
+
     append create_sql ";"
 
     exec_sql $create_sql

@@ -6,16 +6,20 @@ package require Tclx
 namespace eval ::stapi {
   variable locking 0
   variable lock_level
+
   proc lockfile {name _err {timeout 120} {recursing 0}} {
     # debug [info level 0]
     variable lock_level
+
     if ![info exists lock_level($name)] {
       set lock_level($name) 0
     }
+
     if {$lock_level($name) > 0} {
       incr lock_level($name)
       return 1
     }
+
     upvar 1 $_err err
 
     # We allow one level of recursive locking to set a lock around a lockfile
@@ -28,19 +32,24 @@ namespace eval ::stapi {
       }
       set locking 1
     }
+
     set tempfile $name.[pid]
     set lockfile $name.lock
     set fp [open $tempfile w]
     puts $fp [pid]
     close $fp
+
     set sleep_time [expr {9500 + [pid] % 1000}]
     set retries [expr {($timeout * 10000) / $sleep_time}]
     set final_err "Timeout creating lock file for $name"
     set lockfile_locked 0
+
     while {$retries > 0} {
       # careful! Keep track of whether we're ok and locked separately
       set ok 1
+
       # First, if we're not already recursing to lock a lockfile, lock it
+
       if !$recursing {
 	set ok 0
 	if [lockfile $lockfile errmsg 20 1] {
@@ -49,6 +58,7 @@ namespace eval ::stapi {
 	  set ok 1
 	}
       }
+
       # If we're OK (locked or recursing)...
       if $ok {
 	# If we can't lock, set not OK
@@ -62,11 +72,13 @@ namespace eval ::stapi {
 	  set ok 0
 	}
       }
+
       # whether OK or not, if we locked the lockfile, we own it, release lock
       if $lockfile_locked {
 	unlockfile $lockfile
 	set lockfile_locked 0
       }
+
       # If OK, tempfile should have been removed in the rename
       if $ok {
         if ![file exists $tempfile] {
@@ -80,6 +92,7 @@ namespace eval ::stapi {
 	set final_err "Temp file can't be removed"
 	break
       }
+
       # At this point, we've been unable to lock...
       if {!$recursing} {
 	# We're not locking the lockfile, so lock the lockfile...
@@ -110,19 +123,23 @@ namespace eval ::stapi {
 	  set lockfile_locked 0
 	}
       }
+
       # try again
       incr retries -1
       after $sleep_time
     }
+
     # If we broke out of the loop with a lock on the lockfile, release it
     if $lockfile_locked {
       unlockfile $lockfile
       set lockfile_locked 0
     }
+
     # dump the tempfile
     catch {file delete $tempfile}
     set err $final_err
     debug "NOT LOCKED $name $err"
+
     # And note that we're out
     if !$recursing {
       set locking 0
@@ -132,18 +149,22 @@ namespace eval ::stapi {
 
   proc unlockfile {name} {
     variable lock_level
+
     if ![info exists lock_level($name)] {
       set lock_level($name) 0
     }
+
     # debug "UNLOCK $name (level $lock_level($name))"
     if {$lock_level($name) <= 0} {
       set lock_level($name) 0
       return -code error "Unlocking when not locked!"
     }
+
     incr lock_level($name) -1
     if {$lock_level($name) > 0} {
       return
     }
+
     set lock_level($name) 0
     file delete $name.lock
   }
