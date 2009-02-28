@@ -1,5 +1,7 @@
 ==== st_server ====
 
+package require st_server
+
 ::stapi::init ?options?
 
    Options:

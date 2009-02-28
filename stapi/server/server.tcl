@@ -837,10 +837,13 @@ namespace eval ::stapi {
 
       lappend columns $column
     }
+
     # debug "from_table --> [concat $columns $extra_columns]"
     return [concat $columns $extra_columns]
   }
 
+  #
+  # open_raw_ctable
   #
   # Open an initialized ctable but don't fetch anything from SQL, used
   # internally, and useful for temporary tables, copies, etcetera...

@@ -156,23 +156,28 @@ namespace eval ::stapi {
     if [info exists vars(_keys)] {
       regsub -all {[+: ]+} $vars(_keys) ":" vars(_keys)
       set keys [split $vars(_keys) ":"]
+
       if {[llength $keys] == 1} {
 	set vars(_key) [lindex $keys 0]
       } elseif {[llength $keys] > 1} {
 	set list {}
+
         foreach field $keys {
 	  if [info exists vars($field)] {
 	    lappend list $vars($field)
 	  } else {
 	    set type varchar
+
 	    if {[info exists field2type($field)]} {
 	      set type $field2type($field)
 	    }
+
 	    if {"$type" == "varchar" || "$type" == "text"} {
 	      lappend list $field
 	    } else {
 	      lappend list TEXT($field)
 	    }
+
 	  }
 	}
 	set vars(_key) [join $list "||':'||"]
@@ -185,6 +190,7 @@ namespace eval ::stapi {
       } else {
 	lappend fields $field
       }
+
       if [info exists params($field)] {
         set field2sql($field) $params($field)
 	unset params($field)
@@ -390,9 +396,11 @@ namespace eval ::stapi {
   proc sql_ctable_get {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
     set result ""
+
     if {![sql_get_one_tuple $sql result]} {
       error $result
     }
+
     return $result
   }
 
@@ -404,6 +412,7 @@ namespace eval ::stapi {
   proc sql_ctable_agwn {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
     set result {}
+
     switch -- [sql_get_one_tuple $sql vals] {
       1 {
         foreach arg $args val $vals {
@@ -412,6 +421,7 @@ namespace eval ::stapi {
       }
       0 { error $vals }
     }
+
     return $result
   }
 
@@ -431,6 +441,7 @@ namespace eval ::stapi {
     } else {
       set result [pg_result $pg_res -numTuples]
     }
+
     pg_result $pg_res -clear
 
     if !$ok {
@@ -444,9 +455,11 @@ namespace eval ::stapi {
   #
   proc sql_ctable_count {level ns cmd args} {
     set sql "SELECT COUNT([set ${ns}::key]) FROM [set ${ns}::table_name]"
+
     if {[llength $args] == 1} {
       append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
     }
+
     append sql ";"
     return [lindex [sql_get_one_tuple $sql] 0]
   }
@@ -480,6 +493,7 @@ namespace eval ::stapi {
   #
   proc sql_ctable_search {level ns cmd args} {
     array set search $args
+
     if [info exists search(-array_get)] {
       return -code error "Unimplemented: search -array_get"
     }
@@ -777,7 +791,9 @@ namespace eval ::stapi {
     if [string length $_result] {
       upvar 1 $_result result
     }
+
     set pg_res [pg_exec [conn] $req]
+
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
     } elseif {[pg_result $pg_res -numTuples] == 0} {
@@ -785,6 +801,7 @@ namespace eval ::stapi {
     } else {
       set result [pg_result $pg_res -getTuple 0]
     }
+
     pg_result $pg_res -clear
 
     if [string length $_result] {
