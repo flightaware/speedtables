@@ -72,7 +72,7 @@ namespace eval ::stapi {
     int4	                   int
     serial                         int
 
-    interval                       int
+    interval                       varstring
 
     int2                           short
     smallint                       short
@@ -473,11 +473,14 @@ namespace eval ::stapi {
   # Options begin with a dash:
   #   -pat pattern
   #      Equivalent to the pattern positional option
+  #
   #   -time cache_timeout
   #      Override the default cache timeout.
+  #
   #   -col name
   #      Name of column in the SQL file that contains the last_changed time of
   #      each entry, if any.
+  #
   #   -index field_name
   #      Name of a field to create an index on. Multiple -index are allowed.
   # 
