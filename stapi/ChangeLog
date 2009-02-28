@@ -6,6 +6,11 @@ $Id$
     postgresql internal type as with get_columns), and whether the column
     is defined "not null" or not.
 
+    Switch to parsing native SQL data type definitions rather than
+    internal PostgreSQL ones when extracting ctable definition
+    info by querying metadata about a SQL table definition.  We can
+    now handle pretty much all native PostgreSQL data types in ctables.
+
     Add comment headers to procs in many places.
 
     Deconstipate the code by adding blank lines around "if" and "foreach"

@@ -42,20 +42,50 @@ namespace eval ::stapi {
   # Mapping from sql column types to ctable field types
   variable sql2ctable
   array set sql2ctable {
-    macaddr	mac
-    name        varstring
-    text        varstring
-    varchar	varstring
-    oid         int
-    integer	int
-    timestamp	varstring
-    float8	float
-    float4	float
-    float2	float
-    int4	int
-    int2	short
-    bool	boolean
-    geometry	varstring
+    "character varying"           varstring
+    varchar	                  varstring
+    name                          varstring
+    text                          varstring
+
+    timestamp                      varstring
+    "timestamp without time zone"  varstring
+    "timestamp with time zone"     varstring
+    date                           varstring
+
+    time                           varstring
+    "time with time zone"          varstring
+    "time without time zone"       varstring
+
+    uuid                           varstring
+    xml                            varstring
+    tsquery                        varstring
+    tsvector                       varstring
+
+    macaddr	                   mac
+
+    oid                            int
+
+    bigint                         long
+    int8                           long
+
+    integer	                   int
+    int4	                   int
+    serial                         int
+
+    interval                       int
+
+    int2                           short
+    smallint                       short
+
+    float2	                   float
+    float4	                   float
+    real                           float
+
+    float8	                   double
+    "double precision"             double
+
+    bool	                   boolean
+    geometry	                   varstring
   }
 
   # Mapping from ctable field types to sql column types
@@ -289,14 +319,34 @@ namespace eval ::stapi {
     # Assemble the ctable definition as a list of lines, from the type-map
     # table (static), the options table (parsed), and the list of fields. 
     foreach {n t} $fields {
+      set width ""
+
+      # is it "something(n)"? handle those special cases
+      if {[regexp {([^(]*)\([0-9]*} $t dummy baseType] == 1} {
+
+	    # is it "charater(n)?"
+	    if {[regexp {character\(([^)]*)} $t dummy count] == 1} {
+	      set t "fixedstring"
+	      set width " $count"
+
+	    # is it "character varying(n)?"
+            } elseif {[regexp {character varying} $t dummy] == 1} {
+		set t "varstring"
+	    } else {
+		# none of the above, strip the () and try to keep going
+		set t $baseType
+	    }
+      }
+
+      # can we direct lookup this thing in our table?
       if [info exists sql2ctable($t)] {
         set t $sql2ctable($t)
       }
 
       if [info exists options($n)] {
-	lappend ctable "$t\t[concat $n $options($n)];"
+	lappend ctable "$t\t[concat $n $width $options($n)];"
       } else {
-        lappend ctable "$t\t$n;"
+        lappend ctable "$t\t$n$width;"
       }
     }
 
@@ -714,15 +764,20 @@ namespace eval ::stapi {
   #   -with column
   #      Include column name in table. If any "-with" clauses are provided,
   #      only the named columns will be included
+  #
   #   -without column
   #      Exclude column name from table. You must not provide both "-with"
   #      and "-without" options.
+  #
   #   -index column
   #      Make this column indexable
+  #
   #   -column {name type ?sql? ?args}
   #      Add an explicit derived column
+  #
   #   -table name
   #      If specified, generate implicit column-name as "table.column"
+  #
   #   -prefix text
   #      If specified, prefix column names with "$prefix"
   #
@@ -751,13 +806,16 @@ namespace eval ::stapi {
     }
 
     # Get the raw list of all columns in the table
-    set raw_cols [get_columns $table_name]
-    array set types $raw_cols
+    set raw_cols [better_get_columns $table_name]
+    foreach "column type notnull" $raw_cols {
+	set types($column) $type
+    }
 
     set columns {}
 
     # If keys specified (not necessarily going to be any if we're building
     # a complex ctable using multiple SQL tables)
+
     if [llength $keys] {
       foreach key $keys {
         if [info exists types($key)] {
@@ -785,6 +843,7 @@ namespace eval ::stapi {
     # If we have any "-column" entries, don't pull in the same column
     # from the raw columns. If we're prefixing the raw_columns, only
     # watch for the extra column if we can whack the prefix off the name.
+
     foreach column $extra_columns {
       set field [lindex $column 0]
       if [info exists prefix] {
@@ -800,7 +859,8 @@ namespace eval ::stapi {
     # name with the prefix if needed, create the final SQL for the column
     # with the "table." prefix if needed, and assemble a 2, 3, or 4+ element
     # list of {name type ?sql? ?options?}...
-    foreach {raw_col type} $raw_cols {
+
+    foreach {raw_col type notnull} $raw_cols {
       if {[lsearch -exact $with $raw_col] == -1} {
 	continue
       }
@@ -824,6 +884,9 @@ namespace eval ::stapi {
       }
 
       set column [list $field $type]
+      if {$notnull} {
+	  lappend options notnull 1
+      }
 
       if {"$field" != "$sql"} {
 	lappend column $sql
