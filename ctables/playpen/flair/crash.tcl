@@ -9,7 +9,8 @@ package require ctable
 CExtension Meowmix 1.1 {
 
 CTable Meow {
-    varstring value indexed 1 default stinky
+    varstring value indexed 1  notnull 1 default stinky
+    #default stinky
 }
 
 }
