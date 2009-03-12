@@ -51,12 +51,13 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
     int mightBeTheLastOne;
 
     // if there's an object following me, make his prev be my prev
-    if (row->_ll_nodes[i].next == NULL) {
-        mightBeTheLastOne = 1;
-    } else {
+    if (row->_ll_nodes[i].next != NULL) {
         // set the next guy's prev ptr to be my prev ptr
         row->_ll_nodes[i].next->_ll_nodes[i].prev = row->_ll_nodes[i].prev;
 	mightBeTheLastOne = 0;
+    } else {
+	// else note that there was nothing following me
+        mightBeTheLastOne = 1;
     }
 
     // make my prev's next (or header) point to my next
