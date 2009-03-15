@@ -172,7 +172,7 @@ puts "ok"
 
 puts -nonewline "testing 'methods'..."
 set methlab [
-  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach key makekey methods attach getprop share null isnull
+  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach key makekey methods attach getprop share null isnull verify
 ]
 set methods [t methods]
 if {"$methods" != "$methlab"} {
@@ -260,18 +260,18 @@ if {[catch {t field alive asdf} result] == 1} {
 }
 
 if {[catch {t field alive proplist} result] == 1} {
-    error "didn't expect an error"
+    error "didn't expect an error - $result"
 } else {
-    if {$result != "default 1 name alive type boolean"} {
-       error "didn't get intended result"
+    if {$result != "default 1 name alive notnull 1 type boolean"} {
+       error "didn't get intended result - got $result"
     }
 }
 
 if {[catch {t field alive properties} result] == 1} {
-    error "didn't expect an error"
+    error "didn't expect an error - $result"
 } else {
-    if {$result != "default name type"} {
-       error "didn't get intended result"
+    if {$result != "default name notnull type"} {
+       error "didn't get intended result - got $result"
     }
 }
 
@@ -285,18 +285,18 @@ if {[catch {t field alive getprop} result] == 1} {
 }
 
 if {[catch {t field alive getprop type} result] == 1} {
-    error "didn't expect an error"
+    error "didn't expect an error - $result"
 } else {
     if {$result != "boolean"} {
-       error "didn't get intended result"
+       error "didn't get intended result - got $result"
     }
 }
 
 if {[catch {t field alive getprop default} result] == 1} {
-    error "didn't expect an error"
+    error "didn't expect an error - $result"
 } else {
     if {$result != "1"} {
-       error "didn't get intended result"
+       error "didn't get intended result - got $result"
     }
 }
 puts "ok"

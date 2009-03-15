@@ -31,7 +31,8 @@ proc dostuff {} {
 	switch $what {
 	    0 {
 		set value [random 10000]
-		doputs "m set $key key $key value $value"
+		#doputs "m set $key key $key value $value"
+		doputs "m set $key value $value"
 	    }
 
 	    1 {
@@ -40,7 +41,8 @@ proc dostuff {} {
 	    }
 
 	    2 {
-		doputs "m set $key key $key value {}"
+		#doputs "m set $key key $key value {}"
+		doputs "m set $key value {}"
 	    }
 
 	    3 {

@@ -23,6 +23,10 @@ test: sysconfig.tcl
 	@echo TCLLIBPATH=${TCLLIBPATH}
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make"
 
+flairtest: sysconfig.tcl
+	@echo TCLLIBPATH=${TCLLIBPATH}
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd playpen/flair; tclsh crash2.tcl"
+
 mttest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make multitable"
 

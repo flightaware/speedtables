@@ -136,9 +136,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     int indexCtl;
     int commandStatus = TCL_OK;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, NUM_OPTIONS
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
@@ -1500,6 +1500,26 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	Tcl_SetObjResult(interp, result);
+	return TCL_OK;
+      }
+
+      case OPT_VERIFY: {
+        int verbose = 0;
+
+	if (objc > 3) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "?-verbose?");
+	    return TCL_ERROR;
+	}
+	if (objc >= 3) {
+	    char *opt = Tcl_GetString(objv[2]);
+	    if (strcmp (opt, "-verbose") != 0) {
+		Tcl_AppendResult (interp, "option must be '-verbose'", (char *)NULL);
+		return TCL_ERROR;
+	    }
+	    verbose = 1;
+	}
+
+        ctable_verify(interp, ctable, verbose);
 	return TCL_OK;
       }
     }

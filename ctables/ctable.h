@@ -293,6 +293,7 @@ typedef struct {
     int                      needsQuoting;
     int                      indexNumber;
     int                      unique;
+    int			     canBeNull;
     enum ctable_types        type;
 } ctable_FieldInfo;
 

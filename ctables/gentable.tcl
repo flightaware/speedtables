@@ -2315,11 +2315,22 @@ proc deffield {fieldName argList {listName nonBooleans}} {
         error "number of values in field '$fieldName' definition arguments ('$argList') must be even"
     }
 
+    array set argHash $argList
+
     # If "key" is still in the option list, then it's not on the right type
-    if {[set i [lsearch -exact "key" $argList]] % 2 == 0} {
-	incr i
-	if {[lindex $argList i]} {
-	    error "field '$fieldName' is the wrong type for a key"
+    if {[info exists argHash(key)] && $argHash(key)} {
+	error "field '$fieldName' is the wrong type for a key"
+    }
+
+    # If it's got a default value, then it must be notnull
+    if {[info exists argHash(default)]} {
+	if {[info exists argHash(notnull)]} {
+	    if {!$argHash(notnull)} {
+		error "field '$fieldName' must not be null"
+	    }
+	} else {
+	    set argHash(notnull) 1
+	    lappend argList notnull 1
 	}
     }
 
@@ -4333,9 +4344,9 @@ proc gen_field_names {} {
         if {[info exists field(notnull)] && $field(notnull)} {
 	    set value 0
         }
-	if {[info exists field(default)]} {
-	    set value 1
-	}
+#	if {[info exists field(default)]} {
+#	    set value 1
+#	}
 
 	lappend nullableList $value
     }

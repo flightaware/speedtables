@@ -20,6 +20,61 @@
 #include "speedtableHash.c"
 
 // #define MEGADEBUG
+// debugging routines - verify that every skiplist contains an entry for
+// every row.
+void
+ctable_verifyField(CTable *ctable, int field, int verbose)
+{
+    ctable_BaseRow *row = NULL;
+    ctable_BaseRow *found = NULL;
+    ctable_BaseRow *walk;
+    jsw_skip_t     *skip = ctable->skipLists[field];
+    int             index = ctable->creator->fields[field]->indexNumber;
+
+    if(verbose) fprintf(stderr, "Verifying field %s\n", ctable->creator->fields[field]->name);
+    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+	if (verbose) fprintf(stderr, "  Looking for 0x%lx\n", (long)row);
+	// make sure the entry can be found.
+	jsw_sreset(skip);
+	jsw_sfind (skip, row);
+	found = jsw_srow(skip);
+	if(found != row) {
+	    int count = 0;
+	    fprintf(stderr, "    Walking from 0x%lx\n", (long)found);
+            // walk walkRow through the linked list of rows off this skip list
+            CTABLE_LIST_FOREACH (found, walk, index) {
+		count++;
+	        if(row == walk)
+		    break;
+		fprintf(stderr, "      ... 0x%lx\n", (long)walk);
+	    }
+	    if(row != walk)
+	        panic("row 0x%lx not found in table", (long)row);
+	    fprintf(stderr, "    Found after %d links\n", count);
+	}
+    }
+    if(verbose) fprintf(stderr, "Field %s OK\n", ctable->creator->fields[field]->name);
+}
+
+void
+ctable_verify (Tcl_Interp *interp, CTable *ctable, int verbose) {
+    int field;
+
+    if(verbose) fprintf(stderr, "Verify start.\n");
+    for(field = 0; field < ctable->creator->nFields; field++) {
+	if(ctable->creator->fields[field]->canBeNull == 0) {
+	    if(ctable->skipLists[field]) {
+	        ctable_verifyField(ctable, field, verbose);
+	    } else if(verbose) {
+		fprintf(stderr, "No index for field %s\n", ctable->creator->fields[field]->name);
+	    }
+	} else if(verbose) {
+	    fprintf(stderr, "Skipping nullable field %s\n", ctable->creator->fields[field]->name);
+	}
+    }
+    if(verbose) fprintf(stderr, "Verify end.\n");
+}
+
 
 /*
  * ctable_ParseFieldList - given a Tcl list object and a pointer to an array
@@ -2343,31 +2398,32 @@ ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
     ctable_BaseRow *row = vRow;
     int index = ctable->creator->fields[field]->indexNumber;
 
-// printf("remove from index field %d\n", field);
+//printf("ctable_RemoveFromIndex field %d (%s) skip == 0x%lx\n", field, ctable->creator->fieldNames[field], (long unsigned int)skip);
+    // jsw_dump_head(skip);
 
     if (skip == NULL) {
-// printf("no skiplist\n");
+//printf("no skiplist\n");
         return;
     }
 
     // invariant: prev is never NULL if in list
     if(row->_ll_nodes[index].prev == NULL) {
-// printf("not in skiplist, probably null");
+//printf("not in skiplist, probably null\n");
 	return;
     }
     if (ctable_ListRemoveMightBeTheLastOne (row, index)) {
-// printf("i might be the last one, field %d\n", field);
+//printf("i might be the last one, field %d\n", field);
         // it might be the last one, see if it really was
-// printf ("row->_ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
+//printf ("row->_ll_nodes[index].head %lx\n", (long unsigned int)row->_ll_nodes[index].head);
 	if (*row->_ll_nodes[index].head == NULL) {
-// printf("erasing last entry field %d\n", field);
+//printf("erasing last entry field %d\n", field);
             // put the pointer back so the compare routine will have
 	    // something to match
             *row->_ll_nodes[index].head = row;
 	    if (!jsw_serase (skip, row)) {
 		panic ("corrupted index detected for field %s", ctable->creator->fields[field]->name);
 	    }
-	    // *row->ll_nodex[index].head = NULL; // don't think this is needed
+	    *row->_ll_nodes[index].head = NULL; // don't think this is needed
 	}
     }
 
