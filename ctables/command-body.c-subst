@@ -639,7 +639,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	if (objc < 3) {
-	    Tcl_WrongNumArgs (interp, 2, origObjv, "pairList or field value ?field value...?");
+	    Tcl_WrongNumArgs (interp, 2, origObjv, "?-nocomplain? pairList or ?-nocomplain? field value ?field value...?");
 	    return TCL_ERROR;
 	}
 
