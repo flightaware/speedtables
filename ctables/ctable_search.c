@@ -20,6 +20,7 @@
 #include "speedtableHash.c"
 
 // #define MEGADEBUG
+#undef SEARCHDEBUG
 // debugging routines - verify that every skiplist contains an entry for
 // every row.
 void
@@ -27,13 +28,13 @@ ctable_verifyField(CTable *ctable, int field, int verbose)
 {
     ctable_BaseRow *row = NULL;
     ctable_BaseRow *found = NULL;
-    ctable_BaseRow *walk;
+    ctable_BaseRow *walk = NULL;
     jsw_skip_t     *skip = ctable->skipLists[field];
     int             index = ctable->creator->fields[field]->indexNumber;
 
     if(verbose) fprintf(stderr, "Verifying field %s\n", ctable->creator->fields[field]->name);
     CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
-	if (verbose) fprintf(stderr, "  Looking for 0x%lx\n", (long)row);
+	if (verbose) fprintf(stderr, "  Searching 0x%lx for 0x%lx\n", (long)skip, (long)row);
 	// make sure the entry can be found.
 	jsw_sreset(skip);
 	jsw_sfind (skip, row);
@@ -43,10 +44,10 @@ ctable_verifyField(CTable *ctable, int field, int verbose)
 	    fprintf(stderr, "    Walking from 0x%lx\n", (long)found);
             // walk walkRow through the linked list of rows off this skip list
             CTABLE_LIST_FOREACH (found, walk, index) {
+		fprintf(stderr, "      ... 0x%lx\n", (long)walk);
 		count++;
 	        if(row == walk)
 		    break;
-		fprintf(stderr, "      ... 0x%lx\n", (long)walk);
 	    }
 	    if(row != walk)
 	        panic("row 0x%lx not found in table", (long)row);
@@ -2398,7 +2399,7 @@ ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
     ctable_BaseRow *row = vRow;
     int index = ctable->creator->fields[field]->indexNumber;
 
-//printf("ctable_RemoveFromIndex field %d (%s) skip == 0x%lx\n", field, ctable->creator->fieldNames[field], (long unsigned int)skip);
+printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)row, field, ctable->creator->fieldNames[field], (long unsigned int)skip);
     // jsw_dump_head(skip);
 
     if (skip == NULL) {
@@ -2476,10 +2477,10 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field
 
     f = creator->fields[field];
 
-# if 0
+# ifdef SEARCHDEBUG
 // dump info about row being inserted
 utilityObj = Tcl_NewObj();
-printf("ctable_InsertIntoIndex field %d, field name %s, index %d, value %s\n", field, f->name, f->indexNumber, ctable->creator->get_string (row, field, NULL, utilityObj));
+printf("ctable_InsertIntoIndex row 0x%lx, field %d, field name %s, index %d, value '%s'\n", (long)row, field, f->name, f->indexNumber, ctable->creator->get_string (row, field, NULL, utilityObj));
 Tcl_DecrRefCount (utilityObj);
 #endif
 
@@ -2490,6 +2491,11 @@ Tcl_DecrRefCount (utilityObj);
 	Tcl_DecrRefCount (utilityObj);
         return TCL_ERROR;
     }
+
+# ifdef SEARCHDEBUG
+    ctable_verifyField(ctable, field, 1);
+#endif
+
     return TCL_OK;
 }
 
