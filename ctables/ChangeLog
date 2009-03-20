@@ -1,6 +1,13 @@
 
 $Id$
 
+3/20/2009 peter
+    * clean up null/default handling, remove some duplicate code, and rename
+      the null-check commands.
+
+3/15/2009 peter
+    * added routine to verify all skiplists. $ctable verify ?-verbose?
+
 11/18/2008 karl
     * Make table-destroying code into its own C routine, 
       ${table}_destroy_ctable, and make it callable with a null
