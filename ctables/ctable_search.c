@@ -2399,7 +2399,9 @@ ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
     ctable_BaseRow *row = vRow;
     int index = ctable->creator->fields[field]->indexNumber;
 
+#ifdef SEARCHDEBUG
 printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)row, field, ctable->creator->fieldNames[field], (long unsigned int)skip);
+#endif
     // jsw_dump_head(skip);
 
     if (skip == NULL) {

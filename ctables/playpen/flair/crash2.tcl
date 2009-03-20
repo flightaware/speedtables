@@ -22,6 +22,8 @@ m index create value
 
 puts "m set 0 value 7612"; m set 0 value 7612			; m verify -verbose
 puts "m set 1 value 7777"; m set 1 value 7772			; m verify -verbose
+puts "m set 17 value 7777"; m set 17 value 7772			; m verify -verbose
+puts "m set 3 value 101"; m set 3 value 101			; m verify -verbose
 puts "m set 3 value {}"; m set 3 value {}			; m verify -verbose
 puts "m set 3 key {} value 4847"; m set 3 key {} value 4847			; m verify -verbose
 puts "m set 0 value {}"; m set 0 value {}			; m verify -verbose

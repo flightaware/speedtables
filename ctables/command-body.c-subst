@@ -52,7 +52,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
     }
 
     // reset the linked list of all rows
-    ctable_ListInit (&ctable->ll_head);
+    ctable_ListInit (&ctable->ll_head, __FILE__, __LINE__);
 
     ctable_DeleteHashTable (ctable->keyTablePtr);
 

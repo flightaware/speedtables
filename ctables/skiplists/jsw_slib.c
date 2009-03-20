@@ -437,7 +437,7 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, ctable_BaseRow *row , int nodeIdx, in
 
     it = new_node ( row, h, skip->share );
 
-    ctable_ListInit (&it->row);
+    ctable_ListInit (&it->row, __FILE__, __LINE__);
     ctable_ListInsertHead (&it->row, row, nodeIdx);
 
     /* Raise height if necessary */

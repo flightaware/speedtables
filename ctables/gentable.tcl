@@ -883,10 +883,11 @@ variable nullSortSource {
 }
 
 #
-# gen_null_check_during_sort_comp - emit null checking as part of field
+# gen_null_default_check_during_sort_comp -
+#	emit null and default checking as part of field
 #  comparing in a sort
 #
-proc gen_null_check_during_sort_comp {table fieldName} {
+proc gen_null_default_check_during_sort_comp {table fieldName} {
     variable nullSortSource
     variable varstringSortCompareNullSource
     variable varstringSortCompareDefaultSource
@@ -935,7 +936,7 @@ proc gen_null_exclude_during_sort_comp {table fieldName} {
 #
 variable boolSortSource {
 	case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $fieldName]
+[gen_null_default_check_during_sort_comp $table $fieldName]
           if (row1->$fieldName && !row2->$fieldName) {
 	      result = -direction;
 	      break;
@@ -956,7 +957,7 @@ variable boolSortSource {
 #
 variable numberSortSource {
       case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $fieldName]
+[gen_null_default_check_during_sort_comp $table $fieldName]
         if (row1->$fieldName < row2->$fieldName) {
 	    result = -direction;
 	    break;
@@ -1033,20 +1034,7 @@ variable varstringSortCompareNullSource {
 #
 variable varstringSortSource {
       case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $fieldName]
-
-        if (row1->$fieldName == NULL) {
-	    if (row2->$fieldName == NULL) {
-	        result = 0;
-		break;
-	        return 0;
-	    }
-	    result = direction *  strcmp (${table}_defaultStrings\[$fieldEnum], row2->$fieldName);
-	    break;
-	} else if (row2->$fieldName == NULL) {
-	    result = direction * strcmp (row1->$fieldName, ${table}_defaultStrings\[$fieldEnum]);
-	    break;
-	}
+[gen_null_default_check_during_sort_comp $table $fieldName]
 
         result = direction * strcmp (row1->$fieldName, row2->$fieldName);
 	break;
@@ -1059,7 +1047,7 @@ variable varstringSortSource {
 #
 variable fixedstringSortSource {
       case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $fieldName]
+[gen_null_default_check_during_sort_comp $table $fieldName]
         result = direction * strncmp (row1->$fieldName, row2->$fieldName, $length);
 	break;
       }
@@ -1071,7 +1059,7 @@ variable fixedstringSortSource {
 #
 variable binaryDataSortSource {
       case $fieldEnum: {
-[gen_null_check_during_sort_comp $table $fieldName]
+[gen_null_default_check_during_sort_comp $table $fieldName]
         result = direction * memcmp (&row1->$fieldName, &row2->$fieldName, $length);
 	break;
       }
@@ -2672,7 +2660,13 @@ proc gen_defaults_subr {struct} {
 
 	if {[info exists field(indexed)] && $field(indexed)} {
 	    incr listnum
+	    unset -nocomplain def
 	    if {[info exists field(default)]} {
+		set def $field(default)
+	    } elseif {[info exists field(notnull)] && $field(notnull)} {
+		set def ""
+	    }
+	    if {[info exists def]} {
 		emit "// Field \"$fieldName\" ($fieldnum) index $listnum:"
 # emit "printf(\"ctable->skipLists\[$fieldnum] == %08lx\\n\",  (long)ctable->skipLists\[$fieldnum]);"
 
@@ -2686,12 +2680,12 @@ emit "    (long)row->_ll_nodes\[$listnum].prev,"
 emit "    (long)row->_ll_nodes\[$listnum].next);"
 emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
 }
-	        if {"$field(type)" == "varstring"} {
-		    emit "        row->$fieldName = \"[cquote $field(default)]\";"
+	        if {"$def" != "" && "$field(type)" == "varstring"} {
+		    emit "        row->$fieldName = \"[cquote $def]\";"
 	        }
 	        emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
 	        emit "            return TCL_ERROR;"
-	        if {"$field(type)" == "varstring"} {
+	        if {"$def" != "" && "$field(type)" == "varstring"} {
 	            emit "        row->$fieldName = NULL;"
 	        }
 	        emit "    $rightCurly"

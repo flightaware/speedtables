@@ -273,7 +273,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	        // create an array of pointers to possible linked lists,
 	        // one for each wanted as determined by gentable
-	        ctable_ListInit (&ctable->ll_head);
+	        ctable_ListInit (&ctable->ll_head, __FILE__, __LINE__);
 
 	        ctable_InitHashTable (ctable->keyTablePtr);
 #ifdef WITH_SHARED_TABLES

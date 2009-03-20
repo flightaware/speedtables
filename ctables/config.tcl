@@ -22,7 +22,7 @@
 # Less common parameters
 
     # set to 1 to run various sanity checks on rows
-    set sanityChecks 0
+    set sanityChecks 1
 
     set withSharedTables 1
     set withSharedTclExtension 0

@@ -24,6 +24,7 @@ test: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make"
 
 flairtest: sysconfig.tcl
+	rm -r playpen/flair/build
 	@echo TCLLIBPATH=${TCLLIBPATH}
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd playpen/flair; tclsh crash2.tcl"
 

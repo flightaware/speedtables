@@ -4,14 +4,18 @@
 //
 // $Id$
 //
+#undef LISTDEBUG
 
 
 //
 // ctable_ListInit - initialize a list
 //
 inline void
-ctable_ListInit (ctable_BaseRow **listPtr)
+ctable_ListInit (ctable_BaseRow **listPtr, char *file, int line)
 {
+#ifdef LISTDEBUG
+    fprintf(stderr, "ctable_ListInit(0x%lx) at %s:%d\n", (long)listPtr, file, line);
+#endif
     *listPtr = NULL;
 }
 
@@ -21,6 +25,9 @@ ctable_ListInit (ctable_BaseRow **listPtr)
 inline int
 ctable_ListEmpty (ctable_BaseRow *list)
 {
+#ifdef LISTDEBUG
+    fprintf(stderr, "%d == ctable_ListEmpty(0x%lx)\n", (list == NULL), (long)list);
+#endif
     return (list == NULL);
 }
 
@@ -30,6 +37,9 @@ ctable_ListEmpty (ctable_BaseRow *list)
 inline void
 ctable_ListRemove (ctable_BaseRow *row, int i)
 {
+#ifdef LISTDEBUG
+    fprintf(stderr, "ctable_ListRemove(0x%lx, %d)\n", (long)row, i);
+#endif
     // if there's an object following me, make his prev be my prev
     if (row->_ll_nodes[i].next != NULL) {
         row->_ll_nodes[i].next->_ll_nodes[i].prev = row->_ll_nodes[i].prev;
@@ -50,6 +60,9 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 {
     int mightBeTheLastOne;
 
+#ifdef LISTDEBUG
+    fprintf(stderr, "ctable_ListRemoveMightBeTheLastOne(0x%lx, %d)\n", (long)row, i);
+#endif
     // if there's an object following me, make his prev be my prev
     if (row->_ll_nodes[i].next != NULL) {
         // set the next guy's prev ptr to be my prev ptr
@@ -73,6 +86,9 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 inline void
 ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 {
+#ifdef LISTDEBUG
+    fprintf(stderr, "ctable_ListInsertHead(0x%lx, 0x%lx, %d)\n", (long)listPtr, (long)row, i);
+#endif
     // make the row's prev point to the address of the head pointer. Do this
     // first so it'll be in place before the readers can see it.
     row->_ll_nodes[i].prev = listPtr;
@@ -104,6 +120,9 @@ ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
 {
     volatile struct ctable_baseRowStruct **row1prev;
 
+#ifdef LISTDEBUG
+    fprintf(stderr, "ctable_ListInsertBefore(0x%lx, 0x%lx, %d)\n", (long)row1, (long)row2, i);
+#endif
     // make row2's head point to row1's head
     row2->_ll_nodes[i].head = row1->_ll_nodes[i].head;
 
@@ -128,6 +147,9 @@ ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
 //
 inline void
 ctable_ListInsertAfter (ctable_BaseRow *row1, ctable_BaseRow *row2, int i) {
+#ifdef LISTDEBUG
+    fprintf(stderr, "ctable_ListInsertAfter(0x%lx, 0x%lx, %d)\n", (long)row1, (long)row2, i);
+#endif
     // make row2's head point to row1's head
     row2->_ll_nodes[i].head = row1->_ll_nodes[i].head;
 
