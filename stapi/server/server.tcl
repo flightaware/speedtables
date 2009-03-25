@@ -72,6 +72,8 @@ namespace eval ::stapi {
     int4	                   int
     serial                         int
 
+    int8                           wide
+
     interval                       varstring
 
     int2                           short
@@ -83,6 +85,7 @@ namespace eval ::stapi {
 
     float8	                   double
     "double precision"             double
+    numeric                        double
 
     bool	                   boolean
     geometry	                   varstring

@@ -1,5 +1,12 @@
 $Id$
 
+3/24/2009 karl
+    Add support for the PostgreSQL "int8" data type by mapping it to
+    ctable's "wide".
+
+    Add support for the PostgreSQL "numeric" data type by mapping it to
+    ctable's "double".  This probably needs improvement.
+
 2/28/2009 karl
     Add new proc to st_postgres, better_get_columns, which returns triples
     of all the columns of a table... their name, real SQL type (not
