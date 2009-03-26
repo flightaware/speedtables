@@ -1,6 +1,9 @@
 
 $Id$
 
+3/26/2009 peter
+    * Don't set the shared base if it's already set.
+
 3/20/2009 peter
     * clean up null/default handling, remove some duplicate code, and rename
       the null-check commands.

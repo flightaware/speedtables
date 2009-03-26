@@ -1247,7 +1247,8 @@ static char *share_base = NULL;
 
 void setShareBase(char *new_base)
 {
-	share_base = new_base;
+	if(!share_base)
+		share_base = new_base;
 }
 
 int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, int flags, shm_t **sharePtr)
