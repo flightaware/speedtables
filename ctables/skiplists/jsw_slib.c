@@ -383,7 +383,6 @@ int jsw_sinsert ( jsw_skip_t *skip, ctable_BaseRow *row )
 
     it = new_node ( row, h, skip->share );
 
-
     /* Raise height if necessary */
     if ( h > skip->public->curh ) {
 // printf("raising the height from %d to %d, size %d\n", (int)skip->public->curh, (int)h, (int)skip->public->size);
@@ -406,10 +405,6 @@ int jsw_sinsert ( jsw_skip_t *skip, ctable_BaseRow *row )
 // jsw_sinsert_linked - insert row into the skip list if it's not already 
 // there.  if it is already there, link this row into the skip list.
 //
-// you have to be sure it's not already in there
-//
-// currently can only succeed
-//
 INLINE
 int jsw_sinsert_linked ( jsw_skip_t *skip, ctable_BaseRow *row , int nodeIdx, int unique)
 {
@@ -429,7 +424,7 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, ctable_BaseRow *row , int nodeIdx, in
   } else {
     // no matching skip list entry
 
-    // dups are allowed, insert the dup
+    // insert the new node
     size_t h = rlevel ( skip->maxh );
     jsw_node_t *it;
 
