@@ -12,7 +12,7 @@ proc search_test {name searchFields expect} {
     eval $cmd
 
     if {$result != $expect} {
-	puts "error in test: $name"
+	puts "ERROR IN TEST: $name"
 	puts "got '$result'"
 	puts "expected '$expect'"
 	puts "command '$cmd'"
@@ -29,7 +29,7 @@ proc search_test_countonly {name searchFields expect} {
     set result [eval $cmd]
 
     if {$result != $expect} {
-	puts "error in test: $name"
+	puts "ERROR IN TEST: $name"
 	puts "got '$result'"
 	puts "expected '$expect'"
 	puts "command '$cmd'"
@@ -44,7 +44,7 @@ proc search_test_countonly {name searchFields expect} {
     set result [eval $cmd]
         
     if {$result != $expect} {
-        puts "error in test: $name"
+        puts "ERROR IN TEST: $name"
         puts "got '$result'"
         puts "expected '$expect'"
         puts "command '$cmd'"
@@ -63,7 +63,7 @@ proc search_unsorted_test {name searchFields expect} {
     eval $cmd
 
     if {"[lsort $result]" != "[lsort $expect]"} {
-	puts "error in test: $name"
+	puts "ERROR IN TEST: $name"
 	puts "got '$result'"
 	puts "expected '$expect'"
 	puts "command '$cmd'"
@@ -81,7 +81,7 @@ proc search+_test {name searchFields expect} {
     eval $cmd
 
     if {[lsort $result] != [lsort $expect]} {
-	puts "error in test: $name"
+	puts "ERROR IN TEST: $name"
 	puts "got '$result'"
 	puts "expected '$expect'"
 	puts "command '$cmd'"
@@ -399,3 +399,15 @@ if {"$typeDef" != "$tabDef"} {
     error "Type and table mismatch" [list $typeDef != $tabDef]
 }
 puts "ok"
+
+puts "Resetting test table..."
+t reset
+
+search_test_countonly "empty search countOnly no compare" {} {0}
+
+search_test_countonly "empty search countOnly no compare, limit" {-limit 10} {0}
+
+search_test_countonly "search countOnly no compare, offset" {-offset 25} {0}
+
+search_test_countonly "search countOnly compare" {-compare {{false alive}}} {0}
+
