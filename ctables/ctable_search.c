@@ -1303,6 +1303,7 @@ restart_search:
         if(locked_cycle != LOST_HORIZON)
 	    read_unlock(ctable->share);
 #endif
+        Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
         return TCL_OK;
     }
 
