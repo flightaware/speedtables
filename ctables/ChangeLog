@@ -1,6 +1,16 @@
 
 $Id$
 
+3/30/2009 karl
+    * When setting up a ctable search in ctable_SetupSearch, if the row count 
+      of the table is 0, bypass almost all of the search setup and 
+      return TCL_RETURN to tell ctable_SetupAndPerformSearch to bail out, 
+      as it already does in some cases to indicate that the search has been 
+      optimized away.
+
+      This is a fix for bug 2721735.  It also speeds up searches of empty 
+      tables quite a bit, not that that matters very much.
+
 3/26/2009 peter
     * Don't set the shared base if it's already set.
 
