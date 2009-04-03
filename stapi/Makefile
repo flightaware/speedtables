@@ -1,9 +1,14 @@
+#
+# Makefile for speedtables STAPI - speedtables API
+#
+# $Id$
+#
+
+PREFIX=/usr/local
+INSTDIR=$(PREFIX)/lib/stapi
 
 V=""
 V=-verbose
-
-#INSTDIR=/usr/fa/lib/stapi
-INSTDIR=/usr/local/lib/stapi
 
 DIRS=client server display
 
