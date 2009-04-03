@@ -8,7 +8,8 @@
 # $Id$
 #
 
-INSTDIR=/usr/local/lib/ctable
+PREFIX=/usr/local
+INSTDIR=$(PREFIX)/lib/ctable
 WORKDIR=`pwd`
 TCLLIBPATH="${WORKDIR} ${WORKDIR}/../ctable_server ${WORKDIR}/../stapi"
 
@@ -62,10 +63,10 @@ stapitest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi"
 
 debug:
-	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb /usr/local/bin/tclsh8.4 -c tclsh8.4.*core"
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb $(PREFIX)/bin/tclsh8.4 -c tclsh8.4.*core"
 
 mdebug:
-	sh -c "export TCLLIBPATH=${TCLLIBPATH}; cd tests; gdb /usr/local/bin/tclsh8.4m -c tclsh8.4m.core"
+	sh -c "export TCLLIBPATH=${TCLLIBPATH}; cd tests; gdb $(PREFIX)/bin/tclsh8.4m -c tclsh8.4m.core"
 
 install: sysconfig.tcl
 	-mkdir -p $(INSTDIR)
