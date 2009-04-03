@@ -8,8 +8,9 @@
 # $Id$
 #
 
-INSTDIR=/usr/local/lib/ctable_server
-BINDIR=/usr/local/bin
+PREFIX=/usr/local
+INSTDIR=$(PREFIX)/lib/ctable_server
+BINDIR=$(PREFIX)/bin
 
 pkgIndex.tcl:	ctable_client.tcl ctable_server.tcl
 	echo "pkg_mkIndex . *.tcl" | tclsh8.4
