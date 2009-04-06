@@ -275,8 +275,9 @@ void ctable_FreeInRows(CTable *ctable, CTableSearchComponent *component)
     if(component->inListRows) {
 	int i;
 	for(i = 0; i < component->inCount; i++) {
-	    if(component->inListRows[i])
+	    if(component->inListRows[i]) {
 	        ctable->creator->delete (ctable, component->inListRows[i], CTABLE_INDEX_PRIVATE);
+	    }
 	}
 	ckfree((void *)component->inListRows);
 	component->inListRows = NULL;
@@ -369,7 +370,6 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		    goto err;
 		}
 
-		component->row1 = (*ctable->creator->make_empty_row) ();
 	    } else if (term == CTABLE_COMP_RANGE) {
 	        void *row;
 

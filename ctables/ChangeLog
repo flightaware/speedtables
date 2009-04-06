@@ -21,6 +21,11 @@ $Id$
 3/15/2009 peter
     * added routine to verify all skiplists. $ctable verify ?-verbose?
 
+4/6/2009 karl
+    * Fixed memory leak in search with "in" compare function that would
+      leak one row allocation per invocation.  Over a few million queries,
+      it added up.
+
 11/18/2008 karl
     * Make table-destroying code into its own C routine, 
       ${table}_destroy_ctable, and make it callable with a null
