@@ -1,6 +1,13 @@
 
 $Id$
 
+3/30/2009 peter
+    * Fix for bug 2721735 - same shortcut as Karl's existed  in
+      ctable_PerformSearch but didn't explicitly set the result to 0.
+
+      This fix is redundant but should remain in place in case
+      ctable_PerformSearch gets called directly in the future.
+
 3/30/2009 karl
     * When setting up a ctable search in ctable_SetupSearch, if the row count 
       of the table is 0, bypass almost all of the search setup and 
