@@ -1,6 +1,9 @@
 
 $Id$
 
+4/7/2009 karl
+    * Remove redundant allocation of row1 in ctable_ParseSearch()
+
 3/30/2009 peter
     * Fix for bug 2721735 - same shortcut as Karl's existed  in
       ctable_PerformSearch but didn't explicitly set the result to 0.
