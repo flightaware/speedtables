@@ -1285,11 +1285,11 @@ restart_search:
 
     if (ctable->share_type == CTABLE_SHARED_READER) {
 	// make sure the dummy ctable is up to date.
+	locked_cycle = read_lock(ctable->share);
+
         ctable->count = ctable->share_ctable->count;
 	ctable->skipLists = ctable->share_ctable->skipLists;
 	ctable->ll_head = ctable->share_ctable->ll_head;
-
-	locked_cycle = read_lock(ctable->share);
     }
 #endif
 
