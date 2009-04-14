@@ -1830,7 +1830,9 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     }
 
     // Quick count of table rows for early optimizations where ONLY the
-    // number of rows is being used.
+    // number of rows is being used. This quick_count is a snapshot that
+    // is safe to use for shared readers because reading it is an atomic
+    // operation.
 #ifdef WITH_SHARED_TABLES
     if (ctable->share_type == CTABLE_SHARED_READER))
 	quick_count = ctable->share_ctable->count;

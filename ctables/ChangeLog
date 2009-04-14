@@ -1,6 +1,13 @@
 
 $Id$
 
+4/14/2009 peter
+    * Modify the order of locking and copying the shared ctable into
+      the dummy.
+    * Clean up logic for optimizations in ctable_PrepareSearch, explicitly
+      note that the count used is a "quick count" that's only meaningful one
+      time. Fix the -countOnly optimization to match.
+
 4/14/2009 karl
     * Fix bug affecting searches of shared memory ctables introduced
       by my bug fix from 3/30/2009.  We can't optimize away the search
