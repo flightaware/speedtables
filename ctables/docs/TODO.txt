@@ -1,5 +1,7 @@
 $Id$
 
+Create tests for shared memory ctables.
+
 Make it work with UTF8 chars.
 
 Make sure the C source file and the

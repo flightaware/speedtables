@@ -1,6 +1,11 @@
 
 $Id$
 
+4/14/2009 karl
+    * Fix bug affecting searches of shared memory ctables introduced
+      by my bug fix from 3/30/2009.  We can't optimize away the search
+      if it's a shared memory ctable and now we don't.
+
 4/6/2009 karl
     * Fixed memory leak from redundant allocation of row1 in 
       ctable_ParseSearch() search with "in" compare function that would

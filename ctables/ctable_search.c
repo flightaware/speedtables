@@ -1830,7 +1830,13 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
     // if there are no rows in the table, the search won't turn up
     // anything, so skip all that
-    if (ctable->count == 0) {
+    // make sure we're allowed to do this
+#ifdef WITH_SHARED_TABLES
+    if ((ctable->share_type != CTABLE_SHARED_READER) && (ctable->count == 0))
+#else
+    if (ctable->count == 0)
+#endif
+    {
 	search->components = NULL; // keep ctable_searchTeardown happy
 	Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
 	return TCL_RETURN;
