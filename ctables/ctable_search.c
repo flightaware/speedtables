@@ -1817,7 +1817,8 @@ static int
 ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search, int indexField) {
     int             i;
     int             searchTerm = 0;
-    CONST char                 **fieldNames = ctable->creator->fieldNames;
+    CONST char    **fieldNames = ctable->creator->fieldNames;
+    int		    quick_count;
 
     static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", (char *)NULL};
 
@@ -1828,14 +1829,18 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	return TCL_ERROR;
     }
 
+    // Quick count of table rows for early optimizations where ONLY the
+    // number of rows is being used.
+#ifdef WITH_SHARED_TABLES
+    if (ctable->share_type == CTABLE_SHARED_READER))
+	quick_count = ctable->share_ctable->count;
+    else
+#endif
+	quick_count = ctable->count;
+
     // if there are no rows in the table, the search won't turn up
     // anything, so skip all that
-    // make sure we're allowed to do this
-#ifdef WITH_SHARED_TABLES
-    if ((ctable->share_type != CTABLE_SHARED_READER) && (ctable->count == 0))
-#else
-    if (ctable->count == 0)
-#endif
+    if (quick_count == 0)
     {
 	search->components = NULL; // keep ctable_searchTeardown happy
 	Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
@@ -2165,31 +2170,20 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     }
 
     // If there's nothing going on in the search, then skip the search and
-    // return a simple count
+    // return quick_count (calculated earlier).
     if(search->action == CTABLE_SEARCH_ACTION_NONE) {
 	if(search->nComponents == 0 && search->nRetrieveFields <= 0 && search->codeBody == NULL && search->pattern == NULL && search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {
-	    int count = ctable->count;
-
-	    // Maybe should walk the requested index even for no components
-	    // to make it a quicker non-null search, so get rid of the "0 &&"
-	    // if that's changed
-	    if(0 && search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->reqIndexField == CTABLE_SEARCH_INDEX_ANY) {
-	        jsw_skip_t *skip = ctable->skipLists[search->reqIndexField];
-		if(skip != NULL) {
-		    count = (int)jsw_ssize(skip);
-		}
-	    }
 
 	    if (search->offset) {
-		count -= search->offset;
-		if (count < 0) {
-		    count = 0;
+		quick_count -= search->offset;
+		if (quick_count < 0) {
+		    quick_count = 0;
 		}
 	    }
 
 	    if (search->limit) {
-		if (count > search->limit) {
-		    count = search->limit;
+		if (quick_count > search->limit) {
+		    quick_count = search->limit;
 		}
 	    }
 
