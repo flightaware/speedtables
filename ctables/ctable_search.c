@@ -1834,7 +1834,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     // is safe to use for shared readers because reading it is an atomic
     // operation.
 #ifdef WITH_SHARED_TABLES
-    if (ctable->share_type == CTABLE_SHARED_READER))
+    if (ctable->share_type == CTABLE_SHARED_READER)
 	quick_count = ctable->share_ctable->count;
     else
 #endif
@@ -2189,7 +2189,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 		}
 	    }
 
-	    Tcl_SetObjResult (interp, Tcl_NewIntObj (count));
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj (quick_count));
 	    return TCL_RETURN;
 	}
     }
