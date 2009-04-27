@@ -1,6 +1,11 @@
 
 $Id$
 
+4/27/2009 karl
+    * Fixed a coredump in the read_tabsep method when field names are included 
+      in the method arguments. It was caused by iterating over the wrong 
+      variable (objc instead of nFields).
+
 4/14/2009 peter
     * Modify the order of locking and copying the shared ctable into
       the dummy.

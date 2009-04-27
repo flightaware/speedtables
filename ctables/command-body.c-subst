@@ -1097,7 +1097,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		return TCL_ERROR;
 	    }
 	    fieldIds = (int *)ckalloc(nFields * sizeof(*fieldIds));
-	    for (i = 0; i < objc; i++) {
+	    for (i = 0; i < nFields; i++) {
 	        if (Tcl_GetIndexFromObj (interp, objv[objIdx++], ${table}_fields, "field", TCL_EXACT, &fieldIds[i]) != TCL_OK) {
 		    if(nocomplain) {
 			fieldIds[i] = -1;
