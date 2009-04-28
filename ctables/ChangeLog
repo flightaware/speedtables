@@ -1,6 +1,14 @@
 
 $Id$
 
+4/28/2009 karl
+    * Fixed a bug in null and notnull comparison of varstring.  The string
+      compare code created by gentable.tcl tried to look at row1's field
+      (assuming a second compare function argument) that isn't present
+      when the search term is null or notnull, causing a null pointer
+      dereference.  Code now performs the null/notnull check before
+      looking at row1's field.
+
 4/27/2009 karl
     * Fixed a coredump in the read_tabsep method when field names are included 
       in the method arguments. It was caused by iterating over the wrong 
