@@ -121,6 +121,10 @@ search_unsorted_test "unsorted search with offset 5 and limit 5" {-offset 5 -lim
 
 search_test "search where alive is false" {-compare {{false alive}}} {jonas}
 
+search_test "search where name is null" {-compare {{null name}}} {}
+
+search_test "search where name is notnullnull" {-sort name -limit 5 -compare {{notnull name}}} {angel baron brak brock carr}
+
 search_test_countonly "search countOnly no compare" {} {31}
 
 search_test_countonly "search countOnly no compare limit" {-limit 10} {10}
