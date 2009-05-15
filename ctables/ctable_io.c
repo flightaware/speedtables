@@ -1,6 +1,7 @@
 // General I/O routines for ctables
 // $Id$
 //
+#include <ctype.h>
 
 //
 // Quote a string, possibly reallocating the string, returns TRUE if the
