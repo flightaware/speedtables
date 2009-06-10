@@ -1,6 +1,12 @@
 
 $Id$
 
+6/10/2009 karl
+    * Fixed a memory leak in ctable search.  Each time a search was performed,
+      if a sort of the results was requested, for each field being sorted in
+      reverse order (field name preceded by a minus sign), one allocation of
+      the name of the field was leaked.
+
 4/28/2009 karl
     * Fixed a bug in null and notnull comparison of varstring.  The string
       compare code created by gentable.tcl tried to look at row1's field

@@ -151,23 +151,34 @@ ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char
     sort->directions =  (int *)ckalloc (sizeof (int) * nFields);
 
     for (i = 0; i < nFields; i++) {
+	int fieldNameNeedsFreeing = 0;
+
         fieldName = Tcl_GetString (fieldsObjv[i]);
 	if (fieldName[0] == '-') {
 	    sort->directions[i] = -1;
 	    fieldName++;
 	    fieldNameObj = Tcl_NewStringObj (fieldName, -1);
+	    fieldNameNeedsFreeing = 1;
 	} else {
 	    fieldNameObj = fieldsObjv[i];
 	    sort->directions[i] = 1;
+	    fieldNameNeedsFreeing = 0;
 	}
 
 	if (Tcl_GetIndexFromObj (interp, fieldNameObj, fieldNames, "field", TCL_EXACT, &sort->fields[i]) != TCL_OK) {
+	    if (fieldNameNeedsFreeing) {
+		Tcl_DecrRefCount (fieldNameObj);
+	    }
 	    ckfree ((void *)sort->fields);
 	    ckfree ((void *)sort->directions);
 	    sort->fields = NULL;
 	    sort->directions = NULL;
 	    return TCL_ERROR;
-	  }
+	}
+
+	if (fieldNameNeedsFreeing) {
+	    Tcl_DecrRefCount (fieldNameObj);
+	}
     }
     return TCL_OK;
 }
