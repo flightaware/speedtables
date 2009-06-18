@@ -1,5 +1,7 @@
-
-$Id$
+6/18/2009 karl
+    * Turn off inlining in config.tcl.  We came across a case where 
+      gcc 4.2.1 generated incorrect infinite-loop-causing code when 
+      compiling the inlined skiplist routines.
 
 6/10/2009 karl
     * Fixed a memory leak in ctable search.  Each time a search was performed,
