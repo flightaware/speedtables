@@ -1,4 +1,9 @@
-$Id$
+Speedtables ChangeLog
+=====================
+
+6/18/2009 karl
+    Make the "refresh_ctable" proc's "time_col" argument optional, bringing
+    the behavior of refresh_ctable in line with the documentation.
 
 3/24/2009 karl
     Add support for the PostgreSQL "int8" data type by mapping it to

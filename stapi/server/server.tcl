@@ -641,19 +641,25 @@ namespace eval ::stapi {
   }
 
   #
-  # refresh_ctable ctable ?last_read? ?err?
+  # refresh_ctable ctable ?time_col? ?last_read? ?err?
   #
   # Update new rows from SQL table 'table' into ctable 'ctable' using time_col,
   # if last_read is non-zero use that rather than last modify time of the cache,
   # return success or failure if err variable name is provided.
   #
-  proc refresh_ctable {ctable time_col {last_read 0} {_err ""}} {
+  proc refresh_ctable {ctable {time_col ""} {last_read 0} {_err ""}} {
     variable ctable2name
     variable time_column
 
     if {"$_err" != ""} {
       upvar 1 $_err err
       set _err err
+    }
+
+    if {$time_col == ""} {
+	if {[info exists time_column($ctable)]} {
+	    set time_col $time_column($ctable)
+	}
     }
 
     # validate parameters
