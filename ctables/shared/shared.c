@@ -169,7 +169,7 @@ shm_t   *map_file(char *file, char *addr, size_t default_size, int flags)
 
     // Look for an already mapped share
     while(p) {
-	if(file && filename && strcmp(p->filename, file) == 0) {
+	if(file && p->filename && strcmp(p->filename, file) == 0) {
 	    if((addr != NULL && addr != (char *)p->map)) {
 		shared_errno = -SH_ALREADY_MAPPED;
 		return NULL;
