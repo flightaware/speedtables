@@ -152,7 +152,6 @@ IFDEBUG(init_debug();)
 // used by the same process for the same file the result is undefined.
 //
 // If the file is already mapped, but at a different address, this is an error
-//this is an error
 //
 shm_t   *map_file(char *file, char *addr, size_t default_size, int flags)
 {
@@ -170,7 +169,7 @@ shm_t   *map_file(char *file, char *addr, size_t default_size, int flags)
 
     // Look for an already mapped share
     while(p) {
-	if(p->filename == file) {
+	if(strcmp(p->filename, file) == 0) {
 	    if((addr != NULL && addr != (char *)p->map)) {
 		shared_errno = -SH_ALREADY_MAPPED;
 		return NULL;
