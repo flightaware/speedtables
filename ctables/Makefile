@@ -12,68 +12,77 @@ PREFIX=/usr/local
 INSTDIR=$(PREFIX)/lib/ctable
 WORKDIR=`pwd`
 TCLLIBPATH="${WORKDIR} ${WORKDIR}/../ctable_server ${WORKDIR}/../stapi"
+#
+# TODO - make this automatic
+#
+TCLSH=tclsh8.4
 
 default: test
 
 alltest: bigtest test
 
-bigtest: sysconfig.tcl
+bigtest: config
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd bigtests; make"
 
-test: sysconfig.tcl
+test: config
 	@echo TCLLIBPATH=${TCLLIBPATH}
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make"
 
-flairtest: sysconfig.tcl
+flairtest: config
 	rm -r playpen/flair/build
 	@echo TCLLIBPATH=${TCLLIBPATH}
-	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd playpen/flair; tclsh crash2.tcl"
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd playpen/flair; $(TCLSH) crash2.tcl"
 
-mttest: sysconfig.tcl
+mttest: config
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make multitable"
 
-keytest: sysconfig.tcl
+keytest: config
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make key"
 
-mastertest: sysconfig.tcl server
+mastertest: config server
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make master"
 
-readertest: sysconfig.tcl server
+readertest: config server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make reader"
 
-multitest: sysconfig.tcl server
+multitest: config server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make multireader"
 
-speedtest: sysconfig.tcl server
+speedtest: config server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make speedreader"
 
-perftest: sysconfig.tcl server
+perftest: config server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make speed"
 
-pooltest: sysconfig.tcl server
+pooltest: config server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make pools"
 
-stapitest: sysconfig.tcl server
+stapitest: config server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi"
 
 debug:
-	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb $(PREFIX)/bin/tclsh8.4 -c tclsh8.4.*core"
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb $(PREFIX)/bin/$(TCLSH) -c $(TCLSH).*core"
 
 mdebug:
-	sh -c "export TCLLIBPATH=${TCLLIBPATH}; cd tests; gdb $(PREFIX)/bin/tclsh8.4m -c tclsh8.4m.core"
+	sh -c "export TCLLIBPATH=${TCLLIBPATH}; cd tests; gdb $(PREFIX)/bin/$(TCLSH)m -c $(TCLSH)m.core"
 
-install: sysconfig.tcl
+install: config
 	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c shared/*.[ch] $(INSTDIR)
 
 sysconfig.tcl: mkConfig.sh config.tcl
 	./mkConfig.sh > sysconfig.tcl
+
+gentable_stub.tcl: sysconfig.tcl
+	$(TCLSH) ./make_gentable_stub.tcl > gentable_stub.tcl
+
+config: sysconfig.tcl gentable_stub.tcl
 
 server: ../ctable_server/pkgIndex.tcl
 
