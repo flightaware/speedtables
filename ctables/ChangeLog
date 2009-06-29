@@ -7,6 +7,7 @@
     * Modify common test code to get the version of tcl from 
       $::ctable::ctablePackageVersion
     * Modify Makefile to make the version of tclsh a parameter.
+    * Add code to request a first-time probe for memory map.
 
 6/18/2009 karl
     * Turn off inlining in config.tcl.  We came across a case where 

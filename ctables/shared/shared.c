@@ -1527,6 +1527,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	     || TCL_OK != APPBOOL(interp, list, share->creator)
 	     || TCL_OK != APPSTRING(interp, list, "filename")
 	     || TCL_OK != APPSTRING(interp, list, share->filename)
+	     || TCL_OK != APPSTRING(interp, list, "base")
+	     || TCL_OK != APPINT(interp, list, (long)share->map)
 	    ) {
 		return TCL_ERROR;
 	    }

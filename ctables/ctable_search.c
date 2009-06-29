@@ -1883,6 +1883,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->codeBody = NULL;
     search->writingTabsepIncludeFieldNames = 0;
     search->tranType = CTABLE_SEARCH_TRAN_NONE;
+    search->tranData = NULL;
     search->reqIndexField = indexField;
     search->bufferResults = CTABLE_BUFFER_DEFAULT;
     search->sepstr = "\t";

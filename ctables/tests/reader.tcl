@@ -25,6 +25,8 @@ puts "r share info -> [r share info]"
 puts "r share names -> [r share names]"
 puts "r share list -> [r share list]"
 
+puts "r search -key k -array_get a -code {...}"
+
 r search -key k -array_get a -code {
     set orig($k) $a
     set curr($k) $a
@@ -45,6 +47,7 @@ for {set i 0} {$i < 1000} {incr i} {
     set comp {}
     lappend comp [list = id $id]
     set found 0
+    puts "r search -compare $comp -key k -array_get a -code {...}"
     r search -compare $comp -key k -array_get a -code {
 	if {"$a" != "$old"} {
 	    lappend changed($k) $id $a

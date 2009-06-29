@@ -10,6 +10,7 @@ source top-brands-nokey-def.tcl
 
 
 top_brands_nokey_m create m master file sharefile.dat
+puts "m share info -> [m share info]"
 
 proc suck_in_top_brands_nokeys {} {
     set fp [open top-brands.tsv]
