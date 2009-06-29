@@ -17,7 +17,7 @@ set auto_path [concat $libpath $auto_path]
 
 # Load ctables by both names
 source ../gentable.tcl
-package provide speedtable 1.1
+package provide speedtable 1.4
 
 # Common overrides for ctable config variables, commented out, usual default
 

@@ -57,6 +57,6 @@ for {set i 0} {$i < 1000} {incr i} {
 
 foreach {col val} $last_set {
   puts "Testing search -compare {{= $col $val}}"
-  m search -compare [list [list = $col $val]] -write_tabsep stdout
+  m search -compare [list [list = $col $val]] -write_tabsep stdout -with_field_names 1
 }
 
