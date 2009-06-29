@@ -31,9 +31,11 @@
     # Either -none, -stderr, or the name of a file
     #set sharedTraceFile sharedebug.out
     set sharedTraceFile -none
+    #set sharedTraceFile -stderr
 
     # either NULL or an absolute address
-    set sharedBase 0xA0000000
+    #set sharedBase 0xA0000000
+    set sharedBase -1
     #set sharedBase NULL
 
     # approx number of ctable row pools required to fill all shared memory

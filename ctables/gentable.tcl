@@ -300,8 +300,8 @@ void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, char
 		panic("%s: ctable->share_type = %d but ctable->share = NULL", where);
 	    if((char *)ptr < (char *)ctable->share->map)
 		panic("%s: ctable->share->map = 0x%lX but ptr == 0x%lX", where, (long)ctable->share->map, (long)ptr);
-	    if((char *)ptr - ctable->share->size > (char *)ctable->share->map)
-		panic("%s: ctable->share->size = %ld but ptr is at %ld offset", where, (long)ctable->share->size, (long)((char *)ptr - ctable->share->size));
+	    if((char *)ptr - (char *)ctable->share->map > ctable->share->size)
+		panic("%s: ctable->share->size = %ld but ptr is at %ld offset from map", where, (long)ctable->share->size, (long)((char *)ptr - (char *)ctable->share->map));
 	}
     }
 #endif

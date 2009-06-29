@@ -12,6 +12,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/ipc.h>
+#include <time.h>
 #ifdef WITH_TCL
 #include <tcl.h>
 #endif
@@ -234,9 +235,11 @@ IFDEBUG(init_debug();)
 	}
     }
 
+    if(addr == (char *)-1)
+	addr = 0;
     if(addr) flags |= MAP_FIXED;
     map = mmap(addr, size, PROT_READ|PROT_WRITE, flags, fd, (off_t) 0);
-IFDEBUG(fprintf(stderr, "mmap(0x%lX, %d, rw, %d, %d, 0) = 0x%lX;\n", (long)addr, size, flags, fd, (long)map);)
+IFDEBUG(fprintf(stderr, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr, (long)size, flags, fd, (long)map);)
 
     if(map == MAP_FAILED) {
 	shared_errno = SH_MAP_FILE;
@@ -1284,7 +1287,9 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
         return TCL_ERROR;
     }
 
-    if((char *)share == share_base)
+    if(share_base == (char *)-1)
+	share_base = (char *)share + size;
+    else if((char *)share == share_base)
 	share_base = share_base + size;
 
     if(new_share) {
