@@ -35,30 +35,30 @@ mttest: sysconfig.tcl
 keytest: sysconfig.tcl
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make key"
 
-mastertest: sysconfig.tcl
+mastertest: sysconfig.tcl server
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make master"
 
-readertest: sysconfig.tcl
+readertest: sysconfig.tcl server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make reader"
 
-multitest: sysconfig.tcl
+multitest: sysconfig.tcl server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make multireader"
 
-speedtest: sysconfig.tcl
+speedtest: sysconfig.tcl server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make speedreader"
 
-perftest: sysconfig.tcl
+perftest: sysconfig.tcl server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make speed"
 
-pooltest: sysconfig.tcl
+pooltest: sysconfig.tcl server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make pools"
 
-stapitest: sysconfig.tcl
+stapitest: sysconfig.tcl server
 	rm -f tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi"
 
@@ -74,6 +74,11 @@ install: sysconfig.tcl
 
 sysconfig.tcl: mkConfig.sh config.tcl
 	./mkConfig.sh > sysconfig.tcl
+
+server: ../ctable_server/pkgIndex.tcl
+
+../ctable_server/pkgIndex.tcl: ../ctable_server/Makefile
+	cd ../ctable_server && make
 
 compare:
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make compare"
