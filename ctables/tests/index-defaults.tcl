@@ -4,6 +4,8 @@ source test_common.tcl
 
 source index-defaults.ct
 
+source index-test-proc.tcl
+
 package require Indef
 
 # set to 1 to create some spiciness
@@ -54,9 +56,15 @@ for {set i 0} {$i < 100} {incr i} {
   }
 }
 
-di $t color
-di $t flavor
-di $t spiciness
+# di $t color
+# di $t flavor
+# di $t spiciness
+
+test_index $t = color maroon
+test_index $t = flavor cheesy
+if $spicy_brains {
+  test_index $t > spiciness 5
+}
 
 for {set i 0} {$i < 100} {incr i} {
   set j [expr {int(rand() * 100)}]
@@ -92,5 +100,21 @@ for {set i 0} {$i < 100} {incr i} {
   $t set $j color [re $colors] flavor [re $flavors]
 }
 
-di $t color
-di $t flavor
+# di $t color
+# di $t flavor
+
+test_index $t = color maroon
+test_index $t = flavor cheesy
+if $spicy_brains {
+  test_index $t > spiciness 5
+  test_index $t >= spiciness 5
+  test_index $t <= spiciness 5
+  test_index $t < spiciness 5
+}
+test_index $t match flavor che*
+test_index $t notmatch flavor che*
+test_index $t match_case flavor che*
+test_index $t notmatch_case flavor che*
+test_index $t range spiciness 1 4
+test_index $t in flavor {acid cheesy}
+

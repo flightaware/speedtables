@@ -32,6 +32,8 @@ all:
 	$(TCLSH) null-tests.tcl
 	rm -r build
 	$(TCLSH) index-compare.tcl
+	-rm -r build
+	$(TCLSH) index-defaults.tcl
 
 compare:
 	-rm -r build
