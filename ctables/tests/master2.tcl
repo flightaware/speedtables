@@ -57,6 +57,19 @@ for {set i 0} {$i < 1000} {incr i} {
 
 foreach {col val} $last_set {
   puts "Testing search -compare {{= $col $val}}"
-  m search -compare [list [list = $col $val]] -write_tabsep stdout -with_field_names 1
+  set found 0
+  m search -compare [list [list = $col $val]] -array r -code {
+    set missed 0
+    foreach {rcol rval} $last_set {
+      if {![info exists r($rcol)] || "$r($rcol)" != "$rval"} {
+	incr missed
+	break
+      }
+    }
+    if {!$missed} { incr found }
+  }
+  if {!$found} {
+    error "No matching row for {{= $col $val}}"
+  }
 }
 
