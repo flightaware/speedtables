@@ -26,7 +26,7 @@ r search -array row -code {
     lappend ids $row(id)
 }
 
-puts "$pid: starting $count trials"
+if {$verbose} {puts "$pid: starting $count trials"}
 
 set idcount [llength $ids]
 foreach id $ids {
@@ -56,7 +56,7 @@ for {set i 0} {$i < $count} {incr i} {
     }
     set j [expr {($i * 10) / $count}] 
     if {$j != $jlast} {
-        puts "$pid: count=$i"
+        if {$verbose} {puts "$pid: count=$i"}
 	set jlast $j
     }
 }
@@ -69,6 +69,8 @@ foreach id [array names idwant] {
 	} else {
 	  puts "$pid: $id: no oddballs found?"
 	}
+	error "Missing $id: wanted $idwant($id) found $idfound($id)"
+
     }
 }
 

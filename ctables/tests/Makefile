@@ -47,17 +47,6 @@ indef:
 	-rm -r build
 	$(TCLSH) index-defaults.tcl
 
-key:
-	-rm -r build
-	$(TCLSH) new-tests.tcl
-	mkdir tmpdir
-	mv build/*.so tmpdir
-	$(TCLSH) key-tests.tcl
-	rm build/*.so build/topbrandsgenkey*
-	mv tmpdir/* build
-	rmdir tmpdir
-	$(TCLSH) key-tests.tcl
-
 master:
 	-rm -r build
 	-rm -f *.dat
@@ -97,7 +86,7 @@ multireader:
 speedreader:
 	-rm -r build
 	-rm -f *.dat
-	sh multireader.sh 1 10000000 1 10
+	sh multireader.sh 1 1000000 5 10
 	rm -f *.dat
 
 readerperf:

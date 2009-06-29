@@ -51,11 +51,14 @@ for {set i 0} {$i < 100} {incr i} {
   }
 }
 
+
 puts "DONE"
 
+puts -nonewline "    Testing..."
 test_index $t = color red
 test_index $t = flavor cheesy
 test_index $t > spiciness 5
+puts "DONE"
 
 puts -nonewline "scrambling tables..."; flush stdout
 
@@ -95,6 +98,7 @@ for {set i 0} {$i < 100} {incr i} {
 
 puts DONE
 
+puts -nonewline "    Testing..."
 test_index $t = color red
 test_index $t = flavor cheesy
 test_index $t > spiciness 5
@@ -108,3 +112,4 @@ test_index $t notmatch_case flavor che*
 test_index $t range spiciness 1 4
 test_index $t in flavor {acid cheesy}
 
+puts DONE

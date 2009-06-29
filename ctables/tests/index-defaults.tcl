@@ -27,6 +27,8 @@ set foods {pizza sugar toast waffles soup nuts}
 set colors {red orange yellow white maroon}
 set flavors {sweet sour cheesy pepper acid}
 
+puts "Initializing..."
+
 proc re {list} {
   return [lindex $list [expr {int(rand() * [llength $list])}]]
 }
@@ -60,11 +62,13 @@ for {set i 0} {$i < 100} {incr i} {
 # di $t flavor
 # di $t spiciness
 
+puts "Testing..."
 test_index $t = color maroon
 test_index $t = flavor cheesy
 if $spicy_brains {
   test_index $t > spiciness 5
 }
+puts "Scrambling..."
 
 for {set i 0} {$i < 100} {incr i} {
   set j [expr {int(rand() * 100)}]
@@ -100,6 +104,7 @@ for {set i 0} {$i < 100} {incr i} {
   $t set $j color [re $colors] flavor [re $flavors]
 }
 
+puts "Testing..."
 # di $t color
 # di $t flavor
 
@@ -118,3 +123,4 @@ test_index $t notmatch_case flavor che*
 test_index $t range spiciness 1 4
 test_index $t in flavor {acid cheesy}
 
+puts "DONE"

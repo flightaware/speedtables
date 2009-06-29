@@ -56,7 +56,7 @@ proc random_changes {delay count} {
   set names [lsort -decreasing [m names]]
   set inames [array names ::int_columns]
   for {set loop 0} {$loop < $count} {incr loop} {
-    if {int(rand() * 2)} {
+    if {int(rand() * 5) >= 1} {
       set i [expr {int(rand() * [llength $names])}]
       set key [lindex $names $i]
       set j [expr {int(rand() * [llength $inames])}]

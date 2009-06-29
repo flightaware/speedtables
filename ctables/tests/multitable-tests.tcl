@@ -6,7 +6,7 @@
 
 source test_common.tcl
 
-source multitable.tcl
+source multitable.ct
 
 nameval create nv
 nv set fred name fred value 100
