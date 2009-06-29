@@ -16,7 +16,7 @@ proc search_test {name searchFields expect} {
 	puts "got '$result'"
 	puts "expected '$expect'"
 	puts "command '$cmd'"
-	puts ""
+	error "ERROR IN TEST: $name"
     } else {
 	puts "ok"
     }
@@ -33,7 +33,7 @@ proc search_test_countonly {name searchFields expect} {
 	puts "got '$result'"
 	puts "expected '$expect'"
 	puts "command '$cmd'"
-	puts ""
+	error "ERROR IN TEST: $name"
     } else {
 	puts "ok"
     }
@@ -48,7 +48,7 @@ proc search_test_countonly {name searchFields expect} {
         puts "got '$result'"
         puts "expected '$expect'"
         puts "command '$cmd'"
-        puts ""
+	error "ERROR IN TEST: $name"
     } else {
         puts "ok"
     }
@@ -67,7 +67,7 @@ proc search_unsorted_test {name searchFields expect} {
 	puts "got '$result'"
 	puts "expected '$expect'"
 	puts "command '$cmd'"
-	puts ""
+	error "ERROR IN TEST: $name"
     } else {
 	puts "ok"
     }
@@ -85,7 +85,7 @@ proc search+_test {name searchFields expect} {
 	puts "got '$result'"
 	puts "expected '$expect'"
 	puts "command '$cmd'"
-	puts ""
+	error "ERROR IN TEST: $name"
     } else {
 	puts "ok"
     }
