@@ -916,7 +916,7 @@ normal_return:
 //
 // ctable_SearchCompareRow - perform comparisons on a row
 //
-inline static int
+INLINE static int
 ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, ctable_BaseRow *row)
 {
     int   compareResult;
@@ -942,7 +942,6 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     // run the supplied compare routine
     //
     compareResult = (*ctable->creator->search_compare) (interp, search, (void *)row);
-
     if (compareResult == TCL_CONTINUE) {
 	return TCL_CONTINUE;
     }
@@ -1182,7 +1181,7 @@ void ctable_PrepareTransactions(CTable *ctable, CTableSearch *search)
 //    taking the action
 //
 //
-static int
+int
 ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
     int           	  compareResult;
     int			  finalResult = TCL_OK;
@@ -2416,7 +2415,7 @@ ctable_ListIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum) {
     return TCL_OK;
 }
 
-inline void
+INLINE void
 ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_BaseRow *row = vRow;
@@ -2484,7 +2483,7 @@ ctable_RemoveFromAllIndexes (CTable *ctable, void *row) {
 // ctable, insert this row into that table's field's index if there is an
 // index on that field.
 //
-inline int
+INLINE int
 ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_FieldInfo *f;
@@ -2533,7 +2532,7 @@ Tcl_DecrRefCount (utilityObj);
 //
 // ctable_RemoveNullFromIndex - remove a NULL entry from an index
 //
-static inline int
+static INLINE int
 ctable_RemoveNullFromIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
     return TCL_OK;
 }
@@ -2541,7 +2540,7 @@ ctable_RemoveNullFromIndex (Tcl_Interp *interp, CTable *ctable, void *row, int f
 //
 // ctable_InsertNullIntoIndex - insert a NULL entry into an index
 //
-static inline int
+static INLINE int
 ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
     return TCL_OK;
 }

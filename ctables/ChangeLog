@@ -8,6 +8,7 @@
       $::ctable::ctablePackageVersion
     * Modify Makefile to make the version of tclsh a parameter.
     * Add code to request a first-time probe for memory map.
+    * Use INLINE macro in ctable_search.c
 
 6/18/2009 karl
     * Turn off inlining in config.tcl.  We came across a case where 
