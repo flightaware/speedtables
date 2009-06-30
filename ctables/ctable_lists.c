@@ -10,7 +10,7 @@
 //
 // ctable_ListInit - initialize a list
 //
-inline void
+INLINE void
 ctable_ListInit (ctable_BaseRow **listPtr, char *file, int line)
 {
 #ifdef LISTDEBUG
@@ -22,7 +22,7 @@ ctable_ListInit (ctable_BaseRow **listPtr, char *file, int line)
 //
 // ctable_ListEmpty - return 1 if the list is empty, else 0.
 //
-inline int
+INLINE int
 ctable_ListEmpty (ctable_BaseRow *list)
 {
 #ifdef LISTDEBUG
@@ -34,7 +34,7 @@ ctable_ListEmpty (ctable_BaseRow *list)
 //
 // ctable_ListRemove - remove a row from a list
 //
-inline void
+INLINE void
 ctable_ListRemove (ctable_BaseRow *row, int i)
 {
 #ifdef LISTDEBUG
@@ -55,7 +55,7 @@ ctable_ListRemove (ctable_BaseRow *row, int i)
 //
 // ctable_ListRemoveMightBeTheLastOne - remove a row from a list
 //
-inline int
+INLINE int
 ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 {
     int mightBeTheLastOne;
@@ -83,7 +83,7 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 }
 
 
-inline void
+INLINE void
 ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 {
 #ifdef LISTDEBUG
@@ -115,7 +115,7 @@ ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 //
 // ctable_ListInsertBefore - insert row2 before row1
 //
-inline void
+INLINE void
 ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
 {
     volatile struct ctable_baseRowStruct **row1prev;
@@ -145,7 +145,7 @@ ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
 //
 // ctable_ListInsertAfter - insert row2 after row1
 //
-inline void
+INLINE void
 ctable_ListInsertAfter (ctable_BaseRow *row1, ctable_BaseRow *row2, int i) {
 #ifdef LISTDEBUG
     fprintf(stderr, "ctable_ListInsertAfter(0x%lx, 0x%lx, %d)\n", (long)row1, (long)row2, i);

@@ -308,7 +308,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
     CTableSearchComponent  *components;
     CTableSearchComponent  *component;
-    
+
     static CONST char *searchTerms[] = CTABLE_SEARCH_TERMS;
 
     if (Tcl_ListObjGetElements (interp, componentListObj, &componentListCount, &componentList) == TCL_ERROR) {
@@ -2274,10 +2274,13 @@ ctable_TeardownSearch (CTableSearch *search) {
     }
 
     ckfree ((void *)search->components);
+    search->components = NULL;
 
     if (search->sortControl.fields != NULL) {
         ckfree ((void *)search->sortControl.fields);
+	search->sortControl.fields = NULL;
         ckfree ((void *)search->sortControl.directions);
+	search->sortControl.directions = NULL;
     }
 }
 
@@ -2530,9 +2533,15 @@ Tcl_DecrRefCount (utilityObj);
 // The next two routines are a hook for possible future use. Since they
 // are static inline they should always be optimized away.
 //
+// Note: these are "inline" and not "INLINE" to avoid errors when they
+// are not referenced from the generated table.
+//
+// Note: These will eventually be removed, and NULL will be indexed as
+// HIGH or LOW.
+//
 // ctable_RemoveNullFromIndex - remove a NULL entry from an index
 //
-static INLINE int
+static inline int
 ctable_RemoveNullFromIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
     return TCL_OK;
 }
@@ -2540,7 +2549,7 @@ ctable_RemoveNullFromIndex (Tcl_Interp *interp, CTable *ctable, void *row, int f
 //
 // ctable_InsertNullIntoIndex - insert a NULL entry into an index
 //
-static INLINE int
+static inline int
 ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
     return TCL_OK;
 }

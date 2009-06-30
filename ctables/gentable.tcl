@@ -2718,7 +2718,7 @@ void ${table}_deleteKey(CTable *ctable, struct ${table} *row, int free_shared)
 	    shmfree(ctable->share, (void *)row->hashEntry.key);
     } else
 #endif
-	ckfree(row->hashEntry.key);
+    ckfree(row->hashEntry.key);
     row->hashEntry.key = NULL;
 }
  
