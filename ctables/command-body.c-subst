@@ -9,7 +9,15 @@
 int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
     ctable_BaseRow           *row;
     ctable_BaseRow           *nextRow;
-    int indexCtl = final ? CTABLE_INDEX_DESTROY : CTABLE_INDEX_FASTDELETE;
+
+    // we say CTABLE_INDEX_FASTDELETE to cause the index entries
+    // to not be deleted, drop all indexes later will do a
+    // much faster job
+    int indexCtl = CTABLE_INDEX_FASTDELETE;
+
+    // DESTROY_SHARED is used with shared tables, does even less work than fastdelete
+    // (we aren't using this)
+    // int indexCtl = final ? CTABLE_INDEX_DESTROY_SHARED : CTABLE_INDEX_FASTDELETE;
 
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_READER) {
@@ -25,10 +33,6 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
 #endif
 
     CTABLE_LIST_FOREACH_SAFE (ctable->ll_head, row, nextRow, 0) {
-
-	// we say CTABLE_INDEX_FASTDELETE to cause the index entries
-	// to not be deleted, drop all indexes later will do a
-	// much faster job
 
 	// explicitly delete the hash entry - since we are fast-deleting
 	// the hash table buckets and not updating all the links, we

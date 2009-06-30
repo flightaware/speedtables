@@ -2752,7 +2752,7 @@ proc gen_delete_subr {subr struct} {
     emit "    struct $struct *row = vRow;"
     if {$withSharedTables} {
         emit "    // 'final' means 'shared memory will be deleted anyway, just zero out'"
-	emit "    int             final = indexCtl == CTABLE_INDEX_DESTROY;"
+	emit "    int             final = indexCtl == CTABLE_INDEX_DESTROY_SHARED;"
 	emit "    int             is_master = ctable->share_type == CTABLE_SHARED_MASTER;"
 	emit "    int             is_shared = ctable->share_type != CTABLE_SHARED_NONE;"
     }
@@ -2765,7 +2765,7 @@ proc gen_delete_subr {subr struct} {
     }
     emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);"
     emit "    $rightCurly else"
-    emit "        ${table}_deleteKey(ctable, row, indexCtl != CTABLE_INDEX_DESTROY);"
+    emit "        ${table}_deleteKey(ctable, row, indexCtl != CTABLE_INDEX_DESTROY_SHARED);"
     emit ""
 
     foreach fieldName $fieldList {
@@ -4456,7 +4456,7 @@ proc gen_gets_string_cases {} {
 variable sharedStaticSource {
 
 // Call write-lock at least once during command.
-static inline void begin_write(CTable *ctable)
+static INLINE void begin_write(CTable *ctable)
 {
   if(ctable->share_type == CTABLE_SHARED_MASTER) {
     write_lock(ctable->share);
@@ -4465,7 +4465,7 @@ static inline void begin_write(CTable *ctable)
 }
 
 // Call write-unlock once at the end of the command, IFF it was locked
-static inline void end_write(CTable *ctable)
+static INLINE void end_write(CTable *ctable)
 {
   if(ctable->was_locked && ctable->share_type == CTABLE_SHARED_MASTER) {
     write_unlock(ctable->share);
