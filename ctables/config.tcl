@@ -34,8 +34,9 @@
     #set sharedTraceFile -stderr
 
     # either NULL or an absolute address
-    #set sharedBase 0xA0000000
-    set sharedBase -1
+    #set sharedBase 0xA0000000; ### Use this one for FreeBSD
+    set sharedBase 0xA000000; ### Use this one for OS X
+    #set sharedBase -1 ; # Use this one to corrupt the free list :(
     #set sharedBase NULL
 
     # approx number of ctable row pools required to fill all shared memory
