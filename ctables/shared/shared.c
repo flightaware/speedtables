@@ -66,6 +66,7 @@ char *shared_errmsg[] = {
 	"Existing map is inconsistent",		// SH_ALREADY_MAPPED
 	"Map or file is too small",		// SH_TOO_SMALL
 	"Out of shared memory",			// SH_MAP_FULL
+	"Can't map correct address",		// SH_ADDRESS_MISMATCH
 	NULL
 };
 
@@ -154,7 +155,7 @@ IFDEBUG(init_debug();)
 //
 // If the file is already mapped, but at a different address, this is an error
 //
-shm_t   *map_file(char *file, char *addr, size_t default_size, int flags)
+shm_t   *map_file(char *file, char *addr, size_t default_size, int flags, int create)
 {
     char    *map;
     size_t   size;
@@ -185,10 +186,12 @@ shm_t   *map_file(char *file, char *addr, size_t default_size, int flags)
     }
 
 IFDEBUG(init_debug();)
+    // look for an already mapped file
     fd = open(file, O_RDWR, 0);
 
     if(fd == -1) {
-	if(!default_size || !addr) {
+        // No file, and not creator, can't recover
+	if(!create) {
 	    shared_errno = -SH_NO_MAP;
 	    return 0;
 	}
@@ -243,6 +246,13 @@ IFDEBUG(fprintf(stderr, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr
 
     if(map == MAP_FAILED) {
 	shared_errno = SH_MAP_FILE;
+	close(fd);
+	return NULL;
+    }
+
+    if(addr != 0 && !create && map != addr) {
+	munmap(map, size);
+        shared_errno = SH_ADDRESS_MISMATCH;
 	close(fd);
 	return NULL;
     }
@@ -1270,7 +1280,7 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 	sharename = namebuf;
     }
 
-    share = map_file(filename, share_base, size, flags);
+    share = map_file(filename, share_base, size, flags, creator);
     if(!share) {
 	TclShmError(interp, filename);
 	return TCL_ERROR;

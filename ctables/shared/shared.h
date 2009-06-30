@@ -74,6 +74,7 @@ enum shared_error_e {
 	SH_ALREADY_MAPPED,
 	SH_TOO_SMALL,
 	SH_MAP_FULL,
+	SH_ADDRESS_MISMATCH,
 };
 extern void shared_perror(char *text);
 
@@ -189,7 +190,7 @@ typedef struct _shm_t {
 } shm_t;
 
 int open_new(char *file, size_t size);
-shm_t *map_file(char *file, char *addr, size_t default_size, int flags);
+shm_t *map_file(char *file, char *addr, size_t default_size, int flags, int create);
 int unmap_file(shm_t *shm);
 void shminitmap(shm_t *shm);
 int shmcheckmap(volatile mapheader *map);
