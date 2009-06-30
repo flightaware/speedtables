@@ -1,3 +1,7 @@
+6/30/2009 peter
+    * Added more checks in shared memory code.
+    * Updated commants and constant/variable names for more clarity.
+
 6/29/2009 peter
     * Fixed file name test in shared/shared.c
     * Fixed multiple tests in tests/*
