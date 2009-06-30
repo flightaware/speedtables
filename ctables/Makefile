@@ -33,9 +33,6 @@ flairtest: config
 	@echo TCLLIBPATH=${TCLLIBPATH}
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd playpen/flair; $(TCLSH) crash2.tcl"
 
-multitabletest: config
-	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make multitable"
-
 mastertest: config server
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make master"
 
