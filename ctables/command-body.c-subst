@@ -84,18 +84,6 @@ int ${table}_destroy_ctable (Tcl_Interp *interp, CTable *ctable)
 	return TCL_ERROR;
     }
 
-#ifdef WITH_SHARED_TABLES
-    // We'll never need "ctable" again, so now we can trash it.
-    // And, possibly, unmap the file
-    if(ctable->share) {
-	// abandon reservation for name
-	release_name(ctable->share, ctable->share_name);
-
-	// unmap file (if all reservations abandoned)
-	unmap_file(ctable->share);
-    }
-#endif
-
     if (interp != NULL) {
 	// mark that we're already destorying the ctable so that the
 	// delete callback will know not to recursively call us.
@@ -110,6 +98,18 @@ int ${table}_destroy_ctable (Tcl_Interp *interp, CTable *ctable)
 	ctable->destroying = 1;
 	Tcl_DeleteCommandFromToken (interp, ctable->commandInfo);
     }
+
+#ifdef WITH_SHARED_TABLES
+    // We'll never need "ctable" again, so now we can trash it.
+    // And, possibly, unmap the file
+    if(ctable->share) {
+	// abandon reservation for name
+	release_name(ctable->share, ctable->share_name);
+
+	// unmap file (if all reservations abandoned)
+	doDetach(interp, ctable->share);
+    }
+#endif
 
     // return here so we don't risk touching ctable again.
     return TCL_OK;

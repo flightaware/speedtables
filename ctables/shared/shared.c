@@ -283,8 +283,8 @@ IFDEBUG(fprintf(stderr, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr
 }
 
 // unmap_file - Unmap the open and mapped associated with the memory mapped
-// for share. Return 0 on error. Errno is not meaningful after faillure,
-// shared_errno is.
+// for share. Return 0 on error, -1 if the map is still busy, 1 if it's
+// been umapped. Errno is not meaningful after faillure, shared_errno is.
 int unmap_file(shm_t   *share)
 {
     char		*map;
@@ -294,7 +294,7 @@ int unmap_file(shm_t   *share)
 
     // If there's anyone still using the share, it's a no-op
     if(share->objects)
-	return 1;
+	return -1;
 
     // remove from list
     if(!share_list) {
