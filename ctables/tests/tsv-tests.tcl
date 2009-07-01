@@ -132,6 +132,17 @@ set fp [open /tmp/quote_test.tsv w]
 t search -quote uri -write_tabsep $fp -with_field_names 1
 close $fp
 
+set fp [open /tmp/quote_test.tsv r]
+set count 0
+while {[gets $fp line] >= 0} {
+   if {"$line" == "newline\t66\tnew%0aline\t66"} { incr count }
+   if {"$line" == "tab\t66\ttab%09here\t66"} { incr count }
+}
+if {$count != 2} {
+   error "Didn't find both URI-quoted lines in /tmp/quote_test.tsv"
+}
+close $fp
+
 t reset
 
 set fp [open /tmp/quote_test.tsv r]
@@ -152,6 +163,17 @@ puts "quoting test {-quote escape}"
 
 set fp [open /tmp/escape_test.tsv w]
 t search -quote escape -write_tabsep $fp -with_field_names 1
+close $fp
+
+set fp [open /tmp/escape_test.tsv r]
+set count 0
+while {[gets $fp line] >= 0} {
+   if {"$line" == "newline\t66\tnew\\nline\t66"} { incr count }
+   if {"$line" == "tab\t66\ttab\\there\t66"} { incr count }
+}
+if {$count != 2} {
+   error "Didn't find both backslash-escaped lines in /tmp/escape_test.tsv"
+}
 close $fp
 
 t reset
