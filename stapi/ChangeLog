@@ -1,6 +1,10 @@
 Speedtables ChangeLog
 =====================
 
+7/1/2009 peter
+    Make the read_tabsep and write_tabsep in stapi/server use escape
+    quoting.
+
 6/18/2009 karl
     Make the "refresh_ctable" proc's "time_col" argument optional, bringing
     the behavior of refresh_ctable in line with the documentation.
