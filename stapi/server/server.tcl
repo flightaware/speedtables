@@ -486,7 +486,7 @@ namespace eval ::stapi {
   #
   #   -index field_name
   #      Name of a field to create an index on. Multiple -index are allowed.
-  # 
+  #
   # Options that don't begin with a dash are passed to the ctable create
   # command.
   #
@@ -580,7 +580,7 @@ namespace eval ::stapi {
         set fields [split $line "\t"]
 
 	# Start assembling the ctable read_tabsep command
-	set read_cmd [list $ctable read_tabsep $fp]
+	set read_cmd [list $ctable read_tabsep $fp -quote escape]
 
 	# If we only want a partial read, but we're doing an update, we need
 	# to do a partial read anyway, so don't include the pattern for an
@@ -757,7 +757,7 @@ namespace eval ::stapi {
     puts $fp [join [concat _key [$ctable fields]] "\t"]
 
     # Pull the trigger
-    $ctable write_tabsep $fp
+    $ctable write_tabsep $fp -quote escape
     close $fp
 
     if $locked {
