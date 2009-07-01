@@ -5,7 +5,7 @@
 #
 
 # default 
-TCLSH=tclsh8.4
+TCLSH=tclsh`cat version`
 TCLSHM=$(TCLSH)
 
 # With full memory debugging

@@ -3,7 +3,8 @@
 # Common environment variables
 #
 
-TCLSH=tclsh8.4
+. ../sysconfig.sh
+TCLSH=tclsh$TCLVER
 
 # With FlightAware
 #TCLSH=/usr/fa/bin/tclsh8.4

@@ -1,5 +1,6 @@
 7/1/2009 peter
     * Check for deleting inside a search.
+    * Localize TCL version to one line in Makefile
 
 6/30/2009 peter
     * Added more checks in shared memory code.

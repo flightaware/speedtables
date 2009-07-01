@@ -15,7 +15,8 @@ TCLLIBPATH="${WORKDIR} ${WORKDIR}/../ctable_server ${WORKDIR}/../stapi"
 #
 # TODO - make this automatic
 #
-TCLSH=tclsh8.4
+TCLVER=8.4
+TCLSH=tclsh$(TCLVER)
 
 default: test
 
@@ -70,13 +71,17 @@ install: config
 	-mkdir -p $(INSTDIR)
 	-cp -f *.tcl *-subst *.h *.c skiplists/*.h skiplists/*.c hash/speedtables.h hash/speedtableHash.c shared/*.[ch] $(INSTDIR)
 
+sysconfig.sh: Makefile
+	echo "TCLVER=$(TCLVER)" > sysconfig.sh
+	echo "$(TCLVER)" > tests/version
+
 sysconfig.tcl: mkConfig.sh config.tcl
 	./mkConfig.sh > sysconfig.tcl
 
 gentable_stub.tcl: sysconfig.tcl
 	$(TCLSH) ./make_gentable_stub.tcl > gentable_stub.tcl
 
-config: sysconfig.tcl gentable_stub.tcl
+config: sysconfig.sh sysconfig.tcl gentable_stub.tcl
 
 server: ../ctable_server/pkgIndex.tcl
 

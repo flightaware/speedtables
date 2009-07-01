@@ -4,7 +4,9 @@
 
 # Create sysconfig.tcl from tclConfig.sh and other things
 
-tcl_versions="8.4"
+. sysconfig.sh
+
+tcl_versions="$TCLVER"
 tcl_prefixes="/usr/local/lib/tcl /usr/lib/tcl /System/Library/Frameworks/Tcl.framework/Versions/ $*"
 
 pg_prefixes="/usr/local /usr/local/pgsql"
