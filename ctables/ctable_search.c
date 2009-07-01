@@ -2298,8 +2298,12 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
     CTableSearch    search;
     int result;
 
+    // flag this search in progress
+    ctable->searching = 1;
+
     result = ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField);
     if (result == TCL_ERROR) {
+        ctable->searching = 0;
         return TCL_ERROR;
     }
 
@@ -2311,6 +2315,8 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
     }
 
     ctable_TeardownSearch (&search);
+
+    ctable->searching = 0;
     return result;
 }
 

@@ -577,6 +577,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_DELETE: {
+	if(ctable->searching) {
+	    Tcl_AppendResult(interp, "Can not delete from inside search.\n", NULL);
+	    return TCL_ERROR;
+	}
+
 	if (objc != 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "field");
 	    return TCL_ERROR;

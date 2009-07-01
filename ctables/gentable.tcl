@@ -2536,7 +2536,7 @@ proc gen_defaults_subr {struct} {
     emit "        firstPass = 0;"
     emit ""
     emit "        $baseCopy.hashEntry.key = NULL;"
-    
+
     if {$withSharedTables} {
         emit "        $baseCopy._row_cycle = LOST_HORIZON;"
     }

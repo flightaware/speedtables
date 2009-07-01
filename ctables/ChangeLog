@@ -1,3 +1,6 @@
+7/1/2009 peter
+    * Check for deleting inside a search.
+
 6/30/2009 peter
     * Added more checks in shared memory code.
     * Updated commants and constant/variable names for more clarity.
