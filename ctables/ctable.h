@@ -233,6 +233,11 @@ typedef struct {
     int					 tranType;
     Tcl_Obj				*tranData;
 
+    // setting up these for the field_comp routines to go after the
+    // rows we want in skiplists
+    void                                 *row1;
+    void                                 *row2;
+
     int                                  action;
 
     int					 bufferResults;

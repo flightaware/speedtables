@@ -41,9 +41,9 @@ namespace eval ctable {
 	set srcDir .
     }
 
-    source [file join $srcDir config.tcl]
-
     source [file join $srcDir sysconfig.tcl]
+
+    source [file join $srcDir config.tcl]
 
     variable leftCurly
     variable rightCurly
