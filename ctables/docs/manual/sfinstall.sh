@@ -10,5 +10,5 @@ rm -r sourceforge
 ./sftag.tcl
 cd sourceforge
 
-scp * $user@shell.sf.net:/home/groups/s/sp/speedtables/htdocs
+scp * $user@web.sourceforge.net:/home/groups/s/sp/speedtables/htdocs
 

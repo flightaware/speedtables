@@ -126,7 +126,7 @@ if {"[t get aol]" != "82 AOL 3248"} {
 puts "quoting test {-quote uri}"
 
 t set tab name "tab\there" rank 66 value 66
-t set newline name "new\nline" rank 66 value 66
+t set newline name "new\r\nline" rank 66 value 66
 
 set fp [open /tmp/quote_test.tsv w]
 t search -quote uri -write_tabsep $fp -with_field_names 1
@@ -135,7 +135,7 @@ close $fp
 set fp [open /tmp/quote_test.tsv r]
 set count 0
 while {[gets $fp line] >= 0} {
-   if {"$line" == "newline\t66\tnew%0aline\t66"} { incr count }
+   if {"$line" == "newline\t66\tnew%0d%0aline\t66"} { incr count }
    if {"$line" == "tab\t66\ttab%09here\t66"} { incr count }
 }
 if {$count != 2} {
@@ -155,8 +155,8 @@ if {"$tmp(name)" != "tab\there"} {
 }
 
 array set tmp [t array_get newline]
-if {"$tmp(name)" != "new\nline"} {
-    error "quote-uri: got [list $tmp(name)] expected [list "new\nline"]"
+if {"$tmp(name)" != "new\r\nline"} {
+    error "quote-uri: got [list $tmp(name)] expected [list "new\r\nline"]"
 }
 
 puts "quoting test {-quote escape}"
@@ -168,7 +168,7 @@ close $fp
 set fp [open /tmp/escape_test.tsv r]
 set count 0
 while {[gets $fp line] >= 0} {
-   if {"$line" == "newline\t66\tnew\\nline\t66"} { incr count }
+   if {"$line" == "newline\t66\tnew\\r\\nline\t66"} { incr count }
    if {"$line" == "tab\t66\ttab\\there\t66"} { incr count }
 }
 if {$count != 2} {
@@ -188,8 +188,8 @@ if {"$tmp(name)" != "tab\there"} {
 }
 
 array set tmp [t array_get newline]
-if {"$tmp(name)" != "new\nline"} {
-    error "quote-escape: got [list $tmp(name)] expected [list "new\nline"]"
+if {"$tmp(name)" != "new\r\nline"} {
+    error "quote-escape: got [list $tmp(name)] expected [list "new\r\nline"]"
 }
 
 puts "finished"

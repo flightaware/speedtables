@@ -38,7 +38,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 
     for(i = 0; i < length; i++) {
 	char c = string[i];
-	if(c == '\n' || c == quoteChar || strchr(quotedChars, c)) {
+	if(!isprint(c) || c == quoteChar || strchr(quotedChars, c)) {
 	    if(!new) {
 	        new = ckalloc(maxExpansion * length + 1);
 	        for(j = 0; j < i; j++)

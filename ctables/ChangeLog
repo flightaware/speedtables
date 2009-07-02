@@ -8,6 +8,7 @@
 	* main build directory is now stobj
 	* package require speedtables works
     * Bump version to 1.5
+    * Quote all characters that aren't isprint()
 
 7/1/2009 peter
     * Check for deleting inside a search.
