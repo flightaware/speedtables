@@ -19,8 +19,8 @@ fred:*:1616:1616:Fred Smith:/home/fred:/bin/tcsh
 </pre>
 To represent these in a speed table, we'll create a table like this:
 <pre>
-CExtension U_passwd {
-  CTable u_passwd {
+speedtables U_passwd {
+  table u_passwd {
     varstring username unique 1 indexed 1 notnull 1
     varstring passwd
     int       uid      indexed 1 notnull 1
@@ -31,9 +31,9 @@ CExtension U_passwd {
   }
 }
 </pre>
-This creates a C Extension package named "U_passwd", containing one
-C Speed Table (CTable) named "u_passwd". The package created always
-starts with an uppercase letter.
+This creates a Speed Tables package named "U_passwd", containing one
+table named "u_passwd". The package name must always
+start with an uppercase letter.
 <p>
 The table u_passwd contains 7 fields: username, passwd, uid, gid, fullname
 (we know the GCOS field is not just a full name, this is an example), home
@@ -114,7 +114,7 @@ proc show_user {list} {
 To use the speed table and these helper routines in a standalone program, you
 would do something like this:
 <pre>
-package require ctable
+package require speedtable
 
 source passwd_table.tcl
 source show_user.tcl
@@ -144,7 +144,7 @@ program into a server is easy, we load the speed table server package, and
 then instead of looking up a user name and display it we go to sleep
 waiting on requests:
 <pre>
-package require ctable
+package require speedtable
 <span class=change>package require ctable_server</span>
 
 source passwd_table.tcl
@@ -257,7 +257,7 @@ structure of the table and converts the Speed Table search term into an SQL
 query and performs the same callbacks as the original search.
 <p>
 To populate the password table in SQL, for example when converting from flat
-files to an SQL database... we <i>should</i> be able to use the ctable loading
+files to an SQL database... we <i>should</i> be able to use the speed table loading
 routine from the first example:
 <pre>
 <span class=change>package require st_client_pgtcl
@@ -274,7 +274,7 @@ Unfortunately, we have not yet implemented read_tabsep for sql: tables, so
 you have to load up a local speed table and write_tabsep it to SQL like the
 example from Chapter 13 of the manual.
 <pre>
-package require ctable
+package require speedtable
 <span class=change>package require Pgtcl</span>
 
 source passwd_table.tcl
@@ -307,7 +307,7 @@ so requires Rivet to run. The simplest example of STDisplay is based on the
 first simple Speed Table example:
 <pre>
 &lt;?
-package require ctable
+package require speedtables
 package require st_display
 
 # Simple demo
@@ -517,7 +517,7 @@ memory interface requires that the client get a connection token from the
 master process, and it can only perform "search" operations on the table. The
 server changes from the previous example are minimal:
 <pre>
-package require ctable
+package require speedtable
 package require ctable_server
 
 source passwd_table.tcl
@@ -560,7 +560,7 @@ master destroy</span>
 And then remembering to use the STTP conection to the master table (master) or
 the shared memory reader table (slave) depending on whether you're using
 <tt>search</tt> or not. For our example program this would not be all
-that significant, since it only uses search, but any other ctable methods
+that significant, since it only uses search, but any other speed table methods
 would fail on the reader. For example, you could not use Speed Tables Display
 directly on a shared memory table.
 <p>

@@ -16,8 +16,8 @@
 <pre>
 package require speedtable
 <br>
-CExtension animinfo 1.1 {
-    SpeedTable animation_characters {
+speedtables Animinfo 1.1 {
+    table animation_characters {
         varstring name indexed 1 unique 0
         varstring home
         varstring show indexed 1 unique 0
@@ -30,15 +30,15 @@ CExtension animinfo 1.1 {
 }
 </pre>
 
-<p>Speed tables are defined inside the code block of the <i>CExtension</i>.  </p>
-<p>Executing this will generate table-specific C functions a Tcl C language extension named <i>Animinfo</i>, compile it and link it it into a shared library.  </p>
-<p>Multiple speed tables can be defined in one CExtension definition.</p>
-<p>No matter how you capitalize it, the package name with be the first character of your C extension name capitalized and the rest mapped to lowercase.</p>
-<p>The name of the C extension follows the CExtension keyword, followed by a version number, and then a code body containing table definitions.</p>
-<H3>Loading Your Speed Table-Generated C Extension</H3>
+<p>Speed tables are defined inside the code block of the <i>speedtables package</i>.  </p>
+<p>Executing this will generate table-specific a Tcl extension package named <i>Animinfo</i>, compile it and link it it into a shared library. This package is implemented by application-specific C language code generated from the <i>table</i> definitions in the package.</p>
+<p>Multiple speed tables can be defined in one speedtables package.</p>
+<p>The package name must start with an uppercase letter, and can not contain any digits... this is a limitation of the Tcl package and shared library model.</p>
+<p>The name of the package follows the "speedtables" keyword, followed by a version number, and then a code body containing table definitions.</p>
+<H3>Loading Your Speed Table Package</H3>
 <p>After sourcing in the above definition, you can do a <tt>package require Animinfo</tt> or <tt>package require Animinfo 1.1</tt> and Tcl will load the extension and make it available.</p>
-<p>For efficiency's sake, we detect whether or not the C extension has been altered since the last time it was generated as a shared library, and avoid the compilation and linking phase when it isn't necessary.</p>
-<p>Sourcing the above code body and doing a <tt>package require Animinfo</tt> will create one new command,<i> animation_characters</i>, corresponding to the defined table. We call this command a <i>meta table</i> or a <i>creator table</i>.</p>
+<p>For efficiency's sake, we detect whether or not the package has been altered since the last time it was generated as a shared library, and avoid the compilation and linking phase when it isn't necessary.</p>
+<p>Sourcing the above code body and doing a <tt>package require Animinfo</tt> will create one new command,<i> animation_characters</i>, corresponding to the defined table. We call this command a <i>Speed tables Class</i> because it behaves similarly to iTcl classes, Tk widgets, and other object-oriented extensions to Tcl. It's also referred to as a <i>meta table</i> or a <i>creator table</i>.</p>
 <p><span class="code">animation_characters create t</span> creates a new object, <b>t</b>, that is a Tcl command that will manage and manipulate zero or more rows of the <i>animation_characters</i> table.</p>
 <div class="blue-indent">One meta table can create many speed tables</div>
 <div class="blue-block">
@@ -131,13 +131,12 @@ case, \N</p>
    t foo a b c d
 </pre>
 <p> ...then proc <i>bar</i> would be called with the arguments "<i>x a b c d</i>".</p>
-<p>The generated C source code, some copied .c and .h files, the compiled .o object file, and shared library are written in a directory called <span class="file">build</span> underneath the directory that's current at the time the CExtension is sourced, unless a build path is specified. For example, after the "package require speed table" and outside of and prior to the CExtension definition, if you invoke</p>
+<p>Implementation note: the generated C source code, some copied .c and .h files, the compiled .o object file, and shared library (the "Speed Tables Objects") are written in a directory called <span class="file">stobj</span> underneath the directory that's current at the time the Speed Tables Package is sourced, unless a build path is specified. For example, after the "package require speedtable" and outside of and prior to the package definition, if you invoke</p>
 <pre>
 CTableBuildPath /tmp
 </pre>
 <p>...then those files will be generated in the <span class="file">/tmp</span> directory. (It's a bad idea to use <span class="tmp">/tmp</span> on a multiuser machine, of course, but could be OK for a dedicated appliance or something like that.)</p>
 <p>Note that the specified build path is appended to the Tcl library search path variable, <i>auto_path</i>, if it isn't already in there.</p>
-<p class="bug">Bug: - Tcl appears to examine a shared library name and stop at the first numeric digit in an apparently somewhat inadequate attempt to make sure it doesn't include shared library version numbers in the expected *_Init and*_SafeInit function names for the library being generated. Consequently when you're defining a C extension via the CExtension command, do not include any digits in your C extension's name.</p>
 <a name="1"><p class="foot">[1] It feels a bit clumsy to have an external key like this, and we are working on making the key a part of the row itself, which seems better.  Currently the "key" data type is used, and if no "key" is defined then the pseudo-field "_key" is created.</p>
 <!-- INSERT LOGO -->
 <!-- %BEGIN LINKS% -->
