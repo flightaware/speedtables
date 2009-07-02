@@ -1,3 +1,7 @@
+7/2/2009 peter
+    * Make all possible symbols static with a CTABLE_INTERNAL macro, unless
+      fullStatic is set to 0 in sonfig.tcl (possible debug reasons?)
+
 7/1/2009 peter
     * Check for deleting inside a search.
     * Localize TCL version to one line in Makefile

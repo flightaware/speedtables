@@ -4509,10 +4509,12 @@ proc gen_preamble {} {
 	emit "#define INLINE"
     }
     if {$fullStatic} {
-	emit "#define STATIC static"
+	emit "#define CTABLE_INTERNAL static"
+	emit "#define CTABLE_EXTERNAL"
 	emit "#define FULLSTATIC"
     } else {
-	emit "#define STATIC"
+	emit "#define CTABLE_INTERNAL"
+	emit "#define CTABLE_EXTERNAL extern"
     }
     emit ""
     if {$withPgtcl} {

@@ -62,8 +62,8 @@ typedef uint64_t cell_t;
 #define LOST_HORIZON 0
 
 // internal errors
-extern int shared_errno;
-extern char *shared_errmsg[];
+int shared_errno;
+char *shared_errmsg[];
 enum shared_error_e {
 	SH_ERROR_0,
 	SH_NEW_FILE,
@@ -76,7 +76,7 @@ enum shared_error_e {
 	SH_MAP_FULL,
 	SH_ADDRESS_MISMATCH,
 };
-extern void shared_perror(char *text);
+void shared_perror(char *text);
 
 // shared memory that is no longer needed but can't be freed until the
 // last reader that was "live" when it was in use has released it

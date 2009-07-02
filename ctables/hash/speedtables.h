@@ -103,9 +103,9 @@ typedef struct ctable_HashSearch {
 } ctable_HashSearch;
 
 
-EXTERN void ctable_InitHashTable (ctable_HashTable *tablePtr);
+void ctable_InitHashTable (ctable_HashTable *tablePtr);
 
-EXTERN ctable_HashEntry *  ctable_NextHashEntry (ctable_HashSearch * searchPtr);
+ctable_HashEntry *  ctable_NextHashEntry (ctable_HashSearch * searchPtr);
 
 #endif /* _SPEEDTABLES_H */
 

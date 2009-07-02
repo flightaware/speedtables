@@ -7,7 +7,7 @@
 // Quote a string, possibly reallocating the string, returns TRUE if the
 // string was modified and needs to be freed.
 //
-STATIC int
+CTABLE_INTERNAL int
 ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, char *quotedChars)
 {
     int          i, j = 0;
@@ -83,7 +83,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 // Dequote a string to a new copy. Returns the new length or -1 for a string
 // format error. quoteType can be CTABLE_QUOTE_URI or CTABLE_QUOTE_STRICT_URI
 //
-STATIC int
+CTABLE_INTERNAL int
 ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
 {
     int i = 0, j = 0, c;
@@ -152,7 +152,7 @@ ignore:	    dst[j++] = src[i++];
 // Dequote a string, in place. Returns the new length or -1 for a string
 // format error. quoteType can be CTABLE_QUOTE_URI or CTABLE_QUOTE_STRICT_URI
 //
-STATIC int ctable_dequoteString(char *string, int length, int quoteType)
+CTABLE_INTERNAL int ctable_dequoteString(char *string, int length, int quoteType)
 {
     return ctable_copyDequoted(string, string, length, quoteType);
 }
@@ -163,7 +163,7 @@ static int         ctable_quote_types[] = { CTABLE_QUOTE_NONE, CTABLE_QUOTE_URI,
 //
 // Convert a type name to a quote type
 //
-STATIC int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj)
+CTABLE_INTERNAL int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj)
 {
     int index;
 
@@ -176,7 +176,7 @@ STATIC int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj)
 //
 // Return a list of ctable quote type names (cache it, too)
 //
-STATIC Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp)
+CTABLE_INTERNAL Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp)
 {
     static Tcl_Obj *result = NULL;
 
