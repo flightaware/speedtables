@@ -12,7 +12,7 @@
 <div class=links><a href="ch07.html">Back</a><a href=index.html>Index</a><a href="ch09.html">Next</a></div>
 <!-- %END LINKS% -->
 <H2> 8 -  Shared Memory Speed Tables</H2>
-<p>Client-server speed tables can take a fairly big performance hit, as a sizable amount of Tcl code gets executed to make the remote speed table function like a local one.</p>
+<p>Client-server speed tables can involve a noticable performance hit, as a sizable amount of Tcl code gets executed to make the remote speed table function like a local one.</p>
 <p>While they're still pretty fast, server actions are inherently serialized because of the single-threaded access model afforded using standard Tcl fileevent actions within the Tcl event model.</p>
 <p>When the speed table resides on the same machine as the client, and particularly in this era of relatively inexpensive multiprocessor systems, it would be highly desirable for a client to be able to access the speed table directly through shared memory, bypassing the server entirely.</p>
 <p>This work was undertaken in the summer of '07 by Peter da Silva. The goal was to provide a way for same-server clients to access the speed table through shared memory while retaining the ability to build and use speed tables without using shared memory at all.</p>
@@ -50,7 +50,7 @@
 
 <dt>getprop<dd>
 <dt>getprop <i>propName ?propName?...</i><dd>
-<p>With no names, returns a name-value list of properties of the ctable, whatever is needed for reflection.</p>
+<p>With no names, returns a key-value list of properties of the ctable, whatever is needed for reflection.</p>
 <p>Currently the properties available are type, extension, and key. These are needed for reflection on shared tables.</p>
 <p>With names, returns a list of only those properties.</p>
 
@@ -68,7 +68,7 @@
 <p>Gets the value of a string set with "set".</p>
 
 <dt>info<dd>
-<p>Returns some internal information about the share in a name-value list. The data includes size, flags, name, whether you're the creator <i>(master)</i>, and filename.</p>
+<p>Returns some internal information about the share in a key-value list. The data includes size, flags, name, whether you're the creator <i>(master)</i>, and filename.</p>
 
 <dt>pools<dd>
 <p>Returns a list of information for fixed size memory pools in the shared segment. There will be at least two pools, the garbage pool (containing elements that have been freed but are still in use by at least one reader) and one pool the size of a ctable row is set up for each ctable. For each pool it will return the size of elements that the pool will manage, how many elements in each chunk of elements allocated at once, the total number of chunks allocated, and the number of free elements: <tt>{element_size elements_per_chunk chunks free_elements}</tt> </p>

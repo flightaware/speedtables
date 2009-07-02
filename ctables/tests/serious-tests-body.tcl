@@ -396,8 +396,8 @@ puts "ok"
 
 puts -nonewline "Testing type command..."
 set tType [t type]
-set typeDef [$tType cextension]
-set tabDef [t type cextension]
+set typeDef [$tType package]
+set tabDef [t type package]
 
 if {"$typeDef" != "$tabDef"} {
     error "Type and table mismatch" [list $typeDef != $tabDef]

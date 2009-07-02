@@ -13,14 +13,14 @@
 <!-- %END LINKS% -->
 <H2> 5 -  Methods for Manipulating Speed Tables</H2>
 <div class="blue">This chapter enumerates all of the defined methods that are available to interact with Speed Tables, with examples.</div>
-<H3>Meta-table Methods</H3>
+<H3>Meta-table (Class) Methods</H3>
 <p>The following methods are available as arguments to the meta-table (class)
 of the Speed Table:</p>
 <dl compact>
 <dt>create table_name ?master|reader ?name value?...?<dd>
 <p>Create a new table instance. The syntax for master or reader shared memory tables are described in chapter 8</p>
-<dt>cextension<dd>
-<p>dump the code used to define the C Extension that created the table.</p>
+<dt>package<dd>
+<p>dump the code used to define the Speed Tables Package that created the table.</p>
 <dt>info<dd><p>Reserved for future use</p>
 <dt>method method_name method_proc<dd>
 <p>Register a new method into the class. When the table is called with the
@@ -30,7 +30,7 @@ arguments.
 <dt>null_value ?value?<dd>
 <p>Define or fetch the null value for a class.</p>
 </dl>
-<H3> Table Methods </H3>
+<H3> Table (Object) Methods </H3>
 <p>The following built-in methods are available as arguments to each instance of a speed table:</p>
 <p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep</i>, <i>key</i>, <i>makekey</i>, <i>store</i>, <i>share</i>, <i>getprop</i>, <i>attach</i></p>
 <p>For the examples, assume we have done a "<tt>cable_info create x</tt>"</p>
@@ -182,7 +182,7 @@ x makekey {ip 10.2.3.1 name host1}
 <div class="blue-indent">Brute-Force Search Is Brutally Fast</div>
 <div class="blue-block">
 <p>Search can perform brute-force multivariable searches on a speed table and take actions on matching records, without any scripting code running on an every-row basis.</p>
-<p>On a modern 2006 Intel and AMD machines, speed table search can perform, for example, unanchored string match searches at a rate of sixteen million rows per CPU second (around 60 nanoseconds per row).</p>
+<p>On a typical Intel or AMD machine from 2006, speed table search can perform, for example, unanchored string match searches at a rate of sixteen million rows per CPU second (around 60 nanoseconds per row).</p>
 <p>On the other hand, skip lists point to a future where there isn't any key that's external to the row -- that is, what would have been the external key would exist as a normal field in the row.</p>
 <p>Whether you should use indexes (skiplists) or not depends on the characteristics of the table. On one of our test systems, inserting a row into the table takes about 2.3 microseconds, but a single index increases this to about 7 microseconds. On the other hand, an indexed search on that field may be O(logN) on the number of rows in the table.</p>
 </div>
@@ -235,8 +235,8 @@ $table search \
 <p>When performing -write_tabsep, use the quoting strategy <i>type</i>:</p>
 <ul>
 <li>none - default
-<li>uri - URI-encoding, percent followed by two hex digits.
-<li>escape - backslash-escape compatible with PostgreSQL.
+<li>uri - URI-encoding, percent followed by two hex digits (eg %0a).
+<li>escape - backslash-escape compatible with PostgreSQL (eg \n).
 </ul><p></p>
 
 <dt>-key <i>keyVar</i><dd>
@@ -312,12 +312,11 @@ $table search -compare {{&gt; coolness 50} \
 <dt>-buffer 1<dd>
 <p>Modifying the index being followed from the code body of a search can have undefined behavior. You may miss entries, visit entries twice, or possibly even crash the program. to avoid this, you can use a buffered search. The <tt>-buffer</tt> option transactionalizes the operation, at the cost of allocating a temporary internal array for the matched rows.</p>
 <p>The <tt>-delete</tt> and <tt>-update</tt> options are automatically transactionalized when necessary. The <tt>-sort</tt> option uses the transaction buffer for sorting, so there is no additional overhead for <tt>-buffer</tt> on a sorted search unless the sort is optimized out by the query optimizer. Searches on shared memory tables are always buffered.</p>
-<p>Note: It is not safe to delete rows from the code body of a search, whether buffered or not. Use the <tt>-delete</tt> option instead.</p>
-<p class=bug>Bug: The table should lock out deletes during a search.</p>
+<p>Note: It is not safe to delete rows from the code body of a search, whether buffered or not, because only the <i>index being traversed</i> is buffered, the row itself is freed immediately and removed from other indexes by the delete operation. Use the <tt>-delete</tt> option instead. Attempting to perform a delete inside the code body of a search on the same table is treated as an error.</p>
 <p class=bug>Bug: Indexes should be checked and the indexed field should be locked, so that modifying it unbuffered is defined as an error.</p>
 
 <dt>-delete 1<dd>
-<p>Delete the matched records.</p>
+<p>Delete the matched records, safely.</p>
 
 <dt>-update {<i>field value</i>}<dd>
 <p>Update the named field to a new value.</p>
@@ -353,10 +352,6 @@ $table search \
   }
 close $fp
 </pre>
-
-<dt>foreach <i>varName ?pattern? codeBody</i><dd>
-<p>A deprecated precursor to search.</p>
-<p>Iterate over all of the rows in the table, or just the rows in the table matching a string match wildcard, executing tcl code on each of them.</p>
 
 <dt>incr<dd>
 <p>Increment the specified numeric values, returning a list of the new incremented values</p>
