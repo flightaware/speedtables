@@ -17,7 +17,8 @@ TCLSHM=$(TCLSH)
 #TCLSHM=$(TCLSH)m
 
 all:
-	-rm -r build
+	-rm -r stobj
+	$(TCLSH) speedtable.tcl
 	$(TCLSH) serious-tests.tcl
 	$(TCLSH) incr-test.tcl
 	$(TCLSH) all-field-types.tcl
@@ -30,25 +31,25 @@ all:
 	$(TCLSH) poll-tests.tcl
 	$(TCLSH) multitable-tests.tcl
 	$(TCLSH) null-tests.tcl
-	rm -r build
+	rm -r stobj
 	$(TCLSH) index-compare.tcl
-	-rm -r build
+	-rm -r stobj
 	$(TCLSH) index-defaults.tcl
 
 compare:
-	-rm -r build
+	-rm -r stobj
 	$(TCLSH) index-compare.tcl
 
 null:
-	-rm -r build
+	-rm -r stobj
 	$(TCLSH) null-tests.tcl
 
 indef:
-	-rm -r build
+	-rm -r stobj
 	$(TCLSH) index-defaults.tcl
 
 master:
-	-rm -r build
+	-rm -r stobj
 	-rm -f *.dat
 	$(TCLSH) tsv-nokey-tests.tcl
 	$(TCLSHM) master.tcl
@@ -56,41 +57,41 @@ master:
 	rm -f *.dat
 
 speed:
-	-rm -r build
+	-rm -r stobj
 	-rm -f *.dat
 	$(TCLSH) masterspeed.tcl
 
 pools:
-	-rm -r build
+	-rm -r stobj
 	-rm -f *.dat
 	$(TCLSH) poolspeed.tcl
 
 reader:
-	-rm -r build
+	-rm -r stobj
 	-rm -f *.dat
 	sh master+reader.sh
 	rm -f *.dat
 
 stapi:
-	-rm -r build
+	-rm -r stobj
 	-rm -f *.dat
 	sh stapi.sh
 	rm -f *.dat
 
 multireader:
-	-rm -r build
+	-rm -r stobj
 	-rm -f *.dat
 	sh multireader.sh
 	rm -f *.dat
 
 speedreader:
-	-rm -r build
+	-rm -r stobj
 	-rm -f *.dat
 	sh multireader.sh 1 1000000 5 10
 	rm -f *.dat
 
 readerperf:
-	-rm -r build
+	-rm -r stobj
 	-rm -f *.dat
 	sh readerperf.sh
 	rm -f *.dat

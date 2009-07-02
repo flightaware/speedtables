@@ -2237,11 +2237,11 @@ cleanup:
 }
 
 #
-# table - the proc that starts defining a table, really, a meta table, and
+# new_table - the proc that starts defining a table, really, a meta table, and
 #  also following it will be the definition of the structure itself. Clears
 # all per-table variables in ::ctable::
 #
-proc table {name} {
+proc new_table {name} {
     variable table
     variable booleans
     variable nonBooleans
@@ -5651,13 +5651,35 @@ proc get_error_info {} {
 # CExtension - define a C extension
 #
 proc CExtension {name version code} {
+    uplevel 1 [list _speedtables $name $version $code]
+}
+
+#
+# speedtables - define a Speedtable package
+#
+proc speedtables {name version code} {
+    if {![string is upper [string index $name 0]]} {
+	error "Speed Tables package name must start with an uppercase letter"
+    }
+    foreach char [split $name ""] {
+	if [string is digit $char] {
+	    error "Speed Tables package name can not include any digits"
+	}
+    }
+    uplevel 1 [list _speedtables $name $version $code]
+}
+
+#
+# _speedtables - Common code to define a package
+#
+proc _speedtables {name version code} {
     global tcl_platform errorInfo errorCode
 
     # clear the error info placeholder
     set ctableErrorInfo ""
 
     if {![info exists ::ctable::buildPath]} {
-        CTableBuildPath build
+        CTableBuildPath stobj
     }
 
     file mkdir $::ctable::buildPath
@@ -5720,7 +5742,14 @@ proc start_codegen {} {
 # CTable - define a C meta table
 #
 proc CTable {name data} {
-    ::ctable::table $name
+    uplevel 1 [list table $name $data]
+}
+
+#
+# table - define a Speed Tables table
+#
+proc table {name data} {
+    ::ctable::new_table $name
     lappend ::ctable::tables $name
 
     namespace eval ::ctable $data
@@ -5775,3 +5804,4 @@ proc CTableBuildPath {dir} {
 }
 
 package provide ctable $::ctable::ctablePackageVersion
+package provide speedtable $::ctable::ctablePackageVersion

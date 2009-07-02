@@ -1,6 +1,12 @@
 7/2/2009 peter
     * Make all possible symbols static with a CTABLE_INTERNAL macro, unless
       fullStatic is set to 0 in sonfig.tcl (possible debug reasons?)
+    * The Great Renaming:
+	* CExtension -> speedtables
+	* CTable -> table
+	* ctables build directory in stapi, is now "stapi".
+	* main build directory is now stobj
+	* package require speedtables works
 
 7/1/2009 peter
     * Check for deleting inside a search.

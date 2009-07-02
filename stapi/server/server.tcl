@@ -33,7 +33,7 @@ namespace eval ::stapi {
   #
   variable build_root
 
-  variable default_build_root ctables
+  variable default_build_root stapi
 
   # Saved information about open ctables
   variable ctable2name

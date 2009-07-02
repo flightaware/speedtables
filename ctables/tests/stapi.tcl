@@ -8,7 +8,7 @@ lappend auto_path /usr/local/lib/rivet/packages-local
 package require st_shared
 
 puts "Making connection"
-set r [::stapi::connect shared://1616/master -build build]
+set r [::stapi::connect shared://1616/master -build stobj]
 
 puts "created reader $r"
 

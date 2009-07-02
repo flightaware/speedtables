@@ -78,10 +78,7 @@ sysconfig.sh: Makefile
 sysconfig.tcl: mkConfig.sh config.tcl
 	./mkConfig.sh > sysconfig.tcl
 
-gentable_stub.tcl: sysconfig.tcl
-	$(TCLSH) ./make_gentable_stub.tcl > gentable_stub.tcl
-
-config: sysconfig.sh sysconfig.tcl gentable_stub.tcl
+config: sysconfig.sh sysconfig.tcl
 
 server: ../ctable_server/pkgIndex.tcl
 
