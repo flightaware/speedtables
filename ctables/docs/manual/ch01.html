@@ -18,10 +18,10 @@
 containing zero or more <i>rows</i>, with each row containing one
 or more <i>fields</i>. The speed table compiler reads the table
 definition and generates C code to create and manage corresponding
-structures, currently producing a set of C access routines and a C
-language extension for Tcl to create, access and manipulate those
-tables. It then compiles the extension, links it as a shared library,
-and makes it loadable on demand via Tcl's "package require"
+structures, generating a custom C language Tcl extension 
+to create, access and manipulate those
+tables and building a native code package in a shared library
+that is loadable on demand via Tcl's "package require"
 mechanism.</p>
 
 <p>Speed tables are well-suited for applications for which this

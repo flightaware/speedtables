@@ -45,7 +45,7 @@ anim_characters name fred "Fred Flintstone"
 </pre>
 <p>You can also improve search performance by using the <tt>-index</tt> option to search to bias the query optimizer to prefer a specific index to scan</p>
 <div class="blue">Speed Table Query Optimizer</div>
-<p>The Speed Table Query Optimizer has been rolled in to search, and search+ has been deprecated. The "best" field in the query is used as the index, in this order:</p>
+<p>The Speed Table Query Optimizer is integrated in search. When performing a search the order of operrations in the "-compare" list is treated as a hint. The "best" field in the query is used as the index, in this order:</p>
 <p>"<b>in</b>" has the highest priority, and works for both the key and indexes.</p>
 <p>"<b>=</b>" has the next highest priority, and works for both the key and indexes.</p>
 <p>"<b>range</b>" on indexes come next.</p>

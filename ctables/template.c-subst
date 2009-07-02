@@ -26,13 +26,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
     int      optIndex;
 
     static CONST char *options[] = {
-        "create", "info", "null_value", "method", "cextension",
+        "create", "info", "null_value", "method", "package",
 	(char *)NULL
     };
 
     enum options
     {
-        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD, OPT_CEXTENSION
+        OPT_CREATE, OPT_INFO, OPT_NULLVALUE, OPT_METHOD, OPT_PACKAGE
     };
 
 #ifdef WITH_SHARED_TABLES
@@ -369,7 +369,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    return TCL_OK;
 	}
 
-	case OPT_CEXTENSION: {
+	case OPT_PACKAGE: {
 	    Tcl_SetStringObj (Tcl_GetObjResult (interp), "$::ctable::extension", -1);
 	    return TCL_OK;
 	}
