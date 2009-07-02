@@ -23,7 +23,7 @@
 #undef SEARCHDEBUG
 // debugging routines - verify that every skiplist contains an entry for
 // every row.
-void
+STATIC void
 ctable_verifyField(CTable *ctable, int field, int verbose)
 {
     ctable_BaseRow *row = NULL;
@@ -57,7 +57,7 @@ ctable_verifyField(CTable *ctable, int field, int verbose)
     if(verbose) fprintf(stderr, "Field %s OK\n", ctable->creator->fields[field]->name);
 }
 
-void
+STATIC void
 ctable_verify (Tcl_Interp *interp, CTable *ctable, int verbose) {
     int field;
 
@@ -90,7 +90,7 @@ ctable_verify (Tcl_Interp *interp, CTable *ctable, int verbose) {
  * return TCL_OK if all went according to plan, else TCL_ERROR.
  *
  */
-int
+STATIC int
 ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, int **fieldListPtr, int *fieldCountPtr) {
     int             nFields;
     Tcl_Obj       **fieldsObjv;
@@ -133,7 +133,7 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **f
 // return TCL_OK if all went according to plan, else TCL_ERROR.
 //
 //
-int
+STATIC int
 ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, CTableSort *sort) {
     int             nFields;
     Tcl_Obj       **fieldsObjv;
@@ -198,7 +198,7 @@ ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char
 // speedtable query optimizer for optimizations the determination of
 // which can be made here instead.  Shrug.
 //
-int
+STATIC int
 ctable_searchMatchPatternCheck (char *s) {
     char c;
 if(!s) panic("ctable_searchMatchPatternCheck called with null");
@@ -256,7 +256,7 @@ if(!s) panic("ctable_searchMatchPatternCheck called with null");
     return CTABLE_STRING_MATCH_PATTERN;
 }
 
-int ctable_CreateInRows(Tcl_Interp *interp, CTable *ctable, CTableSearchComponent *component)
+STATIC int ctable_CreateInRows(Tcl_Interp *interp, CTable *ctable, CTableSearchComponent *component)
 {
     int i;
 
@@ -281,7 +281,7 @@ int ctable_CreateInRows(Tcl_Interp *interp, CTable *ctable, CTableSearchComponen
     return TCL_OK;
 }
 
-void ctable_FreeInRows(CTable *ctable, CTableSearchComponent *component)
+STATIC void ctable_FreeInRows(CTable *ctable, CTableSearchComponent *component)
 {
     if(component->inListRows) {
 	int i;
@@ -657,7 +657,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 // ctable_checkForKey - check for a "key" field, and if there set the internal
 // noKeys flag to suppress the separate output of the "_key" field.
 //
-void ctable_checkForKey(CTable *ctable, CTableSearch *search)
+STATIC void ctable_checkForKey(CTable *ctable, CTableSearch *search)
 {
     if (!search->noKeys) {
 	int		     i;
@@ -809,7 +809,7 @@ updateParseError:
 // ctable_search_poll - called periodically from a search to avoid blocking
 // the Tcl event loop.
 //
-int ctable_search_poll(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
+STATIC int ctable_search_poll(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 {
     if(search->pollCodeBody) {
 	int result = Tcl_EvalObjEx (interp, search->pollCodeBody, 0);
@@ -1081,7 +1081,7 @@ struct restart_t {
     fieldCompareFunction_t compareFunction;
 };
 
-int ctable_SearchRestartNeeded(ctable_BaseRow *row, struct restart_t *restart)
+STATIC int ctable_SearchRestartNeeded(ctable_BaseRow *row, struct restart_t *restart)
 {
     // check to see if we're still following the right skiplist, by seeing
     // if the value we're following still satisfies the criteria
@@ -1134,7 +1134,7 @@ int ctable_SearchRestartNeeded(ctable_BaseRow *row, struct restart_t *restart)
 //
 // ctable_PrepareTransactions - set up buffering for transactions if needed
 //
-void ctable_PrepareTransactions(CTable *ctable, CTableSearch *search)
+STATIC void ctable_PrepareTransactions(CTable *ctable, CTableSearch *search)
 {
     // buffer results if:
     //   We've got search actions, AND...
@@ -1181,7 +1181,7 @@ void ctable_PrepareTransactions(CTable *ctable, CTableSearch *search)
 //    taking the action
 //
 //
-int
+STATIC int
 ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) {
     int           	  compareResult;
     int			  finalResult = TCL_OK;
@@ -2293,7 +2293,7 @@ ctable_TeardownSearch (CTableSearch *search) {
 // than a hash table walk.
 //
 //
-int
+STATIC int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable, int indexField) {
     CTableSearch    search;
     int result;
@@ -2328,7 +2328,7 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 // "final" means "we're destroying the ctable". This allows us to avoid
 // deleting structures in shared memory that are going away anyway.
 //
-void
+STATIC void
 ctable_DropIndex (CTable *ctable, int field, int final) {
     jsw_skip_t *skip = ctable->skipLists[field];
 
@@ -2341,7 +2341,7 @@ ctable_DropIndex (CTable *ctable, int field, int final) {
 //
 // ctable_DropAllIndexes - delete all of a table's indexes
 //
-void
+STATIC void
 ctable_DropAllIndexes (CTable *ctable, int final) {
     int field;
 
@@ -2358,7 +2358,7 @@ ctable_DropAllIndexes (CTable *ctable, int final) {
 // inserts and deletes into indexes corresponding to changes in rows works
 // properly
 //
-int
+STATIC int
 ctable_IndexCount (Tcl_Interp *interp, CTable *ctable, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     int         count;
@@ -2373,7 +2373,7 @@ ctable_IndexCount (Tcl_Interp *interp, CTable *ctable, int field) {
     return TCL_OK;
 }
 
-int
+STATIC int
 ctable_DumpIndex (Tcl_Interp *interp, CTable *ctable, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     void       *row;
@@ -2403,7 +2403,7 @@ ctable_DumpIndex (Tcl_Interp *interp, CTable *ctable, int field) {
 // warning - can be hugely inefficient if you have a zillion elements
 // but useful for testing
 //
-int
+STATIC int
 ctable_ListIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum) {
     jsw_skip_t *skip = ctable->skipLists[fieldNum];
     void       *p;
@@ -2424,7 +2424,7 @@ ctable_ListIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum) {
     return TCL_OK;
 }
 
-INLINE void
+STATIC INLINE void
 ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_BaseRow *row = vRow;
@@ -2470,7 +2470,7 @@ printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)
 //
 //
 //
-void
+STATIC void
 ctable_RemoveFromAllIndexes (CTable *ctable, void *row) {
     int         field;
     
@@ -2492,7 +2492,7 @@ ctable_RemoveFromAllIndexes (CTable *ctable, void *row) {
 // ctable, insert this row into that table's field's index if there is an
 // index on that field.
 //
-INLINE int
+STATIC INLINE int
 ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_FieldInfo *f;
@@ -2568,7 +2568,7 @@ ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int f
 // really anything since we're switching to bidirectionally linked lists
 // as targets of skip list nodes.
 //
-int
+STATIC int
 ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
     ctable_BaseRow *row;
 
@@ -2629,7 +2629,7 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
     return TCL_OK;
 }
 
-int
+STATIC int
 ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
     jsw_skip_t            *skip = ctable->skipLists[field];
     ctable_BaseRow        *row;

@@ -15,6 +15,9 @@
     # Set to 0 to import some code without inline.
     set fullInline 0
 
+    # Set to 0 to expose internal functions
+    set fullStatic 1
+
     # set to 1 to show compiler commands
     set showCompilerCommands 0
 

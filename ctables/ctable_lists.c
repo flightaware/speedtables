@@ -10,7 +10,7 @@
 //
 // ctable_ListInit - initialize a list
 //
-INLINE void
+STATIC INLINE void
 ctable_ListInit (ctable_BaseRow **listPtr, char *file, int line)
 {
 #ifdef LISTDEBUG
@@ -19,10 +19,11 @@ ctable_ListInit (ctable_BaseRow **listPtr, char *file, int line)
     *listPtr = NULL;
 }
 
+#ifndef FULLSTATIC
 //
 // ctable_ListEmpty - return 1 if the list is empty, else 0.
 //
-INLINE int
+STATIC INLINE int
 ctable_ListEmpty (ctable_BaseRow *list)
 {
 #ifdef LISTDEBUG
@@ -30,11 +31,12 @@ ctable_ListEmpty (ctable_BaseRow *list)
 #endif
     return (list == NULL);
 }
+#endif
 
 //
 // ctable_ListRemove - remove a row from a list
 //
-INLINE void
+STATIC INLINE void
 ctable_ListRemove (ctable_BaseRow *row, int i)
 {
 #ifdef LISTDEBUG
@@ -55,7 +57,7 @@ ctable_ListRemove (ctable_BaseRow *row, int i)
 //
 // ctable_ListRemoveMightBeTheLastOne - remove a row from a list
 //
-INLINE int
+STATIC INLINE int
 ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 {
     int mightBeTheLastOne;
@@ -83,7 +85,7 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 }
 
 
-INLINE void
+STATIC INLINE void
 ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 {
 #ifdef LISTDEBUG
@@ -112,10 +114,11 @@ ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 // printf ("insert head %lx i %d\n", (long unsigned int)listPtr, i);
 }
 
+#ifndef FULLSTATIC
 //
 // ctable_ListInsertBefore - insert row2 before row1
 //
-INLINE void
+STATIC INLINE void
 ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
 {
     volatile struct ctable_baseRowStruct **row1prev;
@@ -141,11 +144,13 @@ ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
     // make row1's prev's *next* point to row2, and do this last
     *row1prev = row2;
 }
+#endif
 
+#ifndef FULLSTATIC
 //
 // ctable_ListInsertAfter - insert row2 after row1
 //
-INLINE void
+STATIC INLINE void
 ctable_ListInsertAfter (ctable_BaseRow *row1, ctable_BaseRow *row2, int i) {
 #ifdef LISTDEBUG
     fprintf(stderr, "ctable_ListInsertAfter(0x%lx, 0x%lx, %d)\n", (long)row1, (long)row2, i);
@@ -169,4 +174,4 @@ ctable_ListInsertAfter (ctable_BaseRow *row1, ctable_BaseRow *row2, int i) {
     // structure is in place before a reader can see it.
     row1->_ll_nodes[i].next = row2;
 }
-
+#endif

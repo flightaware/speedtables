@@ -7,7 +7,8 @@
 // Quote a string, possibly reallocating the string, returns TRUE if the
 // string was modified and needs to be freed.
 //
-int ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, char *quotedChars)
+STATIC int
+ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, char *quotedChars)
 {
     int          i, j = 0;
     CONST char  *string = *stringPtr;
@@ -82,7 +83,8 @@ int ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteTy
 // Dequote a string to a new copy. Returns the new length or -1 for a string
 // format error. quoteType can be CTABLE_QUOTE_URI or CTABLE_QUOTE_STRICT_URI
 //
-int ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
+STATIC int
+ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
 {
     int i = 0, j = 0, c;
     if(length < 0) length = strlen(src);
@@ -150,7 +152,7 @@ ignore:	    dst[j++] = src[i++];
 // Dequote a string, in place. Returns the new length or -1 for a string
 // format error. quoteType can be CTABLE_QUOTE_URI or CTABLE_QUOTE_STRICT_URI
 //
-int ctable_dequoteString(char *string, int length, int quoteType)
+STATIC int ctable_dequoteString(char *string, int length, int quoteType)
 {
     return ctable_copyDequoted(string, string, length, quoteType);
 }
@@ -161,7 +163,8 @@ static int         ctable_quote_types[] = { CTABLE_QUOTE_NONE, CTABLE_QUOTE_URI,
 //
 // Convert a type name to a quote type
 //
-int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj) {
+STATIC int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj)
+{
     int index;
 
     if (Tcl_GetIndexFromObj (interp, obj, ctable_quote_names, "type", TCL_EXACT, &index) != TCL_OK)
@@ -173,7 +176,8 @@ int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj) {
 //
 // Return a list of ctable quote type names (cache it, too)
 //
-Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp) {
+STATIC Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp)
+{
     static Tcl_Obj *result = NULL;
 
     if (!result) {

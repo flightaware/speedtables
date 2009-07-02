@@ -371,7 +371,7 @@ typedef struct ctableTable {
     long                                 count;
 } CTable;
 
-extern int
+STATIC int
 ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth);
 
 // Helpers

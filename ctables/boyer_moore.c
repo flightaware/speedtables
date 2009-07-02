@@ -77,13 +77,13 @@ boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *need
     }
 }
 
-void
+STATIC void
 boyer_moore_teardown (struct ctableSearchMatchStruct *bm) {
     ckfree ((void *)bm->skip);
     ckfree ((void *)bm->needle);
 }
 
-const unsigned char *
+STATIC const unsigned char *
 boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, int hlen, int nocase) {
     int hpos;
 
@@ -110,7 +110,7 @@ boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *hay
 /* Returns a pointer to the first occurrence of "needle"
  * within "haystack", or NULL if not found.
  */
-const unsigned char* memmem_boyermoore
+STATIC const unsigned char* memmem_boyermoore
     (const unsigned char* haystack, int hlen,
      const unsigned char* needle,   int nlen)
 {

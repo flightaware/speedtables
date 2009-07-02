@@ -54,6 +54,7 @@ namespace eval ctable {
     # Important compile settings, used in generating the ID
     set keyCompileVariables {
 	fullInline
+	fullStatic
 	withPgtcl
 	withSharedTables
 	withSharedTclExtension
@@ -4487,6 +4488,7 @@ variable unsharedStaticSource {
 #
 proc gen_preamble {} {
     variable fullInline
+    variable fullStatic
     variable withPgtcl
     variable withSharedTables
     variable withSharedTclExtension
@@ -4505,6 +4507,12 @@ proc gen_preamble {} {
 	emit "#define INLINE inline"
     } else {
 	emit "#define INLINE"
+    }
+    if {$fullStatic} {
+	emit "#define STATIC static"
+	emit "#define FULLSTATIC"
+    } else {
+	emit "#define STATIC"
     }
     emit ""
     if {$withPgtcl} {
@@ -5557,7 +5565,7 @@ proc control_line {} {
     }
     set compileSettings [join $compileSettings ":"]
 
-    return "$cvsID $compileSettings [file mtime $srcDir]"
+    return "$cvsID $compileSettings [file mtime $srcDir] [info patchlevel]"
 }
 
 #
