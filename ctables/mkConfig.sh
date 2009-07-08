@@ -40,6 +40,11 @@ set -e
 
 . $config
 
+# Need to find out where "$CC" is supposed to come from, but...
+if [ -z "$CC" ]
+then CC="$TCL_CC"
+fi
+
 echo "# Generated from $config `date`"
 echo "set sysconfig(cc) {$TCL_CC}"
 echo "set sysconfig(ccflags) {$TCL_DEFS $TCL_EXTRA_CFLAGS $TCL_INCLUDE_SPEC}"
