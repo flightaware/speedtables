@@ -6,6 +6,7 @@
 
 PREFIX=/usr/local
 INSTDIR=$(PREFIX)/lib/stapi
+TCLSH=tclsh8.5
 
 V=""
 V=-verbose
@@ -23,7 +24,7 @@ SRC=$(CLIENT) $(SERVER) $(DISPLAY) $(COMMON)
 all: pkgIndex.tcl
 
 pkgIndex.tcl: Makefile $(SRC)
-	echo "pkg_mkIndex $V . $(SRC)" | tclsh8.4
+	echo "pkg_mkIndex $V . $(SRC)" | $(TCLSH)
 
 clean:
 	rm -r ctables

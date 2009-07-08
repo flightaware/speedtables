@@ -15,7 +15,7 @@ TCLLIBPATH="${WORKDIR} ${WORKDIR}/../ctable_server ${WORKDIR}/../stapi"
 #
 # TODO - make this automatic
 #
-TCLVER=8.4
+TCLVER=8.5
 TCLSH=tclsh$(TCLVER)
 
 default: test

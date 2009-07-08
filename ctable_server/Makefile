@@ -11,9 +11,10 @@
 PREFIX=/usr/local
 INSTDIR=$(PREFIX)/lib/ctable_server
 BINDIR=$(PREFIX)/bin
+TCLSH=tclsh8.5
 
 pkgIndex.tcl:	ctable_client.tcl ctable_server.tcl
-	echo "pkg_mkIndex . *.tcl" | tclsh8.4
+	echo "pkg_mkIndex . *.tcl" | $(TCLSH)
 
 all:	pkgIndex.tcl
 
