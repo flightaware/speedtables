@@ -23,7 +23,7 @@ if {"[t isnull brock dad name]" != {1 0}} {
 puts "Testing null tabsep"
 set fn /tmp/null_test.tsv
 set fp [open $fn w]
-t write_tabsep $fp -null "\\N" -quote escape
+t search -write_tabsep $fp -null "\\N" -quote escape
 close $fp
 
 t reset
