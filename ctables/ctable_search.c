@@ -494,9 +494,9 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	// string-append the specified fields, or all fields, tab separated
 
 	if (search->nRetrieveFields < 0) {
-	    (*creator->dstring_append_get_tabsep) (key, row, creator->publicFieldList, creator->nPublicFields, &dString, search->noKeys, search->sepstr, search->quoteType);
+	    (*creator->dstring_append_get_tabsep) (key, row, creator->publicFieldList, creator->nPublicFields, &dString, search->noKeys, search->sepstr, search->quoteType, search->nullString);
 	} else {
-	    (*creator->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys, search->sepstr, search->quoteType);
+	    (*creator->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys, search->sepstr, search->quoteType, search->nullString);
 	}
 
 	// write the line out
