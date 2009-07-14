@@ -5686,7 +5686,8 @@ proc _speedtables {name version code} {
         CTableBuildPath stobj
     }
 
-    file mkdir $::ctable::buildPath
+    set path [file normalize $::ctable::buildPath]
+    file mkdir $path
 
     if {[::ctable::extension_already_built $name $version $code]} {
         #puts stdout "extension $name $version unchanged"
