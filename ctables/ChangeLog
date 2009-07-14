@@ -1,3 +1,9 @@
+
+7/14/2009 karl
+    * Normalize the path to the stobj directory before attempting to make the
+      directory so that if we get a permission denied, it'll tell us where it
+      tried to create the directory, which is pretty helpful.
+
 7/2/2009 peter
     * Make all possible symbols static with a CTABLE_INTERNAL macro, unless
       fullStatic is set to 0 in sonfig.tcl (possible debug reasons?)
