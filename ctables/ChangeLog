@@ -1,3 +1,11 @@
+7/15/2009 karl
+    * Include BSD's qsort.c, renamed to ctable_qsort.c / ctable_qsort_r()
+      because some operating systems such as Linux don't include qsort_r().
+      (Apparently Linux lib developers assume nobody will sort anything
+       but strings.  Speedtables can sort shorts, ints, longs, wides, floats, 
+       doubles, booleans, varstrings, fixedstrings, internet addresses, mac 
+       addresses and tcl objects.)
+
 7/2/2009 peter
     * Make all possible symbols static with a CTABLE_INTERNAL macro, unless
       fullStatic is set to 0 in sonfig.tcl (possible debug reasons?)

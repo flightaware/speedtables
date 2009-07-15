@@ -7,6 +7,8 @@
 
 #include "ctable.h"
 
+#include "ctable_qsort.c"
+
 #include "boyer_moore.c"
 
 #include "jsw_rand.c"
@@ -864,7 +866,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
     }
 
     if(search->sortControl.nFields) {	// sorting
-      qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, creator->sort_compare);
+      ctable_qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, creator->sort_compare);
     }
 
     if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
