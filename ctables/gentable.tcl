@@ -34,7 +34,7 @@ namespace eval ctable {
     variable sanityChecks
     variable keyCompileVariables
 
-    set ctablePackageVersion 1.5
+    set ctablePackageVersion 1.6
 
     # If loaded directly, rather than as a package
     if {![info exists srcDir]} {
@@ -1805,7 +1805,7 @@ void ${table}_dumpFieldNums(int *fieldNums, int nFields, char *msg)
 }
 
 void
-${table}_dstring_append_get_tabsep (CONST char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, char *sepstr, int quoteType) {
+${table}_dstring_append_get_tabsep (CONST char *key, void *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, char *sepstr, int quoteType, char *nullString) {
     int              i;
     CONST char      *string;
     int              nChars;
@@ -1827,6 +1827,11 @@ ${table}_dstring_append_get_tabsep (CONST char *key, void *vPointer, int *fieldN
     for (i = 0; i < nFields; i++) {
 	if (!noKeys || (i > 0)) {
 	    Tcl_DStringAppend (dsPtr, sepstr, -1);
+	}
+
+	if(nullString && ${table}_is_null(row, fieldNums[i])) {
+	    Tcl_DStringAppend (dsPtr, nullString, -1);
+	    continue;
 	}
 
 	string = ${table}_get_string (row, fieldNums[i], &nChars, utilityObj);
@@ -1939,7 +1944,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *string, int *nFieldsP
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *term, int quoteType) {
+${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *term, int quoteType, char *nullString) {
     Tcl_Channel             channel;
     int                     mode;
     Tcl_DString             dString;
@@ -1984,7 +1989,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
         Tcl_DStringSetLength (&dString, 0);
 
-	${table}_dstring_append_get_tabsep (key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys, sepstr, quoteType);
+	${table}_dstring_append_get_tabsep (key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys, sepstr, quoteType, nullString);
 
 	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
@@ -2100,7 +2105,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls, int quoteType) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls, int quoteType, char *nullString) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = NULL;
@@ -2114,7 +2119,6 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     int		     col;
     int		    *newFieldNums = NULL;
     int	             status = TCL_OK;
-    char	    *nullString = NULL;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -2166,7 +2170,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	nFields--;
 
 //${table}_dumpFieldNums(fieldNums, nFields, "after key check");
-    if(withNulls) {
+    if(withNulls && !nullString) {
 	int nullLen;
 
 	nullString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullLen);
@@ -5682,7 +5686,8 @@ proc _speedtables {name version code} {
         CTableBuildPath stobj
     }
 
-    file mkdir $::ctable::buildPath
+    set path [file normalize $::ctable::buildPath]
+    file mkdir $path
 
     if {[::ctable::extension_already_built $name $version $code]} {
         #puts stdout "extension $name $version unchanged"

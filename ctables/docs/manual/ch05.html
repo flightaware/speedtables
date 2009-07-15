@@ -196,7 +196,8 @@ $table search \
     ?-array_get varName? ?-array_get_with_nulls varName? \
     ?-array varName? ?-array_with_nulls varName? ?-index field? \
     ?-write_tabsep channel? ?-tab string? ?-with_field_names 0|1? \
-    ?-nokeys 0|1? ?-delete 0|1? ?-buffer 0|1? ?-update {field value}? \
+    ?-nokeys 0|1? ?-null string? \
+    ?-delete 0|1? ?-buffer 0|1? ?-update {field value}? \
     ?-poll_interval interval? ?-poll_code codeBody?
 </pre>
 <p>Search options:</p>
@@ -227,6 +228,9 @@ $table search \
 
 <dt>-tab <i>string</i><dd>
 <p>Specify the separator string for write_tabsep (default "\t").</p>
+
+<dt>-null <i>string</i><dd>
+<p>Specify the string to be used for null values for write_tabsep</p>
 
 <dt>-with_field_names 1<dd>
 <p>If you are doing -write_tabsep, <tt>-with_field_names 1</tt> will cause the first line emitted to be a tab-separated list of field names.</p>
@@ -486,8 +490,9 @@ See chapter 8 for more information on these commands.</p>
 <tt>-quote <i>type</i></tt>,
 <tt>-glob <i>pattern</i></tt>,
 <tt>-nokeys</tt>,
-<tt>-with_field_names</tt>, and
-<tt>-tab <i>string</i></tt>.</p>
+<tt>-with_field_names</tt>,
+<tt>-tab <i>string</i></tt>, and
+<tt>-null <i>string</i></tt>.</p>
 </pre>
 <p>Write the table tab-separated to a channel, with the names of desired fields specified, else all fields if none are specified.</p>
 <pre>
@@ -499,6 +504,7 @@ close $fp
 <p>The first field written will be the key, unless -nokeys is specified and the key value is not written to the destination.</p>
 <p>If -with_field_names is specified, then the names of the fields will be the first row output.</p>
 <p>If -tab is specified then the string provided will be used as the tab.</p>
+<p>If -null is specified then the string provided will be used as the null.</p>
 <p>The <tt>-quote type</tt> options are compatible with <tt>search -write_tabsep</tt></p>
 <p>For compatibility, the default quoting for tabs and newlines inside a field is "none". It is recommended that <tt>-quote escape</tt> or <tt>-quote uri</tt> is used for writing and reading tab-separated files.</p>
 
@@ -510,6 +516,7 @@ close $fp
     <tt>-tab <i>string</i></tt>,
 <tt>-quote <i>type</i></tt>,
 <tt>-with_nulls</tt>
+<tt>-null <i>string</i></tt>,
 <tt>-nocomplain</tt>
 <tt>-skip <i>pattern</i></tt>, and
 <tt>-term <i>pattern</i></tt>.
@@ -537,6 +544,7 @@ Since you must have a key and at least one field, this is safe. However it might
 <p>Blank or missing fields literally insert empty strings unless <tt>-with_nulls</tt> is set, indicating that the file was created with null values.</p>
 <p>The <tt>-quote type</tt> options are compatible with <tt>search -write_tabsep</tt></p>
 <p>For compatibility, the default quoting for tabs and newlines inside a field is "none". It is recommended that <tt>-quote escape</tt> or <tt>-quote uri</tt> is used for writing and reading tab-separated files.</p>
+<p>The <tt>-null string</tt> allows you to specify the string expected to be seen for a null. The null string must be an entire field, and it is evaluated before quoting is applied.
 
 <dt>index create <i>fieldName</i><dd>
 <dt>index drop <i>fieldName</i><dd>

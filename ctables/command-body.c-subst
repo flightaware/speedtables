@@ -1017,6 +1017,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int		 nocomplain = 0;
 	char		*skip = NULL;
 	char		*term = NULL;
+	char	        *nullString = NULL;
 	int		 quoteType = CTABLE_QUOTE_NONE;
 
 	while (objIdx < objc) {
@@ -1039,6 +1040,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		    return TCL_ERROR;
 		}
 		sepstr = Tcl_GetString (objv[objIdx++]);
+	    } else if (strcmp (possibleSwitch, "-null") == 0) {
+		objIdx++;
+	        if (objIdx >= objc) {
+		    Tcl_AppendResult (interp, "-null not followed by null string", (char *)NULL);
+		    return TCL_ERROR;
+		}
+		nullString = Tcl_GetString (objv[objIdx++]);
 	    } else if (strcmp (possibleSwitch, "-quote") == 0) {
 		objIdx++;
 	        if (objIdx >= objc) {
@@ -1089,7 +1097,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	nFields = objc - objIdx;
 
 	if (nFields < 0) {
-	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-tab string? ?-with_field_names? ?-skip pattern? ?-term pattern? ?field field...?");
+	  Tcl_WrongNumArgs (interp, 2, objv, "channel ?-glob pattern? ?-nokeys? ?-tab string? ?-with_field_names? ?-skip pattern? ?-term pattern? ?-null string? ?field field...?");
 	  return TCL_ERROR;
 	}
 
@@ -1149,9 +1157,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #endif
 
 	if (optIndex == OPT_WRITE_TABSEP) {
-	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, term, quoteType);
+	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, term, quoteType, nullString);
 	} else if(optIndex == OPT_READ_TABSEP) {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls, quoteType);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls, quoteType, nullString);
 	}
 
 	if(fieldIds) ckfree((void *)fieldIds);

@@ -58,6 +58,9 @@ if {![info exists list]} {
    dump_table t
    error "search+ test on 'in id {1}' no list, expected {1: rank 3 name first id 1}"
 }
-if {"[lindex $list 0]" != "1: rank 3 name first id 1"} {
-   error "search+ test on 'in id {1}' returns $list expected {1: rank 3 name first id 1}"
+if {
+  "[lindex $list 0]" != "1: rank 3 name first id 1" &&
+  "[lindex $list 0]" != "1: rank 3 id 1 name first"
+} {
+   error "search+ test on 'in id {1}' returns $list expected {1: rank 3 name first id 1} or {1: rank 3 id 1 name first}"
 }
