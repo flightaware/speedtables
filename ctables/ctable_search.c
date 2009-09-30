@@ -2034,12 +2034,22 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	        Tcl_AppendResult (interp, " while processing search offset", (char *) NULL);
 	        return TCL_ERROR;
 	    }
+
+	    if (search->offset < 0) {
+	        Tcl_AppendResult (interp, "Search offset cannot be negative", (char *) NULL);
+	        return TCL_ERROR;
+	    }
 	    break;
 	  }
 
 	  case SEARCH_OPT_LIMIT: {
 	    if (Tcl_GetIntFromObj (interp, objv[i++], &search->limit) == TCL_ERROR) {
 	        Tcl_AppendResult (interp, " while processing search limit", (char *) NULL);
+	        return TCL_ERROR;
+	    }
+
+	    if (search->limit < 0) {
+	        Tcl_AppendResult (interp, "Search limit cannot be negative", (char *) NULL);
 	        return TCL_ERROR;
 	    }
 	    break;

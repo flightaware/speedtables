@@ -133,6 +133,28 @@ search_test_countonly "search countOnly no compare offset" {-offset 25} {6}
 
 search_test_countonly "search countOnly compare" {-compare {{false alive}}} {1}
 
+puts -nonewline "testing 'search' with negative offset..."
+if {[catch {t search -sort -age -offset -10 -limit 10} result] == 1} {
+    if {$result == "Search offset cannot be negative"} {
+    } else {
+	error "t search with negative offset got '$result'"
+    }
+} else {
+    error "should have gotten an error"
+}
+puts "ok"
+
+puts -nonewline "testing 'search' with negative limit..."
+if {[catch {t search -sort -age -offset 0 -limit -10} result] == 1} {
+    if {$result == "Search limit cannot be negative"} {
+    } else {
+	error "t search with negative limit got '$result'"
+    }
+} else {
+    error "should have gotten an error"
+}
+puts "ok"
+
 t index create name
 # Note, this one won't actually use skiplists.
 search+_test "indexed search 1" {} {angel baron brak brock carr carl clarence rick dad dean doctor_girlfriend jonas jonas_jr orpheus frylock hank hoop inignot stroker shake meatwad mom 21 28 phantom_limb rusty the_monarch thundercleese triana ur zorak}

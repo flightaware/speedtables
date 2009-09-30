@@ -1,3 +1,8 @@
+9/30/2009 karl
+    * Make searches with a negative requested offset return an error rather
+      than causing a coredump.  Also enforce that search limit, if specified
+      can't be negative either.
+
 7/15/2009 karl
     * Include BSD's qsort.c, renamed to ctable_qsort.c / ctable_qsort_r()
       because some operating systems such as Linux don't include qsort_r().
