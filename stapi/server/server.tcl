@@ -634,7 +634,7 @@ namespace eval ::stapi {
     # Remember some info that will be handy later on.
     set ctable2name($ctable) $ctable_name
     if {"$time_col" != ""} {
-      set time_column($ctable_name) $time_col
+      set time_column($ctable) $time_col
     }
 
     return $ctable

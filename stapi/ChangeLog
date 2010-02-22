@@ -1,6 +1,10 @@
 Speedtables ChangeLog
 =====================
 
+2/22/2010 karl
+    In open_cached, store the time column properly in the time_column array
+    so that refresh_ctable will only pull updated rows.
+
 7/1/2009 peter
     Make the read_tabsep and write_tabsep in stapi/server use escape
     quoting.
