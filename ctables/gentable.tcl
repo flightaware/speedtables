@@ -317,7 +317,7 @@ proc gen_sanity_checks {table} {
     }
 }
 
-variable insertRowSource {
+variable reinsertRowSource {
 int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct ${table} *row, int indexCtl)
 {
     ctable_HashEntry *new, *old;
@@ -385,10 +385,10 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
 }
 }
 
-proc gen_insert_row_function {table} {
+proc gen_reinsert_row_function {table} {
     set TABLE [string toupper $table]
-    variable insertRowSource
-    emit [string range [subst -nobackslashes -nocommands $insertRowSource] 1 end-1]
+    variable reinsertRowSource
+    emit [string range [subst -nobackslashes -nocommands $reinsertRowSource] 1 end-1]
 }
 
 #
@@ -404,7 +404,7 @@ variable nullIndexDuringSetSource {
 		        ctable_RemoveFromIndex (ctable, row, field);
 		    }
 
-		    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable_InsertNullIntoIndex (interp, ctable, row, field) == TCL_ERROR)) {
+		    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR)) {
 		        return TCL_ERROR;
 		    }
 		}
@@ -461,9 +461,7 @@ variable unsetNullDuringSetSource {
 
 	    if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
 	        indexCtl = CTABLE_INDEX_NEW; // inhibit a second removal
-		if (ctable_RemoveNullFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
+		ctable_RemoveFromIndex (ctable, row, field);
 	    }
 	}
 }
@@ -3108,9 +3106,7 @@ variable numberIncrNullCheckSource {
 	if (row->_${fieldName}IsNull) {
 	    // incr of a null field, default to 0
 	    if ((indexCtl == CTABLE_INDEX_NORMAL) && ctable->skipLists[field] != NULL) {
-		if (ctable_RemoveNullFromIndex (interp, ctable, row, field) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
+		ctable_RemoveFromIndex (ctable, row, field);
 	    }
 	    row->_${fieldName}IsNull = 0;
 	    row->$fieldName = incrAmount;
@@ -3398,7 +3394,7 @@ variable setNullSource {
 	}
         row->_${myField}IsNull = 1; 
 	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
-	    if (ctable_InsertNullIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 		return TCL_ERROR;
 	    }
 	}
@@ -3780,7 +3776,7 @@ proc gen_code {} {
 
     gen_allocate_function $table
 
-    gen_insert_row_function $table
+    gen_reinsert_row_function $table
 
     gen_set_function $table
 
@@ -4619,6 +4615,12 @@ int ${table}_field_${fieldName}_compare(const ctable_BaseRow *vPointer1, const c
 
     row1 = (struct $table *) vPointer1;
     row2 = (struct $table *) vPointer2;
+
+#ifdef SANITY_CHECKS
+    if(!row1) panic("NULL row1 for ${table}_field_${fieldName}_compare, row2 == 0x%lx", (long)row2);
+    if(!row2) panic("NULL row2 for ${table}_field_${fieldName}_compare, row1 == 0x%lx", (long)row1);
+#endif
+
 [gen_field_compare_null_check_source $table $fieldName]
 }
 
@@ -4689,9 +4691,9 @@ variable varstringFieldCompSource {
         if (row2->$fieldName == NULL) {
 	    return 0;
 	}
-	return strcmp (${table}_defaultStrings[$fieldToEnum], row2->$fieldName);
+	return strcmp ($defaultString, row2->$fieldName);
     } else if (row2->$fieldName == NULL) {
-        return strcmp (row1->$fieldName, ${table}_defaultStrings[$fieldToEnum]);
+        return strcmp (row1->$fieldName, $defaultString);
     }
 
     if (*row1->$fieldName != *row2->$fieldName) {
@@ -4844,7 +4846,11 @@ proc gen_field_comp {fieldName} {
 	}
 
 	varstring {
-	    set fieldToEnum [field_to_enum $fieldName]
+	    if [info exists field(default)] {
+	      set defaultString "\"[cquote $field(default)]\""
+	    } else {
+	      set defaultString "\"\""
+	    }
 	    emit [string range [subst -nobackslashes -nocommands $varstringFieldCompSource] 1 end-1]
 	}
 

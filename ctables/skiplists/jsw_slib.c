@@ -432,7 +432,9 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, ctable_BaseRow *row , int nodeIdx, in
 
     it = new_node ( row, h, skip->share );
 
+    // Throw away the row we just inserted with new_node! Yes, we mean to do this.
     ctable_ListInit (&it->row, __FILE__, __LINE__);
+
     ctable_ListInsertHead (&it->row, row, nodeIdx);
 
     /* Raise height if necessary */
