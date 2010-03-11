@@ -64,6 +64,7 @@ namespace eval ctable {
 	genCompilerDebug
 	memDebug
 	sanityChecks
+	ctablePackageVersion
     }
 
     set ctableErrorInfo ""
@@ -4842,7 +4843,7 @@ proc gen_field_comp {fieldName} {
 
 	varstring {
 	    if [info exists field(default)] {
-	      set defaultString "\"[cquote $field(default)]\""
+	      set defaultString "${table}_defaultStrings\[[field_to_enum $fieldName]\]"
 	    } else {
 	      set defaultString "\"\""
 	    }
