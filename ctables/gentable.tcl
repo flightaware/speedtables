@@ -34,7 +34,7 @@ namespace eval ctable {
     variable sanityChecks
     variable keyCompileVariables
 
-    set ctablePackageVersion 1.6
+    set ctablePackageVersion 1.7
 
     # If loaded directly, rather than as a package
     if {![info exists srcDir]} {
