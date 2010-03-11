@@ -43,6 +43,10 @@ ctable_verifyField(CTable *ctable, int field, int verbose)
 	found = jsw_srow(skip);
 	if(found != row) {
 	    int count = 0;
+	    if(!verbose) {
+		fprintf(stderr, "Verifying field %s\n", ctable->creator->fields[field]->name);
+		fprintf(stderr, "  Searching skip 0x%lx for row 0x%lx\n", (long)skip, (long)row);
+	    }
 	    fprintf(stderr, "    Walking from 0x%lx\n", (long)found);
             // walk walkRow through the linked list of rows off this skip list
             CTABLE_LIST_FOREACH (found, walk, index) {
@@ -2392,7 +2396,7 @@ ctable_IndexCount (Tcl_Interp *interp, CTable *ctable, int field) {
 }
 
 CTABLE_INTERNAL int
-ctable_DumpIndex (Tcl_Interp *interp, CTable *ctable, int field) {
+ctable_DumpIndex (CTable *ctable, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     void       *row;
     Tcl_Obj    *utilityObj = Tcl_NewObj ();
@@ -2450,6 +2454,10 @@ ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
 
 #ifdef SEARCHDEBUG
 printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)row, field, ctable->creator->fieldNames[field], (long unsigned int)skip);
+if(field == 0) {
+  printf("BEFORE=  ");
+  ctable_DumpIndex (ctable, field);
+}
 #endif
     // jsw_dump_head(skip);
 
@@ -2460,7 +2468,7 @@ printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)
 
     // invariant: prev is never NULL if in list
     if(row->_ll_nodes[index].prev == NULL) {
-//printf("not in skiplist, probably null\n");
+//printf("not in list\n");
 	return;
     }
     if (ctable_ListRemoveMightBeTheLastOne (row, index)) {
@@ -2478,6 +2486,13 @@ printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)
 	    *row->_ll_nodes[index].head = NULL; // don't think this is needed
 	}
     }
+#ifdef SEARCHDEBUG
+if(field == 0) {
+  printf("AFTER=  ");
+  ctable_DumpIndex (ctable, field);
+}
+fflush(stdout);
+#endif
 
     return;
 }
@@ -2511,14 +2526,21 @@ ctable_RemoveFromAllIndexes (CTable *ctable, void *row) {
 // index on that field.
 //
 CTABLE_INTERNAL INLINE int
-ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
+ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_FieldInfo *f;
     Tcl_Obj *utilityObj;
     ctable_CreatorTable *creator = ctable->creator;
+    ctable_BaseRow *row = vRow;
+    int index = creator->fields[field]->indexNumber;
 
     if (skip == NULL) {
     return TCL_OK;
+    }
+
+    // invariant: prev is always NULL if not in list
+    if(row->_ll_nodes[index].prev != NULL) {
+	panic ("Double insert row for field %s", ctable->creator->fields[field]->name);
     }
 
 #ifdef SANITY_CHECKS
@@ -2532,7 +2554,12 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field
 // dump info about row being inserted
 utilityObj = Tcl_NewObj();
 printf("ctable_InsertIntoIndex row 0x%lx, field %d, field name %s, index %d, value '%s'\n", (long)row, field, f->name, f->indexNumber, ctable->creator->get_string (row, field, NULL, utilityObj));
+fflush(stdout);
 Tcl_DecrRefCount (utilityObj);
+if(field == 0) {
+  printf("BEFORE=  ");
+  ctable_DumpIndex (ctable, field);
+}
 #endif
 
     if (!jsw_sinsert_linked (skip, row, f->indexNumber, f->unique)) {
@@ -2544,47 +2571,20 @@ Tcl_DecrRefCount (utilityObj);
     }
 
 # ifdef SEARCHDEBUG
-    ctable_verifyField(ctable, field, 1);
+    // ctable_verifyField(ctable, field, 0);
+if(field == 0) {
+  printf("AFTER=  ");
+  ctable_DumpIndex (ctable, field);
+}
+fflush(stdout);
 #endif
 
     return TCL_OK;
 }
 
 //
-// Current index model doesn't index nulls. This is correct because the NULL
-// search doesn't use skiplists, and NULL only matches the NULL search.
-//
-// The next two routines are a hook for possible future use. Since they
-// are static inline they should always be optimized away.
-//
-// Note: these are "inline" and not "INLINE" to avoid errors when they
-// are not referenced from the generated table.
-//
-// Note: These will eventually be removed, and NULL will be indexed as
-// HIGH or LOW.
-//
-// ctable_RemoveNullFromIndex - remove a NULL entry from an index
-//
-static inline int
-ctable_RemoveNullFromIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
-    return TCL_OK;
-}
-
-//
-// ctable_InsertNullIntoIndex - insert a NULL entry into an index
-//
-static inline int
-ctable_InsertNullIntoIndex (Tcl_Interp *interp, CTable *ctable, void *row, int field) {
-    return TCL_OK;
-}
-
-//
 // ctable_CreateIndex - create an index on a specified field of a specified
 // ctable.
-//
-// used to you could index any field but now we can't handle duplicates and
-// really anything since we're switching to bidirectionally linked lists
-// as targets of skip list nodes.
 //
 CTABLE_INTERNAL int
 ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {

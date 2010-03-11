@@ -8,7 +8,7 @@
 
 
 //
-// ctable_ListInit - initialize a list
+// ctable_ListInit - initialize a list -- zero out the row pointer from the list.
 //
 CTABLE_INTERNAL INLINE void
 ctable_ListInit (ctable_BaseRow **listPtr, char *file, int line)
@@ -42,6 +42,11 @@ ctable_ListRemove (ctable_BaseRow *row, int i)
 #ifdef LISTDEBUG
     fprintf(stderr, "ctable_ListRemove(0x%lx, %d)\n", (long)row, i);
 #endif
+#ifdef SANITY_CHECKS
+    if(!row->_ll_nodes[i].prev) {
+	panic("Removing row not in list (0x%lx, %d)!", (long)row, i);
+    }
+#endif
     // if there's an object following me, make his prev be my prev
     if (row->_ll_nodes[i].next != NULL) {
         row->_ll_nodes[i].next->_ll_nodes[i].prev = row->_ll_nodes[i].prev;
@@ -64,6 +69,11 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 
 #ifdef LISTDEBUG
     fprintf(stderr, "ctable_ListRemoveMightBeTheLastOne(0x%lx, %d)\n", (long)row, i);
+#endif
+#ifdef SANITY_CHECKS
+    if(!row->_ll_nodes[i].prev) {
+	panic("Removing row not in list (0x%lx, %d)!", (long)row, i);
+    }
 #endif
     // if there's an object following me, make his prev be my prev
     if (row->_ll_nodes[i].next != NULL) {
@@ -91,6 +101,12 @@ ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 #ifdef LISTDEBUG
     fprintf(stderr, "ctable_ListInsertHead(0x%lx, 0x%lx, %d)\n", (long)listPtr, (long)row, i);
 #endif
+#ifdef SANITY_CHECKS
+    if(row->_ll_nodes[i].prev) {
+	panic("Inserting node twice (0x%lx, 0x%lx, %d)!", (long)listPtr, (long)row, i);
+    }
+#endif
+
     // make the row's prev point to the address of the head pointer. Do this
     // first so it'll be in place before the readers can see it.
     row->_ll_nodes[i].prev = listPtr;
