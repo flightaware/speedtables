@@ -2396,7 +2396,7 @@ ctable_IndexCount (Tcl_Interp *interp, CTable *ctable, int field) {
 }
 
 CTABLE_INTERNAL int
-ctable_DumpIndex (Tcl_Interp *interp, CTable *ctable, int field) {
+ctable_DumpIndex (CTable *ctable, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     void       *row;
     Tcl_Obj    *utilityObj = Tcl_NewObj ();
@@ -2454,6 +2454,10 @@ ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
 
 #ifdef SEARCHDEBUG
 printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)row, field, ctable->creator->fieldNames[field], (long unsigned int)skip);
+if(field == 0) {
+  printf("BEFORE=  ");
+  ctable_DumpIndex (ctable, field);
+}
 #endif
     // jsw_dump_head(skip);
 
@@ -2464,6 +2468,7 @@ printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)
 
     // invariant: prev is never NULL if in list
     if(row->_ll_nodes[index].prev == NULL) {
+//printf("not in list\n");
 	return;
     }
     if (ctable_ListRemoveMightBeTheLastOne (row, index)) {
@@ -2481,6 +2486,13 @@ printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)
 	    *row->_ll_nodes[index].head = NULL; // don't think this is needed
 	}
     }
+#ifdef SEARCHDEBUG
+if(field == 0) {
+  printf("AFTER=  ");
+  ctable_DumpIndex (ctable, field);
+}
+fflush(stdout);
+#endif
 
     return;
 }
@@ -2542,7 +2554,12 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *vRow, int fiel
 // dump info about row being inserted
 utilityObj = Tcl_NewObj();
 printf("ctable_InsertIntoIndex row 0x%lx, field %d, field name %s, index %d, value '%s'\n", (long)row, field, f->name, f->indexNumber, ctable->creator->get_string (row, field, NULL, utilityObj));
+fflush(stdout);
 Tcl_DecrRefCount (utilityObj);
+if(field == 0) {
+  printf("BEFORE=  ");
+  ctable_DumpIndex (ctable, field);
+}
 #endif
 
     if (!jsw_sinsert_linked (skip, row, f->indexNumber, f->unique)) {
@@ -2555,6 +2572,11 @@ Tcl_DecrRefCount (utilityObj);
 
 # ifdef SEARCHDEBUG
     // ctable_verifyField(ctable, field, 0);
+if(field == 0) {
+  printf("AFTER=  ");
+  ctable_DumpIndex (ctable, field);
+}
+fflush(stdout);
 #endif
 
     return TCL_OK;

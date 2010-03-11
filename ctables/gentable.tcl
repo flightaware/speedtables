@@ -401,11 +401,8 @@ variable preambleCannedSource {
 variable nullIndexDuringSetSource {
 	        if (ctable->skipLists[field] != NULL) {
 		    if (indexCtl == CTABLE_INDEX_NORMAL) {
+			indexCtl = CTABLE_INDEX_NEW; // inhibit a second removal
 		        ctable_RemoveFromIndex (ctable, row, field);
-		    }
-
-		    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR)) {
-		        return TCL_ERROR;
 		    }
 		}
 }
@@ -706,7 +703,7 @@ variable varstringSetSource {
 	        [gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    }
 
-	    // It's a change to the be default string. If we're
+	    // It's a change to the default string. If we're
 	    // indexed, force the default string in there so the 
 	    // compare routine will be happy and then insert it.
 	    // can't use our proc here yet because of the
@@ -2657,27 +2654,29 @@ proc gen_defaults_subr {struct} {
 
     emit "int ${struct}_index_defaults(Tcl_Interp *interp, CTable *ctable, struct $struct *row) $leftCurly"
 
-# emit "printf(\"${struct}_index_defaults(...);\\n\");"
+if 0 {
+emit "printf(\"${struct}_index_defaults(...);\\n\");"
+}
     set fieldnum 0 ; # postincremented 0 .. fields
     set listnum 0  ; # preincrementd 1 .. lists+1
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
+	# Index everything null or otherwise
 	if {[info exists field(indexed)] && $field(indexed)} {
 	    incr listnum
-	    unset -nocomplain def
 	    if {[info exists field(default)]} {
 		set def $field(default)
-	    } elseif {[info exists field(notnull)] && $field(notnull)} {
+	    } else {
 		set def ""
 	    }
-	    if {[info exists def]} {
-		emit "// Field \"$fieldName\" ($fieldnum) index $listnum:"
-# emit "printf(\"ctable->skipLists\[$fieldnum] == %08lx\\n\",  (long)ctable->skipLists\[$fieldnum]);"
+	    emit "// Field \"$fieldName\" ($fieldnum) index $listnum:"
+if 0 {
+emit "printf(\"ctable->skipLists\[$fieldnum] == %08lx\\n\",  (long)ctable->skipLists\[$fieldnum]);"
+emit "printf(\"row->_ll_nodes\[$listnum].head == %08lx\\n\",  (long)row->_ll_nodes\[$listnum].head);"
+}
 
-# emit "printf(\"row->_ll_nodes\[$listnum].head == %08lx\\n\",  (long)row->_ll_nodes\[$listnum].head);"
-
-	        emit "    if(ctable->skipLists\[$fieldnum] && row->_ll_nodes\[$listnum].head == NULL) $leftCurly"
+	    emit "    if(ctable->skipLists\[$fieldnum] && row->_ll_nodes\[$listnum].prev == NULL) $leftCurly"
 if 0 {
 emit "fprintf(stderr, \"row->_ll_nodes\[$listnum] = { 0x%lx 0x%lx 0x%lx }\","
 emit "    (long)row->_ll_nodes\[$listnum].head,"
@@ -2685,18 +2684,15 @@ emit "    (long)row->_ll_nodes\[$listnum].prev,"
 emit "    (long)row->_ll_nodes\[$listnum].next);"
 emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
 }
-	        if {"$def" != "" && "$field(type)" == "varstring"} {
-		    emit "        row->$fieldName = \"[cquote $def]\";"
-	        }
-	        emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
-	        emit "            return TCL_ERROR;"
-	        if {"$def" != "" && "$field(type)" == "varstring"} {
-	            emit "        row->$fieldName = NULL;"
-	        }
-	        emit "    $rightCurly"
-	    } else {
-		emit "// Field \"$fieldName\" ($fieldnum) index $listnum no default"
+	    if {"$def" != "" && "$field(type)" == "varstring"} {
+		emit "        row->$fieldName = \"[cquote $def]\";"
 	    }
+	    emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
+	    emit "            return TCL_ERROR;"
+	    if {"$def" != "" && "$field(type)" == "varstring"} {
+	        emit "        row->$fieldName = NULL;"
+	    }
+	    emit "    $rightCurly"
 	} else {
 	    emit "// Field \"$fieldName\" ($fieldnum) not indexed"
         }
@@ -4621,7 +4617,6 @@ int ${table}_field_${fieldName}_compare(const ctable_BaseRow *vPointer1, const c
     if(!row2) panic("NULL row2 for ${table}_field_${fieldName}_compare, row1 == 0x%lx", (long)row1);
 #endif
 
-[gen_field_compare_null_check_source $table $fieldName]
 }
 
 variable fieldCompareTrailerSource {
@@ -4687,23 +4682,19 @@ variable numberFieldCompSource {
 # a string for use in searching, sorting, etc.
 #
 variable varstringFieldCompSource {
-    if (row1->$fieldName == NULL) {
-        if (row2->$fieldName == NULL) {
-	    return 0;
-	}
-	return strcmp ($defaultString, row2->$fieldName);
-    } else if (row2->$fieldName == NULL) {
-        return strcmp (row1->$fieldName, $defaultString);
-    }
+    {
+        char *string1 = row1->${fieldName} ? row1->${fieldName} : ${defaultString};
+        char *string2 = row2->${fieldName} ? row2->${fieldName} : ${defaultString};
 
-    if (*row1->$fieldName != *row2->$fieldName) {
-        if (*row1->$fieldName < *row2->$fieldName) {
-	    return -1;
-	} else {
-	    return 1;
+	if (*string1 != *string2) {
+	    if(*string1 < *string2) {
+		return -1;
+	    } else {
+		return 1;
+	    }
 	}
+	return strcmp(string1, string2);
     }
-    return strcmp (row1->$fieldName, row2->$fieldName);
 }
 
 #
@@ -4806,6 +4797,10 @@ proc gen_field_comp {fieldName} {
     variable tclobjFieldCompSource
 
     upvar ::ctable::fields::$fieldName field
+
+    if {"$field(type)" != "varstring"} {
+	emit [gen_field_compare_null_check_source $table $fieldName]
+    }
 
     switch $field(type) {
 	key {
