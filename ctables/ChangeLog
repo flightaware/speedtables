@@ -1,3 +1,14 @@
+3/9-3/12 2010 peter
+    Big indexed null field cleanup.
+    * Always index NULLs - changes to several paths
+    * Remove row BEFORE making it non-null.
+    * Rewrite varstring comparison code, split out the three special cases (NULL field, DEFAULT field, EMPTY field)
+      into separate routines.
+      * This removes some optimizations for avoiding call to strcmp in default strings, will put this back later.
+      * Make sure that NULL string fields are sorted "high", and empty and not-null are sorted low.
+    * Add package version to ID string.
+    * Add debugging hooks "set ctable::localDefines(DEBUGMACRO) macrovalue" before defining table.
+
 9/30/2009 karl
     * Make searches with a negative requested offset return an error rather
       than causing a coredump.  Also enforce that search limit, if specified
