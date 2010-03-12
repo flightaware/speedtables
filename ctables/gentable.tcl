@@ -4583,15 +4583,18 @@ proc gen_field_compare_null_check_source {table fieldName} {
     variable fieldCompareNullCheckSource
     variable varstringCompareDefaultSource
     variable varstringCompareNullSource
+    variable varstringCompareNullSafetySource
     upvar ::ctable::fields::$fieldName field
 
     if {"$field(type)" == "varstring"} {
-	if {![info exists field(default)] || "$field(default)" == ""} {
-	     set source $varstringCompareNullSource
-	} else {
+	if {[info exists field(default)]} {
 	     set source $varstringCompareDefaultSource
 	     set defaultString "\"[cquote $field(default)]\""
 	     set defaultChar "'[cquote [string index $field(default) 0] {'}]'"
+        } elseif {[info exists field(notnull)] && $field(notnull)} {
+             set source $varstringCompareNullSafetySource
+	} else {
+	     set source $varstringCompareNullSource
 	}
     } elseif {[info exists field(notnull)] && $field(notnull)} {
         set source ""
@@ -4682,21 +4685,19 @@ variable numberFieldCompSource {
 # varstringFieldCompSource - code we run subst over to generate a compare of 
 # a string for use in searching, sorting, etc.
 #
+# NOTE - this code has NO safety net. This code must NEVER be exposed without the safety net.
+#
 variable varstringFieldCompSource {
-    {
-        char *string1 = row1->${fieldName} ? row1->${fieldName} : ${defaultString};
-        char *string2 = row2->${fieldName} ? row2->${fieldName} : ${defaultString};
-
-	if (*string1 != *string2) {
-	    if(*string1 < *string2) {
-		return -1;
-	    } else {
-		return 1;
-	    }
-	}
-	return strcmp(string1, string2);
+    if (*row1->$fieldName != *row2->$fieldName) {
+        if (*row1->$fieldName < *row2->$fieldName) {
+            return -1;
+        } else {
+            return 1;
+        }
     }
+    return strcmp (row1->$fieldName, row2->$fieldName);
 }
+
 
 #
 # varstringCompareDefaultSource - compare against default strings
@@ -4733,6 +4734,22 @@ variable varstringCompareDefaultSource {
 # statement rather than returning something
 #
 variable varstringCompareNullSource {
+    // NULL sorts high
+    if (row1->_${fieldName}IsNull || !row1->$fieldName) {
+	if(row2->_${fieldName}IsNull || !row2->$fieldName) {
+	    return 0;
+	} else {
+	    return 1;
+	}
+    } else {
+	if(row2->_${fieldName}IsNull || !row2->$fieldName) {
+	    return -1;
+	}
+    }
+}
+
+variable varstringCompareNullSafetySource {
+    // empty string sorts low
     if (!row1->$fieldName) {
 	if(!row2->$fieldName) {
 	    return 0;
@@ -4799,9 +4816,8 @@ proc gen_field_comp {fieldName} {
 
     upvar ::ctable::fields::$fieldName field
 
-    if {"$field(type)" != "varstring"} {
-	emit [gen_field_compare_null_check_source $table $fieldName]
-    }
+    # First, handle nulls
+    emit [gen_field_compare_null_check_source $table $fieldName]
 
     switch $field(type) {
 	key {
@@ -4842,11 +4858,6 @@ proc gen_field_comp {fieldName} {
 	}
 
 	varstring {
-	    if [info exists field(default)] {
-	      set defaultString "${table}_defaultStrings\[[field_to_enum $fieldName]\]"
-	    } else {
-	      set defaultString "\"\""
-	    }
 	    emit [string range [subst -nobackslashes -nocommands $varstringFieldCompSource] 1 end-1]
 	}
 
