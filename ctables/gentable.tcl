@@ -4725,16 +4725,10 @@ variable varstringCompareDefaultSource {
 	if(!row2->$fieldName) {
 	    return 0;
 	} else {
-	    if ($defaultChar != row2->${fieldName}[0]) {
-		return ($defaultChar < row2->${fieldName}[0]) ? -1 : 1;
-	    }
 	    return strcmp($defaultString, row2->$fieldName);
 	}
     } else {
 	if(!row2->$fieldName) {
-	    if (row1->${fieldName}[0] != $defaultChar) {
-		return (row1->${fieldName}[0] < $defaultChar) ? -1 : 1;
-	    }
 	    return strcmp(row1->$fieldName, $defaultString);
 	}
     }
