@@ -2,7 +2,7 @@
 # $Id$
 
 namespace eval ::stapi {
-  variable debugging 1
+  variable debugging 0
   variable debug_timestamp_format "%Y-%m-%d %H:%M:%S %Z"
   variable debug_handler
 

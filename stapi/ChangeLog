@@ -1,6 +1,9 @@
 Speedtables ChangeLog
 =====================
 
+3/12/2010 peter
+    Default ::stapi::debugging to 0 (change to 1 to enable debug messages)
+
 2/22/2010 karl
     In open_cached, store the time column properly in the time_column array
     so that refresh_ctable will only pull updated rows.
