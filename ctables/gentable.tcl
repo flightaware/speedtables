@@ -4595,16 +4595,18 @@ proc gen_field_compare_null_check_source {table fieldName} {
     variable fieldCompareNullCheckSource
     variable varstringCompareDefaultSource
     variable varstringCompareNullSource
-    variable varstringCompareNullSafetySource
+    variable varstringCompareEmptySource
     upvar ::ctable::fields::$fieldName field
 
     if {"$field(type)" == "varstring"} {
+	# Varstring is different because there's three special cases for varstring:
+	#   NULL string, DEFAULT string, and EMPTY string
 	if {[info exists field(default)]} {
 	     set source $varstringCompareDefaultSource
 	     set defaultString "\"[cquote $field(default)]\""
 	     set defaultChar "'[cquote [string index $field(default) 0] {'}]'"
         } elseif {[info exists field(notnull)] && $field(notnull)} {
-             set source $varstringCompareNullSafetySource
+             set source $varstringCompareEmptySource
 	} else {
 	     set source $varstringCompareNullSource
 	}
@@ -4760,7 +4762,7 @@ variable varstringCompareNullSource {
     }
 }
 
-variable varstringCompareNullSafetySource {
+variable varstringCompareEmptySource {
     // empty string sorts low
     if (!row1->$fieldName) {
 	if(!row2->$fieldName) {
