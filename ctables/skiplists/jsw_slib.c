@@ -515,7 +515,7 @@ jsw_dump_node (const char *s, jsw_skip_t *skip, jsw_node_t *p, int indexNumber) 
 	CTABLE_LIST_FOREACH (p->row, walkRow, indexNumber) {
 	    printf("%8lx ", (long unsigned int)walkRow);
 	    if ( cmp ( p->row, walkRow ) != 0 ) {
-	        panic ("index hosed - value in dup list doesn't match others");
+	        panic ("index hosed - value in dup list doesn't match others, p->row == 0x%08lx, walkRow == 0x%08lx", (long)p->row, (long)walkRow);
 	    }
 	}
     }

@@ -22,7 +22,10 @@
 #include "speedtableHash.c"
 
 // #define MEGADEBUG
-#undef SEARCHDEBUG
+// #define SEARCHDEBUG
+#ifndef TRACKFIELD
+#define TRACKFIELD 1
+#endif
 // debugging routines - verify that every skiplist contains an entry for
 // every row.
 CTABLE_INTERNAL void
@@ -2454,7 +2457,7 @@ ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
 
 #ifdef SEARCHDEBUG
 printf("ctable_RemoveFromIndex row 0x%lx, field %d (%s) skip == 0x%lx\n", (long)row, field, ctable->creator->fieldNames[field], (long unsigned int)skip);
-if(field == 0) {
+if(field == TRACKFIELD) {
   printf("BEFORE=  ");
   ctable_DumpIndex (ctable, field);
 }
@@ -2487,7 +2490,7 @@ if(field == 0) {
 	}
     }
 #ifdef SEARCHDEBUG
-if(field == 0) {
+if(field == TRACKFIELD) {
   printf("AFTER=  ");
   ctable_DumpIndex (ctable, field);
 }
@@ -2556,7 +2559,7 @@ utilityObj = Tcl_NewObj();
 printf("ctable_InsertIntoIndex row 0x%lx, field %d, field name %s, index %d, value '%s'\n", (long)row, field, f->name, f->indexNumber, ctable->creator->get_string (row, field, NULL, utilityObj));
 fflush(stdout);
 Tcl_DecrRefCount (utilityObj);
-if(field == 0) {
+if(field == TRACKFIELD) {
   printf("BEFORE=  ");
   ctable_DumpIndex (ctable, field);
 }
@@ -2572,7 +2575,7 @@ if(field == 0) {
 
 # ifdef SEARCHDEBUG
     // ctable_verifyField(ctable, field, 0);
-if(field == 0) {
+if(field == TRACKFIELD) {
   printf("AFTER=  ");
   ctable_DumpIndex (ctable, field);
 }
