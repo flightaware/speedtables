@@ -8,6 +8,7 @@
       * Make sure that NULL string fields are sorted "high", and empty and not-null are sorted low.
     * Add package version to ID string.
     * Add debugging hooks "set ctable::localDefines(DEBUGMACRO) macrovalue" before defining table.
+    * Don't run elsecase in null object cases if object is null. (FLAG)
 
 9/30/2009 karl
     * Make searches with a negative requested offset return an error rather
