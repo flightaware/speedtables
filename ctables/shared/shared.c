@@ -609,12 +609,15 @@ void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
 char *_shmalloc(shm_t   *shm, size_t nbytes)
 {
     volatile freeblock *block = shm->freelist;
-    size_t 		needed = nbytes + 2 * CELLSIZE;
+    size_t 		needed;
 IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
 
-    // align size
+    // align size - increase requested size to a multiple of CELLSIZE
     if(nbytes % CELLSIZE)
 	nbytes += CELLSIZE - nbytes % CELLSIZE;
+
+    // Actual allocation includes pointers.
+    needed = nbytes + 2 * CELLSIZE;
 
     // really a do-while loop, null check should never fail
     while(block) {

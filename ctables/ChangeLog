@@ -1,3 +1,6 @@
+3/15/2010 peter
+    Allocate aligned size in shared memory.
+
 3/9-3/12 2010 peter
     Big indexed null field cleanup.
     * Always index NULLs - changes to several paths
