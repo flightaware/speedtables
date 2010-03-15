@@ -24,6 +24,8 @@ using std::size_t;
 #include <stdlib.h>
 #endif
 
+#define DUMPER 1
+
 typedef struct jsw_node {
   ctable_BaseRow         *row;      /* Data row with combined key */
   size_t                  height;   /* Column height of this node */
@@ -108,8 +110,10 @@ static jsw_node_t *new_node ( ctable_BaseRow *row, size_t height, void *share )
 #ifdef WITH_SHARED_TABLES
   if(share) {
     node  = (jsw_node_t *)shmalloc (share, sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
-    if(!node)
+    if(!node) {
+      if(DUMPER) shmdump(share);
       panic("Can't allocate shared memory for skiplist");
+    }
   } else
 #endif
     node  = (jsw_node_t *)ckalloc ( sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
@@ -228,8 +232,10 @@ void jsw_sinit ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share)
 #ifdef WITH_SHARED_TABLES
   if(share) {
     skip->public = (jsw_pub_t *)shmalloc ( (shm_t *)share, sizeof *skip->public );
-    if(!skip)
+    if(!skip) {
+      if(DUMPER) shmdump(share);
       panic("Can't allocate shared memory for skiplist");
+    }
   } else
 #endif
     skip->public = (jsw_pub_t *)ckalloc ( sizeof *skip->public );
@@ -256,8 +262,10 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, void *share)
 #ifdef WITH_SHARED_TABLES
   if(share) {
     skip = (jsw_skip_t *)shmalloc ( (shm_t *)share, sizeof *skip );
-    if(!skip)
+    if(!skip) {
+      if(DUMPER) shmdump(share);
       panic("Can't allocate shared memory for skiplist");
+    }
   } else
 #endif
     skip = (jsw_skip_t *)ckalloc ( sizeof *skip );

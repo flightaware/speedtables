@@ -606,6 +606,23 @@ void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    done\n");)
 }
 
+static void shmdump(shm_t *shm)
+{
+    fprintf(stderr, "dump 0x%08lx at 0x%08lx (%ld bytes)\n",
+	(long)shm, (long)shm->map->addr, (long)shm->map->mapsize);
+
+    freeblock *freelist = (freeblock *)shm->freelist;
+    freeblock *freebase = freelist;
+
+    while(freelist) {
+	fprintf(stderr, " FREE BLOCK 0x%08lx (%ld bytes)\n", (long)freelist, (long)freelist->size);
+        freelist = (freeblock *)freelist->next;
+	if(freelist == freebase) break;
+    }
+    fprintf(stderr, "dump end\n");
+    fflush(stderr);
+}
+
 char *_shmalloc(shm_t   *shm, size_t nbytes)
 {
     volatile freeblock *block = shm->freelist;
@@ -670,9 +687,15 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "      return block2data(0x%lX) ==> 0x%lX\n", (lon
 
 // Change to "if(1)" to enable fallback panic
 if (0) {
-static int debugcountdown = 30;
-if(debugcountdown-- <= 0)
-  shmpanic("out of memory");
+  static int debugcountdown = 30;
+  if(debugcountdown-- <= 0) {
+    shmpanic("out of memory");
+  }
+}
+// Change to "if(1)" to dump shared memory when done
+if (0) {
+  fprintf(stderr, "shmalloc(shm, 0x%08lx) failed\n", (long)nbytes);
+  shmdump(shm);
 }
 
     return NULL;
@@ -695,6 +718,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld);\n", (long)size);)
 
     if (block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
 	shmpanic("Ludicrous block!");
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld) => 0x%8lx\n", (long)size, (long)block);)
 
     return block;
 }
@@ -722,6 +746,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
     entry->block = block;
     entry->next = shm->garbage;
     shm->garbage = entry;
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree to garbage pool 0x%08lx\n", (long)shm->garbage);)
 }
 
 // Attempt to put a pending freed block back in a pool
@@ -969,6 +994,7 @@ void garbage_collect(shm_t   *shm)
 	if(horizon == LOST_HORIZON)
 	    horizon --;
     }
+IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm);\n");)
 
     while(garbp) {
 	int delta = horizon - garbp->cycle;
@@ -990,7 +1016,7 @@ void garbage_collect(shm_t   *shm)
 	    skipped++;
 	}
     }
-//fprintf(stderr, "%d: garbage_collect: cycle %d, horizon %d, collected %d, skipped %d\n", getpid(), shm->map->cycle, shm->horizon, collected, skipped);
+IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm): cycle 0x%08lx, horizon 0x%08lx, collected %d, skipped %d\n", (long)shm->map->cycle, (long)shm->horizon, collected, skipped);)
 }
 
 cell_t oldest_reader_cycle(shm_t   *shm)

@@ -12,6 +12,9 @@ set r [::stapi::connect shared://1616/master -build stobj]
 
 puts "created reader $r"
 
+puts [$r share list]
+puts [$r share info]
+
 $r search -key k -array_get a -code {
     set orig($k) $a
     set curr($k) $a

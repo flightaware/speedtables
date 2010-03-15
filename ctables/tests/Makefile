@@ -78,6 +78,12 @@ stapi:
 	sh stapi.sh
 	rm -f *.dat
 
+stapi2:
+	-rm -r stobj
+	-rm -f *.dat
+	sh stapi.sh -d 100 -c 40 -s stapi2.tcl
+	rm -f *.dat
+
 multireader:
 	-rm -r stobj
 	-rm -f *.dat

@@ -11,6 +11,7 @@ source top-brands-nokey-def.tcl
 
 top_brands_nokey_m create m master file sharefile.dat
 puts "m share info -> [m share info]"
+puts "m share list -> [m share list]"
 
 proc suck_in_top_brands_nokeys {} {
     set fp [open top-brands.tsv]
@@ -34,9 +35,13 @@ set ::lastKey [suck_in_top_brands_nokeys]
 
 set delay 30
 set count 1
+set max 1000
 if {[llength $argv] > 0} { set delay [lindex $argv 0] }
 if {[llength $argv] > 1} { set count [lindex $argv 1] }
+if {[llength $argv] > 2} { set max [lindex $argv 2] }
 
+
+puts "==== delay=$delay count=$count max=$max"
 ::ctable_server::register ctable://*:1616/master m
 
 array set ::int_columns {
@@ -49,11 +54,11 @@ set words {
   pantechnicon foreign ramification sexton tangent tangelo boreal
   hyperactive desdemona cataract jubilant texas myrmidon agilent
   cadbury yellowcake uranium feathered waratah bunyip bandicoot
-  princeton stanford ankh lamnington parsimony nathaniel misspelling
+  princeton stanford ankh lamington parsimony nathaniel misspelling
 }
 set nwords [llength $words]
 
-proc random_changes {delay count} {
+proc random_changes {delay count max} {
   set names [lsort -decreasing [m names]]
   set inames [array names ::int_columns]
   for {set loop 0} {$loop < $count} {incr loop} {
@@ -68,6 +73,9 @@ proc random_changes {delay count} {
     } else {
       incr ::lastKey
       set key $::lastKey
+#      if {$key > $max} {
+#	set key [expr {int( rand() * double($max) )}]
+#      }
       array unset a
       foreach col {id name} {
 	set a($col) [lindex $::words [expr {int(rand() * $::nwords)}]]
@@ -86,16 +94,18 @@ proc random_changes {delay count} {
       m set $key $list
     }
   }
-  after $delay random_changes $delay $count
+  after $delay random_changes $delay $count $max
+
+#  puts [list [clock format [clock seconds]] m count [m count]]
 }
 
-proc status {} {
+proc status {delay} {
   puts "[clock format [clock seconds]] [pid]: created $::lastKey rows size=[m count]"
-  after 10000 status
+  after [expr $delay * 1000] status $delay
 }
-puts "running, delay = $delay, count=$count, waiting for connections"
-after $delay random_changes $delay $count
-after 10000 status
+puts "running, delay = $delay, count=$count, max=$max, waiting for connections"
+after $delay random_changes $delay $count $max
+after $delay status $delay
 
 if !$tcl_interactive { vwait die }
 
