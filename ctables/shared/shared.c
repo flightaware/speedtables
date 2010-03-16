@@ -799,7 +799,7 @@ void setfree(volatile freeblock *block, size_t size, int is_free)
 //    int32 size;
 //    pointer next
 //    pointer free
-//    char unused[size - 8 - sizeof(freeblock);
+//    char unused[size - 8 - sizeof(freeblock)];
 //    int32 size;
 
 // busy block structure:
@@ -981,6 +981,7 @@ void read_unlock(shm_t   *shm)
     self->cycle = LOST_HORIZON;
 }
 
+// Go through each garbage block and, if it's not in use by any readers, return it to the free list.
 void garbage_collect(shm_t   *shm)
 {
     garbage	*garbp = shm->garbage;
@@ -1019,6 +1020,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm);\n");)
 IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm): cycle 0x%08lx, horizon 0x%08lx, collected %d, skipped %d\n", (long)shm->map->cycle, (long)shm->horizon, collected, skipped);)
 }
 
+// Find the cycle number for the oldest reader.
 cell_t oldest_reader_cycle(shm_t   *shm)
 {
     volatile reader_block *r = shm->map->readers;
@@ -1282,6 +1284,8 @@ void TclShmError(Tcl_Interp *interp, char *name)
 	Tcl_AppendResult(interp, ": ", shared_errmsg[shared_errno], NULL);
 }
 
+// Note that making these static globals means that if you need to use multiple shared tables in a single
+// program, they all have to be defined in the same speedtable C Extension! This should probably be fixed.
 static int autoshare = 0;
 
 static char *share_base = NULL;
@@ -1401,6 +1405,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	return TCL_ERROR;
     }
 
+    // Find the share option now. It's not an error (yet) if it doesn't exist (in fact for
+    // the create/attach option it's an error if it DOES exist).
     if(objc > 2) {
         sharename = Tcl_GetString(objv[2]);
 
@@ -1552,6 +1558,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	case CMD_INFO: {
 	    Tcl_Obj *list = Tcl_NewObj();
 
+// APPend STRING, INTeger, or BOOLean.
 #define APPSTRING(i,l,s) Tcl_ListObjAppendElement(i,l,Tcl_NewStringObj(s,-1))
 #define APPINT(i,l,n) Tcl_ListObjAppendElement(i,l,Tcl_NewIntObj(n))
 #define APPBOOL(i,l,n) Tcl_ListObjAppendElement(i,l,Tcl_NewBooleanObj(n))

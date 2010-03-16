@@ -1,3 +1,7 @@
+3/16/2010 peter
+    Update documentation in shared/shared.c
+    Note explicitly that shared speedtables must ALL be part of the same C Extension.
+
 3/15/2010 peter
     Allocate aligned size in shared memory.
 

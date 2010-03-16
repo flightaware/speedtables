@@ -23,6 +23,8 @@
 <p>If the client detects that a row it's examining has been modified since it started its search, it restarts the search operation. The server makes sure to update pointers within shared memory in an order such that the client will never step into a partially modified structure. This allows the whole operation to proceed without explicit locks, so long as pointer and cycle updates are atomic and ordered.</p>
 <p>Garbage collection is performed by locating deleted memory elements that have a cycle number is lower than the cycle number of any client currently performing a search.</p>
 
+<P><I><B>Note:</B> All shared tables must be part of the same C Extension.</I></P>
+
 <p>New methods to the meta-table (class) command:</p>
 <dl>
 <dt>create <i>name</i> master <i>list</i><dd>
