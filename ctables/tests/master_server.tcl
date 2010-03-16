@@ -73,9 +73,9 @@ proc random_changes {delay count max} {
     } else {
       incr ::lastKey
       set key $::lastKey
-#      if {$key > $max} {
-#	set key [expr {int( rand() * double($max) )}]
-#      }
+      if {$key > $max * 10} {
+	set key [expr {int( rand() * double($max * 10) )}]
+      }
       array unset a
       foreach col {id name} {
 	set a($col) [lindex $::words [expr {int(rand() * $::nwords)}]]
@@ -99,9 +99,27 @@ proc random_changes {delay count max} {
 #  puts [list [clock format [clock seconds]] m count [m count]]
 }
 
+# REALLY bad size estimate
+proc estimate {} {
+  set size 0
+  m search -array a -code {
+    incr size [string length $a(_key)]
+    incr size [string length $a(id)]
+    incr size [string length $a(name)]
+    incr size [expr 26*4]
+  }
+  return $size
+}
+
 proc status {delay} {
-  puts "[clock format [clock seconds]] [pid]: created $::lastKey rows size=[m count]"
-  after [expr $delay * 1000] status $delay
+  set rows [m count]
+  set free [m share free]
+  set used [expr 4*1024*1024 - $free]
+  set payload [estimate]
+  set overhead [expr $used - $payload]
+  set ratio [expr $overhead / $rows]
+  puts "[clock format [clock seconds]] [pid]: created $::lastKey rows=$rows free=$free used=$used payload=$payload overhead=$overhead ratio=$ratio"
+  after [expr $delay * 100] status $delay
 }
 puts "running, delay = $delay, count=$count, max=$max, waiting for connections"
 after $delay random_changes $delay $count $max

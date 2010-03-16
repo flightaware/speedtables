@@ -78,6 +78,9 @@
 <dt>pool <i>element_size elements_per_chunk max_chunks</i> (master only)<dd>
 <p>Creates a pool for objects of element_size bytes, allocated in elements_per_chunk chunks, up to a maximum of max_chunks. If max_chunks is zero it will extend to pool to the limit of the shared segment if necessary.</p>
 
+<dt>free<dd>
+<p>Returns an estimate of the free memory in the share. This estimate does not count pools, and is calculated by iterating over the free list and the garbage collection pool and adding up the total size of each free or dirty block.</p>
+
 </dl>
 
 </dl>

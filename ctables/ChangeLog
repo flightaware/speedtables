@@ -1,6 +1,10 @@
 3/16/2010 peter
-    Update documentation in shared/shared.c
     Note explicitly that shared speedtables must ALL be part of the same C Extension.
+    Add "share free" command to estimate free memory in a share.
+    Change name of two structure elements to make it clear what they are:
+      * garbage->block -> garbage->memory because it's a pointer to the memory chunk, not the containing block
+      * pool->blocks -> pool->nblocks because it's a counter, not a pointer
+    Update documentation and comments in shared/shared.c
 
 3/15/2010 peter
     Allocate aligned size in shared memory.

@@ -408,7 +408,7 @@ IFDEBUG(init_debug();)
     shmdealloc(shm, (char *)&block[1]);
 }
 
-poolhead_t *makepool(size_t blocksize, int blocks, int maxchunks, shm_t *share)
+poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share)
 {
     poolhead_t *head = (poolhead_t *)ckalloc(sizeof *head);
 
@@ -417,7 +417,7 @@ poolhead_t *makepool(size_t blocksize, int blocks, int maxchunks, shm_t *share)
 	blocksize += CELLSIZE - blocksize % CELLSIZE;
 
     head->share = share;
-    head->blocks = blocks;
+    head->nblocks = nblocks;
     head->blocksize = blocksize;
     head->chunks = NULL;
     head->next = NULL;
@@ -439,9 +439,9 @@ chunk_t *addchunk(poolhead_t *head)
     chunk = (chunk_t *)ckalloc(sizeof *chunk);
 
     if(head->share) {
-        chunk->start = _shmalloc(head->share, head->blocksize*head->blocks);
+        chunk->start = _shmalloc(head->share, head->blocksize*head->nblocks);
     } else {
-	chunk->start = ckalloc(head->blocksize * head->blocks);
+	chunk->start = ckalloc(head->blocksize * head->nblocks);
     }
 
     if(!chunk->start) {
@@ -452,7 +452,7 @@ chunk_t *addchunk(poolhead_t *head)
 	return NULL;
     }
 
-    chunk->avail = head->blocks;
+    chunk->avail = head->nblocks;
     chunk->brk = chunk->start;
     chunk->next = head->chunks;
 
@@ -462,7 +462,7 @@ chunk_t *addchunk(poolhead_t *head)
     return chunk;
 }
 
-int shmaddpool(shm_t *shm, size_t blocksize, int blocks, int maxchunks)
+int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks)
 {
     poolhead_t *head;
 
@@ -475,7 +475,7 @@ int shmaddpool(shm_t *shm, size_t blocksize, int blocks, int maxchunks)
 	if(head->blocksize == blocksize)
 	    return 1;
 
-    head = makepool(blocksize, blocks, maxchunks, shm);
+    head = makepool(blocksize, nblocks, maxchunks, shm);
     if(!head) return 0;
 
     head->next = shm->pools;
@@ -608,19 +608,51 @@ void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
 
 static void shmdump(shm_t *shm)
 {
-    fprintf(stderr, "dump 0x%08lx at 0x%08lx (%ld bytes)\n",
+    fprintf(stderr, "#DUMP 0x%08lx at 0x%08lx (%ld bytes)\n",
 	(long)shm, (long)shm->map->addr, (long)shm->map->mapsize);
 
     freeblock *freelist = (freeblock *)shm->freelist;
     freeblock *freebase = freelist;
 
     while(freelist) {
-	fprintf(stderr, " FREE BLOCK 0x%08lx (%ld bytes)\n", (long)freelist, (long)freelist->size);
+	fprintf(stderr, "#  FREE BLOCK 0x%08lx (%ld bytes)\n", (long)freelist, (long)freelist->size);
         freelist = (freeblock *)freelist->next;
 	if(freelist == freebase) break;
     }
-    fprintf(stderr, "dump end\n");
+
+    garbage *garbage = shm->garbage;
+    while(garbage) {
+	fprintf(stderr, "#  GARBAGE 0x%08lx (cycle 0x%08lx)\n", (long)garbage->memory, (long)garbage->cycle);
+	garbage = garbage->next;
+	if(garbage == shm->garbage) break;
+    }
+
+    fprintf(stderr, "#DUMP end\n");
     fflush(stderr);
+}
+
+// Return estimate of free memory in share
+size_t shmfreemem(shm_t *shm)
+{
+    freeblock *freelist = (freeblock *)shm->freelist;
+    freeblock *freebase = freelist;
+    size_t freemem = 0;
+
+    while(freelist) {
+	freemem += freelist->size;
+        freelist = (freeblock *)freelist->next;
+	if(freelist == freebase) break;
+    }
+
+    garbage *garbage = shm->garbage;
+    while(garbage) {
+	freeblock *block = data2block(garbage->memory);
+	freemem += block->size;
+	garbage = garbage->next;
+	if(garbage == shm->garbage) break;
+    }
+
+    return freemem;
 }
 
 char *_shmalloc(shm_t   *shm, size_t nbytes)
@@ -723,13 +755,13 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld) => 0x%8lx\n", (long)size, (lon
     return block;
 }
 
-void shmfree(shm_t *shm, char *block)
+void shmfree(shm_t *shm, char *memory)
 {
     garbage *entry;
 
 IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
 
-    if(block < (char *)shm->map || block >= ((char *)shm->map)+shm->map->mapsize)
+    if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
 	shmpanic("Trying to free pointer outside mapped memory!");
 
     if(!shm->garbage_pool) {
@@ -743,7 +775,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
 	shmpanic("Can't allocate memory in garbage pool");
 
     entry->cycle = shm->map->cycle;
-    entry->block = block;
+    entry->memory = memory;
     entry->next = shm->garbage;
     shm->garbage = entry;
 IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree to garbage pool 0x%08lx\n", (long)shm->garbage);)
@@ -757,7 +789,7 @@ int shmdepool(poolhead_t *head, char *block)
         while(chunk) {
 	    pool_freelist_t *free;
 	    int offset = block - chunk->start;
-	    if(offset < 0 || offset > (head->blocks * head->blocksize)) {
+	    if(offset < 0 || offset > (head->nblocks * head->blocksize)) {
 	        chunk = chunk->next;
 	        continue;
 	    }
@@ -1001,7 +1033,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm);\n");)
 	int delta = horizon - garbp->cycle;
 	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || delta > 0) {
 	    garbage *next = garbp->next;
-	    shmdealloc(shm, garbp->block);
+	    shmdealloc(shm, garbp->memory);
 	    shmdepool(shm->garbage_pool, (char *)garbp);
 	    garbp = next;
 
@@ -1372,8 +1404,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     char	*sharename = NULL;
     shm_t	*share     = NULL;
 
-    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "set", "info", "pools", "pool", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET, CMD_INFO, CMD_POOLS, CMD_POOL};
+    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "set", "info", "pools", "pool", "free", (char *)NULL};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET, CMD_INFO, CMD_POOLS, CMD_POOL, CMD_FREE};
 
     static CONST struct {
 	int need_share;		// if a missing share is an error
@@ -1389,7 +1421,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	{1, -5, "name value ?name value?..."},
 	{1,  3, ""},
 	{1,  3, ""},
-	{1,  6, "size blocks/chunk max_chunks"}
+	{1,  6, "size blocks/chunk max_chunks"},
+	{1,  3, ""}
     };
 
     if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
@@ -1405,7 +1438,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	return TCL_ERROR;
     }
 
-    // Find the share option now. It's not an error (yet) if it doesn't exist (in fact for
+    // Find the share option now. It's not necessarily an error (yet) if it doesn't exist (in fact for
     // the create/attach option it's an error if it DOES exist).
     if(objc > 2) {
         sharename = Tcl_GetString(objv[2]);
@@ -1508,7 +1541,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 	        // garbage pool size is virtually zero.
 	        Tcl_AppendElement(interp, "0");
-	        sprintf(tmp, "%d", head->blocks);
+	        sprintf(tmp, "%d", head->nblocks);
 	        Tcl_AppendElement(interp, tmp);
 	        sprintf(tmp, "%d", head->numchunks);
 	        Tcl_AppendElement(interp, tmp);
@@ -1525,7 +1558,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 		sprintf(tmp, "%d", head->blocksize);
 		Tcl_AppendElement(interp, tmp);
-		sprintf(tmp, "%d", head->blocks);
+		sprintf(tmp, "%d", head->nblocks);
 		Tcl_AppendElement(interp, tmp);
 		sprintf(tmp, "%d", head->numchunks);
 		Tcl_AppendElement(interp, tmp);
@@ -1538,16 +1571,16 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 	// add a pool
 	case CMD_POOL: {
-	    int blocks;
+	    int nblocks;
 	    int blocksize;
 	    int maxchunks;
-	    if (Tcl_GetIntFromObj(interp, objv[3], &blocks) == TCL_ERROR)
+	    if (Tcl_GetIntFromObj(interp, objv[3], &nblocks) == TCL_ERROR)
 		return TCL_ERROR;
 	    if (Tcl_GetIntFromObj(interp, objv[4], &blocksize) == TCL_ERROR)
 		return TCL_ERROR;
 	    if (Tcl_GetIntFromObj(interp, objv[5], &maxchunks) == TCL_ERROR)
 		return TCL_ERROR;
-	    if(!shmaddpool(share, blocks, blocksize, maxchunks)) {
+	    if(!shmaddpool(share, nblocks, blocksize, maxchunks)) {
 		TclShmError(interp, "add pool");
 		return TCL_ERROR;
 	    }
@@ -1637,6 +1670,12 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	    }
 	    return TCL_OK;
 	}
+
+        case CMD_FREE: {
+	    Tcl_SetObjResult(interp, Tcl_NewIntObj(shmfreemem(share)));
+	    return TCL_OK;
+	}
+
     }
     Tcl_AppendResult(interp, "Should not happen, internal error: no defined subcommand or missing break in switch", NULL);
     return TCL_ERROR;

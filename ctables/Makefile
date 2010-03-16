@@ -65,6 +65,10 @@ stapitest2: config server
 	rm -rf tests/sharedebug.out tests/stobj
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi2"
 
+stapitest3: config server
+	rm -rf tests/sharedebug.out tests/stobj
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi3"
+
 debug:
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb $(PREFIX)/bin/$(TCLSH) -c $(TCLSH).*core"
 

@@ -83,7 +83,8 @@ void shared_perror(char *text);
 typedef struct _garbage {
     struct _garbage	*next;
     cell_t	         cycle;		// read cycle it's waiting on
-    char		*block;		// address of block in shared mem
+    char		*memory;	// address of block in shared mem
+					// (free memory pointer, not raw block pointer)
 } garbage;
 
 // Pool control block
@@ -109,7 +110,7 @@ typedef struct _poolhead_t {
     struct _poolhead_t	*next;
     struct _chunk_t	*chunks;
     struct _shm_t	*share;
-    int			 blocks;
+    int			 nblocks;
     int			 blocksize;
     int			 numchunks;
     int			 maxchunks;
@@ -194,8 +195,8 @@ shm_t *map_file(char *file, char *addr, size_t default_size, int flags, int crea
 int unmap_file(shm_t *shm);
 void shminitmap(shm_t *shm);
 int shmcheckmap(volatile mapheader *map);
-poolhead_t *makepool(size_t blocksize, int blocks, int maxchunks, shm_t *share);
-int shmaddpool(shm_t *shm, size_t blocksize, int blocks, int maxchunks);
+poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share);
+int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks);
 char *palloc(poolhead_t *head, size_t size);
 void freepools(poolhead_t *head, int also_free_shared);
 void remove_from_freelist(shm_t *shm, volatile freeblock *block);
