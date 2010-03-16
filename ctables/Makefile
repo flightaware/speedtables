@@ -81,12 +81,14 @@ install: config
 
 sysconfig.sh: Makefile
 	echo "TCLVER=$(TCLVER)" > sysconfig.sh
+
+tests/version: Makefile
 	echo "$(TCLVER)" > tests/version
 
 sysconfig.tcl: mkConfig.sh config.tcl
 	./mkConfig.sh > sysconfig.tcl
 
-config: sysconfig.sh sysconfig.tcl
+config: sysconfig.sh sysconfig.tcl tests/version
 
 server: ../ctable_server/pkgIndex.tcl
 
