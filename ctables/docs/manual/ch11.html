@@ -182,12 +182,9 @@ CONST char *cable_info_get_string (
 <p>For fixed strings and varstrings, no copying is performed -- a pointer to the row's string is returned. Hence they must be considered to be constants by any of your code that retrieves them.</p>
 <p><b>*_delete_all_rows</b> - give a pointer to the StructTable for an instance, delete all the rows.</p>
 <H3>Interfacing with Speed Tables From C</H2>
-<p>At the time of this writing, no C code has been written to use any of these routines that is not part of the Speed Table code itself.</p>
-<p>We envision providing a way to write C code inline within the Speed Table definition and, for more complicated code writing, to provide a way to compile and link your C code with the generated C code.</p>
-<p>In particular, generating search compare functions in native C, where you say something like</p>
-<p>if (row-&gt;severity &gt; 90 &amp;&amp; row-&gt;timeUnavailable &gt; 900) return 1;</p>
-<p>...and that gets compiled into a specifically invokable search that will be faster than our more general searches that aren't pre-compiled.</p>
-<p>This will require generating an include file containing the structure definition, function definitions for the C routines you'd be calling, and many other things currently going straight into the C code.</p>
+<p>The only supported way, other than modifying SpeedTables yourself, is the <b>cfilter</b> hook. Since the
+ctable row itself is a C structure you can read any ctable field by using <b>row->fieldname</b> in the cfilter code fragment.</p>
+<p>See chapter 3, 5, 6, and 13 for information on how to use <b>cfilter</b>.</p>
 <!-- INSERT LOGO -->
 <!-- %BEGIN LINKS% -->
 <div class=links><a href="ch10.html">Back</a><a href=index.html>Index</a><a href="ch12.html">Next</a></div>
