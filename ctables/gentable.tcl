@@ -2323,7 +2323,7 @@ proc gen_filters {} {
     # Define filter functions
     foreach name $filterList {
 	array set filter $filters($name)
-	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter)"
+	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence)"
 	emit "{\n\tstruct ${table} *row = (struct ${table}*)vRow;\n$filter(code)\n}"
     }
 

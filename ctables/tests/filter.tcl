@@ -12,6 +12,8 @@ CExtension Filtertest 1.0 {
     #   ctable - A pointer to this ctable instance
     #   row - A pointer to the row being examined
     #   filter - A TclObj filter argument passed from search
+    #   sequence - A unique non-zero integer for each search operation, for
+    #		memoization of search parameters in complex searches.
     #
     # Return:
     #   TCL_OK for a match.
@@ -26,21 +28,28 @@ CExtension Filtertest 1.0 {
       return TCL_CONTINUE;
     }
     cfilter distance code {
-      double    target_lat, target_long, target_range;
-      Tcl_Obj **filterList;
-      int       filterCount;
-      if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)
-	return TCL_ERROR;
-      if(filterCount != 3) {
-	Tcl_AppendResult(interp, "wrong number of arguments: expected lat long range", NULL);
-	return TCL_ERROR;
+      static double target_lat, target_long, target_range;
+      static int lastSequence = 0;
+
+      // Only parse target information if the search ID changes.
+      if(sequence != lastSequence) {
+        Tcl_Obj **filterList;
+        int       filterCount;
+        if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)
+	  return TCL_ERROR;
+        if(filterCount != 3) {
+	  Tcl_AppendResult(interp, "wrong number of arguments: expected lat long range", NULL);
+	  return TCL_ERROR;
+        }
+        if(Tcl_GetDoubleFromObj (interp, filterList[0], &target_lat) != TCL_OK)
+          return TCL_ERROR;
+        if(Tcl_GetDoubleFromObj (interp, filterList[1], &target_long) != TCL_OK)
+          return TCL_ERROR;
+        if(Tcl_GetDoubleFromObj (interp, filterList[2], &target_range) != TCL_OK)
+          return TCL_ERROR;
+	lastSequence = sequence;
       }
-      if(Tcl_GetDoubleFromObj (interp, filterList[0], &target_lat) != TCL_OK)
-        return TCL_ERROR;
-      if(Tcl_GetDoubleFromObj (interp, filterList[1], &target_long) != TCL_OK)
-        return TCL_ERROR;
-      if(Tcl_GetDoubleFromObj (interp, filterList[2], &target_range) != TCL_OK)
-        return TCL_ERROR;
+
       double dlat = target_lat - row->latitude;
       double dlong = target_long - row->longitude;
       double dsquared = (dlat * dlat) + (dlong * dlong);

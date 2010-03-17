@@ -1006,7 +1006,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	int filterResult = TCL_OK;
 
 	for(i = 0; i < search->nFilters; i++) {
-	    filterResult = (*search->filters[i].filterFunction) (interp, ctable, (void *)row, search->filters[i].filterObject);
+	    filterResult = (*search->filters[i].filterFunction) (interp, ctable, (void *)row, search->filters[i].filterObject, search->sequence);
 	    if(filterResult != TCL_OK) return filterResult;
 	}
     }
@@ -1903,6 +1903,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     CONST char    **fieldNames = ctable->creator->fieldNames;
     int		    quick_count;
 
+    static int staticSequence = 0;
+
     static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", "-null", "-filter", (char *)NULL};
 
     enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL, SEARCH_OPT_QUOTE_TYPE, SEARCH_OPT_NULL_STRING, SEARCH_OPT_FILTER};
@@ -1964,12 +1966,14 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->sepstr = "\t";
     search->nullString = NULL;
     search->quoteType = CTABLE_QUOTE_NONE;
-
     search->matchCount = 0;
     search->alreadySearched = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
 
+    // Give each search a unique non-zero sequence number
+    if(++staticSequence == 0) ++staticSequence;
+    search->sequence = staticSequence;
 
     for (i = 2; i < objc; ) {
 	if (Tcl_GetIndexFromObj (interp, objv[i++], searchOptions, "search option", TCL_EXACT, &searchTerm) != TCL_OK) {

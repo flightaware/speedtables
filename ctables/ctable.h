@@ -152,7 +152,7 @@ typedef struct ctable_baseRowStruct {
 
 // Forward reference to avoid a warning
 struct ctableTable;
-typedef int (*filterFunction_t)(Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter);
+typedef int (*filterFunction_t)(Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence);
 typedef int (*fieldCompareFunction_t) (const ctable_BaseRow *row1, const ctable_BaseRow *row2);
 
 // ctable sort struct - this controls everything about a sort
@@ -289,6 +289,8 @@ typedef struct {
     int					 quoteType;
     char				*nullString;
 
+    // Unique search ID for memoization
+    int					 sequence;
 } CTableSearch;
 
 typedef struct {
