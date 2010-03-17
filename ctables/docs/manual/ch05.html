@@ -191,7 +191,7 @@ x makekey {ip 10.2.3.1 name host1}
 <pre>
 $table search \
     ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? \
-    ?-compare list? ?-offset offset? ?-limit limit? \
+    ?-compare list? ?-filter list? ?-offset offset? ?-limit limit? \
     ?-code codeBody? ?-key keyVar? ?-get varName? \
     ?-array_get varName? ?-array_get_with_nulls varName? \
     ?-array varName? ?-array_with_nulls varName? ?-index field? \
@@ -309,6 +309,9 @@ $table search -compare {{&gt; coolness 50} \
 <p>Expression compares true if the field's value appears in the value list.  </p>
 <p>The "in" search expression has very high performance, in particular with client-server ctables, as it is much faster to go find many rows in one query than to repeatedly cause a TCP/IP command/response roundtrip on a per-row basis.</p>
 </dl>
+
+<dt>-filter <i>list</i><dd>
+<p>Filter the search results through a C filter function defined in the speedtable definition. The parameter is a list of name-value pairs, the name being the name of the filter, and the value being the filter value passed to the filter function. If a filter function needs more than one parameter, they will be passed as a single list. If the filter function needs no parameters, pass an empty list.</p>
 
 <dt>-index <i>fieldName</i><dd>
 <p>Use the index on the named field to search. Note that this is just a hint to the query optimizer.</p>

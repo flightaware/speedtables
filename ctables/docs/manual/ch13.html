@@ -363,6 +363,39 @@ close $fp
 one application we used the MAC address and matched on the last two
 hex digits to pull in a reasonably well-distributed sample of cable
 modems to poll.</p>
+
+<H3>Extending Speed Tables with "C" search filters</H3>
+<p>Tcl is slow. C is fast. That's the whole point of Speed Tables. Since a Speed Tables
+row is internally a "C" structure, it's natural and easy to write "C" code that
+can be used to filter search results.</p>
+<p>Conceptually, a "C Filter" is a C function that is passed four parameters
+<dl compact>
+<dt>interp <dd> A pointer to the Tcl interpeter
+<dt>ctable <dd> A pointer to this ctable instance
+<dt>row <dd> A pointer to the row being examined
+<dt>filter <dd> A TclObj filter argument passed from search
+</dl>
+<p>The filter returns one of the standard Tcl constants to indicate how
+to proceed in the search process.
+<dl compact>
+<dt>TCL_OK<dd>for a match.
+<dt>TCL_CONTINUE<dd>for a miss.
+<dt>TCL_RETURN or TCL_BREAK<dd>to terminate the search without an error.
+<dt>TCL_ERROR<dd>to terminate the search with an error.
+</dl>
+<pre>
+   cfilter latorlong code {
+     double target;
+     if(Tcl_GetDoubleFromObj (interp, filter, &target) != TCL_OK)
+       return TCL_ERROR;
+     if(row->latitude == target || row->longitude == target) return TCL_OK;
+     return TCL_CONTINUE;
+   }
+</pre>
+<p>To use this filter:</p>
+<pre>
+t search -filter [list latorlong $cord] -array_get a -code { puts $a }
+</pre>
 <!-- INSERT LOGO -->
 <!-- %BEGIN LINKS% -->
 <div class=links><a href="ch12.html">Back</a><a href=index.html>Index</a><a href="ch14.html">Next</a></div>
