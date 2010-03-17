@@ -382,6 +382,41 @@ can be used to filter search results.</p>
 <pre>
 t search -filter [list latorlong $coord] -array_get a -code { puts $a }
 </pre>
+<p>If the parameter to the filter is complex, it can be worthwhile to cache the result of parsing it. This can
+be done safely by tracking the sequence ID of the search. For example:</p>
+<pre>
+cfilter distance code {
+  static double target_lat, target_long, target_range;
+  static int lastSequence = 0;
+
+  // Only parse target information if the search ID changes.
+  if(sequence != lastSequence) {
+    Tcl_Obj **filterList;
+    int       filterCount;
+    if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)
+      return TCL_ERROR;
+    if(filterCount != 3) {
+      Tcl_AppendResult(interp, "wrong number of arguments: expected lat long range", NULL);
+      return TCL_ERROR;
+    }
+    if(Tcl_GetDoubleFromObj (interp, filterList[0], &target_lat) != TCL_OK)
+      return TCL_ERROR;
+    if(Tcl_GetDoubleFromObj (interp, filterList[1], &target_long) != TCL_OK)
+      return TCL_ERROR;
+    if(Tcl_GetDoubleFromObj (interp, filterList[2], &target_range) != TCL_OK)
+      return TCL_ERROR;
+    lastSequence = sequence;
+  }
+
+  double dlat = target_lat - row->latitude;
+  double dlong = target_long - row->longitude;
+  if( ((dlat * dlat) + (dlong * dlong)) <= (target_range * target_range) )
+    return TCL_OK;
+  return TCL_CONTINUE;
+}
+</pre>
+
+
 <!-- INSERT LOGO -->
 <!-- %BEGIN LINKS% -->
 <div class=links><a href="ch12.html">Back</a><a href=index.html>Index</a><a href="ch14.html">Next</a></div>
