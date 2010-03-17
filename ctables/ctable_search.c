@@ -2289,7 +2289,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     // If there's nothing going on in the search, then skip the search and
     // return quick_count (calculated earlier).
     if(search->action == CTABLE_SEARCH_ACTION_NONE) {
-	if(search->nComponents == 0 && search->nRetrieveFields <= 0 && search->codeBody == NULL && search->pattern == NULL && search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {
+	if(search->nComponents == 0 && search->nFilters == 0 && search->nRetrieveFields <= 0 && search->codeBody == NULL && search->pattern == NULL && search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {
 
 	    if (search->offset) {
 		quick_count -= search->offset;

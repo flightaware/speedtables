@@ -67,7 +67,17 @@ for {set i 0} {$i < 100} {incr i} {
   t set $i id CO$i latitude $i longitude [expr 100 - $i]
 }
 
-if {[t search -filter {distance {40 30 40}} -array_get a -countOnly 1] != 47} {
-  error "Should have returned 47 points within 30 units of (40,30)"
+set found [t search -filter {distance {40 30 40}} -countOnly 1]
+if {$found != 47} {
+  error "Should have returned 47 points within 30 units of (40,30) (got $found)"
 }
 
+for {set i 0} {$i < 10000} {incr i} {
+  set lat [expr {rand() * 100.0}]
+  set long [expr {rand() * 100.0}]
+  set row [expr {int(rand() * 100.0)}]
+  t set $row latitude $lat longitude $long
+  if {[t search -filter [list distance [list $lat $long 1]] -countOnly 1] <= 0} {
+    error "Should have had at least one point in 1 unit of ($lat, $long)"
+  }
+}
