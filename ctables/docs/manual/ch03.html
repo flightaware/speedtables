@@ -60,10 +60,12 @@ may be manually cleared.</p>
 </dl>
 <p class="bug">Bug: Unique checks are not currently being performed as of 12/31/06.</p>
 <p class="bug">Bug: String search matching functions don't yet work for fixedstrings and fixedstrings have not had a lot of use as of 12/31/06.</p>
-<p>In addition, "C Filters" can be created that can be used to speed up searching ctables with fragments of native code. 
-This code fragment is not guaranteed to be a separate c function, but it can be conceptually thought of as one with the 
+<p>In addition, "C Filters" can be created that can be used to speed up searching ctables with fragments of native code. They look
+much like field definitions, for a "field type" of "cfilter", but will not show up in the ctable as a field and only have the
+one parameter, a code fragment.</p>
+<p>This code fragment is not guaranteed to be a separate c function, but it can be conceptually thought of as one with the 
 following declaration:<p>
-<pre>int table_filter_name(TCL_Interp *interp, struct ctableTable *ctable, struct ${ctable_name} *row, Tcl_Obj *filter);</pre>
+<p><tt>int table_filter_name(TCL_Interp *interp, struct ctableTable *ctable, struct ${ctable_name} *row, Tcl_Obj *filter);</tt></pp>
 <ul>
 <li>interp - A pointer to the Tcl interpeter
 <li>ctable - A pointer to this ctable instance
