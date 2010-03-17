@@ -123,7 +123,7 @@ proc status {delay} {
 }
 puts "running, delay = $delay, count=$count, max=$max, waiting for connections"
 after $delay random_changes $delay $count $max
-after $delay status $delay
+after 100 status 100
 
 if !$tcl_interactive { vwait die }
 

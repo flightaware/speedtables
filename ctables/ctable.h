@@ -150,6 +150,9 @@ typedef struct ctable_baseRowStruct {
 #define CTABLE_INDEX_NORMAL 0
 #define CTABLE_INDEX_NEW 1
 
+// Forward reference to avoid a warning
+struct ctableTable;
+typedef int (*filterFunction_t)(Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter);
 typedef int (*fieldCompareFunction_t) (const ctable_BaseRow *row1, const ctable_BaseRow *row2);
 
 // ctable sort struct - this controls everything about a sort
@@ -175,7 +178,7 @@ struct ctableSearchMatchStruct {
     int             nocase;
 };
 
-// ctable search component struct - one for each search expression in a
+// ctable search component struct - one for each "-compare" expression in a
 // ctable search
 typedef struct {
     void                    *clientData;
@@ -189,6 +192,13 @@ typedef struct {
     int                      fieldID;
     int                      comparisonType;
 } CTableSearchComponent;
+
+// ctable search filter struct - one for each "-filter" expression in a
+// ctable search
+typedef struct {
+    filterFunction_t  filterFunction;
+    Tcl_Obj	     *filterObject;
+} CTableSearchFilter;
 
 #define CTABLE_SEARCH_ACTION_NONE 0
 #define CTABLE_SEARCH_ACTION_GET 1
@@ -223,6 +233,7 @@ typedef struct {
 typedef struct {
     struct ctableTable                  *ctable;
     CTableSearchComponent               *components;
+    CTableSearchFilter			*filters;
     char                                *pattern;
     int                                 *retrieveFields;
 
@@ -238,6 +249,7 @@ typedef struct {
     int					 bufferResults;
 
     int                                  nComponents;
+    int					 nFilters;
     int                                  countMax;
     int                                  offset;
     int                                  limit;
@@ -311,6 +323,10 @@ typedef struct ctableCreatorTable {
     int                nFields;
     int		       nPublicFields;
     int                nLinkedLists;
+
+    CONST char		   **filterNames;
+    CONST filterFunction_t  *filterFunctions;
+    int			     nFilters;
 
     void *(*make_empty_row) ();
     void *(*find_row) (struct ctableTable *ctable, char *key);

@@ -484,6 +484,59 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
     return TCL_OK;
 }
 
+static int
+ctable_ParseFilters (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *filterListObj, CTableSearch *search) {
+    Tcl_Obj		  **filterList;
+    int                     filterListCount;
+
+    CTableSearchFilter     *filters = NULL;
+
+    int i;
+
+    // Assume nothing, trust no one.
+    search->filters = NULL;
+    search->nFilters = 0;
+
+    if (Tcl_ListObjGetElements (interp, filterListObj, &filterListCount, &filterList) == TCL_ERROR)
+	goto abend;
+
+    // Nothing to do
+    if (filterListCount == 0) {
+	return TCL_OK;
+    }
+
+
+    // List is {filtername filtervalue filtername filtervalue} .. if passing a list to a filter, pass a list
+    if ((filterListCount & 1) != 0) {
+	Tcl_AppendResult (interp, "filter list must have an even number of items", (char *) NULL);
+	goto abend;
+    }
+
+    // make room, make room
+    filters = (CTableSearchFilter *)ckalloc ((filterListCount / 2) * sizeof (CTableSearchFilter));
+
+    // step through list, looking for filter names and filling in the structs
+    for (i = 0; i < filterListCount; i += 2) {
+	int item;
+
+	if (Tcl_GetIndexFromObj (interp, filterList[i], ctable->creator->filterNames, "filter", TCL_EXACT, &item) != TCL_OK)
+	    goto abend;
+
+	filters[i].filterFunction = ctable->creator->filterFunctions[item];
+	filters[i].filterObject = filterList[i+1];
+    }
+
+    // Register the filter list we've created
+    search->filters = filters;
+    search->nFilters = (filterListCount / 2);
+    return TCL_OK;
+
+abend:
+    if(filters)
+	ckfree ((char *)filters);
+    return TCL_ERROR;
+}
+
 //
 // ctable_SearchAction - Perform the search action on a row that's matched
 //  the search criteria.
@@ -944,6 +997,17 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     if (search->pattern != (char *) NULL) {
 	if (!Tcl_StringCaseMatch (row->hashEntry.key, search->pattern, 1)) {
 	    return TCL_CONTINUE;
+	}
+    }
+
+    // check filters
+    if (search->nFilters) {
+	int i;
+	int filterResult = TCL_OK;
+
+	for(i = 0; i < search->nFilters; i++) {
+	    filterResult = (*search->filters[i].filterFunction) (interp, ctable, (void *)row, search->filters[i].filterObject);
+	    if(filterResult != TCL_OK) return filterResult;
 	}
     }
 
@@ -1839,12 +1903,12 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     CONST char    **fieldNames = ctable->creator->fieldNames;
     int		    quick_count;
 
-    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", "-null", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", "-null", "-filter", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL, SEARCH_OPT_QUOTE_TYPE, SEARCH_OPT_NULL_STRING};
+    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL, SEARCH_OPT_QUOTE_TYPE, SEARCH_OPT_NULL_STRING, SEARCH_OPT_FILTER};
     if (objc < 2) {
       wrong_args:
-	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-nokeys 0|1? ?-offset offset? ?-sort {?-?field1..}? ?-write_tabsep channel? ?-tab value? ?-delete 0|1? ?-update {fields value...}? ?-buffer 0|1? ?-poll_interval interval? ?-poll_code codeBody? ?-quote type?");
+	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-filter list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-nokeys 0|1? ?-offset offset? ?-sort {?-?field1..}? ?-write_tabsep channel? ?-tab value? ?-delete 0|1? ?-update {fields value...}? ?-buffer 0|1? ?-poll_interval interval? ?-poll_code codeBody? ?-quote type?");
 	return TCL_ERROR;
     }
 
@@ -1863,6 +1927,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     // anything, so skip all that
     if (quick_count == 0)
     {
+	search->filters = NULL;
 	search->components = NULL; // keep ctable_searchTeardown happy
 	Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
 	return TCL_RETURN;
@@ -1873,6 +1938,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->action = CTABLE_SEARCH_ACTION_NONE;
     search->nComponents = 0;
     search->components = NULL;
+    search->nFilters = 0;
+    search->filters = NULL;
     search->countMax = 0;
     search->offset = 0;
     search->limit = 0;
@@ -2012,6 +2079,14 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    if (ctable_ParseSearch (interp, ctable, objv[i++], fieldNames, search) == TCL_ERROR) {
 	        Tcl_AppendResult (interp, " while processing search compare", (char *) NULL);
 	        return TCL_ERROR;
+	    }
+	    break;
+	  }
+
+	  case SEARCH_OPT_FILTER: {
+	    if (ctable_ParseFilters (interp, ctable, objv[i++], search) == TCL_ERROR) {
+		Tcl_AppendResult (interp, " while processing search filter", (char *)NULL);
+		return TCL_ERROR;
 	    }
 	    break;
 	  }
@@ -2262,6 +2337,11 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 static void
 ctable_TeardownSearch (CTableSearch *search) {
     int i;
+
+    if (search->filters) {
+	ckfree((void *)search->filters);
+	search->filters = NULL;
+    }
 
     if (search->components == NULL) {
         return;

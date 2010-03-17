@@ -34,6 +34,11 @@
     t->fieldsThatNeedQuoting = ${table}_needs_quoting;
     t->keyField = ${table}_keyField;
 
+    // setup the filter objects
+    t->filterNames = ${table}_filterNames;
+    t->filterFunctions = ${table}_filterFunctions;
+    t->nFilters = $NFILTERS;
+
     // pointers to functions
     t->make_empty_row = (void *)${table}_make_row_struct;
     t->find_row = (void *)${table}_find;

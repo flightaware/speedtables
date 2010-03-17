@@ -1,3 +1,26 @@
+3/17/2010 peter
+    *** Implemented native C filtering for search. ***
+
+    # The Cfilter code fragment is not guaranteed to be a separate c function,
+    # but it does allow local variables and the following names are in scope:
+    #   interp - Tcl interpeter
+    #   ctable - A pointer to this ctable instance
+    #   row - A pointer to the row being examined
+    #   filter - A TclObj filter argument passed from search
+    #
+    # Return:
+    #   TCL_OK for a match.
+    #   TCL_CONTINUE for a miss.
+    #   TCL_RETURN or TCL_BREAK to terminate the search without an error.
+    #   TCL_ERROR to terminate the search with an error.
+    cfilter latorlong code {
+      double target;
+      if(Tcl_GetDoubleFromObj (interp, filter, &target) != TCL_OK)
+        return TCL_ERROR;
+      if(row->latitude == target || row->longitude == target) return TCL_OK;
+      return TCL_CONTINUE;
+    }
+
 3/16/2010 peter
     Note explicitly that shared speedtables must ALL be part of the same C Extension.
     Add "share free" command to estimate free memory in a share.

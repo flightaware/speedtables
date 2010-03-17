@@ -2272,6 +2272,78 @@ proc end_table {} {
 }
 
 #
+# filters
+#
+
+#
+# Defining word for a C filter in a CTable - mostly error checking
+#
+proc cfilter {filterName args} {
+    variable filters
+    variable reservedWords
+
+    if {[lsearch -exact $reservedWords $filterName] >= 0} {
+        error "illegal filter name \"$filterName\" -- it's a reserved word"
+    }
+
+    if {![is_legal $filterName]} {
+        error "filter name \"$filterName\" must start with a letter and can only contain letters, numbers, and underscores"
+    }
+
+    if {[llength $args] % 2 != 0} {
+        error "number of values in filter '$filterName' definition arguments ('$args') must be even"
+    }
+
+    if {[info exists filters($filterName)]} {
+	error "duplicate definition of filter '$filterName'"
+    }
+
+    array set filter $args
+
+    if {![info exists filter(code)]} {
+	error "no code provided for cfilter '$filterName'"
+    }
+
+    set filters($filterName) $args
+}
+
+#
+# Generate filter structs and procs
+#
+proc gen_filters {} {
+    variable table
+    variable filters
+    variable leftCurly
+    variable rightCurly
+
+    set filterList [lsort [array names filters]]
+
+    emit "#define [string toupper $table]_NFILTERS [llength $filterList]"
+
+    # Define filter functions
+    foreach name $filterList {
+	array set filter $filters($name)
+	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter)"
+	emit "{\n\tstruct ${table} *row = (struct ${table}*)vRow;\n$filter(code)\n}"
+    }
+
+    # Define filter lookup table
+    emit "static CONST char *${table}_filterNames\[] = $leftCurly"
+    foreach name $filterList {
+	emit "    \"$name\","
+    }
+    emit "    (char *) NULL"
+    emit "$rightCurly;\n"
+
+    emit "static CONST filterFunction_t ${table}_filterFunctions\[] = $leftCurly"
+    foreach name $filterList {
+	emit "    ${table}_filter_${name},"
+    }
+    emit "    (filterFunction_t) NULL"
+    emit "$rightCurly;\n"
+}
+
+#
 # Is this a legal field name.
 #
 # Special fields are automatically legal.
@@ -3493,6 +3565,7 @@ proc put_init_command_source {table} {
     set Id {init extension Id}
     set NFIELDS [string toupper $table]_NFIELDS
     set NLINKED_LISTS [string toupper $table]_NLINKED_LISTS
+    set NFILTERS [string toupper $table]_NFILTERS
 
     emit [subst -nobackslashes -nocommands $extensionFragmentSource]
 }
@@ -5795,6 +5868,8 @@ proc table {name data} {
     ::ctable::gen_struct
 
     ::ctable::gen_field_names
+
+    ::ctable::gen_filters
 
     ::ctable::gen_setup_routine $name
 

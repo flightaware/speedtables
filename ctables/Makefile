@@ -62,12 +62,15 @@ stapitest: config server
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi"
 
 stapitest2: config server
-	rm -rf tests/sharedebug.out tests/stobj
+	rm -rf tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi2"
 
 stapitest3: config server
-	rm -rf tests/sharedebug.out tests/stobj
+	rm -rf tests/sharedebug.out
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make stapi3"
+
+filtertest: config server
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make filter"
 
 debug:
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb $(PREFIX)/bin/$(TCLSH) -c $(TCLSH).*core"
@@ -87,6 +90,9 @@ tests/version: Makefile
 
 sysconfig.tcl: mkConfig.sh config.tcl
 	./mkConfig.sh > sysconfig.tcl
+
+clean:
+	rm sysconfig.sh sysconfig.tcl tests/version
 
 config: sysconfig.sh sysconfig.tcl tests/version
 

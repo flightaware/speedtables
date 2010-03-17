@@ -35,6 +35,7 @@ all:
 	$(TCLSH) index-compare.tcl
 	-rm -r stobj
 	$(TCLSH) index-defaults.tcl
+	$(TCLSH) filter.tcl
 
 compare:
 	-rm -r stobj
@@ -87,8 +88,12 @@ stapi2:
 stapi3:
 	-rm -r stobj
 	-rm -f *.dat
-	sh stapi.sh -d 100 -c 40 -s stapi3.tcl
+	sh stapi.sh -d 1 -c 40 -s stapi3.tcl
 	rm -f *.dat
+
+filter:
+	-rm -r stobj
+	$(TCLSH) filter.tcl
 
 multireader:
 	-rm -r stobj
