@@ -13,6 +13,17 @@
 <!-- %END LINKS% -->
 <H2> 5 -  Methods for Manipulating Speed Tables</H2>
 <div class="blue">This chapter enumerates all of the defined methods that are available to interact with Speed Tables, with examples.</div>
+<H3>Speedtables (Global) Functions</H3>
+<p>All Speed Tables are defined in a <b>speedtables</b> block. Inside this block you can have any number of common
+tables and helper functions.</p>
+<dl compact>
+<dt>speedtables {block}<dd>
+<p>Top level block, starts definition of a Speed Table C Extension.</p>
+<dt>ccode {block}<dd>
+<p>Raw C code passed through to the compiler.</p>
+<dt>table {block}<dd>
+<p>Structured Speed Table definition, see Chapter 3 for data types, Chapter 4 for example.</p>
+</dl>
 <H3>Meta-table (Class) Methods</H3>
 <p>The following methods are available as arguments to the meta-table (class)
 of the Speed Table:</p>

@@ -5835,6 +5835,21 @@ proc start_codegen {} {
     ::ctable::emit ""
 
     ::ctable::emit "static char *ctablePackageVersion = \"$::ctable::ctablePackageVersion\";"
+
+    if [info exists ::ctable::rawCode] {
+	::ctable::emit "// BEGIN imported C Code"
+        foreach block $::ctable::rawCode {
+	    ::ctable::emit "$block\n"
+	}
+	::ctable::emit "// END imported C Code"
+    }
+}
+
+#
+# ccode - pass C code (such as helper functions) through
+#
+proc ccode {block} {
+    lappend ::ctable::rawCode $block
 }
 
 #
