@@ -25,6 +25,28 @@ CExtension Filtertest 1.0 {
       if(row->latitude == target || row->longitude == target) return TCL_OK;
       return TCL_CONTINUE;
     }
+    cfilter distance code {
+      double    target_lat, target_long, target_range;
+      Tcl_Obj **filterList;
+      int       filterCount;
+      if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)
+	return TCL_ERROR;
+      if(filterCount != 3) {
+	Tcl_AppendResult(interp, "wrong number of arguments: expected lat long range", NULL);
+	return TCL_ERROR;
+      }
+      if(Tcl_GetDoubleFromObj (interp, filterList[0], &target_lat) != TCL_OK)
+        return TCL_ERROR;
+      if(Tcl_GetDoubleFromObj (interp, filterList[1], &target_long) != TCL_OK)
+        return TCL_ERROR;
+      if(Tcl_GetDoubleFromObj (interp, filterList[2], &target_range) != TCL_OK)
+        return TCL_ERROR;
+      double dlat = target_lat - row->latitude;
+      double dlong = target_long - row->longitude;
+      double dsquared = (dlat * dlat) + (dlong * dlong);
+      if(dsquared <= (target_range * target_range)) return TCL_OK;
+      return TCL_CONTINUE;
+    }
   }
 }
 
@@ -36,5 +58,7 @@ for {set i 0} {$i < 100} {incr i} {
   t set $i id CO$i latitude $i longitude [expr 100 - $i]
 }
 
-t search -filter {latorlong 4} -array_get a -code { puts $a }
+if {[t search -filter {distance {40 30 40}} -array_get a -countOnly 1] != 47} {
+  error "Should have returned 47 points within 30 units of (40,30)"
+}
 

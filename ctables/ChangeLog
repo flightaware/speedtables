@@ -21,6 +21,8 @@
       return TCL_CONTINUE;
     }
 
+    * Documented and added test to "make test".
+
 3/16/2010 peter
     Note explicitly that shared speedtables must ALL be part of the same C Extension.
     Add "share free" command to estimate free memory in a share.
