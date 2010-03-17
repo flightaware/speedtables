@@ -29,6 +29,7 @@
 <li> <i>inet</i> - an internet IP address
 <li> <i>tclobj</i> - a Tcl object... more on this powerful capability later
 <li> <i>key</i> - not really a type, this is an alias for the row's key.
+<li> <i>cfilter</i> - Define a search filter in native "C" code.<br/>Does not create a field.
 </ul>
 <p>Fields are defined by the data type followed by the field name, for example...</p>
 <pre>double longitude</pre>
@@ -63,15 +64,16 @@ may be manually cleared.</p>
 <p>In addition, "C Filters" can be created that can be used to speed up searching ctables with fragments of native code. They look
 much like field definitions, for a "field type" of "cfilter", but will not show up in the ctable as a field and only have the
 one parameter, a code fragment.</p>
+<p><tt>cfilter distance code { ... c code goes here ... }</tt></p>
 <p>This code fragment is not guaranteed to be a separate c function, but it can be conceptually thought of as one with the 
 following declaration:<p>
-<p><tt>int table_filter_name(TCL_Interp *interp, struct ctableTable *ctable, struct ${ctable_name} *row, Tcl_Obj *filter, int sequence);</tt></pp>
+<p><tt>int table_filter_name(TCL_Interp *interp, struct ctableTable *ctable, struct ${ctable_name} *row, Tcl_Obj *filter, int sequence);</tt></p>
 <ul>
-<li>interp - A pointer to the Tcl interpeter
-<li>ctable - A pointer to this ctable instance
-<li>row - A pointer to the row being examined
-<li>filter - A TclObj filter argument passed from search
-<li>sequence - A unique ID for each search operation
+<li><i>interp</i> - A pointer to the Tcl interpeter
+<li><i>ctable</i> - A pointer to this ctable instance
+<li><i>row</i> - A pointer to the row being examined
+<li><i>filter</i> - A TclObj filter argument passed from search
+<li><i>sequence</i> - A unique ID for each search operation
 </ul>
 <p>The filter can examine any fields in the CTable by name, as "row->fieldname". It can also look at "row->_fieldname_IsNull" to
 see if the field is null (has never been assigned a value, or has been assigned the table's null value string). It should return

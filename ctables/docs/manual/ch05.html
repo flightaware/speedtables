@@ -312,6 +312,17 @@ $table search -compare {{&gt; coolness 50} \
 
 <dt>-filter <i>list</i><dd>
 <p>Filter the search results through a C filter function defined in the speedtable definition. The parameter is a list of name-value pairs, the name being the name of the filter, and the value being the filter value passed to the filter function. If a filter function needs more than one parameter, they will be passed as a single list. If the filter function needs no parameters, pass an empty list.</p>
+<p>Filters are distinct from comparison expressions because no field is required... the filter operates on the entire row and can perform complex multi-field operations in one call. The fields relevant to the filter are determined by the filter's code.</p>
+<pre>ctable point {
+  varstring id
+  double    latitude
+  double    longitude
+  bool      is_valid
+  ...
+}
+
+$points search -filter [list distance [concat $fieldLatLong 150]] -code { ... }</pre>
+<p>This example uses a distance filter (see examples) that selects all valid points within a certain range of an airfield, implicitly using two fields in the ctable</p>
 
 <dt>-index <i>fieldName</i><dd>
 <p>Use the index on the named field to search. Note that this is just a hint to the query optimizer.</p>
