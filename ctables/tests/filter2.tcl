@@ -20,7 +20,11 @@ CExtension Filtertest 1.0 {
     #   TCL_CONTINUE for a miss.
     #   TCL_RETURN or TCL_BREAK to terminate the search without an error.
     #   TCL_ERROR to terminate the search with an error.
-    cfilter distance args {double target_lat double target_long double target_range} code {
+    cfilter distance args {
+      double target_lat
+      double target_long
+      double target_range
+    } code {
       double dlat = target_lat - row->latitude;
       double dlong = target_long - row->longitude;
       double dsquared = (dlat * dlat) + (dlong * dlong);
