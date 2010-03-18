@@ -2324,15 +2324,15 @@ proc gen_decl_filter_arg {type name} {
 	key		"char *"
     }
     array set init_map {
-	boolean		" = 0;"
-	varstring	" = NULL;"
-	fixedstring	" = NULL;"
-	short		" = 0;"
-	int		" = 0;"
-	long		" = 0;"
-	float		" = 0.0;"
-	double		" = 0.0;"
-	key		" = NULL;"
+	boolean		" = 0"
+	varstring	" = NULL"
+	fixedstring	" = NULL"
+	short		" = 0"
+	int		" = 0"
+	long		" = 0"
+	float		" = 0.0"
+	double		" = 0.0"
+	key		" = NULL"
     }
 	
     if [info exists type_map($type)] {

@@ -415,17 +415,47 @@ cfilter distance code {
 }
 </pre>
 <p><b>If you let cfilter generate the arguments, this will happen automatically:</b></p>
-<pre>    cfilter distance args {
-      double target_lat
-      double target_long
-      double target_range
-    } code {
-      double dlat = target_lat - row->latitude;
-      double dlong = target_long - row->longitude;
-      if( ((dlat * dlat) + (dlong * dlong)) <= (target_range * target_range) )
+<pre>  cfilter distance args {
+    double target_lat
+    double target_long
+    double target_range
+  } code {
+    double dlat = target_lat - row->latitude;
+    double dlong = target_long - row->longitude;
+    if( ((dlat * dlat) + (dlong * dlong)) <= (target_range * target_range) )
 	return TCL_OK;
-      return TCL_CONTINUE;
+    return TCL_CONTINUE;
+  }
+</pre>
+<p>This generates:</p>
+<pre>
+int track_filter_distance (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence)
+{
+    struct track *row = (struct track*)vRow;
+    static int lastSequence = 0;
+    static double target_lat = 0.0;
+    static double target_long = 0.0;
+    static double target_range = 0.0;
+    if (sequence != lastSequence) {
+        lastSequence = sequence;
+        Tcl_Obj **filterList;
+        int       filterCount;
+        if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)
+             return TCL_ERROR;
+        if(Tcl_GetDoubleFromObj (interp, filterList[0], &target_lat) != TCL_OK)
+            return TCL_ERROR;
+        if(Tcl_GetDoubleFromObj (interp, filterList[1], &target_long) != TCL_OK)
+            return TCL_ERROR;
+        if(Tcl_GetDoubleFromObj (interp, filterList[2], &target_range) != TCL_OK)
+            return TCL_ERROR;
     }
+
+    double dlat = target_lat - row->latitude;
+    double dlong = target_long - row->longitude;
+    if( ((dlat * dlat) + (dlong * dlong)) <= (target_range * target_range) )
+	return TCL_OK;
+    return TCL_CONTINUE;
+}
 </pre>
 
 <!-- INSERT LOGO -->
