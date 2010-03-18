@@ -370,8 +370,7 @@ row is internally a "C" structure, it's natural and easy to write "C" code that
 can be used to filter search results.</p>
 <p>Example:</p>
 <pre>
-   cfilter latorlong code {
-     double target;
+   cfilter latorlong args {double target} code {
      if(Tcl_GetDoubleFromObj (interp, filter, &target) != TCL_OK)
        return TCL_ERROR;
      if(row->latitude == target || row->longitude == target) return TCL_OK;
@@ -415,7 +414,19 @@ cfilter distance code {
   return TCL_CONTINUE;
 }
 </pre>
-
+<p><b>If you let cfilter generate the arguments, this will happen automatically:</b></p>
+<pre>    cfilter distance args {
+      double target_lat
+      double target_long
+      double target_range
+    } code {
+      double dlat = target_lat - row->latitude;
+      double dlong = target_long - row->longitude;
+      double dsquared = (dlat * dlat) + (dlong * dlong);
+      if(dsquared <= (target_range * target_range)) return TCL_OK;
+      return TCL_CONTINUE;
+    }
+</pre>
 
 <!-- INSERT LOGO -->
 <!-- %BEGIN LINKS% -->

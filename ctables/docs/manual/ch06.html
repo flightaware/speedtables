@@ -67,10 +67,7 @@ close $fp
 <p>Finally, if all else fails, you can define a "C" language filter that can perform native tests on a whole row.</p>
 
 <pre>
-   cfilter latorlong code {
-     double target;
-     if(Tcl_GetDoubleFromObj (interp, filter, &target) != TCL_OK)
-       return TCL_ERROR;
+   cfilter latorlong args {double target} code {
      if(row->latitude == target || row->longitude == target) return TCL_OK;
      return TCL_CONTINUE;
    }

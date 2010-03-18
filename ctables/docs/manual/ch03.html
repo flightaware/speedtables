@@ -64,7 +64,7 @@ may be manually cleared.</p>
 <p>In addition, "C Filters" can be created that can be used to speed up searching ctables with fragments of native code. They look
 much like field definitions, for a "field type" of "cfilter", but will not show up in the ctable as a field and only have the
 one parameter, a code fragment.</p>
-<p><tt>cfilter distance code { ... c code goes here ... }</tt></p>
+<p><tt>cfilter distance args {type name type name} code { ... c code goes here ... }</tt></p>
 <p>This code fragment is not guaranteed to be a separate c function, but it can be conceptually thought of as one with the 
 following declaration:<p>
 <p><tt>int table_filter_name(TCL_Interp *interp, struct ctableTable *ctable, struct ${ctable_name} *row, Tcl_Obj *filter, int sequence);</tt></p>
@@ -75,6 +75,9 @@ following declaration:<p>
 <li><i>filter</i> - A TclObj filter argument passed from search
 <li><i>sequence</i> - A unique ID for each search operation
 </ul>
+<p>If arguments are provided, then code is transparently generated to extract the arguments from the Tcl Object. If only one argument is provided, the filter parameter will be used as a whole. If more than one argument is provided, the filter parameter will be treated as a list.
+The types of the arguments are Tcl types, the actual C variable will be a "char *", a "double", an "int", or a "long" depending on the type provided.</p>
+<p>As a special case, "args {list argc argv}" will extract an integer argc (or whatever name is provided) and a list of TclObjs argv.</p>
 <p>The filter can examine any fields in the CTable by name, as "row->fieldname". It can also look at "row->_fieldname_IsNull" to
 see if the field is null (has never been assigned a value, or has been assigned the table's null value string). It should return
 TCL_OK for a matched row, TCL_CONTINUE for a missed match, TCL_BREAK to terminate the search at this point (here there be dragons),
