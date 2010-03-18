@@ -422,8 +422,8 @@ cfilter distance code {
     } code {
       double dlat = target_lat - row->latitude;
       double dlong = target_long - row->longitude;
-      double dsquared = (dlat * dlat) + (dlong * dlong);
-      if(dsquared <= (target_range * target_range)) return TCL_OK;
+      if( ((dlat * dlat) + (dlong * dlong)) <= (target_range * target_range) )
+	return TCL_OK;
       return TCL_CONTINUE;
     }
 </pre>
