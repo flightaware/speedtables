@@ -2404,7 +2404,7 @@ proc gen_filters {} {
 
 		emit "    Tcl_Obj **$listName;"
 		emit "    int       $listCount;"
-		emit "    if(Tcl_ListObjGetElements(interp, filter, &$listCount &$listName) != TCL_OK)"
+		emit "    if(Tcl_ListObjGetElements(interp, filter, &$listCount, &$listName) != TCL_OK)"
 		emit "        return TCL_ERROR;"
 
 	    } else {
