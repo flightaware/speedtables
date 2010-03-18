@@ -2249,6 +2249,8 @@ proc new_table {name} {
     variable fieldList
     variable keyField
     variable keyFieldName
+    variable filters
+    variable rawCode
 
     set table $name
 
@@ -2258,6 +2260,8 @@ proc new_table {name} {
     set fieldList ""
     unset -nocomplain keyField
     unset -nocomplain keyFieldName
+    unset -nocomplain filters
+    unset -nocomplain rawCode
 
     foreach var [info vars ::ctable::fields::*] {
         unset -nocomplain $var
@@ -2390,6 +2394,7 @@ proc gen_filters {} {
 
     # Define filter functions
     foreach name $filterList {
+	catch {array unset filter}
 	array set filter $filters($name)
 	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence)"
 	emit "$leftCurly"
@@ -2419,7 +2424,7 @@ proc gen_filters {} {
 	        emit "        lastSequence = sequence;"
 
 	        if {[llength $filter(args)] == 2} {
-		    gen_get_filter_arg [lindex $filter(args) 0] [lindex $filter(args) 0] filter
+		    gen_get_filter_arg [lindex $filter(args) 0] [lindex $filter(args) 1] filter
 	        } else {
 		    emit "        Tcl_Obj **filterList;"
         	    emit "        int       filterCount;"
