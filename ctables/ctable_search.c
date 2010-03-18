@@ -518,12 +518,13 @@ ctable_ParseFilters (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *filterListObj,
     // step through list, looking for filter names and filling in the structs
     for (i = 0; i < filterListCount; i += 2) {
 	int item;
+	int f = i / 2;
 
 	if (Tcl_GetIndexFromObj (interp, filterList[i], ctable->creator->filterNames, "filter", TCL_EXACT, &item) != TCL_OK)
 	    goto abend;
 
-	filters[i].filterFunction = ctable->creator->filterFunctions[item];
-	filters[i].filterObject = filterList[i+1];
+	filters[f].filterFunction = ctable->creator->filterFunctions[item];
+	filters[f].filterObject = filterList[i+1];
     }
 
     // Register the filter list we've created
@@ -1006,8 +1007,10 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	int filterResult = TCL_OK;
 
 	for(i = 0; i < search->nFilters; i++) {
-	    filterResult = (*search->filters[i].filterFunction) (interp, ctable, (void *)row, search->filters[i].filterObject, search->sequence);
-	    if(filterResult != TCL_OK) return filterResult;
+	    filterFunction_t f = search->filters[i].filterFunction;
+	    filterResult = (*f) (interp, ctable, (void *)row, search->filters[i].filterObject, search->sequence);
+	    if(filterResult != TCL_OK)
+		return filterResult;
 	}
     }
 
