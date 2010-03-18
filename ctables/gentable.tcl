@@ -2308,6 +2308,74 @@ proc cfilter {filterName args} {
 }
 
 #
+# Generate code to declare a memoized argument from a list of arguments
+#
+proc gen_decl_filter_arg {type name} {
+    # Note spacing
+    array set type_map {
+	boolean		"int "
+	varstring	"char *"
+	fixedstring	"char *"
+	short		"long "
+	int		"long "
+	long		"long "
+	float		"double "
+	double		"double "
+	key		"char *"
+    }
+    array set init_map {
+	boolean		" = 0;"
+	varstring	" = NULL;"
+	fixedstring	" = NULL;"
+	short		" = 0;"
+	int		" = 0;"
+	long		" = 0;"
+	float		" = 0.0;"
+	double		" = 0.0;"
+	key		" = NULL;"
+    }
+	
+    if [info exists type_map($type)] {
+	emit "    static $type_map($type)$name$init_map($type);"
+    } else {
+	error "Type '$type' not supported in cfilter auto_generated code"
+    }
+}
+
+#
+# Generate code to extract one argument from a list of arguments
+#
+proc gen_get_filter_arg {type name source} {
+    if {"$type" == "varstring" || "$type" == "fixedstring" || "$type" == "key"} {
+	emit "        $name = Tcl_GetStringFromObj(interp, $source);"
+    } elseif {"$type" == "float" || "$type" == "double"} {
+	emit "        if(Tcl_GetDoubleFromObj (interp, $source, &$name) != TCL_OK)"
+	emit "            return TCL_ERROR;"
+    } elseif {"$type" == "boolean"} {
+	emit "        if(Tcl_GetBooleanFromObj (interp, $source, &$name) != TCL_OK)"
+	emit "            return TCL_ERROR;"
+    } else { # it's an integer
+	emit "        if(Tcl_GetLongFromObj (interp, $source, &$name) != TCL_OK)"
+	emit "            return TCL_ERROR;"
+    }
+}
+
+#
+# make sure an argument name is valid
+#
+proc validate_arg_name {name} {
+    variable reservedWords
+
+    if {[lsearch -exact $reservedWords $name] >= 0} {
+        error "illegal argument name \"$name\" -- it's a reserved word"
+    }
+
+    if {![is_legal $name]} {
+        error "argument name \"$name\" must start with a letter and can only contain letters, numbers, and underscores"
+    }
+}
+
+#
 # Generate filter structs and procs
 #
 proc gen_filters {} {
@@ -2324,7 +2392,52 @@ proc gen_filters {} {
     foreach name $filterList {
 	array set filter $filters($name)
 	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence)"
-	emit "{\n\tstruct ${table} *row = (struct ${table}*)vRow;\n$filter(code)\n}"
+	emit "$leftCurly"
+	emit "    struct ${table} *row = (struct ${table}*)vRow;"
+        if [info exists filter(args)] {
+	    if {[llength $filter(args)] == 3 && "[lindex $filter(args) 0]" == "list"} {
+
+		set listCount [lindex $filter(args) 1]
+		set listName [lindex $filter(args) 2]
+		validate_arg_name $listCount
+		validate_arg_name $listName
+
+		emit "    Tcl_Obj **$listName;"
+		emit "    int       $listCount;"
+		emit "    if(Tcl_ListObjGetElements(interp, filter, &$listCount &$listName) != TCL_OK)"
+		emit "        return TCL_ERROR;"
+
+	    } else {
+
+	        emit "    static int lastSequence = 0;"
+	        foreach {type name} $filter(args) {
+		    validate_arg_name $name
+		    gen_decl_filter_arg $type $name
+	        }
+
+	        emit "    if (sequence != lastSequence) $leftCurly"
+	        emit "        lastSequence = sequence;"
+
+	        if {[llength $filter(args)] == 2} {
+		    gen_get_filter_arg [lindex $filter(args) 0] [lindex $filter(args) 0] filter
+	        } else {
+		    emit "        Tcl_Obj **filterList;"
+        	    emit "        int       filterCount;"
+        	    emit "        if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)"
+          	    emit "             return TCL_ERROR;"
+		    set index 0
+		    foreach {type name} $filter(args) {
+		        gen_get_filter_arg $type $name "filterList\[$index]"
+			incr index
+		    }
+	        }
+
+	        emit "    $rightCurly"
+	    }
+	}
+
+        emit $filter(code)
+        emit "$rightCurly"
     }
 
     # Define filter lookup table

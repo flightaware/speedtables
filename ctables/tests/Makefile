@@ -95,6 +95,10 @@ filter:
 	-rm -r stobj
 	$(TCLSH) filter.tcl
 
+filter2:
+	-rm -r stobj
+	$(TCLSH) filter2.tcl
+
 multireader:
 	-rm -r stobj
 	-rm -f *.dat

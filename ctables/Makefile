@@ -72,6 +72,9 @@ stapitest3: config server
 filtertest: config server
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make filter"
 
+filtertest2: config server
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make filter2"
+
 debug:
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb $(PREFIX)/bin/$(TCLSH) -c $(TCLSH).*core"
 
