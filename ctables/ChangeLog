@@ -1,6 +1,6 @@
 7/10/2010 peter
     Fixed description of "set" in ch5 of the manual.
-    Added test for Tcl objects (minimal test, sets and checks a single value)
+    Added test for Tcl objects
 
 3/18/2010 peter
     Automatically generate the code for arguments for cfilters

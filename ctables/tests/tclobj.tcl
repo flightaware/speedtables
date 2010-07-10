@@ -15,19 +15,31 @@ package require Objecttest
 
 objtable create o
 
-set in [list [expr "-23.21"] [expr "-91.14"] [expr "23.31"]]
-o set k1 value $in copy $in
+for {set i 0} {$i < 4} {incr i} {
+	set a($i) [expr {rand() * 10}]
+}
+for {set n 0} {$n < 100} {incr n} {
+	set in {}
+	for {set i 0} {$i < 4} {incr i} {
+		set a($i) [expr {$a($i) + rand() * 2 - 1}]
+		lappend in $a($i)
+	}
 
-set out [o get k1 value]
+	o set $n value $in copy $in
 
-if {"$out" != "[list $in]"} {
-	error "Expected [list $in] got $out"
+	set out [o get $n value]
+
+	if {"$out" != "[list $in]"} {
+		error "Expected value [list $in] got $out in pass $n"
+	}
+
+	set out [o get $n copy]
+
+	if {"$out" != "[list $in]"} {
+		error "Expected value [list $in] got $out in pass $n"
+	}
 }
 
-set out [o get k1 copy]
-
-if {"$out" != "[list $in]"} {
-	error "Expected [list $in] got $out"
-}
-
-# puts [o array_get k1]
+# for {set n 0} {$n < 100} {incr n} {
+# 	puts [o array_get $n]
+# }
