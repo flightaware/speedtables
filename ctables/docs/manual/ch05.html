@@ -47,8 +47,8 @@ arguments.
 <p>For the examples, assume we have done a "<tt>cable_info create x</tt>"</p>
 <dl compact>
 
-<dt>set ?-nocomplain? <i>field value ?field value...?</i><dd>
-<dt>set ?-nocomplain? <i>keyValueList</i><dd>
+<dt>set ?-nocomplain? <i>key field value ?field value...?</i><dd>
+<dt>set ?-nocomplain? <i>key keyValueList</i><dd>
 <p>The key is required and unique. It can contain anything you want. It's not an element of the table, though it may appear as a field or the pseudo-field <tt>_key</tt>.</p>
 <p>There is provision for tables to have automatically numbered keys inserted with the <i>store</i> method and updated with <i>set</i>. There may be provision in the future for the key to be a true OID, or to be any field type rather than a simple string, and also to allow more than one key. But for now this is how it works. For more than one key, you can create some kind of compound key the same way you do with Tcl hashes.</p>
 <pre>
