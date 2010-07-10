@@ -36,6 +36,7 @@ all:
 	-rm -r stobj
 	$(TCLSH) index-defaults.tcl
 	$(TCLSH) filter.tcl
+	$(TCLSH) tclobj.tcl
 
 compare:
 	-rm -r stobj
@@ -117,3 +118,6 @@ readerperf:
 	sh readerperf.sh
 	rm -f *.dat
 
+tclobj:
+	-rm -r stobj
+	$(TCLSH) tclobj.tcl

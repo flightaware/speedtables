@@ -29,6 +29,10 @@ test: config
 	@echo TCLLIBPATH=${TCLLIBPATH}
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make"
 
+objtest: config
+	@echo TCLLIBPATH=${TCLLIBPATH}
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make tclobj"
+
 flairtest: config
 	rm -r playpen/flair/build
 	@echo TCLLIBPATH=${TCLLIBPATH}
