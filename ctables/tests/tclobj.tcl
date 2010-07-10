@@ -5,7 +5,8 @@ package require ctable
 CExtension Objecttest 1.0 {
 
 CTable objtable {
-    tclobj value notnull 1
+    tclobj value
+    varstring copy
 }
 
 }
@@ -14,10 +15,19 @@ package require Objecttest
 
 objtable create o
 
-o set k1 value [list a b c]
+set in [list [expr "-23.21"] [expr "-91.14"] [expr "23.31"]]
+o set k1 value $in copy $in
 
-set list [o get k1]
+set out [o get k1 value]
 
-if {"$list" != "{a b c}"} {
-	error "Expected {a b c} got $list"
+if {"$out" != "[list $in]"} {
+	error "Expected [list $in] got $out"
 }
+
+set out [o get k1 copy]
+
+if {"$out" != "[list $in]"} {
+	error "Expected [list $in] got $out"
+}
+
+# puts [o array_get k1]
