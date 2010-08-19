@@ -332,7 +332,7 @@ $table search -compare {{&gt; coolness 50} \
   ...
 }
 
-$points search -filter [list distance [concat $fieldLatLong 150]] -code { ... }</pre>
+$points search -filter [list [list distance [concat $fieldLatLong 150]]] -code { ... }</pre>
 <p>This example uses a distance filter (see examples) that selects all valid points within a certain range of an airfield, implicitly using two fields in the ctable</p>
 
 <dt>-index <i>fieldName</i><dd>
@@ -357,7 +357,7 @@ $points search -filter [list distance [concat $fieldLatLong 150]] -code { ... }<
 <p>Perform the specified <tt>code</tt> every <tt>-poll_interval</tt> rows. Errors from the code will be handled by the </tt>bgerror</tt> mechanism. If no poll interval is specified then a default (1024) is used.</p>
 
 <dt>-countOnly 1<dd>
-<p><tt>countOnly</tt> is deprectaed, it only exists for legacy reasons.
+<p><tt>countOnly</tt> is deprecated, it only exists for legacy reasons.</p>
 
 </dl>
 

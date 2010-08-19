@@ -36,6 +36,7 @@ all:
 	-rm -r stobj
 	$(TCLSH) index-defaults.tcl
 	$(TCLSH) filter.tcl
+	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
 
 compare:

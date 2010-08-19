@@ -486,7 +486,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
 static int
 ctable_ParseFilters (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *filterListObj, CTableSearch *search) {
-    Tcl_Obj		  **filterList;
+    Tcl_Obj               **filterList;
     int                     filterListCount;
 
     CTableSearchFilter     *filters = NULL;
@@ -498,43 +498,46 @@ ctable_ParseFilters (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *filterListObj,
     search->nFilters = 0;
 
     if (Tcl_ListObjGetElements (interp, filterListObj, &filterListCount, &filterList) == TCL_ERROR)
-	goto abend;
+        goto abend;
 
     // Nothing to do
     if (filterListCount == 0) {
-	return TCL_OK;
+        return TCL_OK;
     }
 
 
-    // List is {filtername filtervalue filtername filtervalue} .. if passing a list to a filter, pass a list
-    if ((filterListCount & 1) != 0) {
-	Tcl_AppendResult (interp, "filter list must have an even number of items", (char *) NULL);
-	goto abend;
-    }
+    // List is {{filtername filtervalue} {filtername filtervalue}} .. if passing a list to a filter, pass a list
 
     // make room, make room
-    filters = (CTableSearchFilter *)ckalloc ((filterListCount / 2) * sizeof (CTableSearchFilter));
+    filters = (CTableSearchFilter *)ckalloc (filterListCount * sizeof (CTableSearchFilter));
 
     // step through list, looking for filter names and filling in the structs
-    for (i = 0; i < filterListCount; i += 2) {
-	int item;
-	int f = i / 2;
+    for (i = 0; i < filterListCount; i++) {
+        Tcl_Obj    **termList;
+        int          termListCount;
+        int item;
 
-	if (Tcl_GetIndexFromObj (interp, filterList[i], ctable->creator->filterNames, "filter", TCL_EXACT, &item) != TCL_OK)
-	    goto abend;
+        if (Tcl_ListObjGetElements (interp, filterList[i], &termListCount, &termList) == TCL_ERROR || termListCount != 2) {
+          Tcl_AppendResult (interp, "each term of the filter must be a nested list with 2 items", (char *) NULL);
+          goto abend;
+        }
 
-	filters[f].filterFunction = ctable->creator->filterFunctions[item];
-	filters[f].filterObject = filterList[i+1];
+
+        if (Tcl_GetIndexFromObj (interp, termList[0], ctable->creator->filterNames, "filter", TCL_EXACT, &item) != TCL_OK)
+            goto abend;
+
+        filters[i].filterFunction = ctable->creator->filterFunctions[item];
+        filters[i].filterObject = termList[1];
     }
 
     // Register the filter list we've created
     search->filters = filters;
-    search->nFilters = (filterListCount / 2);
+    search->nFilters = filterListCount;
     return TCL_OK;
 
 abend:
     if(filters)
-	ckfree ((char *)filters);
+        ckfree ((char *)filters);
     return TCL_ERROR;
 }
 
