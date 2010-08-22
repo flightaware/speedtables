@@ -21,6 +21,7 @@
 
 #include "speedtableHash.c"
 
+#define INDEXDEBUG
 // #define MEGADEBUG
 // #define SEARCHDEBUG
 #ifndef TRACKFIELD
@@ -1452,9 +1453,10 @@ restart_search:
 	    // If it's the key, then see if it's something we can walk
 	    // using a hash.
 	    if(field == creator->keyField && canUseHash) {
-		walkType = hashTypes[comparisonType];
+		int tryWalkType = hashTypes[comparisonType];
 
-		if (walkType != WALK_DEFAULT) {
+		if (tryWalkType != WALK_DEFAULT) {
+		    walkType = tryWalkType;
 
 		    if(walkType == WALK_HASH_IN) {
 			inOrderWalk = 0; // TODO: check if list in order
@@ -1566,7 +1568,31 @@ restart_search:
     // Prepare for background operations
     if(search->pollInterval) search->nextPoll = search->pollInterval;
 
+#ifdef INDEXDEBUG
+fprintf(stderr, "Starting search.\n");
+fprintf(stderr, "  walkType == %d\n", walkType);
+fprintf(stderr, "  sortField == %d\n", sortField);
+fprintf(stderr, "  skipField == %d\n", skipField);
+fprintf(stderr, "  skipList == 0x%0ld\n", (long)skipList);
+if(skipList) {
+fprintf(stderr, "    skipNext == %d\n", skipNext);
+fprintf(stderr, "    skipStart == %d\n", skipStart);
+fprintf(stderr, "    skipEnd == %d\n", skipEnd);
+}
+fprintf(stderr, "  search->sortControl.nFields == %d\n", search->sortControl.nFields);
+int ii;
+fprintf(stderr, "  search->nComponents == %d\n", search->nComponents);
+for(ii = 0; ii < search->nComponents; ii++) {
+CTableSearchComponent *component = &search->components[ii];
+fprintf(stderr, "    search->components[%d].fieldID == %d\n", ii, component->fieldID);
+fprintf(stderr, "    search->components[%d].comparisonType == %d\n", ii, component->comparisonType);
+}
+#endif
+
     if (walkType == WALK_DEFAULT) {
+#ifdef INDEXDEBUG
+fprintf(stderr, "WALK_DEFAULT\n");
+#endif
 	// walk the hash table links.
 	CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
 	    compareResult = ctable_SearchCompareRow (interp, ctable, search, row);
@@ -1587,6 +1613,9 @@ restart_search:
 	    }
         }
     } else if(walkType == WALK_HASH_EQ || walkType == WALK_HASH_IN) {
+#ifdef INDEXDEBUG
+fprintf(stderr, "WALK_HASH_*\n");
+#endif
 	// Just look up the necessary hash table values
 
 	// This loop is a little complex because for "=" the key is
@@ -1626,6 +1655,9 @@ restart_search:
 	    }
         }
     } else {
+#ifdef INDEXDEBUG
+fprintf(stderr, "WALK_SKIP\n");
+#endif
 
         //
         // walk the skip list
