@@ -21,7 +21,7 @@
 
 #include "speedtableHash.c"
 
-#define INDEXDEBUG
+//#define INDEXDEBUG
 // #define MEGADEBUG
 // #define SEARCHDEBUG
 #ifndef TRACKFIELD

@@ -1,3 +1,6 @@
+8/21/2010 peter
+    Don't reset walkType prematurely when looking at possible hash walks.
+
 7/10/2010 peter
     Fixed description of "set" in ch5 of the manual.
     Added test for Tcl objects
