@@ -16,14 +16,22 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
     char        *new = NULL;
     int		 quoteChar = '\0'; // no quote by default
     int		 maxExpansion = 4; // worst possible worst case
-    int		 maxNewSize = 0; // based on length and maxExpansion.
+    int		 strict = 0;
 
     static char *special = "\b\f\n\r\t\v\\";
     static char *replace = "bfnrtv\\";
 
+    if(quoteType == CTABLE_QUOTE_STRICT_URI) {
+	quoteType = CTABLE_QUOTE_URI;
+	strict = 1;
+    }
+    if(quoteType == CTABLE_QUOTE_STRICT_ESCAPE) {
+	quoteType = CTABLE_QUOTE_ESCAPE;
+	strict = 1;
+    }
+
     switch(quoteType) {
 	case CTABLE_QUOTE_URI:
-	case CTABLE_QUOTE_STRICT_URI:
 	    quoteChar = '%';
 	    maxExpansion = 3; // %xx
 	    break;
@@ -34,13 +42,13 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 	case CTABLE_QUOTE_NONE:
 	    return 0;
     }
-    maxNewSize = maxExpansion * length + 1;
 
-    if(!quotedChars) quotedChars = "\t";
+    if(!quotedChars) quotedChars = "\t"; // Default separator string
 
     for(i = 0; i < length; i++) {
 	unsigned char c = string[i];
-	if(!isprint(c) || c == quoteChar || strchr(quotedChars, c)) {
+	if(c == quoteChar || strchr(quotedChars, c)
+	|| c < 0x20 || (strict && (c & 0x80)) ) {
 	    if(!new) {
 	        new = ckalloc(maxExpansion * length + 1);
 	        for(j = 0; j < i; j++)
@@ -48,8 +56,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 	    }
 	    switch(quoteType) {
 		case CTABLE_QUOTE_URI:
-		case CTABLE_QUOTE_STRICT_URI:
-		    snprintf(&new[j], maxNewSize - j, "%%%02x", c);
+		    snprintf(&new[j], 4, "%%%02x", c);
 		    j += 3;
 		    break;
 		case CTABLE_QUOTE_ESCAPE: {
@@ -58,7 +65,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 		    if(off) {
 			new[j++] = replace[off - special];
 		    } else {
-			snprintf(&new[j], maxNewSize - j, "%03o", c);
+			snprintf(&new[j], 4, "%03o", c);
 			j += 3;
 		    }
 		    break;
@@ -83,16 +90,24 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 
 //
 // Dequote a string to a new copy. Returns the new length or -1 for a string
-// format error. quoteType can be CTABLE_QUOTE_URI or CTABLE_QUOTE_STRICT_URI
+// format error.
 //
 CTABLE_INTERNAL int
 ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
 {
     int i = 0, j = 0, c;
+    int strict = 0;
+
     if(length < 0) length = strlen(src);
     int dequoteType = quoteType;
-    if(dequoteType == CTABLE_QUOTE_STRICT_URI)
+    if(dequoteType == CTABLE_QUOTE_STRICT_URI) {
 	dequoteType = CTABLE_QUOTE_URI;
+	strict = 1;
+    }
+    if(quoteType == CTABLE_QUOTE_STRICT_ESCAPE) {
+	quoteType = CTABLE_QUOTE_ESCAPE;
+	strict = 1;
+    }
 
     if(quoteType == CTABLE_QUOTE_NONE) {
 	strncpy(dst, src, length);
@@ -103,7 +118,7 @@ ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
 	if(dequoteType == CTABLE_QUOTE_URI && src[i] == '%') {
 	    if(!isxdigit((unsigned char)src[i+1])
 	    || !isxdigit((unsigned char)src[i+2])) {
-		if(quoteType == CTABLE_QUOTE_STRICT_URI) return -1;
+		if(strict) return -1;
 		else goto ignore;
 	    }
 
@@ -160,8 +175,8 @@ CTABLE_INTERNAL int ctable_dequoteString(char *string, int length, int quoteType
     return ctable_copyDequoted(string, string, length, quoteType);
 }
 
-static CONST char *ctable_quote_names[] = { "none", "uri", "escape", NULL };
-static int         ctable_quote_types[] = { CTABLE_QUOTE_NONE, CTABLE_QUOTE_URI, CTABLE_QUOTE_ESCAPE };
+static CONST char *ctable_quote_names[] = { "none", "uri", "escape", "strict_uri", "strict_escape", NULL };
+static int         ctable_quote_types[] = { CTABLE_QUOTE_NONE, CTABLE_QUOTE_URI, CTABLE_QUOTE_ESCAPE, CTABLE_QUOTE_STRICT_URI, CTABLE_QUOTE_STRICT_ESCAPE };
 
 //
 // Convert a type name to a quote type

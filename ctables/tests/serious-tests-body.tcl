@@ -207,7 +207,7 @@ if {"$methods" != "$methlab"} {
 puts "ok"
 
 puts -nonewline "testing 'getprop'..."
-set proplist "type anim_characters extension animinfo key _key quote {none uri escape}"
+set proplist "type anim_characters extension animinfo key _key quote {none uri escape strict_uri strict_escape}"
 set prop [t getprop]
 if {"$prop" != "$proplist"} {
     error "t getprop expected to return [list $proplist]\n\nreturned [list $prop]"
