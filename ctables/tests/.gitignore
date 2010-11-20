@@ -1,2 +1,8 @@
 stobj
 version
+tmp_escape_test.tsv
+tmp_extra_brands.tsv
+tmp_null_test.tsv
+tmp_quote_test.tsv
+tmp_top_brands.tsv
+tmp_wonky_brands.tsv
