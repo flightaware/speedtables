@@ -1222,11 +1222,11 @@ int parse_size(char *s, size_t *ptr)
 {
     size_t size = 0;
 
-    while(isdigit(*s)) {
+    while(isdigit((unsigned char)*s)) {
 	size = size * 10 + *s - '0';
 	s++;
     }
-    switch(toupper(*s)) {
+    switch(toupper((unsigned char)*s)) {
 	case 'G': size *= 1024;
 	case 'M': size *= 1024;
 	case 'K': size *= 1024;
@@ -1245,10 +1245,10 @@ int parse_flags(char *s)
 
 #ifdef WITH_FLAGS
     while(*s) {
-        while(isspace(*s)) s++;
+        while(isspace((unsigned char)*s)) s++;
 
 	word = s;
-	while(*s && !isspace(*s)) s++;
+	while(*s && !isspace((unsigned char)*s)) s++;
 	if(*s) *s++ = 0;
 
 #ifdef MAP_NOCORE

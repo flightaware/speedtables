@@ -1,3 +1,8 @@
+11/19/2010 peter
+    * Fix tests not to leave crap in /tmp
+    * First pass cleanup for signed char problems
+    * Use snprintf instead of sprintf in ctable_io.c
+
 8/21/2010 peter
     Don't reset walkType prematurely when looking at possible hash walks.
 

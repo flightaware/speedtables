@@ -16,6 +16,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
     char        *new = NULL;
     int		 quoteChar = '\0'; // no quote by default
     int		 maxExpansion = 4; // worst possible worst case
+    int		 maxNewSize = 0; // based on length and maxExpansion.
 
     static char *special = "\b\f\n\r\t\v\\";
     static char *replace = "bfnrtv\\";
@@ -33,11 +34,12 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 	case CTABLE_QUOTE_NONE:
 	    return 0;
     }
+    maxNewSize = maxExpansion * length + 1;
 
     if(!quotedChars) quotedChars = "\t";
 
     for(i = 0; i < length; i++) {
-	char c = string[i];
+	unsigned char c = string[i];
 	if(!isprint(c) || c == quoteChar || strchr(quotedChars, c)) {
 	    if(!new) {
 	        new = ckalloc(maxExpansion * length + 1);
@@ -47,7 +49,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 	    switch(quoteType) {
 		case CTABLE_QUOTE_URI:
 		case CTABLE_QUOTE_STRICT_URI:
-		    sprintf(&new[j], "%%%02x", c);
+		    snprintf(&new[j], maxNewSize - j, "%%%02x", c);
 		    j += 3;
 		    break;
 		case CTABLE_QUOTE_ESCAPE: {
@@ -56,7 +58,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 		    if(off) {
 			new[j++] = replace[off - special];
 		    } else {
-			sprintf(&new[j], "%03o", c);
+			snprintf(&new[j], maxNewSize - j, "%03o", c);
 			j += 3;
 		    }
 		    break;
@@ -99,7 +101,8 @@ ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
 
     while(i < length) {
 	if(dequoteType == CTABLE_QUOTE_URI && src[i] == '%') {
-	    if(!isxdigit(src[i+1]) || !isxdigit(src[i+2])) {
+	    if(!isxdigit((unsigned char)src[i+1])
+	    || !isxdigit((unsigned char)src[i+2])) {
 		if(quoteType == CTABLE_QUOTE_STRICT_URI) return -1;
 		else goto ignore;
 	    }
