@@ -255,7 +255,11 @@ proc remote_receive {sock myPort} {
 	set line $incompleteLine($sock)
     } else {
         if {[gets $sock line] < 0} {
-	    handle_eof $sock
+	    if {[eof $sock]} {
+		handle_eof $sock
+	    }
+	    # if gets returns < 0 and not EOF, we're nonblocking and haven't
+	    # gotten a complete line yet... keep waiting
 	    return
         }
 	if {"$line" == ""} {
