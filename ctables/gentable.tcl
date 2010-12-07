@@ -2351,7 +2351,7 @@ proc gen_decl_filter_arg {type name} {
 #
 proc gen_get_filter_arg {type name source} {
     if {"$type" == "varstring" || "$type" == "fixedstring" || "$type" == "key"} {
-	emit "        $name = Tcl_GetStringFromObj(interp, $source);"
+	emit "        $name = Tcl_GetString ($source);"
     } elseif {"$type" == "float" || "$type" == "double"} {
 	emit "        if(Tcl_GetDoubleFromObj (interp, $source, &$name) != TCL_OK)"
 	emit "            return TCL_ERROR;"

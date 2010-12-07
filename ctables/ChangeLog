@@ -1,3 +1,10 @@
+12/7/2010
+    * Code generated for filters now checks to make sure the number of
+      arguments passed to the filter are what was expected.
+
+    * Handle varstring and fixedstring and key fields properly when
+      generating filter code.
+
 11/20/2010
     * Explicitly handle 00..1F and UTF-8
     * Add strict_uri and strict_escape quoting
