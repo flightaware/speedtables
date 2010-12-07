@@ -2408,7 +2408,7 @@ proc gen_filters {} {
 		validate_arg_name $listName
 
 		emit "    Tcl_Obj **$listName;"
-		emit "    int       $listCount;"
+		emit "    int       $listCount;\n"
 		emit "    if(Tcl_ListObjGetElements(interp, filter, &$listCount, &$listName) != TCL_OK)"
 		emit "        return TCL_ERROR;"
 
@@ -2420,16 +2420,26 @@ proc gen_filters {} {
 		    gen_decl_filter_arg $type $name
 	        }
 
-	        emit "    if (sequence != lastSequence) $leftCurly"
+	        emit "\n    if (sequence != lastSequence) $leftCurly"
 	        emit "        lastSequence = sequence;"
 
 	        if {[llength $filter(args)] == 2} {
 		    gen_get_filter_arg [lindex $filter(args) 0] [lindex $filter(args) 1] filter
 	        } else {
 		    emit "        Tcl_Obj **filterList;"
-        	    emit "        int       filterCount;"
-        	    emit "        if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)"
-          	    emit "             return TCL_ERROR;"
+        	    emit "        int       filterCount;\n"
+        	    emit "        if (Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)"
+          	    emit "             return TCL_ERROR;\n"
+		    set argNames ""
+		    set nArguments [expr [llength $filter(args)] / 2]
+		    foreach {type name} $filter(args) {
+		        append argNames "$name, "
+		    }
+		    emit "        if (filterCount != $nArguments) {"
+		    emit "            Tcl_WrongNumArgs (interp, 0, NULL, \"filter requires $nArguments arguments: [string range $argNames 0 end-2]\");"
+		    emit "            return TCL_ERROR;"
+		    emit "        }\n"
+
 		    set index 0
 		    foreach {type name} $filter(args) {
 		        gen_get_filter_arg $type $name "filterList\[$index]"
@@ -2442,7 +2452,7 @@ proc gen_filters {} {
 	}
 
         emit $filter(code)
-        emit "$rightCurly"
+        emit "$rightCurly\n"
     }
 
     # Define filter lookup table
