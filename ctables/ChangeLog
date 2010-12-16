@@ -1,3 +1,7 @@
+12/15/2010
+    * Dropping an index now clears the matching ctable list after
+      deleting the skiplist.
+
 12/7/2010
     * Code generated for filters now checks to make sure the number of
       arguments passed to the filter are what was expected.

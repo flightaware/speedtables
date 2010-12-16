@@ -2478,11 +2478,28 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 CTABLE_INTERNAL void
 ctable_DropIndex (CTable *ctable, int field, int final) {
     jsw_skip_t *skip = ctable->skipLists[field];
+    ctable_BaseRow *row;
+    int listIndexNumber = ctable->creator->fields[field]->indexNumber;
 
     if (skip == NULL) return;
 
+    // Forget I had a skiplist
     ctable->skipLists[field] = NULL;
+
+    // Delete the skiplist
     jsw_sdelete_skiplist (skip, final);
+
+    // Don't need to reset the bucket list if it's just going to be deleted
+    if(final) return;
+
+    // Walk the table and erase the bucket lists for the row
+    // We're walking the main index for the table so it's safe to
+    // clear the index for $field
+    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+	row->_ll_nodes[listIndexNumber].next = NULL;
+	row->_ll_nodes[listIndexNumber].prev = NULL;
+	row->_ll_nodes[listIndexNumber].head = NULL;
+    }
 }
 
 //
