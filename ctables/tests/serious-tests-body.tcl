@@ -22,6 +22,24 @@ proc search_test {name searchFields expect} {
     }
 }
 
+proc search_test_get {name searchFields expect} {
+    puts -nonewline "running $name..."; flush stdout
+    set result ""
+    set cmd [linsert $searchFields 0 t search -key key -get data -fields "age coolness" -code {lappend result $data}]
+    #puts $cmd
+    eval $cmd
+
+    if {$result != $expect} {
+	puts "ERROR IN TEST: $name"
+	puts "got '$result'"
+	puts "expected '$expect'"
+	puts "command '$cmd'"
+	error "ERROR IN TEST: $name"
+    } else {
+	puts "ok"
+    }
+}
+
 proc search_test_countonly {name searchFields expect} {
     puts -nonewline "running $name..."; flush stdout
     set cmd [linsert $searchFields 0 t search -countOnly 1]
@@ -122,6 +140,8 @@ search_unsorted_test "unsorted search with offset 5 and limit 5" {-offset 5 -lim
 search_test "search where alive is false" {-compare {{false alive}}} {jonas}
 
 search_test "search where name is null" {-compare {{null name}}} {}
+
+search_test_get "search with -get" {-compare {{> coolness 64}}} {{51 99} {41 101} {30 80} {45 120} {35 100}}
 
 search_test "search where name is notnullnull" {-sort name -limit 5 -compare {{notnull name}}} {angel baron brak brock carr}
 

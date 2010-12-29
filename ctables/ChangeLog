@@ -1,3 +1,7 @@
+12/28/2010 karl
+    * Properly handle search with -get option when a list of fields are 
+      specified with -fields.  Tests updated as well.  Fixes github issue 5.
+
 12/15/2010
     * Dropping an index now clears the matching ctable list after
       deleting the skiplist.

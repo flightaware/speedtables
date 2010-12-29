@@ -597,7 +597,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	       listObj = Tcl_NewObj ();
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   creator->lappend_field (interp, listObj, row, creator->fieldList[i]);
+		   creator->lappend_field (interp, listObj, row, search->retrieveFields[i]);
 	       }
 	    }
 	    break;
