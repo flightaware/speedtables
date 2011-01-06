@@ -38,6 +38,8 @@
 <p>Used to create the file, or if it's already mapped it checks if it's at least this big.</p>
 <dt>flags <i>flagList</i><dd>
 <p>The only shared memory flags implemented are sync/nosync (default nosync) and core/nocore (default core).</p>
+<dt>panic <i>boolean</i><dd>
+<p>Allow the handling of some types of shared-memory exhaustion errors to be treated as fatal panics (true) or errors (false) that can be caught. (default true)</p>
 </dl>
 <dt>create <i>tableName</i> reader <i>list</i><dd>
 <p>The list provided is collected from the master table (already opened in another process) through the attach command (below).</p>

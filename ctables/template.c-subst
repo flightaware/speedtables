@@ -131,7 +131,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			raw_size = Tcl_GetString(listObjv[i+1]);
 		    else if(strcmp(key, "flags") == 0)
 			share_flags = parse_flags(Tcl_GetString(listObjv[i+1]));
-		    else if(strcmp(key, "panic")) {
+		    else if(strcmp(key, "panic") == 0) {
 			if (Tcl_GetBooleanFromObj (interp, listObjv[i+1], &share_panic) == TCL_ERROR) {
 			    Tcl_AppendResult(interp, ", getting 'panic' flag", NULL);
 			    goto createError;
