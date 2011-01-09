@@ -79,6 +79,9 @@ filtertest: config server
 filtertest2: config server
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make filter2"
 
+searchget: config server
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make searchget"
+
 debug:
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; gdb $(PREFIX)/bin/$(TCLSH) -c $(TCLSH).*core"
 

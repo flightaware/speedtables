@@ -1,3 +1,6 @@
+01/09/2011 peter
+    * Add attributions in ChangeLog for latest changes by karl and peter
+
 01/06/2011 bovine
     * Properly parse create with panic option.  Fixes github issue 8.
 	
@@ -5,18 +8,18 @@
     * Properly handle search with -get option when a list of fields are 
       specified with -fields.  Tests updated as well.  Fixes github issue 5.
 
-12/15/2010
+12/15/2010 peter
     * Dropping an index now clears the matching ctable list after
       deleting the skiplist.
 
-12/7/2010
+12/7/2010 karl
     * Code generated for filters now checks to make sure the number of
       arguments passed to the filter are what was expected.
 
     * Handle varstring and fixedstring and key fields properly when
       generating filter code.
 
-11/20/2010
+11/20/2010 peter
     * Explicitly handle 00..1F and UTF-8
     * Add strict_uri and strict_escape quoting
 
