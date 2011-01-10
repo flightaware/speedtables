@@ -2,8 +2,9 @@
     * Add attributions in ChangeLog for latest changes by karl and peter
 
     * Handle out of memory without panicking in allocating a new varstring
-      TODO: handle out of memory without panicking when allocating a new
-	    key or skiplist node
+      or key.
+
+      TODO: handle out of memory without panicking for skiplists
 
 01/06/2011 bovine
     * Properly parse create with panic option.  Fixes github issue 8.

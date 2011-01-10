@@ -357,6 +357,10 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
     int isNew = 0;
     int flags = KEY_VOLATILE;
     char *key = value;
+#ifdef WITH_SHARED_TABLES
+    // shmallocated copy of key, if needed
+    char *mem = NULL;
+#endif
 
     // Check for duplicates
     old = ctable_FindHashEntry(ctable->keyTablePtr, value);
@@ -365,20 +369,26 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
 	return TCL_ERROR;
     }
 
-    // Remove old key.
     if(indexCtl == CTABLE_INDEX_NORMAL) {
-	${table}_deleteHashEntry (ctable, row);
 #ifdef WITH_SHARED_TABLES
-        // Save new key
+	// Make a new copy of the key
         if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	    key = shmalloc(ctable->share, strlen(value)+1);
-	    // TODO, SEE IF THIS PANIC CAN BE AVOIDED
-	    if(!key)
-	        ${table}_shmpanic(ctable);
-	    strcpy(key, value);
+	    mem = shmalloc(ctable->share, strlen(value)+1);
+	    if(!mem) {
+		if(ctable->share_panic) ${table}_shmpanic(ctable);
+		Tcl_AppendResult (interp, "out of shared memory when setting key field", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
+	    // Good to go
+	    key = mem;
+	    strcpy(mem, value);
 	    flags = KEY_STATIC;
-        }
+	}
 #endif
+
+        // Remove old key.
+	${table}_deleteHashEntry (ctable, row);
     } else {
         // This shouldn't be possible, but just in case
 	ckfree(row->hashEntry.key);
@@ -395,11 +405,11 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
     if(!isNew) {
 	Tcl_AppendResult (interp, "Duplicate key '", value, "' after setting key field!", (char *)NULL);
 #ifdef WITH_SHARED_TABLES
-	if(flags == KEY_STATIC) {
+	if(mem) {
 	    /* Don't need to "shmfree" because the key was never made
 	     * visible to any readers.
 	     */
-	    shmdealloc(ctable->share, (char *)key);
+	    shmdealloc(ctable->share, mem);
 	}
 #endif
 	return TCL_ERROR;
@@ -769,6 +779,7 @@ variable varstringSetSource {
 			"indexCtl == CTABLE_INDEX_PRIVATE"
 	    ];
 	    if (!mem) {
+		if(ctable->share_panic) ${table}_shmpanic(ctable);
 		Tcl_AppendResult (interp, \" out of memory allocating space for $fieldName\", (char *)NULL);
 		return TCL_ERROR;
 	    }
