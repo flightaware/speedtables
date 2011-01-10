@@ -206,13 +206,22 @@ proc field_to_nameObj {table fieldName} {
 }
 
 #
-# gen_allocate - return the code to allocate memory and assign
+# gen_allocate - return the code to allocate memory
 #
-proc gen_allocate {ctable size {private 0}} {
+proc gen_allocate_private {ctable size} {
+    return "ckalloc($size)"
+}
+
+proc gen_allocate {ctable size {private 0} {may_fail 0}} {
     variable withSharedTables
     variable table
-    set priv "ckalloc($size)"
-    set pub "${table}_allocate($ctable, $size)"
+    set priv [gen_allocate_private $ctable $size]
+
+    if {$may_fail} {
+	set pub "${table}_allocate($ctable, $size)"
+    } else {
+	set pub "${table}_allocate_may_fail($ctable, $size)"
+    }
 
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
 	return $priv
@@ -225,12 +234,21 @@ proc gen_allocate {ctable size {private 0}} {
     return "(($private) ? $priv : $pub)"
 }
 
+proc gen_allocate_may_fail {ctable size {private 0}} {
+    return [gen_allocate $ctable $size $private 1]
+}
+
 #
 # Oposite function for free
 #
+proc gen_deallocate_private {ctable pointer} {
+    return "ckfree((void *)($pointer))"
+}
+
 proc gen_deallocate {ctable pointer {private 0}} {
     variable withSharedTables
-    set priv "ckfree((void *)($pointer))"
+    set priv [gen_deallocate_private $ctable $pointer]
+
     set pub "shmfree(($ctable)->share, (void *)($pointer))"
 
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
@@ -282,6 +300,20 @@ char *${table}_allocate(CTable *ctable, size_t amount)
     }
     return (char *)ckalloc(amount);
 }
+
+char *${table}_allocate_may_fail(CTable *ctable, size_t amount)
+{
+    char *memory;
+
+    if(ctable->share_type == CTABLE_SHARED_MASTER) {
+	memory = shmalloc(ctable->share, amount);
+    } else {
+	memory = (char *)ckalloc(amount);
+    }
+
+    return memory;
+}
+
 }
 
 proc gen_allocate_function {table} {
@@ -340,6 +372,7 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
         // Save new key
         if(ctable->share_type == CTABLE_SHARED_MASTER) {
 	    key = shmalloc(ctable->share, strlen(value)+1);
+	    // TODO, SEE IF THIS PANIC CAN BE AVOIDED
 	    if(!key)
 	        ${table}_shmpanic(ctable);
 	    strcpy(key, value);
@@ -615,8 +648,8 @@ variable keySetSource {
 	switch (indexCtl) {
 	    case CTABLE_INDEX_PRIVATE: {
 		// fake hash entry for search
-		if(row->hashEntry.key) [gen_deallocate ctable row->hashEntry.key 1];
-		row->hashEntry.key = (char *)[gen_allocate ctable "strlen(value)+1" 1];
+		if(row->hashEntry.key) [gen_deallocate_private ctable row->hashEntry.key];
+		row->hashEntry.key = (char *)[gen_allocate_private ctable "strlen(value)+1"];
 		strcpy(row->hashEntry.key, value);
 		break;
 	    }
@@ -729,10 +762,21 @@ variable varstringSetSource {
 	// if the allocated length is less than what we need, get more,
 	// else reuse the previously allocagted space
 	if (row->_${fieldName}AllocatedLength <= length) {
+	    // Allocating shmem may fail, so allocate mem ahead of time
+	    char *mem = [
+	        gen_allocate_may_fail ctable \
+			"length + 1" \
+			"indexCtl == CTABLE_INDEX_PRIVATE"
+	    ];
+	    if (!mem) {
+		Tcl_AppendResult (interp, \" out of memory allocating space for $fieldName\", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
 	    if (row->$fieldName != NULL) {
 		[gen_deallocate ctable "row->$fieldName" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    }
-	    row->$fieldName = (char *)[gen_allocate ctable "length + 1" "indexCtl == CTABLE_INDEX_PRIVATE"];
+	    row->$fieldName = mem;
 	    row->_${fieldName}AllocatedLength = length + 1;
 	}
 	strncpy (row->$fieldName, string, length + 1);
