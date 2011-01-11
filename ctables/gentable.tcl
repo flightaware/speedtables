@@ -3014,15 +3014,26 @@ proc gen_delete_subr {subr struct} {
 	emit "    int             is_shared = ctable->share_type != CTABLE_SHARED_NONE;"
     }
     emit ""
-    emit "    // If there's an index, AND we're not deleting all indices"
-    emit "    if (indexCtl == CTABLE_INDEX_NORMAL) $leftCurly"
+    emit "    switch (indexCtl) $leftCurly"
+    emit "      case CTABLE_INDEX_NORMAL:"
+    emit "        // If there's an index, AND we're not deleting all indices"
     emit "        ctable_RemoveFromAllIndexes (ctable, (void *)row);"
     if {$withSharedTables} {
 	emit "        ${table}_deleteKey(ctable, row, TRUE);"
     }
     emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);"
-    emit "    $rightCurly else"
-    emit "        ${table}_deleteKey(ctable, row, indexCtl != CTABLE_INDEX_DESTROY_SHARED);"
+    emit "        break;"
+    emit "      case CTABLE_INDEX_FASTDELETE: // Key has already been deleted"
+    emit "        break;"
+    emit "      case CTABLE_INDEX_DESTROY_SHARED: // Row is in dead pool"
+    emit "      case CTABLE_INDEX_PRIVATE: // Key is never indexed"
+    emit "        ${table}_deleteKey(ctable, row, FALSE);"
+    emit "        break;"
+    emit "      default: // Not in hash, shared (should not happen)"
+    emit "        ${table}_deleteKey(ctable, row, TRUE);"
+    emit "        break;"
+    emit "    $rightCurly;"
+
     emit ""
 
     foreach fieldName $fieldList {
