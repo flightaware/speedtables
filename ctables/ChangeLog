@@ -1,3 +1,7 @@
+01/10/2011 bovine
+    * Documention clarification for "size" option to "create" to indicate
+      it is not a required parameter. Fixes github issue 7.
+
 01/10/2011 peter
     * Guard around share_panic to fix reversion in 01/09 commit.
 
@@ -11,9 +15,9 @@
 
 01/06/2011 bovine
     * Properly parse create with panic option.  Fixes github issue 8.
-	
+
 12/28/2010 karl
-    * Properly handle search with -get option when a list of fields are 
+    * Properly handle search with -get option when a list of fields are
       specified with -fields.  Tests updated as well.  Fixes github issue 5.
 
 12/15/2010 peter
