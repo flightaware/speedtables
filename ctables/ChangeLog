@@ -1,3 +1,6 @@
+01/10/2011 peter
+    * Guard around share_panic to fix reversion in 01/09 commit.
+
 01/09/2011 peter
     * Add attributions in ChangeLog for latest changes by karl and peter
 

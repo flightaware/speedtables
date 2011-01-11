@@ -779,7 +779,9 @@ variable varstringSetSource {
 			"indexCtl == CTABLE_INDEX_PRIVATE"
 	    ];
 	    if (!mem) {
+#ifdef WITH_SHARED_TABLES
 		if(ctable->share_panic) ${table}_shmpanic(ctable);
+#endif
 		Tcl_AppendResult (interp, \" out of memory allocating space for $fieldName\", (char *)NULL);
 		return TCL_ERROR;
 	    }
