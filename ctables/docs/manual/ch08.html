@@ -34,8 +34,8 @@
 <p>The shared memory segment has a small write-once symbol table that is used to locate individual ctables and other objects in shared mem.</p>
 <dt>file <i>fileName</i> (required)<dd>
 <p>Multiple tables can be mapped in the same file, distinguished by the ctable name or the name provided in the "name" option.</p>
-<dt>size <i>bytes</i> (required)<dd>
-<p>Used to create the file, or if it's already mapped it checks if it's at least this big.</p>
+<dt>size <i>bytes</i><dd>
+<p>Used to create the initial size of the file, or if it's already mapped it checks if it's at least this big. The size is assumed to be measured in bytes, unless a suffix such as "K", "M", or "G" is present to indicate kilobytes, megabytes, or gigabytes, respectively. If this parameter is not specified then the default size of 4M is assumed.</p>
 <dt>flags <i>flagList</i><dd>
 <p>The only shared memory flags implemented are sync/nosync (default nosync) and core/nocore (default core).</p>
 <dt>panic <i>boolean</i><dd>
