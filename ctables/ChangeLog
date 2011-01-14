@@ -1,6 +1,8 @@
 01/10/2011 peter
     * Guard around share_panic to fix reversion in 01/09 commit.
 
+    * Don't try and shmdealloc keys from PRIVATE rows. (issue 9)
+
 01/09/2011 peter
     * Add attributions in ChangeLog for latest changes by karl and peter
 
