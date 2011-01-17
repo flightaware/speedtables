@@ -116,3 +116,9 @@ compare:
 
 null:
 	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make null"
+
+barnrow:
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make barnrow"
+
+gbarnrow:
+	env TCLLIBPATH=${TCLLIBPATH} sh -c "cd tests; make gbarnrow"

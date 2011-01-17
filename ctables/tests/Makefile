@@ -126,3 +126,11 @@ readerperf:
 tclobj:
 	-rm -r stobj
 	$(TCLSH) tclobj.tcl
+
+barnrow:
+	-rm -r stobj
+	$(TCLSH) barnrow.tcl
+
+gbarnrow:
+	-rm -r stobj
+	gdb $(TCLSH)

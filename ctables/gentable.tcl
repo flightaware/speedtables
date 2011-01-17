@@ -31,6 +31,7 @@ namespace eval ctable {
     variable showCompilerCommands
     variable withPipe
     variable memDebug
+    variable sharedGuard
     variable sanityChecks
     variable keyCompileVariables
 
@@ -64,6 +65,7 @@ namespace eval ctable {
 	genCompilerDebug
 	memDebug
 	sanityChecks
+	sharedGuard
 	ctablePackageVersion
     }
 
@@ -4810,6 +4812,9 @@ proc gen_preamble {} {
         }
 	if {[info exists sharedBase] && "$sharedBase" != "NULL"} {
 	    emit "#define SHARE_BASE ((char *)$sharedBase)"
+	}
+        if {[info exists sharedGuard] && $sharedGuard} {
+	    emit "#define SHARED_GUARD"
 	}
 	emit "#define POOL_RATIO $poolRatio"
     }

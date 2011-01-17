@@ -202,11 +202,11 @@ void freepools(poolhead_t *head, int also_free_shared);
 void remove_from_freelist(shm_t *shm, volatile freeblock *block);
 void insert_in_freelist(shm_t *shm, volatile freeblock *block);
 char *_shmalloc(shm_t *map, size_t size);
-char *shmalloc(shm_t *map, size_t size);
-void shmfree(shm_t *map, char *block);
+char *shmalloc_raw(shm_t *map, size_t size);
+void shmfree_raw(shm_t *map, char *block);
 int shmdepool(poolhead_t *head, char *block);
 void setfree(volatile freeblock *block, size_t size, int is_free);
-int shmdealloc(shm_t *shm, char *data);
+int shmdealloc_raw(shm_t *shm, char *data);
 int write_lock(shm_t *shm);
 void write_unlock(shm_t *shm);
 volatile reader *pid2reader(volatile mapheader *map, int pid);
@@ -249,4 +249,18 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 #define nextsize(block) (nextblock(block)->size)
 #define prevblock(block) ((freeblock *)(((char *)block) - abs(prevsize(block))))
 
+#endif
+
+#ifdef SHARED_GUARD
+# define GUARD_SIZE 8
+  char *shmalloc_guard(shm_t *map, size_t size);
+  void shmfree_guard(shm_t *map, char *block);
+  int shmdealloc_guard(shm_t *shm, char *data);
+# define shmalloc shmalloc_guard
+# define shmfree shmfree_guard
+# define shmdealloc shmdealloc_guard
+#else
+# define shmalloc shmalloc_raw
+# define shmfree shmfree_raw
+# define shmdealloc shmdealloc_raw
 #endif

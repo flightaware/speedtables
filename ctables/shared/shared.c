@@ -405,7 +405,7 @@ IFDEBUG(init_debug();)
     *((cell_t *)(((char *)block) + freesize)) = 0;
 
     // Finally, initialize the free list by freeing it.
-    shmdealloc(shm, (char *)&block[1]);
+    shmdealloc_raw(shm, (char *)&block[1]);
 }
 
 poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share)
@@ -537,7 +537,7 @@ void freepools(poolhead_t *head, int also_free_shared)
 	    if(head->share == NULL)
 		    ckfree(chunk->start);
 	    else if(also_free_shared)
-	        shmfree(head->share, chunk->start);
+	        shmfree_raw(head->share, chunk->start);
 	    ckfree((char *)chunk);
         }
 
@@ -726,17 +726,17 @@ if (0) {
 }
 // Change to "if(1)" to dump shared memory when done
 if (0) {
-  fprintf(stderr, "shmalloc(shm, 0x%08lx) failed\n", (long)nbytes);
+  fprintf(stderr, "shmalloc_raw(shm, 0x%08lx) failed\n", (long)nbytes);
   shmdump(shm);
 }
 
     return NULL;
 }
 
-char *shmalloc(shm_t   *shm, size_t size)
+char *shmalloc_raw(shm_t   *shm, size_t size)
 {
     char *block;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld);\n", (long)size);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld);\n", (long)size);)
 
     // align size
     if(size % CELLSIZE)
@@ -750,16 +750,16 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld);\n", (long)size);)
 
     if (block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
 	shmpanic("Ludicrous block!");
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc(shm, %ld) => 0x%8lx\n", (long)size, (long)block);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld) => 0x%8lx\n", (long)size, (long)block);)
 
     return block;
 }
 
-void shmfree(shm_t *shm, char *memory)
+void shmfree_raw(shm_t *shm, char *memory)
 {
     garbage *entry;
 
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw(shm, 0x%lX);\n", (long)block);)
 
     if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
 	shmpanic("Trying to free pointer outside mapped memory!");
@@ -778,7 +778,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree(shm, 0x%lX);\n", (long)block);)
     entry->memory = memory;
     entry->next = shm->garbage;
     shm->garbage = entry;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree to garbage pool 0x%08lx\n", (long)shm->garbage);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw to garbage pool 0x%08lx\n", (long)shm->garbage);)
 }
 
 // Attempt to put a pending freed block back in a pool
@@ -839,11 +839,11 @@ void setfree(volatile freeblock *block, size_t size, int is_free)
 //    char data[size-8];
 //    int32 -size;
 
-int shmdealloc(shm_t *shm, char *memory)
+int shmdealloc_raw(shm_t *shm, char *memory)
 {
     size_t size;
     freeblock *block;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc(shm=0x%lX, memory=0x%lX);\n", (long)shm, (long)memory);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc_raw(shm=0x%lX, memory=0x%lX);\n", (long)shm, (long)memory);)
 
     if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
 	shmpanic("Trying to dealloc pointer outside mapped memory!");
@@ -979,7 +979,7 @@ int shmattachpid(shm_t   *share, int pid)
 	}
 	b = b->next;
     }
-    b = (reader_block *)shmalloc(share, sizeof *b);
+    b = (reader_block *)shmalloc_raw(share, sizeof *b);
     if(!b) return 0;
 
     b->count = 0;
@@ -1033,7 +1033,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm);\n");)
 	int delta = horizon - garbp->cycle;
 	if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || delta > 0) {
 	    garbage *next = garbp->next;
-	    shmdealloc(shm, garbp->memory);
+	    shmdealloc_raw(shm, garbp->memory);
 	    shmdepool(shm->garbage_pool, (char *)garbp);
 	    garbp = next;
 
@@ -1105,7 +1105,7 @@ int add_symbol(shm_t   *shm, char *name, char *value, int type)
     if(type == SYM_TYPE_STRING)
 	len += strlen(value) + 1;
 
-    s = (symbol *)shmalloc(shm, len);
+    s = (symbol *)shmalloc_raw(shm, len);
     if(!s) return 0;
 
     for(i = 0; i <= namelen; i++)
@@ -1143,7 +1143,7 @@ int set_symbol(shm_t *shm, char *name, char *value, int type)
 		return 0;
 	    }
 	    if(type == SYM_TYPE_STRING) {
-		char *copy = shmalloc(shm, strlen(value));
+		char *copy = shmalloc_raw(shm, strlen(value));
 		if(!copy) return 0;
 
 		strcpy(copy, value);
@@ -1696,5 +1696,63 @@ Shared_Init(Tcl_Interp *interp)
 #else
     return TCL_OK;
 #endif
+}
+#endif
+
+#ifdef SHARED_GUARD
+char *shmalloc_guard(shm_t *map, size_t size)
+{
+    unsigned char *memory = (unsigned char *)shmalloc_raw(map, size+GUARD_SIZE * 2 + CELLSIZE);
+    if(memory) {
+	int i;
+
+	for(i = 0; i < GUARD_SIZE; i++)
+	    memory[size++] = 0xA5;
+
+	((cell_t *)memory)[0] = size + CELLSIZE;
+	memory += CELLSIZE;
+
+	for(i = 0; i < GUARD_SIZE; i++)
+	    memory[size + i] = 0xA5;
+    }
+    return (char *)memory;
+}
+
+void shmfree_guard(shm_t *map, char *block)
+{
+    unsigned char *memory = (unsigned char *)block - CELLSIZE - GUARD_SIZE;
+    int size;
+
+    int i;
+
+    for(i = 0; i < GUARD_SIZE; i++)
+	if(memory[i] != 0xA5)
+	    shmpanic("Bad low guard!");
+    size = ((cell_t *)block)[-1];
+
+    for(i = 0; i < GUARD_SIZE; i++)
+	if(memory[i+size+CELLSIZE+GUARD_SIZE] != 0xA5)
+	    shmpanic("Bad high guard!");
+
+    shmfree_raw(map, (char *)memory);
+}
+
+int shmdealloc_guard(shm_t *shm, char *data)
+{
+    unsigned char *memory = (unsigned char *)data - CELLSIZE - GUARD_SIZE;
+    int size;
+
+    int i;
+
+    for(i = 0; i < GUARD_SIZE; i++)
+	if(memory[i] != 0xA5)
+	    shmpanic("Bad low guard!");
+    size = ((cell_t *)data)[-1];
+
+    for(i = 0; i < GUARD_SIZE; i++)
+	if(memory[i+size+CELLSIZE+GUARD_SIZE] != 0xA5)
+	    shmpanic("Bad high guard!");
+
+    return shmdealloc_raw(shm, (char *)memory);
 }
 #endif
