@@ -43,8 +43,11 @@
     #set sharedBase -1 ; # Use this one to probe on first allocation
     #set sharedBase NULL ; # Not supported
 
-    # Add guard checks to shred memory code
+    # Add guard checks to shared memory code
     set sharedGuard 0
+
+    # Log shared memory allocations
+    #set sharedLog shmDebug.log
 
     # approx number of ctable row pools required to fill all shared memory
     set poolRatio 16

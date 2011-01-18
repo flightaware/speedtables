@@ -32,6 +32,7 @@ namespace eval ctable {
     variable withPipe
     variable memDebug
     variable sharedGuard
+    variable sharedLog
     variable sanityChecks
     variable keyCompileVariables
 
@@ -4763,6 +4764,8 @@ proc gen_preamble {} {
     variable sanityChecks
     variable sharedTraceFile
     variable sharedBase
+    variable sharedGuard
+    variable sharedLog
     variable poolRatio
     variable preambleCannedSource
     variable sharedStaticSource
@@ -4812,6 +4815,10 @@ proc gen_preamble {} {
         }
 	if {[info exists sharedBase] && "$sharedBase" != "NULL"} {
 	    emit "#define SHARE_BASE ((char *)$sharedBase)"
+	}
+	if {[info exists sharedLog] && "$sharedLog" != "-none"} {
+	    emit "#define SHARED_LOG \"$sharedLog\""
+	    set sharedGuard 1
 	}
         if {[info exists sharedGuard] && $sharedGuard} {
 	    emit "#define SHARED_GUARD"

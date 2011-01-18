@@ -253,12 +253,20 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 #ifdef SHARED_GUARD
 # define GUARD_SIZE 8
-  char *shmalloc_guard(shm_t *map, size_t size);
-  void shmfree_guard(shm_t *map, char *block);
-  int shmdealloc_guard(shm_t *shm, char *data);
-# define shmalloc shmalloc_guard
-# define shmfree shmfree_guard
-# define shmdealloc shmdealloc_guard
+# ifdef SHARED_LOG
+#  define shmalloc(m,s) shmalloc_guard(m,s,__FILE__,__LINE__)
+#  define shmfree(m,a) shmfree_guard(m,a,__FILE__,__LINE__)
+#  define shmdealloc(m,a) shmdealloc_guard(m,a,__FILE__,__LINE__)
+#  define LOGPARAMS , char *File, int Line
+# else
+#  define shmalloc shmalloc_guard
+#  define shmfree shmfree_guard
+#  define shmdealloc shmdealloc_guard
+#  define LOGPARAMS
+# endif
+  char *shmalloc_guard(shm_t *map, size_t size LOGPARAMS);
+  void shmfree_guard(shm_t *map, char *block LOGPARAMS);
+  int shmdealloc_guard(shm_t *shm, char *data LOGPARAMS);
 #else
 # define shmalloc shmalloc_raw
 # define shmfree shmfree_raw

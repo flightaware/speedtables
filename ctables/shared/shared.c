@@ -25,6 +25,10 @@
 
 static shm_t   *share_list;
 
+#ifdef SHARED_LOG
+FILE *logfp;
+#endif
+
 #ifdef SHM_DEBUG_TRACE
 # ifdef SHM_DEBUG_TRACE_FILE
     static void init_debug(void)
@@ -368,6 +372,17 @@ void shminitmap(shm_t   *shm)
     volatile mapheader	*map = shm->map;
     cell_t		*block;
     cell_t 		 freesize;
+
+#ifdef SHARED_LOG
+    if(!logfp) {
+	logfp = fopen(SHARED_LOG, "a");
+	if(logfp) {
+	    long now = time(NULL);
+	    fprintf(logfp, "START LOGGING @ %s\n", ctime(&now));
+	}
+	fflush(logfp);
+    }
+#endif
 
 IFDEBUG(init_debug();)
     // COMPLETELY initialise map.
@@ -1700,10 +1715,16 @@ Shared_Init(Tcl_Interp *interp)
 #endif
 
 #ifdef SHARED_GUARD
-char *shmalloc_guard(shm_t *map, size_t size)
+char *shmalloc_guard(shm_t *map, size_t size LOGPARAMS)
 {
     unsigned char *memory = (unsigned char *)shmalloc_raw(map, size+GUARD_SIZE * 2 + CELLSIZE);
     if(memory) {
+#ifdef SHARED_LOG
+	if(logfp) {
+	    fprintf(logfp, "%s:%d alloc %ld @ 0x%lx\n", File, Line, (long)size, (long)(memory+GUARD_SIZE + CELLSIZE));
+	    fflush(logfp);
+	}
+#endif
 	int i;
 
 	for(i = 0; i < GUARD_SIZE; i++)
@@ -1715,13 +1736,26 @@ char *shmalloc_guard(shm_t *map, size_t size)
 	for(i = 0; i < GUARD_SIZE; i++)
 	    memory[size + i] = 0xA5;
     }
+#ifdef SHARED_LOG
+    else
+	if(logfp) {
+	    fprintf(logfp, "%s:%d alloc %ld FAILED\n", File, Line, (long)size);
+	    fflush(logfp);
+	}
+#endif
     return (char *)memory;
 }
 
-void shmfree_guard(shm_t *map, char *block)
+void shmfree_guard(shm_t *map, char *block LOGPARAMS)
 {
     unsigned char *memory = (unsigned char *)block - CELLSIZE - GUARD_SIZE;
     int size;
+#ifdef SHARED_LOG
+    if(logfp) {
+	fprintf(logfp, "%s:%d free @ 0x%lx\n", File, Line, (long)block);
+	fflush(logfp);
+    }
+#endif
 
     int i;
 
@@ -1737,10 +1771,16 @@ void shmfree_guard(shm_t *map, char *block)
     shmfree_raw(map, (char *)memory);
 }
 
-int shmdealloc_guard(shm_t *shm, char *data)
+int shmdealloc_guard(shm_t *shm, char *data LOGPARAMS)
 {
     unsigned char *memory = (unsigned char *)data - CELLSIZE - GUARD_SIZE;
     int size;
+#ifdef SHARED_LOG
+    if(logfp) {
+	fprintf(logfp, "%s:%d dealloc @ 0x%lx\n", File, Line, (long)data);
+	fflush(logfp);
+    }
+#endif
 
     int i;
 
