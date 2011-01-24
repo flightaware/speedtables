@@ -1715,6 +1715,24 @@ Shared_Init(Tcl_Interp *interp)
 #endif
 
 #ifdef SHARED_GUARD
+static void shmhexdump(unsigned char* start, size_t length)
+{
+	int i;
+	fprintf(stderr, "\n0x%lX", (long)start);
+	for(i = 0; i < length; i++) {
+		fprintf(stderr, " %02x", start[i]);
+	}
+	fprintf(stderr, "\n0x%lX", (long)start);
+	for(i = 0; i < length; i++) {
+		if(start[i] < 0x7F && start[i] > 0x1F) {
+			fprintf(stderr, "  %c", start[i]);
+		} else {
+			fprintf(stderr, "   ");
+		}
+	}
+	fprintf(stderr, "\n");
+}
+
 char *shmalloc_guard(shm_t *map, size_t size LOGPARAMS)
 {
     unsigned char *memory = (unsigned char *)shmalloc_raw(map, size+GUARD_SIZE * 2 + CELLSIZE);
@@ -1728,9 +1746,9 @@ char *shmalloc_guard(shm_t *map, size_t size LOGPARAMS)
 	int i;
 
 	for(i = 0; i < GUARD_SIZE; i++)
-	    memory[size++] = 0xA5;
+	    *memory++ = 0xA5;
 
-	((cell_t *)memory)[0] = size + CELLSIZE;
+	((cell_t *)memory)[0] = size;
 	memory += CELLSIZE;
 
 	for(i = 0; i < GUARD_SIZE; i++)
@@ -1760,13 +1778,17 @@ void shmfree_guard(shm_t *map, char *block LOGPARAMS)
     int i;
 
     for(i = 0; i < GUARD_SIZE; i++)
-	if(memory[i] != 0xA5)
+	if(memory[i] != 0xA5) {
+	    shmhexdump(memory, GUARD_SIZE * 2);
 	    shmpanic("Bad low guard!");
+	}
     size = ((cell_t *)block)[-1];
 
     for(i = 0; i < GUARD_SIZE; i++)
-	if(memory[i+size+CELLSIZE+GUARD_SIZE] != 0xA5)
+	if(memory[i+size+CELLSIZE+GUARD_SIZE] != 0xA5) {
+	    shmhexdump(memory + size + CELLSIZE + GUARD_SIZE, GUARD_SIZE * 2);
 	    shmpanic("Bad high guard!");
+	}
 
     shmfree_raw(map, (char *)memory);
 }
@@ -1785,13 +1807,17 @@ int shmdealloc_guard(shm_t *shm, char *data LOGPARAMS)
     int i;
 
     for(i = 0; i < GUARD_SIZE; i++)
-	if(memory[i] != 0xA5)
+	if(memory[i] != 0xA5) {
+	    shmhexdump(memory, GUARD_SIZE * 2);
 	    shmpanic("Bad low guard!");
+	}
     size = ((cell_t *)data)[-1];
 
     for(i = 0; i < GUARD_SIZE; i++)
-	if(memory[i+size+CELLSIZE+GUARD_SIZE] != 0xA5)
+	if(memory[i+size+CELLSIZE+GUARD_SIZE] != 0xA5) {
+	    shmhexdump(memory + size + CELLSIZE + GUARD_SIZE, GUARD_SIZE * 2);
 	    shmpanic("Bad high guard!");
+	}
 
     return shmdealloc_raw(shm, (char *)memory);
 }
