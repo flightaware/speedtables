@@ -673,6 +673,7 @@ size_t shmfreemem(shm_t *shm)
 char *_shmalloc(shm_t   *shm, size_t nbytes)
 {
     volatile freeblock *block = shm->freelist;
+    freeblock *freebase = (freeblock*)block;
     size_t 		needed;
 IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
 
@@ -728,6 +729,9 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "      return block2data(0x%lX) ==> 0x%lX\n", (lon
 	    break;
 
 	block = block->next;
+
+	if (block == freebase)
+	    break;
     }
 
     shared_errno = -SH_MAP_FULL;
