@@ -597,9 +597,9 @@ void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    prev = 0x%lX, next=0x%lX\n", (long)prev, (long)next);)
     if(block->magic != FREE_MAGIC)
         shmpanic("Invalid free block magic!");
-    if(!block->next)
+    if(!next)
 	shmpanic("Freeing freed block (next == NULL)!");
-    if(!block->prev)
+    if(!prev)
 	shmpanic("Freeing freed block (prev == NULL)!");
 
     // We don't need this any more.
@@ -616,10 +616,6 @@ void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
 	return;
     }
 
-    if(prev == NULL)
-	shmpanic("Corrupt free list (prev == NULL)!");
-    if(next == NULL)
-	shmpanic("Corrupt free list (next == NULL)!");
     if(prev->magic != FREE_MAGIC)
         shmpanic("Invalid free prev magic");
     if(prev->next != block)
