@@ -16,19 +16,29 @@ FILE *SHM_DEBUG_FP;
 #define IFDEBUG(x)				/* Debug code elided */
 #endif
 
+#define compile_time_assert(cond, msg)  char msg[(cond) ? 1 : 0]
+
 #include <limits.h>
 
 // Atomic word size, "cell_t".
 #if (LONG_MAX == 4294967296L) /* 32 bit long */
-typedef uint32_t cell_t;
+typedef size_t cell_t;
+#define cellabs(t) abs(t)
+compile_time_assert(sizeof(size_t) == sizeof(int), SIZE_T_should_be_int);
+compile_time_assert(sizeof(size_t) == 4, SIZE_T_should_be_32_bits);
 #else /* 64 bit long */
-typedef uint64_t cell_t;
+typedef size_t cell_t;
+#define cellabs(t) llabs(t)
+compile_time_assert(sizeof(size_t) == sizeof(long long), SIZE_T_should_be_int);
+compile_time_assert(sizeof(size_t) == 8, SIZE_T_should_be_32_bits);
 #endif
 
 #define CELLSIZE (sizeof (cell_t))
 
 // Marker for the beginning of the list
 #define MAP_MAGIC (((((('B' << 8) | 'O') << 8) | 'F') << 8) | 'H')
+
+// Booleans
 #define TRUE 1
 #define FALSE 0
 
@@ -150,14 +160,14 @@ typedef struct _mapheader {
 
 // Freelist entry
 typedef struct _freeblock {
-    cell_t			  size;
+    ssize_t			  size;  // always a positive number for free blocks.
     volatile struct _freeblock   *next;
     volatile struct _freeblock   *prev;
 } freeblock;
 
 // Busy block
 typedef struct {
-    cell_t			  size;
+    ssize_t			  size;  // always a negative number for busy blocks.
     char			  data[];
 } busyblock;
 
@@ -244,10 +254,10 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 #define data2block(data) ((freeblock *)&((cell_t *)(data))[-1])
 #define block2data(block) (((busyblock *)(block))->data)
 
-#define prevsize(block) (((cell_t *)block)[-1])
-#define nextblock(block) ((freeblock *)(((char *)block) + abs((block)->size)))
+#define prevsize(block) (((ssize_t *)block)[-1])
+#define nextblock(block) ((freeblock *)(((char *)block) + cellabs((block)->size)))
 #define nextsize(block) (nextblock(block)->size)
-#define prevblock(block) ((freeblock *)(((char *)block) - abs(prevsize(block))))
+#define prevblock(block) ((freeblock *)(((char *)block) - cellabs(prevsize(block))))
 
 #endif
 

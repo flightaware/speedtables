@@ -114,7 +114,7 @@ int open_new(char *file, size_t size)
 {
     char 	*buffer;
     size_t	 nulbufsize = NULBUFSIZE;
-    size_t	 nbytes;
+    ssize_t	 nbytes;
     int		 fd = open(file, O_RDWR|O_CREAT, 0666);
 
 IFDEBUG(init_debug();)
@@ -686,7 +686,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
 
     // really a do-while loop, null check should never fail
     while(block) {
-	int space = block->size;
+	ssize_t space = block->size;
 
 	if(space < 0)
 	    shmpanic("trying to allocate non-free block");
@@ -807,7 +807,7 @@ int shmdepool(poolhead_t *head, char *block)
 	chunk_t *chunk = head->chunks;
         while(chunk) {
 	    pool_freelist_t *free;
-	    int offset = block - chunk->start;
+	    ssize_t offset = block - chunk->start;
 	    if(offset < 0 || offset > (head->nblocks * head->blocksize)) {
 	        chunk = chunk->next;
 	        continue;
@@ -836,10 +836,10 @@ void setfree(volatile freeblock *block, size_t size, int is_free)
 {
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)size, is_free);)
     volatile cell_t *cell = (cell_t *)block;
-    *cell = is_free ? size : -size;
+    *cell = is_free ? ((ssize_t)size) : -((ssize_t)size);
     cell = (cell_t *) &((char *)cell)[size]; // point to next block;
     cell--; // step back one word;
-    *cell = is_free ? size : -size;
+    *cell = is_free ? ((ssize_t)size) : -((ssize_t)size);
 }
 
 // attempt to free a block
@@ -860,7 +860,7 @@ void setfree(volatile freeblock *block, size_t size, int is_free)
 
 int shmdealloc_raw(shm_t *shm, char *memory)
 {
-    size_t size;
+    ssize_t size;
     freeblock *block;
 IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc_raw(shm=0x%lX, memory=0x%lX);\n", (long)shm, (long)memory);)
 
@@ -874,17 +874,17 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc_raw(shm=0x%lX, memory=0x%lX);\n", (lon
     block = data2block(memory);
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "  block=0x%lX\n", (long)memory);)
 
-    size = block->size;
+    size = (ssize_t)block->size;
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "  size=%ld\n", (long)size);)
 
     // negative size means it's allocated, positive it's free
-    if(((int)size) > 0)
+    if(size > 0)
 	shmpanic("freeing freed block");
 
     size = -size;
 
     // merge previous freed blocks
-    while(((int)prevsize(block)) > 0) {
+    while(((ssize_t)prevsize(block)) > 0) {
 	freeblock *prev = prevblock(block);
         size_t new_size = prev->size;
 
@@ -902,7 +902,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc_raw(shm=0x%lX, memory=0x%lX);\n", (lon
     }
 
     // merge following free blocks
-    while(((int)nextsize(block)) > 0) {
+    while(((ssize_t)nextsize(block)) > 0) {
 	freeblock *next = nextblock(block);
 	size_t new_size = next->size;
 
