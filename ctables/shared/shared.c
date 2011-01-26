@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/ipc.h>
 #include <time.h>
+#include <signal.h>
 #ifdef WITH_TCL
 #include <tcl.h>
 #endif
@@ -322,8 +323,10 @@ int unmap_file(shm_t   *share)
 
     // If we're a reader, zero out our reader entry for re-use
     r = pid2reader(share->map, getpid());
-    if(r)
-	r->pid = r->cycle = 0;
+    if(r) {
+        r->pid = 0;
+	r->cycle = LOST_HORIZON;
+    }
 
     freepools(share->pools, 0);
     freepools(share->garbage_pool, 0);
@@ -1063,10 +1066,11 @@ void write_unlock(shm_t   *shm)
 volatile reader *pid2reader(volatile mapheader *map, int pid)
 {
     volatile reader_block *b = map->readers;
+    if(!pid) return NULL;
     while(b) {
 	if(b->count) {
 	    int i;
-	    for(i = 0; i < READERS_PER_BLOCK; i++)
+	    for(i = 0; i < b->count && i < READERS_PER_BLOCK; i++)
 		if(b->readers[i].pid == pid)
 		    return &b->readers[i];
 	}
@@ -1080,6 +1084,7 @@ int shmattachpid(shm_t   *share, int pid)
     volatile mapheader *map = share->map;
     volatile reader_block *b = map->readers;
 
+    if(!pid) return 0;
     if(pid2reader(map, pid)) return 1;
 
     while(b) {
@@ -1087,11 +1092,14 @@ int shmattachpid(shm_t   *share, int pid)
 	for(i = 0; i < b->count; i++) {
 	    if(b->readers[i].pid == 0) {
 		b->readers[i].pid = pid;
+		b->readers[i].cycle = LOST_HORIZON;
 		return 1;
 	    }
 	}
 	if(b->count < READERS_PER_BLOCK) {
-	    b->readers[b->count++].pid = pid;
+	    b->readers[b->count].pid = pid;
+	    b->readers[b->count].cycle = LOST_HORIZON;
+	    b->count++;
 	    return 1;
 	}
 	b = b->next;
@@ -1099,10 +1107,13 @@ int shmattachpid(shm_t   *share, int pid)
     b = (reader_block *)shmalloc_raw(share, sizeof *b);
     if(!b) return 0;
 
+    memset((void*)b, 0, sizeof *b);
     b->count = 0;
     b->next = map->readers;
     map->readers = (reader_block *)b;
-    b->readers[b->count++].pid = pid;
+    b->readers[b->count].pid = pid;
+    b->readers[b->count].cycle = LOST_HORIZON;
+    b->count++;
     return 1;
 }
 
@@ -1180,11 +1191,16 @@ cell_t oldest_reader_cycle(shm_t   *shm)
     int age;
 
     while(r) {
-	int count = 0;
         int i;
-        for(i = 0; count < r->count && i < READERS_PER_BLOCK; i++) {
+        for(i = 0; i < r->count && i < READERS_PER_BLOCK; i++) {
 	    if(r->readers[i].pid) {
-		count++;
+		if (kill(r->readers[i].pid, 0) == -1) {
+		    // Found a pid belonging to a dead process.  Remove it.
+		    IFDEBUG(fprintf(SHM_DEBUG_FP, "oldest_reader_cycle: found dead reader pid %d, removing\n", (int) r->readers[i].pid);)
+		    r->readers[i].pid = 0;
+		    r->readers[i].cycle = LOST_HORIZON;
+		    continue;
+		}
 
 		rdr_cycle = r->readers[i].cycle;
 
