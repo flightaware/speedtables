@@ -19,6 +19,7 @@ FILE *SHM_DEBUG_FP;
 #define compile_time_assert(cond, msg)  char msg[(cond) ? 1 : 0]
 
 #include <limits.h>
+#include <stddef.h>
 
 // Atomic word size, "cell_t".
 #if (LONG_MAX == 4294967296L) /* 32 bit long */
@@ -37,6 +38,11 @@ compile_time_assert(sizeof(size_t) == 8, SIZE_T_should_be_32_bits);
 
 // Marker for the beginning of the list
 #define MAP_MAGIC (((((('B' << 8) | 'O') << 8) | 'F') << 8) | 'H')
+#define CHUNK_MAGIC (((((('C' << 8) | 'h') << 8) | 'n') << 8) | 'K')
+#define POOL_MAGIC (((((('P' << 8) | 'o') << 8) | 'o') << 8) | 'L')
+#define FREE_MAGIC (((((('F' << 8) | 'r') << 8) | 'e') << 8) | 'E')
+#define BUSY_MAGIC (((((('B' << 8) | 'u') << 8) | 's') << 8) | 'Y')
+#define SENTINAL_MAGIC (((((('S' << 8) | 'n') << 8) | 't') << 8) | 'L')
 
 // Booleans
 #define TRUE 1
@@ -108,6 +114,7 @@ typedef struct _pool_freelist_t {
 } pool_freelist_t;
 
 typedef struct _chunk_t {
+    cell_t              magic;          // magic number (CHUNK_MAGIC)
     struct _chunk_t	*next;		// next pool chunk
     char		*start;		// start of pool shared memory
     int		 	 avail;		// number of elements unallocated
@@ -117,6 +124,7 @@ typedef struct _chunk_t {
 // Pool header block
 //
 typedef struct _poolhead_t {
+    cell_t               magic;         // magic number (POOL_MAGIC)
     struct _poolhead_t	*next;
     struct _chunk_t	*chunks;
     struct _shm_t	*share;
@@ -149,7 +157,7 @@ typedef struct _rblock {
 
 // shm_t->map points to this structure, at the front of the mapped file.
 typedef struct _mapheader {
-    cell_t           magic;		// Magic number, "initialised"
+    cell_t           magic;		// Magic number, "initialised" (MAP_MAGIC)
     cell_t           headersize;	// Size of this header
     cell_t           mapsize;		// Size of this map
     char	    *addr;		// Address mapped to
@@ -160,14 +168,16 @@ typedef struct _mapheader {
 
 // Freelist entry
 typedef struct _freeblock {
-    ssize_t			  size;  // always a positive number for free blocks.
+    cell_t                        magic;   // Magic number (FREE_MAGIC)
+    ssize_t			  size;    // always a positive number for free blocks.
     volatile struct _freeblock   *next;
     volatile struct _freeblock   *prev;
 } freeblock;
 
 // Busy block
 typedef struct {
-    ssize_t			  size;  // always a negative number for busy blocks.
+    cell_t                        magic;    // Magic number (BUSY_MAGIC)
+    ssize_t			  size;     // always a negative number for busy blocks.
     char			  data[];
 } busyblock;
 
@@ -251,13 +261,18 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 #endif
 
 // shift between the data inside a variable sized block, and the block itself
-#define data2block(data) ((freeblock *)&((cell_t *)(data))[-1])
+#define data2block(dataptr) ((freeblock *)( ((char *)(dataptr)) - offsetof(busyblock, data)) )
 #define block2data(block) (((busyblock *)(block))->data)
 
 #define prevsize(block) (((ssize_t *)block)[-1])
-#define nextblock(block) ((freeblock *)(((char *)block) + cellabs((block)->size)))
+#define nextblock(block) ((freeblock *)(((char *)block) + cellabs( (ssize_t) ((freeblock*)(block))->size)) )
 #define nextsize(block) (nextblock(block)->size)
-#define prevblock(block) ((freeblock *)(((char *)block) - cellabs(prevsize(block))))
+#define prevblock(block) ((freeblock *)(((char *)block) - cellabs( (ssize_t) prevsize(block))) )
+
+#define is_prev_sentinal(block) (prevsize(block) == SENTINAL_MAGIC)
+#define is_next_sentinal(block) (*((cell_t*)nextblock(block)) == SENTINAL_MAGIC)
+
+
 
 #endif
 

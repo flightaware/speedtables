@@ -408,19 +408,27 @@ IFDEBUG(init_debug();)
     // header three blocks:
     block = (cell_t *)&map[1];
 
-    //  One block just containing a 0, lower sentinel
-    *block++ = 0;
+    //  One block just containing a special lower sentinel
+    *block++ = SENTINAL_MAGIC;
 
-    //  One "used" block, freesize bytes long
-    freesize = shm->size - sizeof *map - 2 * sizeof *block;
+    //  One "used" block, freesize bytes long with a sentinel on both ends.
+    freesize = shm->size - sizeof(*map) - 2 * CELLSIZE;
 
     setfree((freeblock *)block, freesize, FALSE);
 
-    //  One block containing a 0, upper sentinel.
-    *((cell_t *)(((char *)block) + freesize)) = 0;
+    //  One block containing a special upper sentinel.
+    *((cell_t *)(((char *)block) + freesize)) = SENTINAL_MAGIC;
+
+    //  Some functionality assertions.
+    if (!is_prev_sentinal(block))
+      shmpanic("is_prev_sentinal failed");
+    if (!is_next_sentinal(block))
+      shmpanic("is_next_sentinal failed");
+    if (((freeblock*)block)->magic != BUSY_MAGIC)
+      shmpanic("invalid magic");
 
     // Finally, initialize the free list by freeing it.
-    shmdealloc_raw(shm, (char *)&block[1]);
+    shmdealloc_raw(shm, block2data(block));
 }
 
 poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share)
@@ -431,6 +439,8 @@ poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share)
     if(blocksize % CELLSIZE)
 	blocksize += CELLSIZE - blocksize % CELLSIZE;
 
+    memset((void*)head, 0, sizeof *head);
+    head->magic = POOL_MAGIC;
     head->share = share;
     head->nblocks = nblocks;
     head->blocksize = blocksize;
@@ -448,10 +458,15 @@ chunk_t *addchunk(poolhead_t *head)
 {
     chunk_t *chunk;
 
+    if (head->magic != POOL_MAGIC)
+        shmpanic("Invalid pool magic!");
+
     if(head->maxchunks && head->numchunks >= head->maxchunks)
 	return NULL;
 
     chunk = (chunk_t *)ckalloc(sizeof *chunk);
+    memset((void*)chunk, 0, sizeof *chunk);
+    chunk->magic = CHUNK_MAGIC;
 
     if(head->share) {
         chunk->start = _shmalloc(head->share, head->blocksize*head->nblocks);
@@ -486,9 +501,12 @@ int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks)
 	blocksize += CELLSIZE - blocksize % CELLSIZE;
 
     // avoid duplicates - must not have multiple pools the same size
-    for(head = shm->pools; head; head=head->next)
+    for(head = shm->pools; head; head=head->next) {
+        if (head->magic != POOL_MAGIC)
+            shmpanic("Invalid pool magic!");
 	if(head->blocksize == blocksize)
 	    return 1;
+    }
 
     head = makepool(blocksize, nblocks, maxchunks, shm);
     if(!head) return 0;
@@ -510,6 +528,9 @@ char *palloc(poolhead_t *head, size_t wanted)
 
     // find a pool list that is the right size;
     while(head) {
+        if (head->magic != POOL_MAGIC)
+           shmpanic("Invalid pool magic!");
+
 	if(head->blocksize == wanted)
 	    break;
 	head = head->next;
@@ -545,17 +566,25 @@ void freepools(poolhead_t *head, int also_free_shared)
 {
     while(head) {
 	poolhead_t *next = head->next;
+	if (head->magic != POOL_MAGIC)
+            shmpanic("Invalid pool magic!");
 
         while(head->chunks) {
 	    chunk_t *chunk = head->chunks;
+	    if (chunk->magic != CHUNK_MAGIC)
+	      shmpanic("Invalid chunk magic!");
+
 	    head->chunks = head->chunks->next;
 	    if(head->share == NULL)
 		    ckfree(chunk->start);
 	    else if(also_free_shared)
 	        shmfree_raw(head->share, chunk->start);
+
+	    chunk->magic = 0;
 	    ckfree((char *)chunk);
         }
 
+	head->magic = 0;
 	ckfree((char *)head);
 	head = next;
     }
@@ -566,12 +595,15 @@ void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
     volatile freeblock *next = block->next, *prev = block->prev;
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "remove_from_freelist(shm, 0x%lX);\n", (long)block);)
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    prev = 0x%lX, next=0x%lX\n", (long)prev, (long)next);)
+    if(block->magic != FREE_MAGIC)
+        shmpanic("Invalid free block magic!");
     if(!block->next)
 	shmpanic("Freeing freed block (next == NULL)!");
     if(!block->prev)
 	shmpanic("Freeing freed block (prev == NULL)!");
 
     // We don't need this any more.
+    block->magic = 0;
     block->next = block->prev = NULL;
 
     if(next == block || prev == block) {
@@ -588,8 +620,12 @@ void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
 	shmpanic("Corrupt free list (prev == NULL)!");
     if(next == NULL)
 	shmpanic("Corrupt free list (next == NULL)!");
+    if(prev->magic != FREE_MAGIC)
+        shmpanic("Invalid free prev magic");
     if(prev->next != block)
 	shmpanic("Corrupt free list (prev->next != block)!");
+    if(next->magic != FREE_MAGIC)
+        shmpanic("Invalid next prev magic");
     if(next->prev != block)
 	shmpanic("Corrupt free list (next->prev != block)!");
 	
@@ -609,13 +645,22 @@ void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
     volatile freeblock *next, *prev;
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "insert_in_freelist(shm, 0x%lX);\n", (long)block);)
 
+    if (block->magic != FREE_MAGIC)
+      shmpanic("Invalid free magic");
+
     if(!shm->freelist) {
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    empty freelist, set all to block\n");)
 	shm->freelist = block->next = block->prev = block;
 	return;
     }
     next = block->next = shm->freelist;
+    if (next->magic != FREE_MAGIC)
+      shmpanic("Invalid next free magic");
+
     prev = block->prev = shm->freelist->prev;
+    if (prev->magic != FREE_MAGIC)
+      shmpanic("Invalid prev free magic");
+
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    insert between 0x%lX and 0x%lX\n", (long)prev, (long)next);)
     next->prev = prev->next = block;
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    done\n");)
@@ -681,22 +726,30 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
     if(nbytes % CELLSIZE)
 	nbytes += CELLSIZE - nbytes % CELLSIZE;
 
-    // Actual allocation includes pointers.
-    needed = nbytes + 2 * CELLSIZE;
+    // Actual allocation includes our structure plus an upper sentinal.
+    // We really only need room initall for a busyblock, but since the
+    // freeblock struct is larger we need to ensure there is room to
+    // also allow this block to become freed later.
+    needed = nbytes + sizeof(freeblock) + CELLSIZE;
 
     // really a do-while loop, null check should never fail
     while(block) {
 	ssize_t space = block->size;
+	if (block->magic != FREE_MAGIC)
+	    shmpanic("invalid free magic");
 
 	if(space < 0)
 	    shmpanic("trying to allocate non-free block");
+
+	if (prevsize(nextblock(block)) != block->size)
+	    shmpanic("block upper sentinal size does not agree with header size");
 
 	if(space >= needed) {
 	    size_t left = space - needed;
 	    size_t used = needed;
 
 	    // See if the remaining chunk is big enough to be worth saving
-	    if(left < sizeof (freeblock) + 2 * CELLSIZE) {
+	    if(left <= sizeof (freeblock) + 2 * CELLSIZE) {
 		used = space;
 		left = 0;
 	    }
@@ -805,9 +858,14 @@ int shmdepool(poolhead_t *head, char *block)
 {
     while(head) {
 	chunk_t *chunk = head->chunks;
+	if (head->magic != POOL_MAGIC)
+	  shmpanic("Invalid pool magic!");
         while(chunk) {
 	    pool_freelist_t *free;
 	    ssize_t offset = block - chunk->start;
+	    if (chunk->magic != CHUNK_MAGIC)
+	      shmpanic("Invalid chunk magic!");
+
 	    if(offset < 0 || offset > (head->nblocks * head->blocksize)) {
 	        chunk = chunk->next;
 	        continue;
@@ -835,9 +893,15 @@ int shmdepool(poolhead_t *head, char *block)
 void setfree(volatile freeblock *block, size_t size, int is_free)
 {
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)size, is_free);)
-    volatile cell_t *cell = (cell_t *)block;
-    *cell = is_free ? ((ssize_t)size) : -((ssize_t)size);
-    cell = (cell_t *) &((char *)cell)[size]; // point to next block;
+    volatile cell_t *cell;
+    if (size <= sizeof(freeblock))
+      shmpanic("Invalid block size!");
+
+    block->magic = (is_free ? FREE_MAGIC : BUSY_MAGIC);
+    block->size = (is_free ? ((ssize_t)size) : -((ssize_t)size));
+
+    // put a trailing sentinal containing the size
+    cell = (cell_t *) &((char *)block)[size]; // point to next block;
     cell--; // step back one word;
     *cell = is_free ? ((ssize_t)size) : -((ssize_t)size);
 }
@@ -847,16 +911,18 @@ void setfree(volatile freeblock *block, size_t size, int is_free)
 // then, thread it on the free list
 
 // free block structure:
-//    int32 size;
+//    cell_t magic == FREE_MAGIC
+//    cell_t size;
 //    pointer next
 //    pointer free
-//    char unused[size - 8 - sizeof(freeblock)];
-//    int32 size;
+//    char unused[size - 12 - sizeof(freeblock)];
+//    cell_t size;
 
 // busy block structure:
-//    int32 -size;
-//    char data[size-8];
-//    int32 -size;
+//    cell_t magic == BUSY_MAGIC
+//    cell_t -size;
+//    char data[size-12];
+//    cell_t -size;
 
 int shmdealloc_raw(shm_t *shm, char *memory)
 {
@@ -874,19 +940,38 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc_raw(shm=0x%lX, memory=0x%lX);\n", (lon
     block = data2block(memory);
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "  block=0x%lX\n", (long)memory);)
 
-    size = (ssize_t)block->size;
+    if (block->magic != BUSY_MAGIC)
+	shmpanic("invalid busy magic");
+
+    size = block->size;
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "  size=%ld\n", (long)size);)
 
     // negative size means it's allocated, positive it's free
-    if(size > 0)
+    if(((ssize_t)size) > 0)
 	shmpanic("freeing freed block");
 
     size = -size;
 
     // merge previous freed blocks
-    while(((ssize_t)prevsize(block)) > 0) {
+    while(!is_prev_sentinal(block)) {
 	freeblock *prev = prevblock(block);
-        size_t new_size = prev->size;
+        size_t new_size;
+
+	if ((char*)prev < (char*)shm->map) {
+	  shmpanic("Previous block is outside mapped memory!");
+	}
+
+	if (prev->magic != FREE_MAGIC) {
+	  if (prev->magic != BUSY_MAGIC) {
+	    shmpanic("found bad magic for previous block");
+	  }
+	  break;
+	}
+	new_size = prev->size;
+	if (new_size <= 0)
+	    shmpanic("invalid free size");
+	if (prevsize(block) != new_size)
+	    shmpanic("inconsistent sizes at lower vs upper sentinal");
 
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    merge prev block 0x%lX size %d\n", (long)prev, new_size);)
 	// remove it from the free list
@@ -902,9 +987,26 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc_raw(shm=0x%lX, memory=0x%lX);\n", (lon
     }
 
     // merge following free blocks
-    while(((ssize_t)nextsize(block)) > 0) {
+    while(!is_next_sentinal(block)) {
 	freeblock *next = nextblock(block);
-	size_t new_size = next->size;
+	size_t new_size;
+
+	if((char*)next >= ((char *)shm->map)+shm->map->mapsize) {
+	  shmpanic("Next block is outside mapped memory!");
+	}
+
+	if (next->magic != FREE_MAGIC) {
+	  if (next->magic != BUSY_MAGIC) {
+	    shmpanic("found bad magic for previous block");
+	  }
+	  break;
+	}
+
+	new_size = next->size;
+	if (new_size <= 0)
+	    shmpanic("invalid free size");
+	if (nextsize(block) != new_size)
+	  shmpanic("inconsistent sizes at lower vs upper sentinal");
 
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    merge next block 0x%lX\n", (long)next);)
 	// remove next from the free list
