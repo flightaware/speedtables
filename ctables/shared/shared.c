@@ -690,7 +690,7 @@ static void shmdump(shm_t *shm)
     fflush(stderr);
 }
 
-// Return estimate of free memory in share
+// Return estimate of free memory available.  Does not include memory waiting to be garbage collected.
 size_t shmfreemem(shm_t *shm)
 {
     freeblock *freelist = (freeblock *)shm->freelist;
@@ -698,17 +698,15 @@ size_t shmfreemem(shm_t *shm)
     size_t freemem = 0;
 
     while(freelist) {
+	if (freelist->magic != FREE_MAGIC) {
+	    shmpanic("Invalid free magic!");
+	}
+	if (freelist->size < sizeof(freeblock)) {
+	    shmpanic("Invalid freeblock size (was negative or too small)");
+	}
 	freemem += freelist->size;
         freelist = (freeblock *)freelist->next;
 	if(freelist == freebase) break;
-    }
-
-    garbage *garbage = shm->garbage;
-    while(garbage) {
-	freeblock *block = data2block(garbage->memory);
-	freemem += block->size;
-	garbage = garbage->next;
-	if(garbage == shm->garbage) break;
     }
 
     return freemem;
@@ -1805,7 +1803,13 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 	}
 
         case CMD_FREE: {
-	    Tcl_SetObjResult(interp, Tcl_NewIntObj(shmfreemem(share)));
+	    // TODO: this could be a compile-time selection.
+	    size_t memfree = shmfreemem(share);
+	    if (sizeof(size_t) > sizeof(int)) {
+	        Tcl_SetObjResult(interp, Tcl_NewWideIntObj(memfree));
+	    } else {
+	        Tcl_SetObjResult(interp, Tcl_NewIntObj(memfree));
+	    }
 	    return TCL_OK;
 	}
 
