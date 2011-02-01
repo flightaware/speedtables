@@ -17,7 +17,7 @@ TCLSHM=$(TCLSH)
 #TCLSHM=$(TCLSH)m
 
 all:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) speedtable.tcl
 	$(TCLSH) serious-tests.tcl
 	$(TCLSH) incr-test.tcl
@@ -33,104 +33,104 @@ all:
 	$(TCLSH) null-tests.tcl
 	rm -r stobj
 	$(TCLSH) index-compare.tcl
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) index-defaults.tcl
 	$(TCLSH) filter.tcl
 	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
 
 compare:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) index-compare.tcl
 
 searchget:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) searchget.tcl
 
 null:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) null-tests.tcl
 
 indef:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) index-defaults.tcl
 
 master:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	$(TCLSH) tsv-nokey-tests.tcl
 	$(TCLSHM) master.tcl
 	$(TCLSHM) master2.tcl
 	rm -f *.dat
 
 speed:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	$(TCLSH) masterspeed.tcl
 
 pools:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	$(TCLSH) poolspeed.tcl
 
 reader:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	sh master+reader.sh
 	rm -f *.dat
 
 stapi:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	sh stapi.sh
 	rm -f *.dat
 
 stapi2:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	sh stapi.sh -d 100 -c 40 -s stapi2.tcl
 	rm -f *.dat
 
 stapi3:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	sh stapi.sh -d 1 -c 40 -s stapi3.tcl
 	rm -f *.dat
 
 filter:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) filter.tcl
 
 filter2:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) filter2.tcl
 
 multireader:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	sh multireader.sh
 	rm -f *.dat
 
 speedreader:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	sh multireader.sh 1 1000000 5 10
 	rm -f *.dat
 
 readerperf:
-	-rm -r stobj
-	-rm -f *.dat
+	rm -rf stobj
+	rm -f *.dat
 	sh readerperf.sh
 	rm -f *.dat
 
 tclobj:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) tclobj.tcl
 
 barnrow:
-	-rm -r stobj
+	rm -rf stobj
 	$(TCLSH) barnrow.tcl
 
 gbarnrow:
-	-rm -r stobj
+	rm -rf stobj
 	gdb $(TCLSH)
