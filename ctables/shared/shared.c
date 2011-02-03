@@ -370,6 +370,7 @@ IFDEBUG(init_debug();)
     return 1;
 }
 
+// Initialize a map file for use.
 void shminitmap(shm_t   *shm)
 {
     volatile mapheader	*map = shm->map;
@@ -553,9 +554,8 @@ char *palloc(poolhead_t *head, size_t wanted)
     // If there's no room in the pool, get a new chunk
     if(head->chunks && head->chunks->avail > 0)
 	chunk = head->chunks;
-    else
-	if (!(chunk = addchunk(head)))
-	    return NULL;
+    else if (!(chunk = addchunk(head)))
+	return NULL;
 
     // Pull another block out of the pool
     block = chunk->brk;
@@ -579,9 +579,9 @@ void freepools(poolhead_t *head, int also_free_shared)
 
 	    head->chunks = head->chunks->next;
 	    if(head->share == NULL)
-		    ckfree(chunk->start);
+		ckfree(chunk->start);
 	    else if(also_free_shared)
-	        shmfree_raw(head->share, chunk->start);
+		shmfree_raw(head->share, chunk->start);
 
 	    chunk->magic = 0;
 	    ckfree((char *)chunk);
@@ -593,6 +593,7 @@ void freepools(poolhead_t *head, int also_free_shared)
     }
 }
 
+// Take a specific block of memory out of the list of free memory.
 void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
 {
     volatile freeblock *next = block->next, *prev = block->prev;
@@ -639,6 +640,7 @@ void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
     }
 }
 
+// Add a block of memory to the list of free memory available for immediate reuse.
 void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
 {
     volatile freeblock *next, *prev;
@@ -665,6 +667,7 @@ void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    done\n");)
 }
 
+// Prints out diagnostic information about the state of memory blocks.
 static void shmdump(shm_t *shm)
 {
     fprintf(stderr, "#DUMP 0x%08lx at 0x%08lx (%ld bytes)\n",
@@ -824,6 +827,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld) => 0x%8lx\n", (long)size, 
     return block;
 }
 
+// Add a block of memory into the garbage pool to be deleted later.
 void shmfree_raw(shm_t *shm, char *memory)
 {
     garbage *entry;
@@ -1025,6 +1029,8 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "  deallocated 0x%lX size %ld\n", (long)block, (lo
     return 1;
 }
 
+// Called by the master before making an update to shared-memory.
+// Increments the cycle number and returns the new cycle number.
 int write_lock(shm_t   *shm)
 {
     volatile mapheader *map = shm->map;
@@ -1035,6 +1041,9 @@ int write_lock(shm_t   *shm)
     return map->cycle;
 }
 
+// Called by the master at the end of an update to shared-memory.
+// Performs garbage collection of deleted memory blocks that are
+// no longer being accessed by readers.
 #ifdef LAZY_GC
 static int garbage_strike = 0;
 #endif
@@ -1061,6 +1070,9 @@ void write_unlock(shm_t   *shm)
     }
 }
 
+
+// Find the reader structure associated with a reader's pid.
+// Returns NULL if no match found.
 volatile reader *pid2reader(volatile mapheader *map, int pid)
 {
     volatile reader_block *b = map->readers;
@@ -1115,6 +1127,8 @@ int shmattachpid(shm_t   *share, int pid)
     return 1;
 }
 
+// Called by a reader to start a read transaction on the current state of memory.
+// Returns the cycle number that is locked, or LOST_HORIZON (0) on error.
 int read_lock(shm_t   *shm)
 {
     volatile mapheader *map = shm->map;
@@ -1129,6 +1143,7 @@ int read_lock(shm_t   *shm)
     return self->cycle = map->cycle;
 }
 
+// Called by a reader to end a read transaction on the current state of memory.
 void read_unlock(shm_t   *shm)
 {
     volatile reader *self = shm->self;
