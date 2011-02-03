@@ -1,3 +1,7 @@
+02/03/2011 bovine
+    * Make "share get" not introduce extra list around the value if it is
+      already a list and only one value is being requested. (issue 12)
+
 01/10/2011 bovine
     * Documention clarification for "size" option to "create" to indicate
       it is not a required parameter. Fixes github issue 7.

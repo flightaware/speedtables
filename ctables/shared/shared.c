@@ -1791,7 +1791,12 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
                     Tcl_AppendResult(interp, "Unknown name ",name," in ",sharename, NULL);
                     return TCL_ERROR;
                 }
-                Tcl_AppendElement(interp, s);
+                if (objc == 4) {
+                    // when requesting only one value then do not introduce an extra list.
+                    Tcl_SetResult(interp, s, TCL_VOLATILE);
+                } else {
+                    Tcl_AppendElement(interp, s);
+                }
             }
             return TCL_OK;
         }

@@ -34,6 +34,10 @@ if {1} {
 
 puts "created"
 
+
+#
+# Store some stuff in the two tables.
+#
 for {set i 0} {$i < 10000} {incr i} {
     mypasture store [list alpha alfa$i beta bravo$i delta delta$i gamma golf$i]
 
@@ -44,10 +48,14 @@ for {set i 0} {$i < 10000} {incr i} {
 
 puts "inserted"
 
+
+#
+# Query some stuff from the two tables.
+#
 mybarn search -array barnrow -limit 10 -sort alpha -code {
     set count [array size barnrow]
     if {$count != 5} {
-        puts "Error: wrong number of elements (was $count, expected 5)"
+        error "Error: wrong number of elements (was $count, expected 5)"
     }
     parray barnrow
     puts ""
@@ -57,3 +65,25 @@ puts info=[mypasture share info]
 puts pools=[mypasture share pools]
 puts free=[mypasture share free]
 
+
+#
+# Test some shared storage.
+#
+mybarn share set alpha alfa
+if {[mybarn share get alpha] != "alfa"} {
+    error "mismatch1"
+}
+mybarn share set beta "bovo bravo"
+if {[mybarn share get beta] != "bovo bravo"} {
+    error "mismatch2"
+}
+mybarn share set delta deltalina gamma "gamma gamma gamma"
+if {[mybarn share get gamma] != "gamma gamma gamma"} {
+    error "mismatch3"
+}
+if {[mybarn share get beta delta] != [list "bovo bravo" "deltalina"]} {
+    error "mismatch4"
+}
+
+
+puts "success"
