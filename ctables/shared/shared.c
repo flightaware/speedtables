@@ -1740,10 +1740,11 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 // APPend STRING, INTeger, or BOOLean.
 #define APPSTRING(i,l,s) Tcl_ListObjAppendElement(i,l,Tcl_NewStringObj(s,-1))
 #define APPINT(i,l,n) Tcl_ListObjAppendElement(i,l,Tcl_NewIntObj(n))
+#define APPWIDEINT(i,l,n) Tcl_ListObjAppendElement(i,l,Tcl_NewWideIntObj(n))
 #define APPBOOL(i,l,n) Tcl_ListObjAppendElement(i,l,Tcl_NewBooleanObj(n))
 
             if( TCL_OK != APPSTRING(interp, list, "size")
-             || TCL_OK != APPINT(interp, list, share->size)
+             || TCL_OK != APPWIDEINT(interp, list, share->size)
              || TCL_OK != APPSTRING(interp, list, "flags")
              || TCL_OK != APPSTRING(interp, list, flags2string(share->flags))
              || TCL_OK != APPSTRING(interp, list, "name")
