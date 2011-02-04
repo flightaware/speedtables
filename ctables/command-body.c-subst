@@ -456,7 +456,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 
 	  if(!ctable->share) {
-	      return TCL_OK;
+	      Tcl_AppendResult (interp, "Shared commands not available on this table.", (char *)NULL);
+	      return TCL_ERROR;
 	  }
 
 	  newObjv[0] = objv[1];		// 'share'
@@ -472,7 +473,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  return result;
 #else
-	  return TCL_OK;
+	  Tcl_AppendResult (interp, "Shared support not enabled.", (char *)NULL);
+	  return TCL_ERROR;
 #endif
       }
 
