@@ -1,3 +1,24 @@
+02/03/2011 bovine
+    * Change "share get" to only take one argument and not return a list.
+      Add "share multiget" for multiple arguments and return a list. (issue 12)
+
+    * Make all "share" commands return error for non-shared tables.
+
+02/02/2011 bovine
+    * Properly return sizes >2GB from "share info"
+
+01/26/2011 bovine
+    * Properly return sizes >2GB from "share free", and exclude memory in
+      garbage pool that is not yet freed which was causing erroneous totals.
+
+    * Properly use size_t/ssize_t types to avoid integer truncation and
+      data corruption issues in shared memory tables >2GB.
+
+    * Guard shared memory freeblocks, busyblocks, chunks, and pools by
+      adding magic numbers and more data consistency checks.
+
+    * Don't loop infinitely in _shmalloc when out of memory.
+
 01/10/2011 bovine
     * Documention clarification for "size" option to "create" to indicate
       it is not a required parameter. Fixes github issue 7.

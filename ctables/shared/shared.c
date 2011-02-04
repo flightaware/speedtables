@@ -1550,25 +1550,26 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     char        *sharename = NULL;
     shm_t       *share     = NULL;
 
-    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "set", "info", "pools", "pool", "free", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_SET, CMD_INFO, CMD_POOLS, CMD_POOL, CMD_FREE};
+    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "pools", "pool", "free", (char *)NULL};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_POOLS, CMD_POOL, CMD_FREE};
 
     static CONST struct {
         int need_share;         // if a missing share is an error
         int nargs;              // >0 number args, <0 -minimum number
         char *args;             // String for Tcl_WrongNumArgs
     } template[] = {
-        {0, -5, "filename size ?flags?"},
-        {0,  4, "filename"},
-        {0, -2, "?share?"},
-        {1,  3, ""},
-        {1, -3, "names"},
-        {1, -4, "name ?name?..."},
-        {1, -5, "name value ?name value?..."},
-        {1,  3, ""},
-        {1,  3, ""},
-        {1,  6, "size blocks/chunk max_chunks"},
-        {1,  3, ""}
+        {0, -5, "filename size ?flags?"},  // CMD_CREATE
+        {0,  4, "filename"}, // CMD_ATTACH
+        {0, -2, "?share?"}, // CMD_LIST
+        {1,  3, ""}, // CMD_DETACH
+        {1, -3, "names"},  // CMD_NAMES
+        {1, 4, "name"}, // CMD_GET
+        {1, -4, "name ?name?..."}, // CMD_MULTIGET
+        {1, -5, "name value ?name value?..."}, // CMD_SET
+        {1,  3, ""}, // CMD_INFO
+        {1,  3, ""}, // CMD_POOLS
+        {1,  6, "size blocks/chunk max_chunks"}, // CMD_POOL
+        {1,  3, ""} // CMD_FREE
     };
 
     if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
@@ -1782,6 +1783,18 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         }
 
         case CMD_GET: {
+            char *name = Tcl_GetString(objv[3]);
+            char *s = get_symbol(share, name, SYM_TYPE_STRING);
+            if(!s) {
+                Tcl_ResetResult(interp);
+                Tcl_AppendResult(interp, "Unknown name ",name," in ",sharename, NULL);
+                return TCL_ERROR;
+            }
+            Tcl_SetResult(interp, s, TCL_VOLATILE);
+            return TCL_OK;
+        }
+
+        case CMD_MULTIGET: {
             int   i;
             for (i = 3; i < objc; i++) {
                 char *name = Tcl_GetString(objv[i]);

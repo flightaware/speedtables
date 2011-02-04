@@ -65,11 +65,14 @@
 <dl>
 <dt>names<dd>
 <p>Returns a list of named objects in the share. These are not necessarily ctables, they may be string variables or objects created by other libraries.</p>
-<dt>set <i>name string</i> (master only)<dd>
-<p>Sets a shared string variable, for passing additional environment or context to readers.</p>
+<dt>set <i>name string ?name? ?string?</i> (master only)<dd>
+<p>Sets a shared string variable, for passing additional environment or context to readers. Multiple variables can be set in a single command.</p>
 
 <dt>get <i>name</i><dd>
-<p>Gets the value of a string set with "set".</p>
+<p>Gets the value of a single shared string variable that was defined with "set".</p>
+
+<dt>multiget <i>name ?name?</i><dd>
+<p>Gets the values of multiple shared string variables that were defined with "set".  Returns a list of each of the values.</p>
 
 <dt>info<dd>
 <p>Returns some internal information about the share in a key-value list. The data includes size, flags, name, whether you're the creator <i>(master)</i>, and filename.</p>
