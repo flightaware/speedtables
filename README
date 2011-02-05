@@ -1,0 +1,8 @@
+Speed tables is a high-performance memory-resident database. The speed
+table compiler reads a table definition and generates a set of C
+access routines to create, manipulate and search tables containing
+millions of rows. Currently oriented towards Tcl.
+
+https://github.com/lehenbauer/speedtables
+
+For more details about Speed tables, see ctables/docs/doc.txt
