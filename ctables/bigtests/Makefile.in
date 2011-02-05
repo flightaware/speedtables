@@ -4,7 +4,7 @@
 # $Id$
 #
 
-TCLSH=/usr/local/bin/tclsh8.5
+TCLSH=@TCLSH_PROG@
 
 
 all: test-data.txt

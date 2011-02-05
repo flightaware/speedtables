@@ -5,11 +5,11 @@
 #
 
 # default 
-TCLSH_ENV       = TCL_LIBRARY=`echo $(TCL_SRC_DIR)/library` \
-                  LD_LIBRARY_PATH="$(EXTRA_PATH):$(LD_LIBRARY_PATH)" \
+TCLSH_ENV       = TCL_LIBRARY=`@CYGPATH@ $(TCL_SRC_DIR)/library` \
+                  @LD_LIBRARY_PATH_VAR@="$(EXTRA_PATH):$(@LD_LIBRARY_PATH_VAR@)" \
                   PATH="$(EXTRA_PATH):$(PATH)" \
                   TCLLIBPATH="$(top_builddir)"
-TCLSH_PROG      = /usr/local/bin/tclsh8.5
+TCLSH_PROG      = @TCLSH_PROG@
 TCLSH           = $(TCLSH_ENV) $(TCLSH_PROG)
 TCLSHM          = $(TCLSH)
 
