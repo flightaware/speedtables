@@ -76,12 +76,14 @@ TEA_ADD_INCLUDES([])
 TEA_ADD_LIBS([])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
-TEA_ADD_TCL_SOURCES([config.tcl gentable.tcl sysconfig.tcl 
+TEA_ADD_TCL_SOURCES([config.tcl gentable.tcl
      command-body.c-subst exten-frag.c-subst init-exten.c-subst template.c-subst 
      ctable.h boyer_moore.c ctable_batch.c ctable_io.c ctable_lists.c ctable_qsort.c ctable_search.c
      skiplists/jsw_rand.h skiplists/jsw_slib.h skiplists/jsw_rand.c skiplists/jsw_slib.c
      hash/speedtables.h hash/speedtableHash.c shared/shared.c shared/shared.h])
 
+# manually add sysconfig.tcl to avoid file pre-existence check
+PKG_TCL_SOURCES="$PKG_TCL_SOURCES sysconfig.tcl"
 
 
 
