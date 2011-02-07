@@ -1,6 +1,5 @@
 #!/usr/local/bin/tclsh8.5
 
-package require Tclx
 package require speedtable
 
 CExtension bullseye 1.0 {
