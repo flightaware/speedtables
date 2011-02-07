@@ -1,2 +1,8 @@
 sysconfig.tcl
-sysconfig.sh
+Makefile
+config.log
+config.status
+autom4te.cache
+bigtests/Makefile
+tests/Makefile
+pkgIndex.tcl
