@@ -19,7 +19,11 @@
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 
-#ifndef CTABLE_NO_SYS_LIMITS
+#ifdef HAVE_NETINET_ETHER_H
+#include <netinet/ether.h>
+#endif
+
+#ifdef HAVE_SYS_LIMITS_H
 #include <sys/limits.h>
 #endif
 

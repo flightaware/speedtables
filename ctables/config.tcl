@@ -58,9 +58,6 @@
     # create files in a subdirectory
     set withSubdir 1
 
-# OS-specific tweaks
-    set sysFlags(Darwin) "-DCTABLE_NO_SYS_LIMITS"
-
 # Last minute safety catch
     if {![info exists sysconfig(pgtclprefix)]} {
 	set withPgtcl 0

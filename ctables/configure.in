@@ -131,6 +131,14 @@ AC_SUBST(CLEANFILES)
 #TEA_PRIVATE_TK_HEADERS
 #TEA_PATH_X
 
+
+# the following header detections could probably be done using $CONF or config.h
+CTABLES_CFLAGS=""
+AC_CHECK_HEADER(sys/limits.h,[CTABLES_CFLAGS="$CTABLES_CFLAGS -DHAVE_SYS_LIMITS_H=1"])
+AC_CHECK_HEADER(netinet/ether.h,[CTABLES_CFLAGS="$CTABLES_CFLAGS -DHAVE_NETINET_ETHER_H=1"])
+
+
+
 #--------------------------------------------------------------------
 # Check whether --enable-threads or --disable-threads was given.
 # This auto-enables if Tcl was compiled threaded.

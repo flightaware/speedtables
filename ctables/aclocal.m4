@@ -18,13 +18,20 @@ AC_DEFUN([CTABLES_MAKE_SYSCONFIG_TCL], [
 AC_REQUIRE([TEA_PATH_TCLCONFIG])
 AC_REQUIRE([TEA_LOAD_TCLCONFIG])
 
+# Round-about way to get the ld command, which may reference "$@" on some platforms.
+ctable_get_shlib_ld ()
+{
+    eval echo $TCL_SHLIB_LD
+}
+sysconfig_ld=`ctable_get_shlib_ld dummy`
 
 
 sysconfig_tcl_content="set sysconfig(cc) {$TCL_CC}
-set sysconfig(ccflags) {$TCL_DEFS $TCL_EXTRA_CFLAGS $TCL_INCLUDE_SPEC}
+set sysconfig(ccflags) {$TCL_DEFS $TCL_EXTRA_CFLAGS $TCL_INCLUDE_SPEC $CTABLES_CFLAGS}
 set sysconfig(warn) {$TCL_CFLAGS_WARNING}
 set sysconfig(ldflags) {$TCL_SHLIB_CFLAGS}
-set sysconfig(ld) {`eval echo $TCL_SHLIB_LD`}
+#set sysconfig(ld) {`eval echo $TCL_SHLIB_LD`}
+set sysconfig(ld) {$sysconfig_ld}
 set sysconfig(shlib) {$TCL_SHLIB_SUFFIX}
 set sysconfig(dbgx) {$TCL_DBGX}
 set sysconfig(libg) {`eval echo $TCL_LIB_SPEC`}
