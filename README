@@ -6,3 +6,10 @@ millions of rows. Currently oriented towards Tcl.
 https://github.com/lehenbauer/speedtables
 
 For more details about Speed tables, see ctables/docs/doc.txt
+
+This repository consists of three separate Tcl packages:
+
+* ctables -- the primary package providing single-process and shared-memory tables.
+* ctable_server -- networked client and server interface using "sttp:" URI syntax.
+* stapi -- abstraction to allow ctables, ctable_server, and other interchangable object use.
+
