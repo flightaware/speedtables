@@ -225,7 +225,13 @@ install-doc: doc
 #	done
 
 test: binaries libraries
-	cd $(srcdir)/tests && make
+	cd $(srcdir)/tests && $(MAKE)
+
+# various convenience targets to run test cases defined in the tests subdirectory.
+compare searchget null indef master speed pools reader stapi stapi2 stapi3 filter filter2 multireader speedreader readerperf tclobj barnrow gbarnrow:
+	cd $(srcdir)/tests && $(MAKE) $@
+
+
 
 shell: binaries libraries
 	@$(TCLSH) $(SCRIPT)
