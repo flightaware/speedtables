@@ -1,3 +1,9 @@
+02/07/2011 bovine
+    * Update build system to use autoconf (TEA 3.9) for better configurability
+      and platform compatibility.
+
+    * Allow compilation on Fedora 13 Linux (and possibly other distros).
+
 02/03/2011 bovine
     * Change "share get" to only take one argument and not return a list.
       Add "share multiget" for multiple arguments and return a list. (issue 12)
