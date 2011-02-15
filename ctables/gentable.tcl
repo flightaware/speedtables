@@ -1001,6 +1001,7 @@ variable boolSortSource {
 
 	  if (!row1->$fieldName && row2->$fieldName) {
 	      result = direction;
+	      break;
 	  }
 
 	  result = 0;

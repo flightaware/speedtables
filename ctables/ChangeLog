@@ -3,6 +3,8 @@
       the default string for an empty argument.  it should only do so if
       the default string is not empty.
 
+      Sorting on boolean fields now works.
+
 02/07/2011 bovine
     * Update build system to use autoconf (TEA 3.9) for better configurability
       and platform compatibility.

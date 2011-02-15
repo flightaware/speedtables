@@ -145,6 +145,8 @@ search_test_get "search with -get" {-compare {{> coolness 64}}} {{51 99} {41 101
 
 search_test "search where name is notnullnull" {-sort name -limit 5 -compare {{notnull name}}} {angel baron brak brock carr}
 
+search_test "search where age > 40 sort by boolean alive and name" {-sort "-alive name" -compare {{> age 40}}} {jonas carl rick dad jonas_jr orpheus mom phantom_limb rusty}
+
 search_test_countonly "search countOnly no compare" {} {31}
 
 search_test_countonly "search countOnly no compare limit" {-limit 10} {10}
