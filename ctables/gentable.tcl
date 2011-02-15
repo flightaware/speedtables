@@ -221,9 +221,9 @@ proc gen_allocate {ctable size {private 0} {may_fail 0}} {
     set priv [gen_allocate_private $ctable $size]
 
     if {$may_fail} {
-	set pub "${table}_allocate($ctable, $size)"
-    } else {
 	set pub "${table}_allocate_may_fail($ctable, $size)"
+    } else {
+	set pub "${table}_allocate($ctable, $size)"
     }
 
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
