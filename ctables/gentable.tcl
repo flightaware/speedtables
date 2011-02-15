@@ -835,7 +835,7 @@ variable fixedstringSetSource {
 [gen_null_check_during_set_source $table $fieldName]
 	string = Tcl_GetStringFromObj (obj, &len);
 [gen_unset_null_during_set_source $table $fieldName \
-	"if (len == 0 && [string length default]) string = \"$default\";
+	"if (len == 0 && [expr [string length $default] > 0]) string = \"$default\";
 	if (*string == *row->$fieldName && strncmp(row->$fieldName, string, $length) == 0)
 	    return TCL_OK;"]
 [gen_ctable_remove_from_index $fieldName]
