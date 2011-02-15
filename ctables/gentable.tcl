@@ -1547,23 +1547,23 @@ struct $table *${table}_make_row_struct () {
 // Must handle this in caller beacuse we're not passing an interpreter in
 //
 struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char *key, int *indexCtlPtr) {
-    struct $table *row = NULL;
-    static struct $table *nextRow = NULL;
     int flags = KEY_VOLATILE;
     char *key_value = key;
+    struct $table *row = NULL;
 
+    static struct $table *savedRow = NULL;
 #ifdef WITH_SHARED_TABLES
-    // If it's a shared table, the existing nextRow isn't usable
-    if(nextRow && ctable->share_type == CTABLE_SHARED_MASTER) {
-	ckfree((char *)nextRow);
-	nextRow = NULL;
-    }
+    static struct $table *savedSharedRow = NULL;
+    int isShared = ctable->share_type == CTABLE_SHARED_MASTER;
+    struct $table *nextRow = isShared ? savedSharedRow : savedRow;
+#else
+    struct $table *nextRow = savedRow;
 #endif
 
     // Make sure the preallocated row is prepared
     if(!nextRow) {
 #ifdef WITH_SHARED_TABLES
-        if(ctable->share_type == CTABLE_SHARED_MASTER) {
+        if(isShared) {
 	    nextRow = (struct $table *)shmalloc(ctable->share, sizeof(struct $table));
 	    if(!nextRow) {
 		if(ctable->share_panic) ${table}_shmpanic(ctable);
@@ -1578,7 +1578,7 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char
     }
 
 #ifdef WITH_SHARED_TABLES
-    if(ctable->share_type == CTABLE_SHARED_MASTER) {
+    if(isShared) {
         key_value = (char *)shmalloc(ctable->share, strlen(key)+1);
 	if(!key_value) {
 	    if(ctable->share_panic) ${table}_shmpanic(ctable);
@@ -1592,32 +1592,34 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char
 
     row = (struct $table *)ctable_StoreHashEntry (ctable->keyTablePtr, key_value, (ctable_HashEntry *)nextRow, flags, indexCtlPtr);
 
-    // If we used this row, forget the old row.
-    if(*indexCtlPtr)
+    // If we actually added a row, add it to the hash
+    if (*indexCtlPtr) {
+	ctable_ListInsertHead (&ctable->ll_head, (ctable_BaseRow *)row, 0);
+	ctable->count++;
+	// printf ("created new entry for '%s'\n", key);
+
+	// Discard the row we used
 	nextRow = NULL;
+    } else {
+	// printf ("found existing entry for '%s'\n", key);
+
 #ifdef WITH_SHARED_TABLES
-    else {
+	// Discard the copy of the key we used
 	if(flags == KEY_STATIC) {
 	    // Don't need to "shmfree" because the key was never made visible to
 	    // any readers.
 	    shmdealloc(ctable->share, key_value);
 	}
-	// Don't keep a row around if it's shared, and don't need to shmfree
-	// for the same reason
-	if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	    shmdealloc(ctable->share, (char *)nextRow);
-	    nextRow = NULL;
-	}
-    }
 #endif
-
-    if (*indexCtlPtr) {
-	ctable_ListInsertHead (&ctable->ll_head, (ctable_BaseRow *)row, 0);
-	ctable->count++;
-	// printf ("created new entry for '%s'\n", key);
-    } else {
-	// printf ("found existing entry for '%s'\n", key);
     }
+
+    // Remember what we allocated (or didn't).
+#ifdef WITH_SHARED_TABLES
+    if(isShared)
+	savedSharedRow = nextRow;
+    else
+#endif
+	savedRow = nextRow;
 
     return row;
 }

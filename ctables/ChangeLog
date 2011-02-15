@@ -1,3 +1,7 @@
+02/14/2011 peter
+    * Include change to ${table}_find_or_create to be sane and consistent
+      about shared versus non-shared preallocated memory.
+
 02/14/2011 karl
     * Update gentable.tcl - fixed-string set code would always substitute
       the default string for an empty argument.  it should only do so if
