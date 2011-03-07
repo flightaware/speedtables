@@ -36,8 +36,6 @@ namespace eval ctable {
     variable sanityChecks
     variable keyCompileVariables
 
-    set ctablePackageVersion 1.8.1
-
     # If loaded directly, rather than as a package
     if {![info exists srcDir]} {
 	set srcDir .
@@ -46,6 +44,11 @@ namespace eval ctable {
     source [file join $srcDir sysconfig.tcl]
 
     source [file join $srcDir config.tcl]
+
+    set ctablePackageVersion $sysconfig(ctablePackageVersion)
+
+    set withPgtcl [info exists sysconfig(pgtclprefix)]
+
 
     variable leftCurly
     variable rightCurly

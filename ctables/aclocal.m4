@@ -26,7 +26,8 @@ ctable_get_shlib_ld ()
 sysconfig_ld=`ctable_get_shlib_ld dummy`
 
 
-sysconfig_tcl_content="set sysconfig(cc) {$TCL_CC}
+sysconfig_tcl_content="set sysconfig(ctablePackageVersion) {$PACKAGE_VERSION}
+set sysconfig(cc) {$TCL_CC}
 set sysconfig(ccflags) {$TCL_DEFS $TCL_EXTRA_CFLAGS $TCL_INCLUDE_SPEC $CTABLES_CFLAGS}
 set sysconfig(warn) {$TCL_CFLAGS_WARNING}
 set sysconfig(ldflags) {$TCL_SHLIB_CFLAGS}

@@ -21,9 +21,6 @@
     # set to 1 to show compiler commands
     set showCompilerCommands 0
 
-    # set to 1 for pgTcl support
-    set withPgtcl 1
-
 # Less common parameters
 
     # set to 1 to run various sanity checks on rows
@@ -57,10 +54,5 @@
 
     # create files in a subdirectory
     set withSubdir 1
-
-# Last minute safety catch
-    if {![info exists sysconfig(pgtclprefix)]} {
-	set withPgtcl 0
-    }
 
 
