@@ -1,3 +1,6 @@
+03/07/2011 bovine
+    * Release as version 1.8
+
 02/14/2011 peter
     * Include change to ${table}_find_or_create to be sane and consistent
       about shared versus non-shared preallocated memory.

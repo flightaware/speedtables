@@ -1,6 +1,5 @@
-
-
-$Id$
+03/07/2011 bovine
+    * Release as version 1.8
 
 7/13/2008 peter
     Implemented "search ... -into localTable" and "search ... -buffer localTable".

@@ -1,5 +1,5 @@
-Speedtables ChangeLog
-=====================
+03/07/2011 bovine
+    * Release as version 1.8
 
 3/12/2010 peter
     Default ::stapi::debugging to 0 (change to 1 to enable debug messages)
@@ -41,7 +41,7 @@ Speedtables ChangeLog
 
 2/2/2009 karl
     Add support for the PostgreSQL "name" and "text" data types by mapping
-    them to ctable's "varstring".  
+    them to ctable's "varstring".
 
     Add support for the PostgreSQL "oid" data type by mapping it to ctable's
     "int".
