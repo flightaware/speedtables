@@ -76,7 +76,7 @@ TEA_SETUP_COMPILER
 # TEA_ADD_LIBS([])
 # TEA_ADD_CFLAGS([])
 # TEA_ADD_STUB_SOURCES([])
-TEA_ADD_TCL_SOURCES([ctable_client.tcl ctable_server.tcl])
+TEA_ADD_TCL_SOURCES([ctable_client.tcl ctable_server.tcl ctable_client_server.tcl sttp_buffer.tcl])
 
 
 

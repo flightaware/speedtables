@@ -4747,7 +4747,7 @@ done
 # TEA_ADD_CFLAGS([])
 # TEA_ADD_STUB_SOURCES([])
 
-    vars="ctable_client.tcl ctable_server.tcl"
+    vars="ctable_client.tcl ctable_server.tcl ctable_client_server.tcl sttp_buffer.tcl"
     for i in $vars; do
 	# check for existence, be strict because it is installed
 	if test ! -f "${srcdir}/$i" ; then
