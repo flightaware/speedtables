@@ -1,1 +1,5 @@
 pkgIndex.tcl
+Makefile
+config.log
+config.status
+autom4te.cache
