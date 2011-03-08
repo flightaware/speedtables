@@ -1001,4 +1001,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_server 1.8.1
+package provide st_server 1.8.2

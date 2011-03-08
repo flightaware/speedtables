@@ -344,5 +344,5 @@ namespace eval ::stapi {
   namespace import ::stapi::extend::*
 }
 
-package provide stapi_extend 1.8.1
+package provide stapi_extend 1.8.2
 
