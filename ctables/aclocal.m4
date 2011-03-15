@@ -18,6 +18,9 @@ AC_DEFUN([CTABLES_MAKE_SYSCONFIG_TCL], [
 AC_REQUIRE([TEA_PATH_TCLCONFIG])
 AC_REQUIRE([TEA_LOAD_TCLCONFIG])
 
+# Start by deleting any previous sysconfig.tcl
+rm -f sysconfig.tcl
+
 # Round-about way to get the ld command, which may reference "$@" on some platforms.
 ctable_get_shlib_ld ()
 {

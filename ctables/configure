@@ -7176,6 +7176,9 @@ $as_echo "${TCLSH_PROG}" >&6; }
 
 
 
+# Start by deleting any previous sysconfig.tcl
+rm -f sysconfig.tcl
+
 # Round-about way to get the ld command, which may reference "" on some platforms.
 ctable_get_shlib_ld ()
 {
