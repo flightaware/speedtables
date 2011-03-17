@@ -1,5 +1,5 @@
 #
-# Ctable Server 
+# Ctable Server
 #
 # $Id$
 #
@@ -280,7 +280,7 @@ proc remote_receive {sock myPort} {
 	}
     }
 
-    lassign $line ctableUrl line 
+    lassign $line ctableUrl line
 
     if {![info exists ctableUrlCache($ctableUrl)]} {
 	if [catch {
@@ -311,9 +311,6 @@ proc remote_receive {sock myPort} {
 	    # We've already closed the socket, done
 	    return
 	}
-
-	serverlog "$table: $result" \
-		"In ($sock) $ctableUrl $line" $ei"
 
 	variable hideErrorInfo
 	if {$hideErrorInfo} {
@@ -517,7 +514,7 @@ proc remote_invoke {sock table line port} {
 	set cmd $triggerCode($command:$table)
 	lappend cmd $table $ctable $command
 	switch [catch [concat $cmd $remoteArgs] result] {
-	    1 { 
+	    1 {
 		error $result $::errorInfo
 	    }
 	    2 { return $result }
