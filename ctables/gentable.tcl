@@ -289,13 +289,6 @@ proc gen_defaultEmptyString {ctable lvalue {private 0}} {
 }
 
 variable allocateSource {
-int ${table}_shmcheck(CTable *ctable)
-{
-    if(ctable->share_type == CTABLE_SHARED_MASTER)
-	return shmfreemem(ctable->share, 0) > ctable->share_min_free;
-    return 1;
-}
-
 void ${table}_shmpanic(CTable *ctable)
 {
     panic (

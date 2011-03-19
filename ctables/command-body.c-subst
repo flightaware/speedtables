@@ -217,9 +217,16 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
         }
     } else if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share) {
-	// If this might modify the table, inform the shared memory code.
-	if(!readonly[optIndex])
+	// If this might modify the table...
+	if(!readonly[optIndex]) {
+	    // Check for free space
+	    if(shmfreemem(ctable->share, 0) < ctable->share_min_free) {
+		Tcl_AppendResult (interp, "Free shared memory low.", NULL);
+		return TCL_ERROR;
+	    }
+	    // Inform the shared memory code that a write is starting
 	    begin_write(ctable);
+	}
     }
 #endif
 

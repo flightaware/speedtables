@@ -1,3 +1,15 @@
+03/19/2011 peter
+    * Track free memory in shared memory allocator. Verified that the tracking
+      is correct. Added "quick" option to "share free" to get "tracked" rather
+      than "calculated" bytes.
+
+    * Add option to creating master table "minfree bytes" (can use k, m, or g
+      suffix to bytes). Default is 10% of the table size, or at least 128k,
+      up to 8M.
+
+    * Check for minfree bytes before any Tcl command that can modify a master
+      table. Return TCL_ERROR "Free shared memory low." if so.
+
 03/08/2011 bovine
     * Add unified autoconf (TEA) system for all of speedtables (issue 15)
 
