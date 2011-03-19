@@ -156,17 +156,25 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, NUM_OPTIONS };
     static int readonly[NUM_OPTIONS] = {-1};
 
+    // Memory_allocating options - except for "index create" which
+    // has to be checked for explicitly.
+    static enum options shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_WRITE_TABSEP };
+    static int shmcheck[NUM_OPTIONS] = {-1};
+
     // First time through, make it a bitmap.
     if(shared_ok[0] == -1) {
 	int i;
 	for(i = 0; i < NUM_OPTIONS; i++) {
 	    shared_ok[i] = FALSE;
 	    readonly[i] = FALSE;
+	    shmcheck[i] = FALSE;
 	}
 	for(i = 0; shared_options[i] != NUM_OPTIONS; i++)
 	    shared_ok[shared_options[i]] = TRUE;
 	for(i = 0; readonly_options[i] != NUM_OPTIONS; i++)
 	    readonly[readonly_options[i]] = TRUE;
+	for(i = 0; shmcheck_options[i] != NUM_OPTIONS; i++)
+	    shmcheck[shmcheck_options[i]] = TRUE;
     }
 #endif
 
@@ -217,13 +225,16 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
         }
     } else if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share) {
-	// If this might modify the table...
-	if(!readonly[optIndex]) {
+	// If this might allocate shared memory
+	if(shmcheck[optIndex]) {
 	    // Check for free space
 	    if(shmfreemem(ctable->share, 0) < ctable->share_min_free) {
 		Tcl_AppendResult (interp, "Free shared memory low.", NULL);
 		return TCL_ERROR;
 	    }
+	}
+	// If this might modify the table...
+	if(!readonly[optIndex]) {
 	    // Inform the shared memory code that a write is starting
 	    begin_write(ctable);
 	}
@@ -1221,6 +1232,16 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  case SUBOPT_CREATE: {
 	    int depth = 20;
+
+#ifdef WITH_SHARED_TABLES
+	    if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share) {
+	        // Check for free space
+	        if(shmfreemem(ctable->share, 0) < ctable->share_min_free) {
+		    Tcl_AppendResult (interp, "Free shared memory low.", NULL);
+		    return TCL_ERROR;
+	        }
+	    }
+#endif
 
 	    if ((objc < 4) || (objc > 5)) {
 		Tcl_WrongNumArgs (interp, 3, objv, "fieldName ?depth?");
