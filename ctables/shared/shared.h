@@ -203,6 +203,7 @@ typedef struct _shm_t {
 // server-only fields:
     poolhead_t		*pools;
     volatile freeblock	*freelist;
+    size_t		 free_space;
     garbage		*garbage;
     poolhead_t		*garbage_pool;
     cell_t		 horizon;
@@ -244,6 +245,7 @@ void release_name(shm_t *share, char *symbol);
 int parse_size(char *s, size_t *ptr);
 int parse_flags(char *s);
 char *flags2string(int flags);
+size_t shmfreemem(shm_t *shm, int check);
 
 #define SYM_TYPE_STRING 1
 #define SYM_TYPE_DATA 0

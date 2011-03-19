@@ -72,8 +72,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    char		*share_name = NULL;
 	    int			 share_panic = TRUE;
 	    char		*raw_size = NULL;
+	    char		*raw_min_free = NULL;
 	    shm_t		*share = NULL;
 	    size_t		 share_size = 0;
+	    size_t		 share_min_free = 0;
 	    int			 share_flags = 0;
 	    CTable		*share_ctable = NULL;
 	    volatile reader	*share_reader = NULL;
@@ -129,6 +131,8 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			share_name = Tcl_GetString(listObjv[i+1]);
 		    else if(strcmp(key, "size") == 0)
 			raw_size = Tcl_GetString(listObjv[i+1]);
+		    else if(strcmp(key, "minfree") == 0)
+			raw_min_free = Tcl_GetString(listObjv[i+1]);
 		    else if(strcmp(key, "flags") == 0)
 			share_flags = parse_flags(Tcl_GetString(listObjv[i+1]));
 		    else if(strcmp(key, "panic") == 0) {
@@ -150,6 +154,19 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			}
 		    } else {
 			share_size = DEFAULT_SHARED_SIZE;
+		    }
+
+		    if(raw_min_free) {
+			if(!parse_size(raw_min_free, &share_min_free)) {
+			    Tcl_AppendResult(interp, "Bad free space, must be an integer optionally followed by 'k', 'm', 'g': ", raw_min_free, NULL);
+			    goto createError;
+			}
+		    } else {
+			share_min_free = share_size / 10;
+			if(share_min_free < MIN_MIN_FREE)
+			    share_min_free = MIN_MIN_FREE;
+			else if(share_min_free > MAX_MIN_FREE)
+			    share_min_free = MAX_MIN_FREE;
 		    }
 
 #ifdef SHARE_BASE
@@ -238,6 +255,8 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		ctable->share_file = NULL;
 
 	    ctable->share = share;
+
+	    ctable->share_min_free = share_min_free;
 
 	    ctable->share_ctable = share_ctable;
 
