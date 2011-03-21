@@ -1,3 +1,6 @@
+03/21/2011 peter
+    * Update manual for "minfree".
+
 03/19/2011 peter
     * Track free memory in shared memory allocator. Verified that the tracking
       is correct. Added "quick" option to "share free" to get "tracked" rather
