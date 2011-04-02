@@ -337,7 +337,7 @@ typedef struct ctableCreatorTable {
     CONST filterFunction_t  *filterFunctions;
     int			     nFilters;
 
-    void *(*make_empty_row) ();
+    void *(*make_empty_row) (struct ctableTable *ctable);
     void *(*find_row) (struct ctableTable *ctable, char *key);
 
     int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, void *row, int field, int indexCtl);
@@ -379,6 +379,7 @@ typedef struct ctableTable {
     int                                  autoRowNumber;
     int                                  destroying;
     int					 searching;
+    char				*nullKeyValue;
 #ifdef WITH_SHARED_TABLES
     int					 was_locked;
     char				*emptyString;

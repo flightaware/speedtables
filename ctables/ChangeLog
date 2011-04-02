@@ -1,3 +1,8 @@
+04/02/2011 peter
+    * Make sure that hashEntry.key always points to a valid string so that
+      if a row is deleted in the master while a reader is processing it,
+      it won't segfault.
+
 03/21/2011 peter
     * Update manual for "minfree".
 

@@ -219,6 +219,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		}
 		ctable->skipLists = NULL; // to tell if we can safely dealloc
 		ctable->defaultStrings = NULL;
+		ctable->nullKeyValue = NULL;
 		ctable->share_file = NULL;
 		ctable->share_name = NULL;
 		if(!add_symbol(share, share_name, (char *)ctable, SYM_TYPE_DATA)) {
@@ -237,7 +238,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->autoRowNumber = 0;
 	    ctable->destroying = 0;
 	    ctable->searching = 0;
+	    ctable->nullKeyValue = NULL;
 
+// The logic of this code here has become excessively convoluted
+// TODO - CLEAN IT THE HELL UP - peter
 #ifdef WITH_SHARED_TABLES
 	    ctable->share_type = share_type;
 	    ctable->share_panic = share_panic;
@@ -271,13 +275,23 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	    if(share_type == CTABLE_SHARED_READER) {
 		// use the skiplists and so on from the master.
+		ctable->nullKeyValue = ctable->share_ctable->nullKeyValue;
 		ctable->skipLists = ctable->share_ctable->skipLists;
 		ctable->ll_head = ctable->share_ctable->ll_head;
 		ctable->keyTablePtr = NULL;
 	    } else {
-		// create an array of pointers to possible skip lists,
-		// one per field
 	        if(share_type == CTABLE_SHARED_MASTER) {
+	            // Allocate, and initialize nullKeyValue
+	            ctable->nullKeyValue = (char *)shmalloc (share, sizeof "");
+		    if(!ctable->nullKeyValue) {
+		        if(share_panic) ${table}_shmpanic(ctable);
+		        TclShmError(interp, share_name);
+		        goto createError;
+		    }
+		    ctable->nullKeyValue[0] = '\0';
+
+		    // create an array of pointers to possible skip lists,
+		    // one per field
 	            ctable->skipLists = (jsw_skip_t **)shmalloc (share, creator->nFields * sizeof (jsw_skip_t *));
 		    if(!ctable->skipLists) {
 		        if(share_panic) ${table}_shmpanic(ctable);
@@ -333,6 +347,8 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	    if(share_type == CTABLE_SHARED_MASTER) {
 		if(ctable) {
+		    if(ctable->nullKeyValue)
+			shmfree(share, (void *)ctable->nullKeyValue);
 		    if(ctable->defaultStrings)
 			shmfree(share, (void *)ctable->defaultStrings);
 		    if(ctable->skipLists)

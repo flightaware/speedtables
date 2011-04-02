@@ -398,7 +398,7 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
     } else {
         // This shouldn't be possible, but just in case
 	ckfree(row->hashEntry.key);
-	row->hashEntry.key = NULL;
+	row->hashEntry.key = ctable->nullKeyValue;
     }
 
     // Insert existing row with new key
@@ -658,13 +658,13 @@ variable keySetSource {
       case $optname: {
         char *value = Tcl_GetString(obj);
 
-        if (row->hashEntry.key != NULL && *value == *row->hashEntry.key && strcmp(value, row->hashEntry.key) == 0)
+        if (row->hashEntry.key != ctable->nullKeyValue && *value == *row->hashEntry.key && strcmp(value, row->hashEntry.key) == 0)
 	    return TCL_OK;
 
 	switch (indexCtl) {
 	    case CTABLE_INDEX_PRIVATE: {
 		// fake hash entry for search
-		if(row->hashEntry.key) [gen_deallocate_private ctable row->hashEntry.key];
+		if(row->hashEntry.key != ctable->nullKeyValue) [gen_deallocate_private ctable row->hashEntry.key];
 		row->hashEntry.key = (char *)[gen_allocate_private ctable "strlen(value)+1"];
 		strcpy(row->hashEntry.key, value);
 		break;
@@ -1533,11 +1533,11 @@ variable keyCompSource {
 #####
 
 variable fieldObjSetSource {
-struct $table *${table}_make_row_struct () {
+struct $table *${table}_make_empty_row (CTable *ctable) {
     struct $table *row;
 
     row = (struct $table *)ckalloc (sizeof (struct $table));
-    ${table}_init (row);
+    ${table}_init (ctable, row);
 
     return row;
 }
@@ -1577,7 +1577,7 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char
 #endif
 	    nextRow = (struct $table *)ckalloc(sizeof(struct $table));
 
-        ${table}_init (nextRow);
+        ${table}_init (ctable, nextRow);
     }
 
 #ifdef WITH_SHARED_TABLES
@@ -2794,7 +2794,7 @@ proc gen_defaults_subr {struct} {
 
     set baseCopy ${struct}_basecopy
 
-    emit "void ${struct}_init(struct $struct *row) $leftCurly"
+    emit "void ${struct}_init(CTable *ctable, struct $struct *row) $leftCurly"
     emit "    static int firstPass = 1;"
     emit "    static struct $struct $baseCopy;"
     emit ""
@@ -2802,7 +2802,7 @@ proc gen_defaults_subr {struct} {
     emit "        int i;"
     emit "        firstPass = 0;"
     emit ""
-    emit "        $baseCopy.hashEntry.key = NULL;"
+    emit "        $baseCopy.hashEntry.key = ctable->nullKeyValue;"
 
     if {$withSharedTables} {
         emit "        $baseCopy._row_cycle = LOST_HORIZON;"
@@ -2975,7 +2975,7 @@ emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
 variable deleteRowHelperSource {
 void ${table}_deleteKey(CTable *ctable, struct ${table} *row, int free_shared)
 {
-    if(!row->hashEntry.key)
+    if(row->hashEntry.key == ctable->nullKeyValue)
 	return;
 
 #ifdef WITH_SHARED_TABLES
@@ -2985,18 +2985,18 @@ void ${table}_deleteKey(CTable *ctable, struct ${table} *row, int free_shared)
     } else
 #endif
     ckfree(row->hashEntry.key);
-    row->hashEntry.key = NULL;
+    row->hashEntry.key = ctable->nullKeyValue;
 }
  
 void ${table}_deleteHashEntry(CTable *ctable, struct ${table} *row)
 {
 #ifdef WITH_SHARED_TABLES
-    if(row->hashEntry.key && ctable->share_type == CTABLE_SHARED_MASTER) {
+    if(row->hashEntry.key != ctable->nullKeyValue && ctable->share_type == CTABLE_SHARED_MASTER) {
 	shmfree(ctable->share, (void *)row->hashEntry.key);
-	row->hashEntry.key = NULL;
+	row->hashEntry.key = ctable->nullKeyValue;
     }
 #endif
-    ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);
+    ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row, ctable->nullKeyValue);
 }
 }
 
@@ -3030,7 +3030,7 @@ proc gen_delete_subr {subr struct} {
     if {$withSharedTables} {
 	emit "        ${table}_deleteKey(ctable, row, TRUE);"
     }
-    emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row);"
+    emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row, ctable->nullKeyValue);"
     emit "        break;"
     emit "      case CTABLE_INDEX_FASTDELETE: // Key has already been deleted"
     emit "        break;"
