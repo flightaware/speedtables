@@ -3,6 +3,8 @@
       if a row is deleted in the master while a reader is processing it,
       it won't segfault.
 
+    * Fix shared memory tests to run cleanly without old Makefile.
+
 03/21/2011 peter
     * Update manual for "minfree".
 
