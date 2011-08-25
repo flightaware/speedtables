@@ -204,16 +204,39 @@ catch { ::itcl::delete class STDisplay }
 		puts "</PRE>"
 	}
 
-	# escape string for passage through CGI
-	# Substitute & first :)
+	# escape string for display within HTML
 	protected method escape_cgi {str} {
-		foreach \
-			src " &		   {\"}		 " \
-			dst { {\&amp;} {\&quot;} } {
-				regsub -all $src $str $dst str
-			}
-		return $str
+		if {[catch {escape_sgml_chars $str} result] == 0} {
+			# we were running under Apache Rivet and could use its existing command.
+			return $result
+		} else {
+			# TODO: this is not very good; it is probably missing some chars.
+			# Substitute & first :)
+			foreach \
+				src " &		   {\"}		 " \
+				dst { {\&amp;} {\&quot;} } {
+					regsub -all $src $str $dst str
+				}
+			return $str
+		}
 	}
+
+	# escape string for creation of a URL
+	protected method escape_url {str} {
+		if {[catch {escape_string $str} result] == 0} {
+			# we were running under Apache Rivet and could use its existing command.
+			return $result
+		} else {
+			# TODO: this is not very good; should also hex-encode many other things.
+			foreach \
+				src " &		   {\"}		 <       > " \
+				dst { {\&amp;} {\&quot;} {\&lt;} {\&gt;} } {
+					regsub -all $src $str $dst str
+				}
+			return $str
+		}
+	}
+
 
 	#
 	# read_css_file - parse and read in a CSS file so we can
@@ -587,7 +610,7 @@ catch { ::itcl::delete class STDisplay }
 		set cancel [button_image_src DIOFormCancelButton]
 
 		$form start -method post -name save_form
-		$form hidden pizza -value pepperoni
+		#$form hidden pizza -value pepperoni
 		hide_hidden_vars $form
 		hide_selection $form
 		$form hidden mode -value Save
@@ -1339,7 +1362,7 @@ catch { ::itcl::delete class STDisplay }
 
 	method showcsvform {query} {
 		$form start -method get
-		puts "<TR CLASS=DIOForm><TD CLASS=DIOForm VALIGN=MIDDLE WIDTH=100%>"
+		puts "<TR CLASS='DIOForm'><TD CLASS='DIOForm' VALIGN='MIDDLE' WIDTH='100%'>"
 		# save hidden vars
 		hide_hidden_vars $form
 
@@ -1412,7 +1435,7 @@ catch { ::itcl::delete class STDisplay }
 	}
 
 	method Main {} {
-		puts "<TABLE BORDER=0 WIDTH=100% CLASS=DIOForm>"
+		puts "<TABLE BORDER='0' WIDTH='100%' CLASS='DIOForm'>"
 
 		display_selection {"&nbsp;"} {}
 
@@ -1426,8 +1449,8 @@ catch { ::itcl::delete class STDisplay }
 			}
 		}
 
-		puts "<TR CLASS=DIOForm>"
-		puts "<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>"
+		puts "<TR CLASS='DIOForm'>"
+		puts "<TD CLASS='DIOForm' ALIGN='LEFT' VALIGN='MIDDLE' WIDTH='1%' NOWRAP>"
 
 		set selfunctions {}
 		foreach f $functions {
@@ -1452,7 +1475,7 @@ catch { ::itcl::delete class STDisplay }
 			}
 		}
 		puts "</TD>"
-		puts "<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>"
+		puts "<TD CLASS='DIOForm' ALIGN='LEFT' VALIGN='MIDDLE' WIDTH='1%' NOWRAP>"
 
 		puts "<DIV STYLE='display:none'>"
 		$form start -method get
@@ -1492,7 +1515,7 @@ catch { ::itcl::delete class STDisplay }
 		$form select by -values $labels -class DIOMainSearchBy
 
 		puts "</TD>"
-		puts "<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>"
+		puts "<TD CLASS='DIOForm' ALIGN='LEFT' VALIGN='MIDDLE' WIDTH='1%' NOWRAP>"
 		if [string match {*[Ss]earch*} $selfunctions] {
 			$form select how -values {"=" "<" "<=" ">" ">=" "<>"}
 		} else {
@@ -1500,7 +1523,7 @@ catch { ::itcl::delete class STDisplay }
 		}
 
 		puts "</TD>"
-		puts "<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=1% NOWRAP>"
+		puts "<TD CLASS='DIOForm' ALIGN='LEFT' VALIGN='MIDDLE' WIDTH='1%' NOWRAP>"
 		if [info exists response(query)] {
 			$form text query -value [escape_cgi $response(query)] -class DIOMainQuery
 		} else {
@@ -1508,7 +1531,7 @@ catch { ::itcl::delete class STDisplay }
 		}
 
 		puts "</TD>"
-		puts "<TD CLASS=DIOForm ALIGN=LEFT VALIGN=MIDDLE WIDTH=100% NOWRAP>"
+		puts "<TD CLASS='DIOForm' ALIGN='LEFT' VALIGN='MIDDLE' WIDTH='100%' NOWRAP>"
 
 		if [string match {*[sS]earch*} $selfunctions] {
 			display_add_button $form
@@ -1524,7 +1547,7 @@ catch { ::itcl::delete class STDisplay }
 
 		if {![lempty $numresults]} {
 			puts "</TD></TR>"
-			puts "<TR CLASS=DIOForm><TD CLASS=DIOForm>Results per page: "
+			puts "<TR CLASS='DIOForm'><TD CLASS='DIOForm'>Results per page: "
 			$form select num -values $numresults -class DIOMainNumResults
 		}
 
@@ -1612,14 +1635,14 @@ catch { ::itcl::delete class STDisplay }
 			return
 		}
 		set span [expr {4 + [llength $precells] + [llength $postcells]}]
-		puts "<TR><TD CLASS=DIOFormHeader COLSPAN=$span>"
-		puts "<font color=#444444><b>Current filters:</b></font>"
-		puts "</TD></TR>"
+		puts "<TR><TD CLASS='DIOFormHeader' COLSPAN='$span'>"
+		puts {<font color="#444444"><b>Current filters:</b></font>}
+		puts {</TD></TR>}
 		foreach search $selection {
 			foreach {how col what} $search { break }
-			puts "<TR CLASS=DIOSelect>"
+			puts {<TR CLASS="DIOSelect">}
 			set f [::form #auto]
-			puts "<DIV STYLE='display:none'>"
+			puts {<DIV STYLE="display:none">}
 			$f start -method get
 			puts "</DIV>"
 			hide_hidden_vars $f
@@ -1632,26 +1655,26 @@ catch { ::itcl::delete class STDisplay }
 			}
 
 			foreach cell $precells {
-				puts "<TD CLASS=DIOSelect WIDTH=1%>$cell</TD>"
+				puts "<TD CLASS='DIOSelect' WIDTH='1%'>$cell</TD>"
 			}
 			foreach \
 				cell [list [DName $col] $how $what] \
 				align {right middle left} \
 				{
-					puts "<TD CLASS=DIOSelect ALIGN=$align WIDTH=1%>$cell</TD>"
+					puts "<TD CLASS='DIOSelect' ALIGN='$align' WIDTH='1%'>[escape_cgi $cell]</TD>"
 				}
-			puts "<TD CLASS=DIOSelect WIDTH=100% ALIGN=LEFT>"
+			puts {<TD CLASS="DIOSelect" WIDTH="100%" ALIGN="LEFT">}
 			$f submit mode -value "-" -class DIOForm
 			puts "</TD>"
 			foreach cell $postcells {
-				puts "<TD CLASS=DIOSelect>$cell</TD>"
+				puts "<TD CLASS='DIOSelect'>$cell</TD>"
 			}
 			puts "<DIV STYLE='display:none'>"
 			$f end
 			puts "</DIV>"
 			puts "</TR>"
 		}
-		puts "<TR><TD CLASS=DIOFormHeader COLSPAN=$span>"
+		puts "<TR><TD CLASS='DIOFormHeader' COLSPAN='$span'>"
 		puts ""
 		puts "</TD></TR>"
 	}
@@ -1851,20 +1874,21 @@ catch { ::itcl::delete class STDisplay }
 		headers redirect [document]
 	}
 
+	# return a URL containing all of the current state
 	protected method document {{extra {}}} {
 		set url $document
 		set ch "?"
 		foreach {n v} $extra {
-			append url $ch $n = $v
+			append url $ch $n = [escape_url $v]
 			set ch "&"
 		}
 		foreach {n v} [array get hidden] {
-			append url $ch $n = [escape_cgi $v]
+			append url $ch $n = [escape_url $v]
 			set ch "&"
 		}
 		set selection [get_selection 0]
 		if [llength $selection] {
-			append url $ch ct_sel = $selection
+			append url $ch ct_sel = [escape_url $selection]
 			set ch "&"
 		}
 		return $url
@@ -1883,12 +1907,12 @@ catch { ::itcl::delete class STDisplay }
 
 		puts "<CENTER>"
 		puts {<TABLE CLASS="DIODeleteConfirm">}
-		puts "<TR CLASS=DIODeleteConfirm>"
+		puts "<TR CLASS='DIODeleteConfirm'>"
 		puts {<TD COLSPAN=2 CLASS="DIODeleteConfirm">}
 		puts "Are you sure you want to delete this record from the database?"
 		puts "</TD>"
 		puts "</TR>"
-		puts "<TR CLASS=DIODeleteConfirmYesButton>"
+		puts "<TR CLASS='DIODeleteConfirmYesButton'>"
 		puts {<TD ALIGN="center" CLASS="DIODeleteConfirmYesButton">}
 		set f [::form #auto]
 		$f start -method post
