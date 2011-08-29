@@ -1,3 +1,6 @@
+08/25/2011 bovine
+    * Improved URL escapement issues with unsafe characters stapi/display
+
 03/08/2011 bovine
     * Add unified autoconf (TEA) system for all of speedtables (issue 15)
 
