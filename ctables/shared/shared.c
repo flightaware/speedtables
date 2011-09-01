@@ -635,10 +635,17 @@ void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    set 0x%lX->prev = 0x%lX\n", (long)next, (long)prev);)
     next->prev = prev;
 
+#if 1
+    // Adjust the start of the freelist to point to the block
+    // prior to the one we just removed.  This ensures that we'll
+    // avoid wasting time always walking over the same tiny blocks.
+    shm->freelist = prev;
+#else
     if(shm->freelist == block) {
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    set freelist = 0x%lX\n", (long)next);)
         shm->freelist = next;
     }
+#endif
 }
 
 // Add a block of memory to the list of free memory available for immediate reuse.
