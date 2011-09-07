@@ -7241,27 +7241,34 @@ set sysconfig(pqprefix) $prefix"
     continue
   fi
 
+  # there may be multiple installed versions of pgtcl so sort with the highest version first.
+  pg_libdirs=`find $prefix/lib -maxdepth 1 -name "pgtcl*.*" -type d | sort -rn`
+  if test -z "$pg_libdirs"; then
+     continue
+  fi
+
   # look for pgtcl-ng before pgtcl
-  for dir in $prefix/lib/pgtcl?.?.?
+  pgtclver=""
+  for dir in $pg_libdirs
   do
     if test -f $dir/pkgIndex.tcl; then
-      pgtclver="`expr $dir : $prefix/lib/pgtcl'\(.*\)'`"
-sysconfig_tcl_content="$sysconfig_tcl_content
-set sysconfig(pgtclver) $pgtclver
-set sysconfig(pgtclprefix) $prefix"
+      pgtclver=`basename /usr/local/lib/pgtcl1.8 | sed s/^pgtcl//`
+      sysconfig_tcl_content="$sysconfig_tcl_content
+      set sysconfig(pgtclver) $pgtclver
+      set sysconfig(pgtclprefix) $prefix"
       break
     fi
   done
 
   # look for pgtcl
   if test -z "$pgtclver"; then
-    for dir in $prefix/lib/pgtcl?.?
+    for dir in $pg_libdirs
     do
       if test -f $dir/pgtcl.tcl; then
-        pgtclver="`expr $dir : $prefix/lib/pgtcl'\(.*\)'`"
-sysconfig_tcl_content="$sysconfig_tcl_content
-set sysconfig(pgtclver) $pgtclver
-set sysconfig(pgtclprefix) $prefix"
+        pgtclver=`basename /usr/local/lib/pgtcl1.8 | sed s/^pgtcl//`
+        sysconfig_tcl_content="$sysconfig_tcl_content
+        set sysconfig(pgtclver) $pgtclver
+        set sysconfig(pgtclprefix) $prefix"
 	break
       fi
     done
