@@ -2,6 +2,11 @@
     * Make ctable/configure detect the highest version of pgtcl found
       when --with-pgsql is specified.
 
+09/01/2011 bovine
+    * Adjust the head of the shmem freelist to a position near the
+      successful allocation, to try to improve the performance of
+      subsequent allocation requests (issue 22)
+
 04/02/2011 peter
     * Make sure that hashEntry.key always points to a valid string so that
       if a row is deleted in the master while a reader is processing it,
