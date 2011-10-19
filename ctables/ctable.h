@@ -37,6 +37,8 @@
 #include "shared.c"
 
 #define DEFAULT_SHARED_SIZE (1024*1024*4)
+#define MIN_MIN_FREE (1024*128)
+#define MAX_MIN_FREE (1024*1024*8)
 
 // How often do we allow the shared memory search to restart
 #define MAX_RESTARTS 1000
@@ -335,7 +337,7 @@ typedef struct ctableCreatorTable {
     CONST filterFunction_t  *filterFunctions;
     int			     nFilters;
 
-    void *(*make_empty_row) ();
+    void *(*make_empty_row) (struct ctableTable *ctable);
     void *(*find_row) (struct ctableTable *ctable, char *key);
 
     int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, void *row, int field, int indexCtl);
@@ -377,6 +379,7 @@ typedef struct ctableTable {
     int                                  autoRowNumber;
     int                                  destroying;
     int					 searching;
+    char				*nullKeyValue;
 #ifdef WITH_SHARED_TABLES
     int					 was_locked;
     char				*emptyString;
@@ -387,6 +390,7 @@ typedef struct ctableTable {
     char				*share_name;
     char				*share_file;
     shm_t                               *share;
+    size_t				 share_min_free;
 // reader-only
     volatile struct ctableTable		*share_ctable;
     volatile reader			*my_reader;

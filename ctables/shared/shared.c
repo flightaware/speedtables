@@ -402,6 +402,7 @@ IFDEBUG(init_debug();)
     shm->garbage = NULL;
     shm->garbage_pool = NULL;
     shm->freelist = NULL;
+    shm->free_space = 0;
     shm->pools = NULL;
     shm->horizon = LOST_HORIZON;
 
@@ -634,10 +635,17 @@ void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    set 0x%lX->prev = 0x%lX\n", (long)next, (long)prev);)
     next->prev = prev;
 
+#if 1
+    // Adjust the start of the freelist to point to the block
+    // prior to the one we just removed.  This ensures that we'll
+    // avoid wasting time always walking over the same tiny blocks.
+    shm->freelist = prev;
+#else
     if(shm->freelist == block) {
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    set freelist = 0x%lX\n", (long)next);)
         shm->freelist = next;
     }
+#endif
 }
 
 // Add a block of memory to the list of free memory available for immediate reuse.
@@ -694,8 +702,10 @@ static void shmdump(shm_t *shm)
 }
 
 // Return estimate of free memory available.  Does not include memory waiting to be garbage collected.
-size_t shmfreemem(shm_t *shm)
+size_t shmfreemem(shm_t *shm, int check)
 {
+    if(!check) return shm->free_space;
+
     freeblock *freelist = (freeblock *)shm->freelist;
     freeblock *freebase = freelist;
     size_t freemem = 0;
@@ -754,6 +764,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
                 left = 0;
             }
 
+	    shm->free_space -= used;
 //IFDEBUG(fprintf(SHM_DEBUG_FP, "    removing block size %d\n", used);)
             remove_from_freelist(shm, block);
             setfree(block, used, FALSE);
@@ -798,7 +809,7 @@ if (0) {
 }
 // Change to "if(1)" to dump shared memory when done
 if (0) {
-  fprintf(stderr, "shmalloc_raw(shm, 0x%08lx) failed\n", (long)nbytes);
+  fprintf(stderr, "_shmalloc(shm, 0x%08lx) failed\n", (long)nbytes);
   shmdump(shm);
 }
 
@@ -952,6 +963,8 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc_raw(shm=0x%lX, memory=0x%lX);\n", (lon
         shmpanic("freeing freed block");
 
     size = -size;
+
+    shm->free_space += size;
 
     // merge previous freed blocks
     while(!is_prev_sentinal(block)) {
@@ -1551,7 +1564,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     shm_t       *share     = NULL;
 
     static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "pools", "pool", "free", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_POOLS, CMD_POOL, CMD_FREE};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_POOLS, CMD_POOL, CMD_FREE };
 
     static CONST struct {
         int need_share;         // if a missing share is an error
@@ -1569,7 +1582,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         {1,  3, ""}, // CMD_INFO
         {1,  3, ""}, // CMD_POOLS
         {1,  6, "size blocks/chunk max_chunks"}, // CMD_POOL
-        {1,  3, ""} // CMD_FREE
+        {1,  -3, "?quick?"} // CMD_FREE
     };
 
     if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
@@ -1833,7 +1846,9 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
         case CMD_FREE: {
             // TODO: this could be a compile-time selection.
-            size_t memfree = shmfreemem(share);
+	    // TODO: actually test if objv[3] == 'quick'
+            size_t memfree = shmfreemem(share, objc<=3);
+
             if (sizeof(size_t) > sizeof(int)) {
                 Tcl_SetObjResult(interp, Tcl_NewWideIntObj(memfree));
             } else {
@@ -1841,7 +1856,6 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             }
             return TCL_OK;
         }
-
     }
     Tcl_AppendResult(interp, "Should not happen, internal error: no defined subcommand or missing break in switch", NULL);
     return TCL_ERROR;

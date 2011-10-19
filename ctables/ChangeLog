@@ -1,3 +1,47 @@
+09/07/2011 bovine
+    * Make ctable/configure detect the highest version of pgtcl found
+      when --with-pgsql is specified.
+
+09/01/2011 bovine
+    * Adjust the head of the shmem freelist to a position near the
+      successful allocation, to try to improve the performance of
+      subsequent allocation requests (issue 22)
+
+04/02/2011 peter
+    * Make sure that hashEntry.key always points to a valid string so that
+      if a row is deleted in the master while a reader is processing it,
+      it won't segfault.
+
+    * Fix shared memory tests to run cleanly without old Makefile.
+
+03/21/2011 peter
+    * Update manual for "minfree".
+
+03/19/2011 peter
+    * Track free memory in shared memory allocator. Verified that the tracking
+      is correct. Added "quick" option to "share free" to get "tracked" rather
+      than "calculated" bytes.
+
+    * Add option to creating master table "minfree bytes" (can use k, m, or g
+      suffix to bytes). Default is 10% of the table size, or at least 128k,
+      up to 8M.
+
+    * Check for minfree bytes before any Tcl command that can modify a master
+      table. Return TCL_ERROR "Free shared memory low." if so.
+
+03/08/2011 bovine
+    * Add unified autoconf (TEA) system for all of speedtables (issue 15)
+
+    * Release as version 1.8.2
+
+03/07/2011 bovine
+    * Update another version number in gentable.tcl
+
+    * Release as version 1.8.1
+
+03/07/2011 bovine
+    * Release as version 1.8
+
 02/14/2011 peter
     * Include change to ${table}_find_or_create to be sane and consistent
       about shared versus non-shared preallocated memory.

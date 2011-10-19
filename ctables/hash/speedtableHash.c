@@ -132,7 +132,6 @@ ctable_InitOrStoreHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
     CONST char *key,		/* Key to use to find or create matching
 				 * entry. */
-    ctable_HashEntry *(*make_row_func)(), /* if not null, allocator */
     ctable_HashEntry *newEntry,	/* if not null, use this entry */
     int flags,			/* options */
     int *newPtr)		/* Store info here telling whether a new entry
@@ -168,10 +167,8 @@ ctable_InitOrStoreHashEntry(
 
     if (newEntry)
 	hPtr = newEntry;
-    else if (make_row_func)
-	hPtr = (*make_row_func)();
     else
-	return NULL; /* Can't allocate OR re-use */
+	return NULL; /* Can't allocate */
 
     /*
      * Entry not found. Add a new one to the bucket.
@@ -231,12 +228,11 @@ ctable_InitHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
     CONST char *key,		/* Key to use to find or create matching
 				 * entry. */
-    ctable_HashEntry *(*make_row_func)(), /* allocator */
     int *newPtr)		/* Store info here telling whether a new entry
 				 * was created. */
 {
     return
-	ctable_InitOrStoreHashEntry(tablePtr, key, make_row_func, NULL, 0, newPtr);
+	ctable_InitOrStoreHashEntry(tablePtr, key, NULL, 0, newPtr);
 }
 
 /*
@@ -273,7 +269,7 @@ ctable_StoreHashEntry(
 				 * was created. */
 {
     return
-	ctable_InitOrStoreHashEntry(tablePtr, key, NULL, newEntry, flags, newPtr);
+	ctable_InitOrStoreHashEntry(tablePtr, key, newEntry, flags, newPtr);
 }
 
 
@@ -299,8 +295,7 @@ ctable_FindHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
     CONST char *key)		/* Key to use to find matching entry. */
 {
-
-    return ctable_InitHashEntry (tablePtr, key, NULL, NULL);
+    return ctable_InitHashEntry (tablePtr, key, NULL);
 }
 
 /*
@@ -321,7 +316,7 @@ ctable_FindHashEntry(
  *----------------------------------------------------------------------
  */
 void
-ctable_DeleteHashEntry(ctable_HashTable *tablePtr, ctable_HashEntry *entryPtr)
+ctable_DeleteHashEntry(ctable_HashTable *tablePtr, ctable_HashEntry *entryPtr, char *nullKeyValue)
 {
     register ctable_HashEntry *prevPtr;
     ctable_HashEntry **bucketPtr;
@@ -347,7 +342,7 @@ ctable_DeleteHashEntry(ctable_HashTable *tablePtr, ctable_HashEntry *entryPtr)
 
     tablePtr->numEntries--;
 
-    if(entryPtr->key)
+    if(entryPtr->key != nullKeyValue)
         ckfree (entryPtr->key);
 }
 

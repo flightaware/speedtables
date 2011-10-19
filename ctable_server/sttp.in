@@ -1,6 +1,4 @@
-#!/usr/bin/env tclsh8.4
-# $Id$
-
+#!@TCLSH_PROG@
 
 package require ctable_client
 

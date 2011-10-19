@@ -29,4 +29,4 @@ proc stapi_display_test {} {
   }
 }
 
-package provide st_display_test 1.0
+package provide st_display_test 1.8.2

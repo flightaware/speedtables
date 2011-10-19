@@ -600,5 +600,5 @@ proc maketable {cttpUrl sock} {
   return [::sttp_buffer::table $cttpUrl]
 }
 
-package provide ctable_client 1.0
+package provide ctable_client 1.8.2
 

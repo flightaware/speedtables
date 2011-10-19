@@ -82,5 +82,5 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_shared 1.0
+package provide st_shared 1.8.2
 

@@ -231,4 +231,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_postgres 1.0
+package provide st_postgres 1.8.2

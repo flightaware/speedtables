@@ -281,7 +281,7 @@ CTABLE_INTERNAL int ctable_CreateInRows(Tcl_Interp *interp, CTable *ctable, CTab
     }
 
     for(i = 0; i < component->inCount; i++) {
-	component->inListRows[i] = (*ctable->creator->make_empty_row) ();
+	component->inListRows[i] = (*ctable->creator->make_empty_row) (ctable);
 
 	if ((*ctable->creator->set) (interp, ctable, component->inListObj[i], component->inListRows[i], component->fieldID, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 	    Tcl_AddErrorInfo (interp, "\n    while processing \"in\" compare function");
@@ -399,13 +399,13 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		    goto err;
 		}
 
-		row = (*ctable->creator->make_empty_row) ();
+		row = (*ctable->creator->make_empty_row) (ctable);
 		if ((*ctable->creator->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 		    goto err;
 		}
 		component->row1 = row;
 
-		row = (*ctable->creator->make_empty_row) ();
+		row = (*ctable->creator->make_empty_row) (ctable);
 		if ((*ctable->creator->set) (interp, ctable, termList[3], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 		    goto err;
 		}
@@ -449,7 +449,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		    if(i > 0) {
 		        prefix[i] = '\0';
 
-		        row = (*ctable->creator->make_empty_row) ();
+		        row = (*ctable->creator->make_empty_row) (ctable);
 	    		if ((*ctable->creator->set) (interp, ctable, Tcl_NewStringObj (prefix, -1), row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 			    goto err;
 	    	        }
@@ -458,7 +458,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 			// Now set up row3 as the first non-matching string
 			prefix[i-1]++;
 
-		        row = (*ctable->creator->make_empty_row) ();
+		        row = (*ctable->creator->make_empty_row) (ctable);
 	    		if ((*ctable->creator->set) (interp, ctable, Tcl_NewStringObj (prefix, -1), row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 			    goto err;
 	    	        }
@@ -473,7 +473,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
 	    /* stash what we want to compare to into a row as in "range"
 	     */
-	    row = (*ctable->creator->make_empty_row) ();
+	    row = (*ctable->creator->make_empty_row) (ctable);
 	    if ((*ctable->creator->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
 		goto err;
 	    }

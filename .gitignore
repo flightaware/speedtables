@@ -1,1 +1,4 @@
-ctables/gentable_stub.tcl
+Makefile
+autom4te.cache
+config.log
+config.status
