@@ -18,7 +18,7 @@ proc split_ctable_url {cttpUrl} {
 
     # crack out host:port from the rest
     if {![regexp -nocase {^(ctable|sttp)://(.*?)/(.*)$} $cttpUrl dummy proto hostPort theRest]} {
-	error "invalid URL syntax, should be proto://host?:port?/?dir/?table??stuff?"
+	error "invalid URL syntax in '$cttpUrl', should be proto://host?:port?/?dir/?table??stuff?"
     }
 
     # crack host:port into host and port and if port is empty set it to 
