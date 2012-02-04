@@ -1401,7 +1401,7 @@ int parse_flags(char *s)
 {
     int   flags = DEFAULT_FLAGS;
 
-#ifdef WITH_FLAGS
+#if defined(WITH_FLAGS) && (defined(MAP_NOCORE) || defined(MAP_NOSYNC))
     while(*s) {
         char *word;
         while(isspace((unsigned char)*s)) s++;
