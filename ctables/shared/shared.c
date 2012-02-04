@@ -1399,11 +1399,11 @@ int parse_size(char *s, size_t *ptr)
 
 int parse_flags(char *s)
 {
-    char *word;
     int   flags = DEFAULT_FLAGS;
 
 #ifdef WITH_FLAGS
     while(*s) {
+        char *word;
         while(isspace((unsigned char)*s)) s++;
 
         word = s;
