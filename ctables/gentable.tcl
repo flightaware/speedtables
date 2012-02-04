@@ -337,7 +337,7 @@ void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, char
     if(indexCtl != CTABLE_INDEX_NEW) {
 	if(ctable->share_type == CTABLE_SHARED_MASTER || ctable->share_type == CTABLE_SHARED_READER) {
 	    if(ctable->share == NULL)
-		panic("%s: ctable->share_type = %d but ctable->share = NULL", where);
+		panic("%s: ctable->share_type = %d but ctable->share = NULL", where, ctable->share_type);
 	    if((char *)ptr < (char *)ctable->share->map)
 		panic("%s: ctable->share->map = 0x%lX but ptr == 0x%lX", where, (long)ctable->share->map, (long)ptr);
 	    if((char *)ptr - (char *)ctable->share->map > ctable->share->size)
