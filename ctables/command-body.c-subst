@@ -158,7 +158,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
     // Memory_allocating options - except for "index create" which
     // has to be checked for explicitly.
-    static enum options shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_WRITE_TABSEP };
+    static enum options shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_WRITE_TABSEP, NUM_OPTIONS };
     static int shmcheck[NUM_OPTIONS] = {-1};
 
     // First time through, make it a bitmap.
