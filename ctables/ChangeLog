@@ -1,3 +1,10 @@
+02/26/2012 bovine
+    * Unify function exports to accomodate compilation with Tcl 8.6
+      under gcc 4 (issues 13, 23).
+
+    * Fix possible segfault during initialization of enums in
+      shared-memory tables.
+
 09/07/2011 bovine
     * Make ctable/configure detect the highest version of pgtcl found
       when --with-pgsql is specified.
@@ -209,7 +216,7 @@
 
 7/2/2009 peter
     * Make all possible symbols static with a CTABLE_INTERNAL macro, unless
-      fullStatic is set to 0 in sonfig.tcl (possible debug reasons?)
+      fullStatic is set to 0 in config.tcl (possible debug reasons?)
     * The Great Renaming:
 	* CExtension -> speedtables
 	* CTable -> table

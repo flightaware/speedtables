@@ -4788,12 +4788,22 @@ proc gen_preamble {} {
 	emit "#define INLINE"
     }
     if {$fullStatic} {
+	# Make all possible symbols static except for explicitly exported ones.
 	emit "#define CTABLE_INTERNAL static"
-	emit "#define CTABLE_EXTERNAL"
+	emit "#define CTABLE_EXTERNAL extern"
+	emit "#if defined(__GNUC__) && (__GNUC__ >= 4)"
+	emit "  #define CTABLE_EXTERNAL2 __attribute__ ((visibility (\"default\")))"
+	emit "#elif defined(_WIN32) || defined(__CYGWIN__)"
+	emit "  #define CTABLE_EXTERNAL2 __declspec(dllexport)"
+	emit "#else"
+	emit "  #define CTABLE_EXTERNAL2"
+	emit "#endif"
 	emit "#define FULLSTATIC"
     } else {
+	# Leave all symbols exported.
 	emit "#define CTABLE_INTERNAL"
 	emit "#define CTABLE_EXTERNAL extern"
+	emit "#define CTABLE_EXTERNAL2"
     }
     emit ""
     if {$withPgtcl} {

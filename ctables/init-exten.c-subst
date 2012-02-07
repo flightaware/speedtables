@@ -11,7 +11,7 @@
  *
  */
 
-EXTERN int
+CTABLE_EXTERNAL int
 ${extension}_Init(Tcl_Interp *interp);
 
 static int
@@ -69,7 +69,7 @@ cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
  *----------------------------------------------------------------------
  */
 
-EXTERN int
+CTABLE_EXTERNAL int CTABLE_EXTERNAL2
 ${extension}_SafeInit(Tcl_Interp *interp)
 {
     return ${extension}_Init (interp);
@@ -96,7 +96,7 @@ ${extension}_SafeInit(Tcl_Interp *interp)
  *----------------------------------------------------------------------
  */
 
-EXTERN int
+CTABLE_EXTERNAL int CTABLE_EXTERNAL2
 ${extension}_Init(Tcl_Interp *interp)
 {
     ctable_CreatorTable       *t;
