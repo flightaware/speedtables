@@ -1,3 +1,9 @@
+
+03/19/2012 karl
+    * Add introspection capability.  The name of the extension created,
+      already a command, now has a new suboption, "tables", which will
+      return a list of all the table definitions created by the extension.
+
 02/26/2012 bovine
     * Unify function exports to accomodate compilation with Tcl 8.6
       under gcc 4 (issues 13, 23).

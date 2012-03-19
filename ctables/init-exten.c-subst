@@ -20,12 +20,12 @@ cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
  
  
     static CONST char *options[] = {
-        "definition", "builder_version", (char *)NULL
+        "definition", "builder_version", "tables", (char *)NULL
     };
  
     enum options
     {
-        OPT_DEFINITION, OPT_VERSION
+        OPT_DEFINITION, OPT_VERSION, OPT_TABLES
     };
 
     if (objc != 2) {
@@ -45,6 +45,12 @@ cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
 
 	case OPT_VERSION: {
 	    Tcl_SetStringObj (Tcl_GetObjResult (interp), ctablePackageVersion, -1);
+	    break;
+	}
+
+	case OPT_TABLES: {
+	    // return a list of tables defined by this extension
+	    Tcl_SetStringObj (Tcl_GetObjResult (interp), "$tables", -1);
 	    break;
 	}
     }
