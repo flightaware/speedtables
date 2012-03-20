@@ -84,6 +84,8 @@ int ${table}_destroy_ctable (Tcl_Interp *interp, CTable *ctable)
 	return TCL_ERROR;
     }
 
+    LIST_REMOVE (ctable, instance);
+
     if (interp != NULL) {
 	// mark that we're already destorying the ctable so that the
 	// delete callback will know not to recursively call us.

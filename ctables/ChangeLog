@@ -4,6 +4,10 @@
       already a command, now has a new suboption, "tables", which will
       return a list of all the table definitions created by the extension.
 
+    * A new suboption to a speedtable table creator command, "instances", 
+      will now return a list of all of the instances of tables created by 
+      that table creator that currently exist.
+
 02/26/2012 bovine
     * Unify function exports to accomodate compilation with Tcl 8.6
       under gcc 4 (issues 13, 23).

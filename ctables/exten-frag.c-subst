@@ -66,6 +66,8 @@
 
     t->command = ${table}ObjCmd;
 
+    LIST_INIT(&t->instances);
+
 #ifdef SANITY_CHECKS
     t->sanity_check_pointer = ${table}_sanity_check_pointer;
 #endif
