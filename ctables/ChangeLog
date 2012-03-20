@@ -1,5 +1,5 @@
 
-03/19/2012 karl
+03/20/2012 karl
     * Add introspection capability.  The name of the extension created,
       already a command, now has a new suboption, "tables", which will
       return a list of all the table definitions created by the extension.
@@ -7,6 +7,15 @@
     * A new suboption to a speedtable table creator command, "instances", 
       will now return a list of all of the instances of tables created by 
       that table creator that currently exist.
+
+    * A new global variable, speedtablePackages, is appended with the 
+      package name of each speedtables-generated package required by
+      the Tcl program.  
+      
+      It's a little bit of a cheesy way to get the top level of 
+      introspection but the problem is that there's no overarching
+      speedtable package to contain a command to introspect the
+      packages.
 
 02/26/2012 bovine
     * Unify function exports to accomodate compilation with Tcl 8.6

@@ -108,6 +108,7 @@ ${extension}_Init(Tcl_Interp *interp)
     ctable_CreatorTable       *t;
     Tcl_HashTable             *hashTablePtr;
     int                        i;
+    Tcl_Obj                   *extensionsListObj;
 
     /*
      * This may work with 8.0, but we are using strictly stubs here,
@@ -130,5 +131,20 @@ ${extension}_Init(Tcl_Interp *interp)
 	return TCL_ERROR;
     }
 
+    /*
+     * Append the extenion to a list of extensions stored in a global variable
+     */
+    extensionsListObj = Tcl_GetVar2Ex (interp, "speedtablePackages", NULL, TCL_GLOBAL_ONLY);
+    if (extensionsListObj == NULL) {
+        extensionsListObj = Tcl_NewObj();
+	if (Tcl_SetVar2Ex (interp, "speedtablePackages", NULL, extensionsListObj, (TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG)) == NULL) {
+	    return TCL_ERROR;
+	}
+    }
+    Tcl_ListObjAppendElement (interp, extensionsListObj, Tcl_NewStringObj("${extension}", -1));
+
+    /* create a command mirroring the extension name to allow introspection
+     * into the extension
+     */
     Tcl_CreateObjCommand (interp, "${extension}", (Tcl_ObjCmdProc *)cExtensionObjCmd, (ClientData)NULL, (Tcl_CmdDeleteProc *)NULL);
 
