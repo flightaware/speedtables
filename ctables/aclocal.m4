@@ -92,7 +92,7 @@ set sysconfig(pqprefix) $prefix"
   for dir in $pg_libdirs
   do
     if test -f $dir/pkgIndex.tcl; then
-      pgtclver=`basename /usr/local/lib/pgtcl1.8 | sed s/^pgtcl//`
+      pgtclver=`basename $dir | sed s/^pgtcl//`
       sysconfig_tcl_content="$sysconfig_tcl_content
       set sysconfig(pgtclver) $pgtclver
       set sysconfig(pgtclprefix) $prefix"
@@ -105,7 +105,7 @@ set sysconfig(pqprefix) $prefix"
     for dir in $pg_libdirs
     do
       if test -f $dir/pgtcl.tcl; then
-        pgtclver=`basename /usr/local/lib/pgtcl1.8 | sed s/^pgtcl//`
+        pgtclver=`basename $dir | sed s/^pgtcl//`
         sysconfig_tcl_content="$sysconfig_tcl_content
         set sysconfig(pgtclver) $pgtclver
         set sysconfig(pgtclprefix) $prefix"

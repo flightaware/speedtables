@@ -1,1 +1,1 @@
-./configure --with-tcl=/usr/local/lib/tcl8.5 --mandir=/usr/local/man
+./configure --with-tcl=/usr/local/lib/tcl8.5 --mandir=/usr/local/man --with-pgsql
