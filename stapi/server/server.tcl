@@ -270,27 +270,11 @@ namespace eval ::stapi {
     }
 
     #
-    # Parse the columns: field, type, and expression are fixed, the ctable
-    # options are variable length. There's no difference between an empty
-    # element in the list and a missing one.
+    # Generate the SQL select for this
     #
-    array unset options
     foreach arg $args {
       set field ""; set type ""; set expr ""
       foreach {field type expr} $arg break
-      if {[llength $arg] > 3} {
-        set options($field) [lrange $arg 3 end]
-      }
-
-      if {"$type" == ""} {
-	set type varchar
-      }
-
-      if ![info exists ctable_key] {
-        set ctable_key $field
-      } else {
-        lappend fields $field $type
-      }
 
       if {"$expr" == ""} {
 	lappend selected $field
@@ -317,6 +301,114 @@ namespace eval ::stapi {
     # the built ctable.
     if {[lsearch $::auto_path $build_dir] == -1} {
       lappend ::auto_path $build_dir
+    }
+
+    set ctable_body [create_ctable_definition $ctable_name $args]
+
+    # The C extension name is c_xxx, the ctable class is also c_xxx, and the
+    # package built from the C extension will be C_xxx. It's possible for the
+    # C extension and ctable name to be different, we are simply not doing
+    # that here because we're not putting multiple ctables in a single cext.
+    #
+    set cext_name "c_$name"
+
+    # Once we start creating files, we need to completely trash whatever's
+    # partially created if there's an error...
+    #
+    if [catch {
+      file mkdir $build_dir
+
+      # These two statements create the generated ctable and compile it.
+      CTableBuildPath $build_dir
+
+      if {[catch [list CExtension $cext_name 1.1 $ctable_body] ctable_err] == 1} {
+	error $ctable_err "$::errorInfo\n\tIn $ctable_body"
+      }
+
+      set fp [open $verfile w]
+      puts $fp $full_version
+      close $fp
+
+      set fp [open $tclfile w]
+      puts $fp $tcl
+      close $fp
+
+      set fp [open $sqlfile w]
+      puts $fp $sql
+      close $fp
+    } err] {
+      unlockfile $build_dir
+      trash_old_files $ctable_name
+      error $err $::errorInfo
+    }
+
+    unlockfile $build_dir
+    return 1
+  }
+
+  # create_ctable_definition name columns
+  #
+  # Generate a CTable definiton.
+  #
+  # This generates a ctable based on the columns and returns it
+  # to the caller.
+  #
+  #   columns - list of column definitions. There must be at least two
+  #             columns defined, the first is the ctable key, the rest are
+  #             the fields of the ctable. If there is only one "column"
+  #             argument, it's assumed to be a list of column arguments.
+  #
+  # Column entries are each a list of {field type expr ?name value?...}
+  #
+  #   field - field name
+  #   type - sql type
+  #   expr - sql expression to derive value
+  #   name value
+  #      - ctable arguments for the field
+  #
+  # * Only the field name is absolutely required.
+  #
+  # from_table can generate these
+  #
+  # If the type is missing or blank, it's assumed to be varchar.
+  # If the expression is missing or blank, it's assumed to be the same as
+  #    the field name.
+  # 
+  proc create_ctable_definition {tableName columns} {
+    variable sql2ctable
+
+    # Validate arguments.
+    if {"$tableName" == ""} {
+      return -code error "Empty speedtable name"
+    }
+
+    # 
+    init
+
+    #
+    #
+    # Parse the columns: field, type, and expression are fixed, the ctable
+    # options are variable length. There's no difference between an empty
+    # element in the list and a missing one.
+    #
+    array unset options
+    foreach arg $columns {
+      set field ""; set type ""; set expr ""
+      foreach {field type expr} $arg break
+      if {[llength $arg] > 3} {
+        set options($field) [lrange $arg 3 end]
+      }
+
+      if {"$type" == ""} {
+	set type varchar
+      }
+
+      if ![info exists ctable_key] {
+        set ctable_key $field
+      } else {
+        lappend fields $field $type
+      }
+
     }
 
     # Assemble the ctable definition as a list of lines, from the type-map
@@ -353,51 +445,7 @@ namespace eval ::stapi {
       }
     }
 
-    # The C extension name is c_xxx, the ctable class is also c_xxx, and the
-    # package built from the C extension will be C_xxx. It's possible for the
-    # C extension and ctable name to be different, we are simply not doing
-    # that here because we're not putting multiple ctables in a single cext.
-    #
-    set cext_name "c_$name"
-
-    # Once we start creating files, we need to completely trash whatever's
-    # partially created if there's an error...
-    #
-    if [catch {
-      file mkdir $build_dir
-
-      # These two statements create the generated ctable and compile it.
-      CTableBuildPath $build_dir
-
-      if [catch {
-        CExtension $cext_name 1.1 "
-	  CTable $ctable_name {
-	    [join $ctable "\n\t    "]
-	  }
-        "
-      } ctable_err] {
-	error $ctable_err "$::errorInfo\n\tIn CTable $ctable_name {\n\t   [join $ctable "\n\t    "]\n\t}"
-      }
-
-      set fp [open $verfile w]
-      puts $fp $full_version
-      close $fp
-
-      set fp [open $tclfile w]
-      puts $fp $tcl
-      close $fp
-
-      set fp [open $sqlfile w]
-      puts $fp $sql
-      close $fp
-    } err] {
-      unlockfile $build_dir
-      trash_old_files $ctable_name
-      error $err $::errorInfo
-    }
-
-    unlockfile $build_dir
-    return 1
+    return [format "    CTable %s {\n\t    %s\n    }" $tableName [join $ctable "\n\t    "]]
   }
 
   # create_sql_table table_name ?-temp? ?-tablespace tablespace? columns...
