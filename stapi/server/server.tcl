@@ -359,10 +359,6 @@ namespace eval ::stapi {
       return -code error "Empty speedtable name"
     }
 
-    # 
-    init
-
-    #
     #
     # Parse the columns: field, type, and expression are fixed, the ctable
     # options are variable length. There's no difference between an empty
@@ -468,7 +464,6 @@ namespace eval ::stapi {
     append sql ";"
 
     return $sql
-
   }
 
   # create_sql_table table_name ?-temp? ?-tablespace tablespace? columns...
