@@ -1,3 +1,8 @@
+06/08/2012 karl
+    * Factor a stapi::create_ctable_definition proc out of stapi::init_ctable.
+
+    * Factor a stapi::gen_ctable_sql_select proc out of stapi::init_ctable.
+
 08/25/2011 bovine
     * Improved URL escapement issues with unsafe characters stapi/display
 

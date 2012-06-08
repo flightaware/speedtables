@@ -269,31 +269,8 @@ namespace eval ::stapi {
       trash_old_files $ctable_name
     }
 
-    #
     # Generate the SQL select for this
-    #
-    foreach arg $args {
-      set field ""; set type ""; set expr ""
-      foreach {field type expr} $arg break
-
-      if {"$expr" == ""} {
-	lappend selected $field
-      } else {
-	lappend selected "$expr AS $field"
-      }
-    }
-
-    # If the table name is blank, use the ctable name.
-    if ![llength $tables] {
-      lappend tables $name
-    }
-
-    # 
-    set sql "SELECT [join $selected ,] FROM [join $tables ,]"
-    if {"$where_clause" != ""} {
-      append sql " WHERE $where_clause"
-    }
-    append sql ";"
+    set sql [gen_ctable_sql_select $name $tables $where_clause $args]
 
     set sqlfile [workname $ctable_name sql]
 
@@ -446,6 +423,52 @@ namespace eval ::stapi {
     }
 
     return [format "    CTable %s {\n\t    %s\n    }" $tableName [join $ctable "\n\t    "]]
+  }
+
+  # gen_ctable_sql_select name table_list where_clause ?columns|column...?
+  #
+  # ...generates new SQL to read the table.
+  #
+  #   name - base name of ctable
+  #
+  #   table_list - list of SQL tables to extract data from, if it's empty
+  #             then use the name.
+  #
+  #   where_clause - SQL "WHERE" clause to limit selection, or an empty string
+  #
+  #   columns - list of column definitions.
+  # 
+  proc gen_ctable_sql_select {name tables where_clause columns} {
+    variable sql2ctable
+
+    #
+    # Generate the SQL select for this
+    #
+    foreach column $columns {
+      set field ""; set type ""; set expr ""
+      foreach {field type expr} $column break
+
+      if {"$expr" == ""} {
+	lappend selected $field
+      } else {
+	lappend selected "$expr AS $field"
+      }
+    }
+
+    # If the table name is blank, use the ctable name.
+    if ![llength $tables] {
+      lappend tables $name
+    }
+
+    # 
+    set sql "SELECT [join $selected ,] FROM [join $tables ,]"
+    if {"$where_clause" != ""} {
+      append sql " WHERE $where_clause"
+    }
+    append sql ";"
+
+    return $sql
+
   }
 
   # create_sql_table table_name ?-temp? ?-tablespace tablespace? columns...
