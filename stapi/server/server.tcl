@@ -40,8 +40,8 @@ namespace eval ::stapi {
   variable time_column
 
   # Mapping from sql column types to ctable field types
-  variable sql2ctable
-  array set sql2ctable {
+  variable sql2speedtable
+  array set sql2speedtable {
     "character varying"           varstring
     varchar	                  varstring
     name                          varstring
@@ -198,7 +198,7 @@ namespace eval ::stapi {
   #    the field name.
   # 
   proc init_ctable {name tables where_clause args} {
-    variable sql2ctable
+    variable sql2speedtable
 
     # Validate arguments.
     if {"$name" == ""} {
@@ -270,7 +270,7 @@ namespace eval ::stapi {
     }
 
     # Generate the SQL select for this
-    set sql [gen_ctable_sql_select $name $tables $where_clause $args]
+    set sql [gen_speedtable_sql_select $name $tables $where_clause $args]
 
     set sqlfile [workname $ctable_name sql]
 
@@ -280,14 +280,14 @@ namespace eval ::stapi {
       lappend ::auto_path $build_dir
     }
 
-    set ctable_body [create_ctable_definition $ctable_name $args]
+    set ctable_body [create_speedtable_definition $ctable_name $args]
 
     # The C extension name is c_xxx, the ctable class is also c_xxx, and the
     # package built from the C extension will be C_xxx. It's possible for the
     # C extension and ctable name to be different, we are simply not doing
     # that here because we're not putting multiple ctables in a single cext.
     #
-    set cext_name "c_$name"
+    set cext_name [string totitle "c_$name"]
 
     # Once we start creating files, we need to completely trash whatever's
     # partially created if there's an error...
@@ -298,7 +298,7 @@ namespace eval ::stapi {
       # These two statements create the generated ctable and compile it.
       CTableBuildPath $build_dir
 
-      if {[catch [list CExtension $cext_name 1.1 $ctable_body] ctable_err] == 1} {
+      if {[catch [list speedtables $cext_name 1.1 $ctable_body] ctable_err] == 1} {
 	error $ctable_err "$::errorInfo\n\tIn $ctable_body"
       }
 
@@ -323,9 +323,9 @@ namespace eval ::stapi {
     return 1
   }
 
-  # create_ctable_definition name columns
+  # create_speedtable_definition name columns
   #
-  # Generate a CTable definiton.
+  # Generate a speedtable definiton.
   #
   # This generates a ctable based on the columns and returns it
   # to the caller.
@@ -351,8 +351,8 @@ namespace eval ::stapi {
   # If the expression is missing or blank, it's assumed to be the same as
   #    the field name.
   # 
-  proc create_ctable_definition {tableName columns} {
-    variable sql2ctable
+  proc create_speedtable_definition {tableName columns} {
+    variable sql2speedtable
 
     # Validate arguments.
     if {"$tableName" == ""} {
@@ -407,8 +407,8 @@ namespace eval ::stapi {
       }
 
       # can we direct lookup this thing in our table?
-      if [info exists sql2ctable($t)] {
-        set t $sql2ctable($t)
+      if [info exists sql2speedtable($t)] {
+        set t $sql2speedtable($t)
       }
 
       if [info exists options($n)] {
@@ -418,10 +418,10 @@ namespace eval ::stapi {
       }
     }
 
-    return [format "    CTable %s {\n\t    %s\n    }" $tableName [join $ctable "\n\t    "]]
+    return [format "    table %s {\n\t    %s\n    }" $tableName [join $ctable "\n\t    "]]
   }
 
-  # gen_ctable_sql_select name table_list where_clause ?columns|column...?
+  # gen_speedtable_sql_select name table_list where_clause ?columns|column...?
   #
   # ...generates new SQL to read the table.
   #
@@ -434,8 +434,8 @@ namespace eval ::stapi {
   #
   #   columns - list of column definitions.
   # 
-  proc gen_ctable_sql_select {name tables where_clause columns} {
-    variable sql2ctable
+  proc gen_speedtable_sql_select {name tables where_clause columns} {
+    variable sql2speedtable
 
     #
     # Generate the SQL select for this
@@ -557,7 +557,7 @@ namespace eval ::stapi {
   # command.
   #
   proc open_cached {name args} {
-    variable sql2ctable
+    variable sql2speedtable
     variable ctable2name
     variable time_column
     variable default_timeout

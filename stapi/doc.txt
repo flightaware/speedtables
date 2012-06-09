@@ -23,9 +23,12 @@ package require st_server
    init_ctable simply verifies that it's up to date.
 
      name - base name of ctable
+
      table_list - list of SQL tables to extract data from, if it's empty
                then use the name.
+
      where_clause - SQL "WHERE" clause to limit selection, or an empty string
+
      columns - list of column definitions. There must be at least two
                columns defined, the first is the ctable key, the rest are
                the fields of the ctable. If there is only one "column"
@@ -85,16 +88,48 @@ package require st_server
 
    Options not starting with a dash are passed directly to the ctable create
    command. Options starting with a dash are:
+
      -pat pattern
 	Same as the ?pattern? positional argument.
+
      -time cache_timeout
         Override the default cache timeout.
+
      -col name
         Name of column in the table that contains the last_changed time of
         each entry, if any. This is used as an optimization to only load
 	modified lines when the schema supports that.
+
      -index field_name
         Name of a field to create an index on. Multiple -index are allowed.
+
+::stapi::create_speedtable_definition name columns
+
+   Generate a speedtable (ctable) definition based on the columns specified.
+   If the columns are the output of from_table, the definition of a postgres
+   table can be interpreted to generate a corresponding speedtable.
+
+   This routine is used by init_ctable to create a C extension for each
+   defined table, but this is not technically necessary and other strategies
+   can be employed on top of create_speedtable_definition.
+
+     name - base name of ctable
+
+     columns - as defined in init_ctable above.
+
+::stapi::gen_speedtable_sql_select name table_list where_clause columns
+
+   Generate a SQL statement to populate the speedtable from a SQL table.
+
+     name - base name of speedtable.
+
+     table_list - list of SQL tables to extract data from, if empty
+               then use the name of the speedtable as the name of the
+	       SQL table.
+
+     where_clause - SQL "WHERE" clause to limit selection, or an empty string
+
+     columns - as defined in init_ctable.
 
 ::stapi::refresh_ctable ctable ?last_read? ?err?
  

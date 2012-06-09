@@ -1,3 +1,15 @@
+06/09/2012 karl
+    * Rename create_ctable_definition to create_speedtable_definition and
+      gen_ctable_sql_select to gen_speedtable_sql_select.  Since only
+      stapi and some new code I'm working with use it, it's not impactful.
+
+    * Make create_speedtable_definition and, thereby, init_ctable, generate
+      the new-style "speedtables" opener rather than the old-style
+      "CExtension" one, capitalizing the first letter for compliance
+      (and it was uppercased anyway by the underlying software).
+
+      Document the new commands in the doc.txt.
+
 06/08/2012 karl
     * Factor a stapi::create_ctable_definition proc out of stapi::init_ctable.
 
