@@ -49,7 +49,7 @@ namespace eval ::stapi {
     set handle [${ns}::master attach [pid]]
     array set prop [${ns}::master getprop]
 
-    if [info exist opts(-build)] {
+    if {[info exist opts(-build)]} {
       if {[lsearch $::auto_path $opts(-build)] == -1} {
 	lappend ::auto_path $opts(-build)
       }

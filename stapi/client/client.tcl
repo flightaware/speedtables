@@ -17,16 +17,19 @@ namespace eval ::stapi {
 
     # If "-keys" defined, save them to create a wrapper
     if {[info exists opts(-keys)] || [info exists opts(-key)]} {
+
       # Check here so if this errors out we haven't done the heavy lifting
-      if ![namespace exists ::stapi::extend] {
+      if {![namespace exists ::stapi::extend]} {
 	uplevel #0 "package require stapi_extend"
       }
+
       # Save "-keys" option but don't pass it on downstream
-      if [info exists opts(-keys)] {
+      if {[info exists opts(-keys)]} {
         set keys $opts(-keys)
         unset opts(-keys)
         set keyargs {}
-        if [info exists opts(-keysep)] {
+
+        if {[info exists opts(-keysep)]} {
           lappend keyargs -keysep $opts(-keysep)
           unset opts(-keysep)
         }
@@ -38,17 +41,17 @@ namespace eval ::stapi {
       set args [array get opts]
     }
 
-    if ![regexp {^([^:]+)://([^/]*)/*(.*)} $uri _ method address path] {
+    if {![regexp {^([^:]+)://([^/]*)/*(.*)} $uri _ method address path]} {
       set handle $uri
     } else {
-      if ![info exists transport_handlers($method)] {
+      if {![info exists transport_handlers($method)]} {
 	return -code error "No transport registered for method $method"
       }
       set handle [eval [list $transport_handlers($method) $path $address] $args]
     }
 
-    if [info exists keys] {
-      if ![::stapi::extend::extended $handle $keys] {
+    if {[info exists keys]} {
+      if {![::stapi::extend::extended $handle $keys]} {
         set handle [eval [list ::stapi::extend::connect $handle $keys] $args $keyargs]
       }
     }
@@ -79,10 +82,11 @@ namespace eval ::stapi {
 
   # package:///package_name/table[/path]
   proc connect_package {path {address ""} args} {
-    if [regexp {^/*([^/]+)(/.*)} $path _ table path] {
-      if [file isdirectory $path/$table] {
+    if {[regexp {^/*([^/]+)(/.*)} $path _ table path]} {
+      if {[file isdirectory $path/$table]} {
         set path $path/$table
       }
+
       if {[lsearch -exact $::auto_path $path] == -1} {
         lappend auto_path $path
       }

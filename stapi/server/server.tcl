@@ -105,10 +105,13 @@ namespace eval ::stapi {
   # Options:
   #   -dir build_root_dir
   #      Root of directory tree for the ctables
+  #
   #   -mode mode
   #      Octal mode for new root if it doesn't already exist
+  #
   #   -conn connection
   #      Pgsql connection (if not present, assumes DIO), see pgsql.tcl
+  #
   #   -cache minutes
   #      How long to treat a cached tsv file as "good"
   #
@@ -119,48 +122,47 @@ namespace eval ::stapi {
     variable default_build_root
 
     #
-    if [info exists opts(-dir)] {
+    if {[info exists opts(-dir)]} {
       set build_root $opts(-dir)
     }
 
-    if ![info exists build_root] {
-      if [info exists ::env(CTABLE_DIR)] {
+    if {![info exists build_root]} {
+      if {[info exists ::env(CTABLE_DIR)]} {
         set build_root $::env(CTABLE_DIR)
       } else {
         set build_root $default_build_root
       }
     }
 
-    if [file exists $build_root] {
-      if ![file isdirectory $build_root] {
+    if {[file exists $build_root]} {
+      if {![file isdirectory $build_root]} {
 	error "$build_root must be a directory"
       }
     } else {
       file mkdir $build_root
-      if [info exists opts(-mode)] {
+
+      if {[info exists opts(-mode)]} {
         catch {exec chmod $opts(-mode) $build_root}
       }
     }
 
-    #
-    if [info exists opts(-conn)] {
+    # save off various configuration parameters
+
+    if {[info exists opts(-conn)]} {
       set_conn $opts(-conn)
     }
 
-    #
-    if [info exists opts(-cache)] {
+    if {[info exists opts(-cache)]} {
       variable default_timeout
       set default_timeout [expr {$opts(-cache) * 60}]
     }
 
-    #
-    if [info exists opts(-user)] {
+    if {[info exists opts(-user)]} {
       variable default_user
       set default_user $opts(-user)
     }
 
-    #
-    if [info exists opts(-db)] {
+    if {[info exists opts(-db)]} {
       variable default_db
       set default_db $opts(-db)
     }
@@ -175,9 +177,12 @@ namespace eval ::stapi {
   # init_ctable simply verifies that it's up to date.
   #
   #   name - base name of ctable
+  #
   #   table_list - list of SQL tables to extract data from, if it's empty
   #             then use the name.
+  #
   #   where_clause - SQL "WHERE" clause to limit selection, or an empty string
+  #
   #   columns - list of column definitions. There must be at least two
   #             columns defined, the first is the ctable key, the rest are
   #             the fields of the ctable. If there is only one "column"
@@ -186,12 +191,15 @@ namespace eval ::stapi {
   # Column entries are each a list of {field type expr ?name value?...}
   #
   #   field - field name
+  #
   #   type - sql type
+  #
   #   expr - sql expression to derive value
+  #
   #   name value
   #      - ctable arguments for the field
   #
-  # * Only the field name is absulutely required.
+  # * Only the field name is absolutely required.
   #
   # If the type is missing or blank, it's assumed to be varchar.
   # If the expression is missing or blank, it's assumed to be the same as
@@ -204,18 +212,21 @@ namespace eval ::stapi {
     if {"$name" == ""} {
       return -code error "Empty ctable name"
     }
+
     if {[llength $args] == 0} {
       set args "name tables where_clause ?columns|key_col column...?"
       return -code error "Usage [namespace which init_ctable] $args"
     }
+
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
+
     if {[llength $args] <= 1} {
       return -code error "Not enough columns in '[list $args]'"
     }
 
-    # 
+    # make sure stapi init proc has been invoked
     init
 
     #
@@ -223,7 +234,7 @@ namespace eval ::stapi {
 
     # Lock the ctable build directory
     set build_dir [workname $ctable_name]
-    if ![lockfile $build_dir err] {
+    if {![lockfile $build_dir err]} {
       return -code error $err
     }
 
@@ -235,10 +246,11 @@ namespace eval ::stapi {
     set full_version [package version ctable]+$version
     set verfile [workname $ctable_name ver]
 
-    if [file exists $verfile] {
+    if {[file exists $verfile]} {
       set fp [open $verfile r]
       set old_version [read -nonewline $fp]
       close $fp
+
       if {"$full_version" != "$old_version"} {
         trash_old_files $ctable_name
       }
@@ -253,15 +265,18 @@ namespace eval ::stapi {
     # to have a single place you call init_ctable.
     #
     lappend tcl [namespace which init_ctable] $name $tables $where_clause
+
     foreach arg $args {
       lappend tcl $arg
     }
+
     set tclfile [workname $ctable_name tcl]
 
-    if [file exists $tclfile] {
+    if {[file exists $tclfile]} {
       set fp [open $tclfile r]
       set old_tcl [read -nonewline $fp]
       close $fp
+
       if {"$old_tcl" == "$tcl"} {
 	unlockfile $build_dir
 	return 1
@@ -292,7 +307,7 @@ namespace eval ::stapi {
     # Once we start creating files, we need to completely trash whatever's
     # partially created if there's an error...
     #
-    if [catch {
+    if {[catch {
       file mkdir $build_dir
 
       # These two statements create the generated ctable and compile it.
@@ -313,7 +328,7 @@ namespace eval ::stapi {
       set fp [open $sqlfile w]
       puts $fp $sql
       close $fp
-    } err] {
+    } err]} {
       unlockfile $build_dir
       trash_old_files $ctable_name
       error $err $::errorInfo
@@ -338,8 +353,11 @@ namespace eval ::stapi {
   # Column entries are each a list of {field type expr ?name value?...}
   #
   #   field - field name
+  #
   #   type - sql type
+  #
   #   expr - sql expression to derive value
+  #
   #   name value
   #      - ctable arguments for the field
   #
@@ -368,6 +386,7 @@ namespace eval ::stapi {
     foreach arg $columns {
       set field ""; set type ""; set expr ""
       foreach {field type expr} $arg break
+
       if {[llength $arg] > 3} {
         set options($field) [lrange $arg 3 end]
       }
@@ -376,7 +395,7 @@ namespace eval ::stapi {
 	set type varchar
       }
 
-      if ![info exists ctable_key] {
+      if {![info exists ctable_key]} {
         set ctable_key $field
       } else {
         lappend fields $field $type
@@ -407,11 +426,11 @@ namespace eval ::stapi {
       }
 
       # can we direct lookup this thing in our table?
-      if [info exists sql2speedtable($t)] {
+      if {[info exists sql2speedtable($t)]} {
         set t $sql2speedtable($t)
       }
 
-      if [info exists options($n)] {
+      if {[info exists options($n)]} {
 	lappend ctable "$t\t[concat $n $width $options($n)];"
       } else {
         lappend ctable "$t\t$n$width;"
@@ -452,7 +471,7 @@ namespace eval ::stapi {
     }
 
     # If the table name is blank, use the ctable name.
-    if ![llength $tables] {
+    if {![llength $tables]} {
       lappend tables $name
     }
 
@@ -484,12 +503,15 @@ namespace eval ::stapi {
     set tablespace ""
     while {[string match "-*" [set opt [lindex $args 0]]]} {
       set args [lrange $args 1 end]
+
       switch -exact -- $opt {
         -temp { set temp 1 }
+
         -tablespace {
 	  set tablespace [lindex $args 0]
 	  set args [lrange $args 1 end]
 	}
+
 	default {
 	  return -code error "Unknown option $opt"
 	}
@@ -612,13 +634,15 @@ namespace eval ::stapi {
 
     # Lock the tsv file.
     set tsv_file [workname $ctable_name tsv]
-    if ![lockfile $tsv_file err 600] { # block for up to 10 minutes
+
+   # block for up to 10 minutes
+    if {![lockfile $tsv_file err 600]} {
       return -code error $err
     }
 
     # If the tsv file exists, check to see if it's stale and how to update
     # it.
-    if [file exists $tsv_file] {
+    if {[file exists $tsv_file]} {
       set file_time [file mtime $tsv_file]
       set stale_tsv_file 0; # Is the file recent enough to use?
       set update_from_db 0; # Do we need to update the file from the db
@@ -637,7 +661,7 @@ namespace eval ::stapi {
       }
 
       # It's fresh enough to eat
-      if !$stale_tsv_file {
+      if {!$stale_tsv_file} {
 	debug "Reading $ctable from $tsv_file"
         set fp [open $tsv_file r]
 
@@ -661,7 +685,7 @@ namespace eval ::stapi {
         close $fp
 
 	# If we don't have to do an update, we're done.
-        if !$update_from_db {
+        if {!$update_from_db} {
 	  unlockfile $tsv_file
           set ctable2name($ctable) $ctable_name
           return $ctable
@@ -674,7 +698,7 @@ namespace eval ::stapi {
 
     # Grab the SQL for reading the file, and eliminate the inconceivable.
     set sql_file [workname $ctable_name sql]
-    if ![file exists $sql_file] {
+    if {![file exists $sql_file]} {
       unlockfile $tsv_file
       return -code error "Uninitialised ctable $ctable_name: $sql_file not found"
     }
@@ -686,7 +710,7 @@ namespace eval ::stapi {
     # SQL we read to only pull in records since the last change.
     set sql [set_time_limit $sql $time_col $last_read]
 
-    if [catch {read_ctable_from_sql $ctable $sql} err] {
+    if {[catch {read_ctable_from_sql $ctable $sql} err]} {
       $ctable destroy
       unlockfile $tsv_file
       return -code error -errorinfo $::errorInfo $err
@@ -729,19 +753,21 @@ namespace eval ::stapi {
     }
 
     # validate parameters
-    if ![info exists ctable2name($ctable)] {
+    if {![info exists ctable2name($ctable)]} {
       set reason "$ctable: Not a cached ctable"
     } else {
       set ctable_name $ctable2name($ctable)
       set sql_file [workname $ctable_name sql]
-      if ![file exists $sql_file] {
+
+      if {![file exists $sql_file]} {
         set reason "Uninitialised ctable $ctable_name: $sql_file not found"
       }
     }
 
     # If there's a reason to be unhappy return 0 or abend.
-    if [info exists reason] {
+    if {[info exists reason]} {
       set err $reason
+
       if {"$_err" == ""} {
         return -code error $err
       }
@@ -754,10 +780,11 @@ namespace eval ::stapi {
     close $fp
 
     # If they didn't tell us the last-read time, guess it from the tsv file.
-    if !$last_read {
+    if {!$last_read} {
       if {[string length $time_col]} {
         set tsv_file [workname $ctable_name tsv]
-	if [file exists $tsv_file] {
+
+	if {[file exists $tsv_file]} {
           set last_read [file mtime $tsv_file]
 	}
       }
@@ -778,11 +805,12 @@ namespace eval ::stapi {
       set last_read 0
     }
 
-    if $last_read {
+    if {$last_read} {
       set time_val [clock2sql $last_read]
       set time_sql "$time_col > '$time_val'"
       # debug "Will add new entries since $time_val"
-      if [regexp -nocase { where } $sql] {
+
+      if {[regexp -nocase { where } $sql]} {
 	set operator AND
       } else {
 	set operator WHERE
@@ -803,15 +831,17 @@ namespace eval ::stapi {
 
     # If the tsv file wasn't passed to us, get the lock 
     if {"$tsv_file" == ""} {
-      if ![info exists ctable2name($ctable)] {
+      if {![info exists ctable2name($ctable)]} {
         return -code error "$ctable: Not a cached table"
       }
+
       set tsv_file [workname $ctable2name($ctable) tsv]
 
       # reading and saving tsv files can take a while, so allow 10 minutes!
-      if ![lockfile $tsv_file err 600] {
+      if {![lockfile $tsv_file err 600]} {
         return -code error $err
       }
+
       set locked 1
     }
 
@@ -826,7 +856,7 @@ namespace eval ::stapi {
     $ctable write_tabsep $fp -quote escape
     close $fp
 
-    if $locked {
+    if {$locked} {
       unlockfile $tsv_file
     }
   }
@@ -879,6 +909,7 @@ namespace eval ::stapi {
 	}
       }
     }
+
     if {[llength $with] && [llength $without]} {
       return -code error "Can not specify both '-with' and '-without'"
     }
@@ -894,17 +925,18 @@ namespace eval ::stapi {
     # If keys specified (not necessarily going to be any if we're building
     # a complex ctable using multiple SQL tables)
 
-    if [llength $keys] {
+    if {[llength $keys]} {
       foreach key $keys {
-        if [info exists types($key)] {
+        if {[info exists types($key)]} {
 	  set sql_key $key
-	  if [info exists table] {
+	  if {[info exists table]} {
 	    set sql_key $table.$key
 	  }
 	  # bend over backwards, if it's nottext, MAKE it text.
 	  if {"[string tolower $types($key)]" != "varchar"} {
 	    set sql_key TEXT($sql_key)
 	  }
+
 	  lappend sql_keys $sql_key
         } else {
 	  return -code error "Key '$key' not found in $table_name"
@@ -914,7 +946,7 @@ namespace eval ::stapi {
     }
 
     # If we don't have "-with", then use "-with all"
-    if ![llength $with] {
+    if {![llength $with]} {
       set with [array names types]
     }
 
@@ -924,8 +956,8 @@ namespace eval ::stapi {
 
     foreach column $extra_columns {
       set field [lindex $column 0]
-      if [info exists prefix] {
-        if ![regexp "^$prefix(.*)" $field _ field] {
+      if {[info exists prefix]} {
+        if {![regexp "^$prefix(.*)" $field _ field]} {
 	  continue
 	}
       }
@@ -942,17 +974,18 @@ namespace eval ::stapi {
       if {[lsearch -exact $with $raw_col] == -1} {
 	continue
       }
+
       if {[lsearch -exact $without $raw_col] != -1} {
 	continue
       }
 
       set field $raw_col
-      if [info exists prefix] {
+      if {[info exists prefix]} {
 	set field $prefix$field
       }
 
       set sql $raw_col
-      if [info exists table] {
+      if {[info exists table]} {
 	set sql $table.$sql
       }
 
@@ -968,11 +1001,11 @@ namespace eval ::stapi {
 
       if {"$field" != "$sql"} {
 	lappend column $sql
-      } elseif [info exists options] {
+      } elseif {[info exists options]} {
 	lappend column ""
       }
 
-      if [info exists options] {
+      if {[info exists options]} {
 	set column [concat $column $options]
       }
 
@@ -997,10 +1030,12 @@ namespace eval ::stapi {
     # validate and lock the ctable
     set ctable_name c_$name
     set build_dir [workname $ctable_name]
-    if ![lockfile $build_dir err] {
+
+    if {![lockfile $build_dir err]} {
       return -code error $err
     }
-    if ![file isdir $build_dir] {
+
+    if {![file isdir $build_dir]} {
       unlockfile $build_dir
       return -code error "Uninitialised ctable $ctable_name: $build_dir not found or not a directory"
     }
@@ -1014,13 +1049,13 @@ namespace eval ::stapi {
     namespace eval :: [list package require C_$name]
 
     # Create a new ctable instance
-    if [catch {
-      if [llength $args] {
+    if {[catch {
+      if {[llength $args]} {
         set ctable [eval [list c_$name create #auto master] $args]
       } else {
 	set ctable [c_$name create #auto]
       }
-    } err] {
+    } err]} {
       unlockfile $build_dir
       error $err $::errorInfo
     }
@@ -1041,7 +1076,9 @@ namespace eval ::stapi {
     if {"$name" == ""} {
       return -code error "Invalid ctable name (null)"
     }
+
     variable build_root
+
     if {"$ext" != ""} {
       append name . $ext
     }
@@ -1051,18 +1088,22 @@ namespace eval ::stapi {
   # Just invalidate the cache
   proc remove_tsv_file {table_name} {
     set tsv_file [workname $table_name tsv]
-    if ![file exists $tsv_file] {
+
+    if {![file exists $tsv_file]} {
       set tsv_file [workname c_$table_name tsv]
     }
+
     catch {file delete -force $tsv_file}
   }
 
   # Invalidate the whole shooting match
   proc remove_tcl_file {table_name} {
     set tcl_file [workname $table_name tcl]
-    if ![file exists $tcl_file] {
+
+    if {![file exists $tcl_file]} {
       set tcl_file [workname c_$table_name tcl]
     }
+
     catch {file delete -force $tcl_file}
   }
 }

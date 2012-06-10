@@ -26,10 +26,10 @@ namespace eval ::stapi::extend {
   proc indexed {handle} {
     variable indexed
 
-    if ![info exists indexed($handle)] {
+    if {![info exists indexed($handle)]} {
       variable ctable
 
-      if ![info exists ctable($handle)] {
+      if {![info exists ctable($handle)]} {
         error "No table open for $handle"
       }
 
@@ -41,10 +41,10 @@ namespace eval ::stapi::extend {
   proc types {handle} {
     variable types
 
-    if ![info exists types($handle)] {
+    if {![info exists types($handle)]} {
       variable ctable
 
-      if ![info exists ctable($handle)] {
+      if {![info exists ctable($handle)]} {
         error "No table open for $handle"
       }
 
@@ -65,17 +65,17 @@ namespace eval ::stapi::extend {
     variable stable
 
     # If we're given an already-open table, return it
-    if [extended $handle] {
+    if {[extended $handle]} {
       return $handle
     }
 
-    if [info exists stable($handle)] {
+    if {[info exists stable($handle)]} {
       return $stable($handle)
     }
 
     set keysep ":"
     array set opts $args
-    if [info exists opts(-keysep)] {
+    if {[info exists opts(-keysep)]} {
       set keysep $opts(-keysep)
       unset opts(-keysep)
       set args [array get opts]
@@ -83,7 +83,7 @@ namespace eval ::stapi::extend {
 
     # debug "[list ::stapi::connect $handle] $args"
     # If URI format, connect, otherwise assume it's already an open ctable
-    if [string match "*://*" $handle] {
+    if {[string match "*://*" $handle]} {
       set ctable($handle) [eval [list ::stapi::connect $handle] $args]
     } else {
       set ctable($handle) [uplevel 1 [list namespace which $handle]]
@@ -108,25 +108,50 @@ namespace eval ::stapi::extend {
   #   * Handles "key" or "keys" commands.
   #   * If keys required, [$handle key/keys] matches
   proc extended {handle {keys {}}} {
-    if {[string match ::stapi::extend::_table* $handle]} { return 1 }
+    if {[string match ::stapi::extend::_table* $handle]} {
+        return 1
+    }
 
-    if {[catch {set mlist [$handle methods]}]} { return 0 }
+    if {[catch {set mlist [$handle methods]}]} {
+        return 0
+    }
 
-    if {[lsearch $mlist makekey] == -1} { return 0 }
+    if {[lsearch $mlist makekey] == -1} {
+        return 0
+    }
 
-    if {[lsearch $mlist store] == -1} { return 0 }
+    if {[lsearch $mlist store] == -1} {
+        return 0
+    }
 
-    if {[lsearch $mlist keys] != -1} { set keyCmd "keys" }
-    if {[lsearch $mlist key] != -1} { set keyCmd "key" }
-    if {![info exists keyCmd]} { return -1 }
+    if {[lsearch $mlist keys] != -1} {
+        set keyCmd "keys"
+    }
 
-    if {![llength $keys]} { return 1 }
+    if {[lsearch $mlist key] != -1} {
+        set keyCmd "key"
+    }
+
+    if {![info exists keyCmd]} {
+        return -1
+    }
+
+    if {![llength $keys]} {
+        return 1
+    }
 
     if {"$keyCmd" == "keys"} {
-      if {"$keys" == "[$handle keys]"} { return 1 }
+      if {"$keys" == "[$handle keys]"} {
+          return 1
+      }
     } else {
-      if {[llength $keys] > 1} { return 0 }
-      if {"[lindex $keys 0]" == "[$handle key]"} { return 1 }
+      if {[llength $keys] > 1} {
+          return 0
+      }
+
+      if {"[lindex $keys 0]" == "[$handle key]"} {
+          return 1
+      }
     }
     return 0
   }
@@ -135,7 +160,7 @@ namespace eval ::stapi::extend {
   proc keys {handle} {
     variable keyfields
 
-    if ![info exists keyfields($handle)] {
+    if {![info exists keyfields($handle)]} {
       error "No connection for $handle"
     }
     return $keyfields($handle)
@@ -146,11 +171,11 @@ namespace eval ::stapi::extend {
   proc key {handle} {
     variable keyfields
 
-    if ![info exists keyfields($handle)] {
+    if {![info exists keyfields($handle)]} {
       error "No connection for $handle"
     }
 
-    if [llength $keyfields($handle) != 1] {
+    if {[llength $keyfields($handle) != 1]} {
       return "_key"
     }
     return [lindex $keyfields($handle) 0]
@@ -161,12 +186,12 @@ namespace eval ::stapi::extend {
     variable stapi_cmds
     variable ctable
 
-    if ![info exists ctable($handle)] {
+    if {![info exists ctable($handle)]} {
       return -code error "No ctable open for $handle"
     }
 
     set list {}
-    if [info exists stapi_cmds($cmd)] {
+    if {[info exists stapi_cmds($cmd)]} {
       lappend list ::stapi::extend::$stapi_cmds($cmd) $handle
     } else {
       lappend list $ctable($handle) $cmd
@@ -181,7 +206,7 @@ namespace eval ::stapi::extend {
     variable types
     variable stable
 
-    if ![info exists ctable($handle)] {
+    if {![info exists ctable($handle)]} {
       error "No table open for $handle"
     }
 
@@ -199,7 +224,7 @@ namespace eval ::stapi::extend {
     variable keyfields
     variable ctable
 
-    if ![info exists ctable($handle)] {
+    if {![info exists ctable($handle)]} {
       return -code error "No table open for $handle"
     }
     return $ctable($handle)
@@ -214,7 +239,7 @@ namespace eval ::stapi::extend {
   proc makekey {handle args} {
     variable keyfields
 
-    if ![info exists keyfields($handle)] {
+    if {![info exists keyfields($handle)]} {
       error "No connection for $handle"
     }
 
@@ -229,7 +254,7 @@ namespace eval ::stapi::extend {
     }
 
     if {[llength $key] == 0} {
-      if [info exists k(_key)] {
+      if {[info exists k(_key)]} {
 	return $k($key)
       } else {
 	return -code error "No key in list"
@@ -247,7 +272,7 @@ namespace eval ::stapi::extend {
     variable keyfields
     variable ctable
 
-    if ![info exists keyfields($handle)] {
+    if {![info exists keyfields($handle)]} {
       error "No connection for $handle"
     }
     if {[llength $args] == 1} {
@@ -263,7 +288,7 @@ namespace eval ::stapi::extend {
   proc search {handle args} {
     variable ctable
 
-    if ![info exists ctable($handle)] {
+    if {![info exists ctable($handle)]} {
       error "No table open for $handle"
     }
 
@@ -271,27 +296,27 @@ namespace eval ::stapi::extend {
     array set options $args
 
     set debug 0
-    if [info exists options(-debug)] {
+    if {[info exists options(-debug)]} {
       set debug $options(-debug)
       unset options(-debug)
     }
 
-    if $debug {
+    if {$debug} {
       debug [info level 0]
     }
 
-    if ![info exists options(-code)] {
+    if {![info exists options(-code)]} {
       foreach opt {
 	-key -array -array_with_nulls -array_get -array_get_with_nulls
       } {
-	if [info exists options($opt)] {
+	if {[info exists options($opt)]} {
 	  set options(-limit) 1
 	  set options(-code) break
 	}
       }
     }
 
-    if [info exists options(-compare)] {
+    if {[info exists options(-compare)]} {
       set new_compare {}
       foreach list $options(-compare) {
 	set op [lindex $list 0]
@@ -307,7 +332,7 @@ namespace eval ::stapi::extend {
           }
 
 	  set pat [lindex $list 2]
-	  if [info exists fn] {
+	  if {[info exists fn]} {
 	    set pat [string $fn $pat]
 	  }
 
@@ -324,7 +349,7 @@ namespace eval ::stapi::extend {
       lappend cmd $n $v
     }
 
-    if $debug {
+    if {$debug} {
       debug [list uplevel 1 $cmd]
     }
     return [uplevel 1 $cmd]
@@ -333,7 +358,7 @@ namespace eval ::stapi::extend {
   proc count {handle} {
     variable ctable
 
-    if ![info exists ctable($handle)] {
+    if {![info exists ctable($handle)]} {
       error "No table open for $handle"
     }
     return [$ctable($handle) count]

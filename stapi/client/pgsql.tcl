@@ -4,8 +4,6 @@
 # This stuff adds sql:// as a stapi URI and provides a way to look at
 # PostgreSQL tables as if they are ctables
 #
-# $Id$
-#
 
 package require st_client
 package require st_postgres
@@ -26,22 +24,43 @@ namespace eval ::stapi {
       } else {
 	set val [lindex $args 0]
 	set args [lrange $args 1 end]
+
         switch -- $opt {
 	  cols {
 	    foreach col $val {
 	      lappend cols [uri_esc $col /?]
 	    }
 	  }
-	  host { set host [uri_esc $val @/:] }
-	  user { set user [uri_esc $val @/:] }
-	  pass { set pass [uri_esc $val @/:] }
-	  db { set db [uri_esc $val @/:] }
-	  keys { lappend params [uri_esc _keys=[join $val :] &] }
-	  key { lappend params [uri_esc _key=$val &] }
+
+	  host {
+	      set host [uri_esc $val @/:]
+	  }
+
+	  user {
+	      set user [uri_esc $val @/:]
+	  }
+
+	  pass {
+	      set pass [uri_esc $val @/:]
+	  }
+
+	  db {
+	      set db [uri_esc $val @/:]
+	  }
+
+	  keys {
+	      lappend params [uri_esc _keys=[join $val :] &]
+	  }
+
+	  key {
+	      lappend params [uri_esc _key=$val &]
+	  }
+
 	  -* {
 	    regexp {^-(.*)} $opt _ opt
 	    lappend params [uri_esc $opt &=]=[uri_esc $val &]
 	  }
+
 	  * {
 	    lappend params [uri_esc $opt &=]=[uri_esc $val &]
 	  }
@@ -50,27 +69,28 @@ namespace eval ::stapi {
     }
 
     set uri sql://
-    if [info exists user] {
-      if [info exists pass] {
+    if {[info exists user]} {
+      if {[info exists pass]} {
 	append user : $pass
       }
+
       append uri $user @
     }
 
-    if [info exists host] {
+    if {[info exists host]} {
       append uri $host :
     }
 
-    if [info exists db] {
+    if {[info exists db]} {
       append uri $db
     }
 
     append uri / [uri_esc $table /?]
-    if [info exists cols] {
+    if {[info exists cols]} {
       append uri / [join $cols /]
     }
 
-    if [info exists params] {
+    if {[info exists params]} {
       append uri ? [join $params &]
     }
     return $uri
@@ -127,7 +147,7 @@ namespace eval ::stapi {
     set table [uri_unesc $table]
 
     foreach param [split $params "&"] {
-      if [regexp {^([^=]*)=(.*)} $param _ name val] {
+      if {[regexp {^([^=]*)=(.*)} $param _ name val]} {
 	set vars([uri_unesc $name]) [uri_unesc $val]
       } else {
 	set vars([uri_unesc $name]) ""
@@ -140,11 +160,12 @@ namespace eval ::stapi {
       set field2type($name) $type
     }
 
-    if [llength $path] {
+    if {[llength $path]} {
       set raw_fields {}
       foreach field $path {
 	set field [uri_unesc $field]
-	if [regexp {^([^:]*):(.*)} $field _ field type] {
+
+	if {[regexp {^([^:]*):(.*)} $field _ field type]} {
 	  set field2type($field) $type
 	}
         lappend raw_fields $field
@@ -165,7 +186,7 @@ namespace eval ::stapi {
       }
     }
 
-    if [info exists vars(_keys)] {
+    if {[info exists vars(_keys)]} {
       regsub -all {[+: ]+} $vars(_keys) ":" vars(_keys)
       set keys [split $vars(_keys) ":"]
 
@@ -175,7 +196,7 @@ namespace eval ::stapi {
 	set list {}
 
         foreach field $keys {
-	  if [info exists vars($field)] {
+	  if {[info exists vars($field)]} {
 	    lappend list $vars($field)
 	  } else {
 	    set type varchar
@@ -203,14 +224,14 @@ namespace eval ::stapi {
 	lappend fields $field
       }
 
-      if [info exists params($field)] {
+      if {[info exists params($field)]} {
         set field2sql($field) $params($field)
 	unset params($field)
       }
     }
 
     # last ditch - use first field in table
-    if ![info exists key] {
+    if {![info exists key]} {
       set key [lindex $fields 0]
       # set fields [lrange $fields 1 end]
     }
@@ -339,11 +360,11 @@ namespace eval ::stapi {
     array set array $args
     set key [set ${ns}::key]
 
-    if [info exists array($key)] {
+    if {[info exists array($key)]} {
       return $array($key)
     }
 
-    if [info exists array(_key)] {
+    if {[info exists array(_key)]} {
       return $array(_key)
     }
     return -code error "No key in list"
@@ -381,12 +402,12 @@ namespace eval ::stapi {
   # sql_create_sql
   #
   proc sql_create_sql {ns val slist} {
-    if ![llength $slist] {
+    if {![llength $slist]} {
       set slist [set ${ns}::fields]
     }
 
     foreach arg $slist {
-      if [info exists ${ns}::sql($arg)] {
+      if {[info exists ${ns}::sql($arg)]} {
 	lappend select [set ${ns}::sql($arg)]
       } else {
 	lappend select $arg
@@ -456,7 +477,7 @@ namespace eval ::stapi {
 
     pg_result $pg_res -clear
 
-    if !$ok {
+    if {!$ok} {
       return -code error -errorinfo $errinf $err
     }
     return $result
@@ -494,7 +515,7 @@ namespace eval ::stapi {
   # sql_ctable_fieldtype - implement a ctables "fieldtype" method for SQL tables
   #
   proc sql_ctable_fieldtype {level ns cmd field} {
-    if ![info exists ${ns}::types($field)] {
+    if {![info exists ${ns}::types($field)]} {
       return -code error "No such field: $field"
     }
     return [set ${ns}::types($field)]
@@ -506,11 +527,11 @@ namespace eval ::stapi {
   proc sql_ctable_search {level ns cmd args} {
     array set search $args
 
-    if [info exists search(-array_get)] {
+    if {[info exists search(-array_get)]} {
       return -code error "Unimplemented: search -array_get"
     }
 
-    if [info exists search(-array)] {
+    if {[info exists search(-array)]} {
       return -code error "Unimplemented: search -array"
     }
 
@@ -528,15 +549,15 @@ namespace eval ::stapi {
 
     set code {}
     set array ${ns}::select_array
-    if [info exists search(-array_with_nulls)] {
+    if {[info exists search(-array_with_nulls)]} {
       set array $search(-array_with_nulls)
     }
 
-    if [info exists search(-array_get_with_nulls)] {
+    if {[info exists search(-array_get_with_nulls)]} {
       lappend code "set $search(-array_get_with_nulls) \[array get $array]"
     }
 
-    if [info exists search(-key)] {
+    if {[info exists search(-key)]} {
       lappend code "set $search(-key) \$${array}(__key)"
     }
 
@@ -576,7 +597,7 @@ namespace eval ::stapi {
   # sql_ctable_set - implement a ctable set method for SQL tables
   #
   proc sql_ctable_set {level ns cmd key args} {
-    if ![llength $args] {
+    if {![llength $args]} {
       return
     }
 
@@ -585,7 +606,7 @@ namespace eval ::stapi {
     }
 
     foreach {col value} $args {
-      if [info exists ${ns}::sql($col)] {
+      if {[info exists ${ns}::sql($col)]} {
 	set col [set ${ns}::sql($col)]
       }
 
@@ -598,7 +619,7 @@ namespace eval ::stapi {
     append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
     set rows 0
 
-    if ![exec_sql_rows $sql rows] {
+    if {![exec_sql_rows $sql rows]} {
       return 0
     }
 
@@ -652,25 +673,25 @@ namespace eval ::stapi {
     variable fields
 
     set select {}
-    if [info exists req(-countOnly)] {
+    if {[info exists req(-countOnly)]} {
       lappend select "COUNT($key) AS count"
     } else {
-      if [info exists req(-key)] {
-	if [info exists sql($key)] {
+      if {[info exists req(-key)]} {
+	if {[info exists sql($key)]} {
 	  lappend select "$sql($key) AS __key"
 	} else {
           lappend select "$key AS __key"
 	}
       }
 
-      if [info exists req(-fields)] {
+      if {[info exists req(-fields)]} {
         set cols $req(fields)
       } else {
         set cols $fields
       }
   
       foreach col $cols {
-        if [info exists sql($col)] {
+        if {[info exists sql($col)]} {
 	  lappend select "$sql($col) AS $col"
         } else {
 	  lappend select $col
@@ -679,47 +700,100 @@ namespace eval ::stapi {
     }
   
     set where {}
-    if [info exists req(-glob)] {
+    if {[info exists req(-glob)]} {
       lappend where "$key LIKE [quote_glob $req(-glob)]"
     }
   
-    if [info exists req(-compare)] {
+    if {[info exists req(-compare)]} {
       foreach tuple $req(-compare) {
 	foreach {op col v1 v2} $tuple break
-	if [info exists types($col)] {
+
+	if {[info exists types($col)]} {
 	  set type $types($col)
 	} else {
 	  set type varchar
 	}
+
 	set q1 [pg_quote $v1]
 	set q2 [pg_quote $v2]
   
-	if [info exists sql($col)] {
+	if {[info exists sql($col)]} {
 	  set col $sql($col)
 	}
+
 	switch -exact -- [string tolower $op] {
-	  false { lappend where "$col = FALSE" }
-	  true { lappend where "$col = TRUE" }
-	  null { lappend where "$col IS NULL" }
-	  notnull { lappend where "$col IS NOT NULL" }
-	  < { lappend where "$col < $q1" }
-	  <= { lappend where "$col <= $q1" }
-	  = { lappend where "$col = $q1" }
-	  != { lappend where "$col <> $q1" }
-	  <> { lappend where "$col <> $q1" }
-	  >= { lappend where "$col >= $q1" }
-	  > { lappend where "$col > $q1" }
+	  false {
+	      lappend where "$col = FALSE"
+	  }
 
-	  imatch { lappend where "$col ILIKE [::stapi::quote_glob $v1]" }
-	  -imatch { lappend where "NOT $col ILIKE [::stapi::quote_glob $v1]" }
+	  true {
+	      lappend where "$col = TRUE"
+	  }
 
-	  match { lappend where "$col ILIKE [::stapi::quote_glob $v1]" }
-	  notmatch { lappend where "NOT $col ILIKE [::stapi::quote_glob $v1]" }
+	  null {
+	      lappend where "$col IS NULL"
+	  }
 
-	  xmatch { lappend where "$col LIKE [::stapi::quote_glob $v1]" }
-	  -xmatch { lappend where "NOT $col LIKE [::stapi::quote_glob $v1]" }
+	  notnull {
+	      lappend where "$col IS NOT NULL"
+	  }
 
-	  match_case { lappend where "$col LIKE [::stapi::quote_glob $v1]" }
+	  < {
+	      lappend where "$col < $q1"
+	  }
+
+	  <= {
+	      lappend where "$col <= $q1"
+	  }
+
+	  = {
+	      lappend where "$col = $q1"
+	  }
+
+	  != {
+	      lappend where "$col <> $q1"
+	  }
+
+	  <> {
+	      lappend where "$col <> $q1"
+	  }
+
+	  >= {
+	      lappend where "$col >= $q1"
+	  }
+
+	  > {
+	      lappend where "$col > $q1"
+	  }
+
+	  imatch {
+	      lappend where "$col ILIKE [::stapi::quote_glob $v1]"
+	  }
+
+	  -imatch {
+	      lappend where "NOT $col ILIKE [::stapi::quote_glob $v1]"
+	  }
+
+	  match {
+	      lappend where "$col ILIKE [::stapi::quote_glob $v1]"
+	  }
+
+	  notmatch {
+	      lappend where "NOT $col ILIKE [::stapi::quote_glob $v1]"
+	  }
+
+	  xmatch {
+	      lappend where "$col LIKE [::stapi::quote_glob $v1]"
+	  }
+
+	  -xmatch {
+	      lappend where "NOT $col LIKE [::stapi::quote_glob $v1]"
+	  }
+
+	  match_case {
+	      lappend where "$col LIKE [::stapi::quote_glob $v1]"
+	  }
+
 	  notmatch_case {
 	    lappend where "NOT $col LIKE [::stapi::quote_glob $v1]"
 	  }
@@ -727,6 +801,7 @@ namespace eval ::stapi {
 	  umatch {
 	    lappend where "$col LIKE [::stapi::quote_glob [string toupper $v1]]"
 	  }
+
 	  -umatch {
 	    lappend where "NOT $col LIKE [
 				::stapi::quote_glob [string toupper $v1]]"
@@ -735,6 +810,7 @@ namespace eval ::stapi {
 	  lmatch {
 	    lappend where "$col LIKE [::stapi::quote_glob [string tolower $v1]]"
 	  }
+
 	  -lmatch {
 	    lappend where "NOT $col LIKE [
 				::stapi::quote_glob [string tolower $v1]]"
@@ -744,6 +820,7 @@ namespace eval ::stapi {
 	    lappend where "$col >= $q1"
 	    lappend where "$col < [pg_quote $v2]"
 	  }
+
 	  in {
 	    foreach v [lrange $tuple 2 end] {
 	      lappend q [pg_quote $v]
@@ -755,13 +832,15 @@ namespace eval ::stapi {
     }
   
     set order {}
-    if [info exists req(-sort)] {
+    if {[info exists req(-sort)]} {
       foreach field $req(-sort) {
 	set desc ""
-	if [regexp {^-(.*)} $field _ field] {
+
+	if {[regexp {^-(.*)} $field _ field]} {
 	  set desc " DESC"
 	}
-	if [info exists sql(field)] {
+
+	if {[info exists sql(field)]} {
 	  lappend order "$sql($field)$desc"
 	} else {
 	  lappend order "$field$desc"
@@ -770,18 +849,22 @@ namespace eval ::stapi {
     }
   
     set sql "SELECT [join $select ","] FROM $table_name"
-    if [llength $where] {
+    if {[llength $where]} {
       append sql " WHERE [join $where " AND "]"
     }
-    if [llength $order] {
+
+    if {[llength $order]} {
       append sql " ORDER BY [join $order ","]"
     }
-    if [info exists req(-limit)] {
+
+    if {[info exists req(-limit)]} {
       append sql " LIMIT $req(-limit)"
     }
-    if [info exists req(-offset)] {
+
+    if {[info exists req(-offset)]} {
       append sql " OFFSET $req(-offset)"
     }
+
     append sql ";"
   
     return $sql
@@ -800,7 +883,7 @@ namespace eval ::stapi {
   #      status ==  0 - SQL error, result is error string
   #
   proc sql_get_one_tuple {req {_result ""}} {
-    if [string length $_result] {
+    if {[string length $_result]} {
       upvar 1 $_result result
     }
 
@@ -816,7 +899,7 @@ namespace eval ::stapi {
 
     pg_result $pg_res -clear
 
-    if [string length $_result] {
+    if {[string length $_result]} {
       if {$ok == 0} {
 	set result $err
       }
