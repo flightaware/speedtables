@@ -1027,40 +1027,51 @@ namespace eval ::stapi {
   proc open_raw_ctable {name args} {
     init
 
-    # validate and lock the ctable
     set ctable_name c_$name
-    set build_dir [workname $ctable_name]
 
-    if {![lockfile $build_dir err]} {
-      return -code error $err
+    # if the ctable-creating command already exists, skip most of the work
+    if {[info commands $ctable_name] != ""} {
+        set locked 0
+    } else {
+	# validate and lock the ctable
+	set build_dir [workname $ctable_name]
+
+	if {![lockfile $build_dir err]} {
+	  return -code error $err
+	}
+	set locked 1
+
+	if {![file isdir $build_dir]} {
+	  unlockfile $build_dir
+	  return -code error "Uninitialised ctable $ctable_name: $build_dir not found or not a directory"
+	}
+
+	# make sure the build directory is in my path
+	if {[lsearch $::auto_path $build_dir] == -1} {
+	  lappend ::auto_path $build_dir
+	}
+
+	# Pull the trigger and load the package
+	namespace eval :: [list package require C_$name]
     }
-
-    if {![file isdir $build_dir]} {
-      unlockfile $build_dir
-      return -code error "Uninitialised ctable $ctable_name: $build_dir not found or not a directory"
-    }
-
-    # make sure the build directory is in my path
-    if {[lsearch $::auto_path $build_dir] == -1} {
-      lappend ::auto_path $build_dir
-    }
-
-    # Pull the trigger and load the package
-    namespace eval :: [list package require C_$name]
 
     # Create a new ctable instance
     if {[catch {
       if {[llength $args]} {
-        set ctable [eval [list c_$name create #auto master] $args]
+        set ctable [eval [list $ctable_name create #auto master] $args]
       } else {
-	set ctable [c_$name create #auto]
+	set ctable [$ctable_name create #auto]
       }
     } err]} {
-      unlockfile $build_dir
+        if {$locked} {
+	  unlockfile $build_dir
+	}
       error $err $::errorInfo
     }
 
-    unlockfile $build_dir
+    if {$locked} {
+      unlockfile $build_dir
+    }
     return $ctable
   }
 

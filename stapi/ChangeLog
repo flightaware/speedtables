@@ -2,6 +2,9 @@
     * Standardize "if" statements to be bracketed, normalize some formatting
       and introduce some space around various phrases in the code.
 
+    * Make ::stapi::open_raw_ctable bypass skip all the build checking
+      if a matching c_$name-style table-creating command already exists.
+
 06/09/2012 karl
     * Rename create_ctable_definition to create_speedtable_definition and
       gen_ctable_sql_select to gen_speedtable_sql_select.  Since only
