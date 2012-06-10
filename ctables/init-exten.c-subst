@@ -131,6 +131,8 @@ ${extension}_Init(Tcl_Interp *interp)
 	return TCL_ERROR;
     }
 
+    linkup_assoc_data (interp);
+
     /*
      * Append the extenion to a list of extensions stored in a global variable
      */

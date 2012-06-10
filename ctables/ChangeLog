@@ -1,3 +1,8 @@
+6/10/2012 karl
+    * Use Tcl's interpreter-associated property lists to create a small structure
+      to allow multiple speedtables C shared libraries to interoperate in the
+      same shared memory segment.  (issues 18 and 27)
+
 06/04/2012 karl
     * make ctable/configure actually use the highest version of pgtcl found 
       when --with-pgsql is specified.

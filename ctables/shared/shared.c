@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * speedtables shared memory support
  */
 
 #include <stdio.h>
@@ -24,7 +24,23 @@
 #define max(a,b) (((a)>(b))?(a):(b))
 #endif
 
-static shm_t   *share_list;
+// Data that must be shared between multiple speedtables C extensions
+//
+// NB we used Tcl's interpreter-associated property lists to create, find and
+// share the data.  Ideally we would have that C code in a shared library that
+// the shared libraries we make invoke.
+//
+// NB this should be global to the program.  right now we support only one
+// Tcl interpreter because of our approach of using assoc data.
+//
+struct speedtablesAssocData {
+    int      autoshare;
+    char    *share_base;
+    shm_t   *share_list;
+};
+
+static struct speedtablesAssocData *assocData = NULL;
+#define ASSOC_DATA_KEY "speedtables"
 
 #ifdef SHARED_LOG
 FILE *logfp;
@@ -109,6 +125,26 @@ void shared_perror(char *text) {
 #define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE)
 #endif
 
+// linkup_assoc_data - attach the bits of data that multiple speedtables
+// C shared libraries need to share
+static void
+linkup_assoc_data (Tcl_Interp *interp)
+{
+    if (assocData != NULL) {
+        return;
+    }
+
+    assocData = (struct speedtablesAssocData *)Tcl_GetAssocData (interp, ASSOC_DATA_KEY, NULL);
+    if (assocData != NULL) {
+        return;
+    }
+
+    assocData = malloc (sizeof (assocData));
+    assocData->autoshare = 0;
+    assocData->share_base = NULL;
+    assocData->share_list = NULL;
+}
+
 // open_new - open a new large, empty, mappable file. Return open file
 // descriptor or -1. Errno WILL be set on failure.
 int open_new(char *file, size_t size)
@@ -165,7 +201,7 @@ shm_t   *map_file(char *file, char *addr, size_t default_size, int flags, int cr
     char    *map;
     size_t   size;
     int      fd;
-    shm_t   *p = share_list;
+    shm_t   *p = assocData->share_list;
 
     if(!flags)
         flags = DEFAULT_FLAGS;
@@ -267,7 +303,7 @@ IFDEBUG(fprintf(stderr, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr
     strcpy(p->filename, file);
 
     // Completely initialise all fields!
-    p->next = share_list;
+    p->next = assocData->share_list;
     p->map = (mapheader *)map;
     p->size = size;
     p->flags = flags;
@@ -282,7 +318,7 @@ IFDEBUG(fprintf(stderr, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr
     p->self = NULL;
     p->objects = NULL;
 
-    share_list = p;
+    assocData->share_list = p;
 
     return p;
 }
@@ -302,13 +338,13 @@ int unmap_file(shm_t   *share)
         return -1;
 
     // remove from list
-    if(!share_list) {
+    if(!assocData->share_list) {
         shared_errno = -SH_NO_MAP;
         return 0;
-    } else if(share_list == share) {
-        share_list = share->next;
+    } else if(assocData->share_list == share) {
+        assocData->share_list = share->next;
     } else {
-        shm_t   *p = share_list;
+        shm_t   *p = assocData->share_list;
 
         while(p && p->next != share)
             p = p->next;
@@ -346,13 +382,13 @@ int unmap_file(shm_t   *share)
 // unmap_all - Unmap all mapped files.
 void unmap_all(void)
 {
-    while(share_list) {
-        shm_t   *p    = share_list;
+    while(assocData->share_list) {
+        shm_t   *p    = assocData->share_list;
         char    *map  = (char *)p->map;
         size_t   size = p->size;
         int      fd   = p->fd;
 
-        share_list = share_list->next;
+        assocData->share_list = assocData->share_list->next;
 
         ckfree((char *)p);
 
@@ -1475,16 +1511,10 @@ void TclShmError(Tcl_Interp *interp, char *name)
         Tcl_AppendResult(interp, ": ", shared_errmsg[shared_errno], NULL);
 }
 
-// Note that making these static globals means that if you need to use multiple shared tables in a single
-// program, they all have to be defined in the same speedtable C Extension! This should probably be fixed.
-static int autoshare = 0;
-
-static char *share_base = NULL;
-
 void setShareBase(char *new_base)
 {
-        if(!share_base)
-                share_base = new_base;
+        if(!assocData->share_base)
+                assocData->share_base = new_base;
 }
 
 int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, int flags, shm_t **sharePtr)
@@ -1500,11 +1530,11 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 
     if(strcmp(sharename, "#auto") == 0) {
         static char namebuf[32];
-        sprintf(namebuf, "share%d", ++autoshare);
+        sprintf(namebuf, "share%d", ++assocData->autoshare);
         sharename = namebuf;
     }
 
-    share = map_file(filename, share_base, size, flags, creator);
+    share = map_file(filename, assocData->share_base, size, flags, creator);
     if(!share) {
         TclShmError(interp, filename);
         return TCL_ERROR;
@@ -1521,10 +1551,10 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
         return TCL_ERROR;
     }
 
-    if(share_base == (char *)-1)
-        share_base = (char *)share + size;
-    else if((char *)share == share_base)
-        share_base = share_base + size;
+    if(assocData->share_base == (char *)-1)
+        assocData->share_base = (char *)share + size;
+    else if((char *)share == assocData->share_base)
+        assocData->share_base = assocData->share_base + size;
 
     if(new_share) {
         share->name = ckalloc(strlen(sharename)+1);
@@ -1603,7 +1633,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     if(objc > 2) {
         sharename = Tcl_GetString(objv[2]);
 
-        share = share_list;
+        share = assocData->share_list;
         while(share) {
             if(sharename[0]) {
                 if (strcmp(share->name, sharename) == 0)
@@ -1677,7 +1707,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
                     object = object->next;
                 }
             } else {
-                share = share_list;
+                share = assocData->share_list;
                 while(share) {
                     Tcl_AppendElement(interp, share->name);
                     share = share->next;
