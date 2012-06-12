@@ -1,3 +1,12 @@
+06/11/2012 karl
+    * Factor a gen_refresh_ctable_sql proc out of refresh_ctable.
+
+    * Cache the base fetch sql once read from the stapi definition.
+
+    * Use gmt-based clock comparison when generating time-column-based
+      table updates, presuming sql fields are "timestamp without time zone",
+      which they really should be.
+
 06/10/2012 karl
     * Standardize "if" statements to be bracketed, normalize some formatting
       and introduce some space around various phrases in the code.

@@ -220,6 +220,14 @@ namespace eval ::stapi {
   }
   
   #
+  # generate a SQL time from an integer clock time (seconds since 1970),
+  # accurate to the second, using GMT
+  #
+  proc clock2sqlgmt {clock} {
+    return [clock format $clock -format "%b %d %H:%M:%S %Y" -timezone :UTC]
+  }
+  
+  #
   # convert a SQL time without timezone to a clock value (integer
   # seconds since 1970)
   #
