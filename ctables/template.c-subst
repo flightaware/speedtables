@@ -94,6 +94,8 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 #ifdef WITH_SHARED_TABLES
+	    linkup_assoc_data(interp);
+
 	    if(!share_name) share_name = commandName;
 
 	    if (objc >= 5) {

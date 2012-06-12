@@ -199,6 +199,7 @@ typedef struct _shm_t {
     int                  creator;
     char	        *name;
     char		*filename;
+    int                  attach_count;
     object_t		*objects;
 // server-only fields:
     poolhead_t		*pools;

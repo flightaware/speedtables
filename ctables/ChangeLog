@@ -1,3 +1,12 @@
+6/11/2012 karl
+    * Allow the OS to pick the location of shared memory segments.
+
+    * Properly allocate assocData in the shared memory stuff.
+
+    * Maintain an attach count on shared memory segments and only attach
+      the same shared memory once no matter how many times it might be
+      requested (by different speedtables C extensions).  (issues 18 and 27)
+
 6/10/2012 karl
     * Use Tcl's interpreter-associated property lists to create a small structure
       to allow multiple speedtables C shared libraries to interoperate in the

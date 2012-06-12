@@ -68,6 +68,7 @@ FILE *logfp;
 #ifndef WITH_TCL
 char *ckalloc(size_t size)
 {
+#error "shouldn't load this"
     char *p = malloc(size);
     if(!p)
         shmpanic("Out of memory!");
@@ -131,18 +132,24 @@ static void
 linkup_assoc_data (Tcl_Interp *interp)
 {
     if (assocData != NULL) {
+        IFDEBUG(fprintf(SHM_DEBUG_FP, "previously found assocData at %lx\n", (long unsigned int)assocData);)
         return;
     }
 
+    // locate the associated data 
     assocData = (struct speedtablesAssocData *)Tcl_GetAssocData (interp, ASSOC_DATA_KEY, NULL);
     if (assocData != NULL) {
+        IFDEBUG(fprintf(SHM_DEBUG_FP, "found assocData at %lx\n", (long unsigned int)assocData);)
         return;
     }
 
-    assocData = malloc (sizeof (assocData));
+    assocData = (struct speedtablesAssocData *)ckalloc (sizeof (struct speedtablesAssocData));
     assocData->autoshare = 0;
     assocData->share_base = NULL;
     assocData->share_list = NULL;
+
+    IFDEBUG(fprintf(SHM_DEBUG_FP, "on interp %lx, constructed assocData at %lx\n", (long unsigned int) interp, (long unsigned int)assocData);)
+    Tcl_SetAssocData (interp, ASSOC_DATA_KEY, NULL, (ClientData)assocData);
 }
 
 // open_new - open a new large, empty, mappable file. Return open file
@@ -203,6 +210,9 @@ shm_t   *map_file(char *file, char *addr, size_t default_size, int flags, int cr
     int      fd;
     shm_t   *p = assocData->share_list;
 
+IFDEBUG(init_debug();)
+    IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: file '%s', addr %lx, size %d, flags %x, create %d\n", file, (long unsigned int)addr, (int)default_size, (int)flags, create);)
+
     if(!flags)
         flags = DEFAULT_FLAGS;
     else {
@@ -212,15 +222,18 @@ shm_t   *map_file(char *file, char *addr, size_t default_size, int flags, int cr
 
     // Look for an already mapped share
     while(p) {
+        IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: checking '%s' against '%s'\n", file, p->filename);)
         if(file && p->filename && strcmp(p->filename, file) == 0) {
             if((addr != NULL && addr != (char *)p->map)) {
-                shared_errno = -SH_ALREADY_MAPPED;
-                return NULL;
+		IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: map address mismatch between %lx and %lx, mapping to the latter\n", (long unsigned int)addr, (long unsigned int)p->map);)
             }
             if(default_size && default_size > p->size) {
+		IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: requested size %ld bigger than segment size %ld\n", (long)default_size, (long)p->size);)
                 shared_errno = -SH_TOO_SMALL;
                 return NULL;
             }
+	    IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: resolved '%s' to same map at %lx\n", file, (long unsigned int)p);)
+	    p->attach_count++;
             return p;
         }
         p = p->next;
@@ -283,7 +296,7 @@ IFDEBUG(init_debug();)
         addr = 0;
     if(addr) flags |= MAP_FIXED;
     map = mmap(addr, size, PROT_READ|PROT_WRITE, flags, fd, (off_t) 0);
-IFDEBUG(fprintf(stderr, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr, (long)size, flags, fd, (long)map);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr, (long)size, flags, fd, (long)map);)
 
     if(map == MAP_FAILED) {
         shared_errno = SH_MAP_FILE;
@@ -317,6 +330,7 @@ IFDEBUG(fprintf(stderr, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr
     p->horizon = LOST_HORIZON;
     p->self = NULL;
     p->objects = NULL;
+    p->attach_count = 1;
 
     assocData->share_list = p;
 
@@ -333,9 +347,18 @@ int unmap_file(shm_t   *share)
     int                  fd;
     volatile reader     *r;
 
+IFDEBUG(init_debug();)
+    IFDEBUG(fprintf (SHM_DEBUG_FP, "unmap_file called on %lx\n", (long unsigned int)share);)
+
     // If there's anyone still using the share, it's a no-op
     if(share->objects)
         return -1;
+
+    // if we have multiple attachments and this isn't the last one, we're done
+    if (--share->attach_count > 0) {
+	IFDEBUG(fprintf (SHM_DEBUG_FP, "unmap_file called on %lx, still %d attachments left\n", (long unsigned int)share, share->attach_count);)
+        return 1;
+    }
 
     // remove from list
     if(!assocData->share_list) {
@@ -376,6 +399,7 @@ int unmap_file(shm_t   *share)
     munmap(map, size);
     close(fd);
 
+    IFDEBUG(fprintf (SHM_DEBUG_FP, "unmap_file freed everything\n");)
     return 1;
 }
 
@@ -1523,45 +1547,54 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
     int        creator = 1;
     int        new_share = 1;
 
-    if(size == ATTACH_ONLY) {
+    if (assocData == NULL) {
+        linkup_assoc_data(interp);
+    }
+
+    if (size == ATTACH_ONLY) {
         creator = 0;
         size = 0;
     }
 
-    if(strcmp(sharename, "#auto") == 0) {
+    if (strcmp(sharename, "#auto") == 0) {
         static char namebuf[32];
         sprintf(namebuf, "share%d", ++assocData->autoshare);
         sharename = namebuf;
     }
 
     share = map_file(filename, assocData->share_base, size, flags, creator);
-    if(!share) {
+    if (!share) {
         TclShmError(interp, filename);
         return TCL_ERROR;
     }
-    if(share->name) { // pre-existing share
+
+    if (share->name) { // pre-existing share
         creator = 0;
         new_share = 0;
     }
-    if(creator) {
+
+    if (creator) {
         shminitmap(share);
-    } else if(!shmcheckmap(share->map)) {
+    } else if (!shmcheckmap(share->map)) {
         Tcl_AppendResult(interp, "Not a valid share: ", filename, NULL);
         unmap_file(share);
         return TCL_ERROR;
     }
 
-    if(assocData->share_base == (char *)-1)
+    // assocData->share_base = (char *)share + size;
+#if 0
+    if (assocData->share_base == (char *)-1)
         assocData->share_base = (char *)share + size;
-    else if((char *)share == assocData->share_base)
+    else if ((char *)share == assocData->share_base)
         assocData->share_base = assocData->share_base + size;
+#endif
 
-    if(new_share) {
+    if (new_share) {
         share->name = ckalloc(strlen(sharename)+1);
         strcpy(share->name, sharename);
     }
 
-    if(sharePtr)
+    if (sharePtr)
         *sharePtr = share;
     else
         Tcl_AppendResult(interp, share->name, NULL);
@@ -1571,7 +1604,11 @@ int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t
 
 int doDetach(Tcl_Interp *interp, shm_t *share)
 {
+IFDEBUG(init_debug();)
+    IFDEBUG(fprintf (SHM_DEBUG_FP, "do_detach called on %lx\n", (long unsigned int)share);)
+
     if(share->objects)
+	IFDEBUG(fprintf (SHM_DEBUG_FP, "do_detach called on %lx with share->objects %lx, returning\n", (long unsigned int)share, (long unsigned int)share->objects);)
         return TCL_OK;
 
     if(share->name) {
