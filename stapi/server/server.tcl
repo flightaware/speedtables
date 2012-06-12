@@ -38,6 +38,7 @@ namespace eval ::stapi {
   # Saved information about open ctables
   variable ctable2name
   variable time_column
+  variable sql_cache
 
   # Mapping from sql column types to ctable field types
   variable sql2speedtable

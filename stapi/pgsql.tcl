@@ -190,25 +190,32 @@ namespace eval ::stapi {
   #  this code invokes the SQL statement and loads the results into the
   #  specified ctable
   #
+  # does a Tcl error if it gets an error from postgres unless error variable
+  # is specified, in which case it sets the error message into the error
+  # variable and returns -1.
+  #
+  # if successful it returns the number of tuples read, from zero on up.
+  #
   proc read_ctable_from_sql {ctable sql {_err ""}} {
     if [string length $_err] { upvar 1 $_err err }
 
     set pg_res [pg_exec [conn] $sql]
-    if ![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]] {
+    if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
       set errinf "$err\nIn \"sql\""
     } elseif {[catch {$ctable import_postgres_result $pg_res} err]} {
       set ok 0
       set errinf $::errorInfo
     }
+    set numTuples [pg_result $pg_res -numTuples]
     pg_result $pg_res -clear
 
     if !$ok {
-      if [string length $_err] { return 0 }
+      if [string length $_err] { return -1 }
       return -code error -errorinfo $errinf $err
     }
 
-    return 1
+    return $numTuples
   }
 
   #
