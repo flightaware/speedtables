@@ -44,6 +44,10 @@ all:
 	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
 
+clean:
+	rm -rf stobj
+	rm -f *.dat
+
 compare:
 	rm -rf stobj
 	$(TCLSH) index-compare.tcl
