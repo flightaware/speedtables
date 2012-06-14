@@ -903,7 +903,7 @@ void shmfree_raw(shm_t *shm, char *memory)
 {
     garbage *entry;
 
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw(shm, 0x%lX);\n", (long)block);)
+IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw(shm, 0x%lX);\n", (long)memory);)
 
     if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
         shmpanic("Trying to free pointer outside mapped memory!");
