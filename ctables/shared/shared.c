@@ -1965,13 +1965,21 @@ static void shmhexdump(unsigned char* start, size_t length)
         fprintf(stderr, "\n");
 }
 
+static char *short_filename (char *fileName) {
+    char *myFileName = strrchr (fileName, '/');
+    if (myFileName != NULL) {
+        return myFileName + 1;
+    }
+    return fileName;
+}
+
 char *shmalloc_guard(shm_t *map, size_t size LOGPARAMS)
 {
     unsigned char *memory = (unsigned char *)shmalloc_raw(map, size+GUARD_SIZE * 2 + CELLSIZE);
     if(memory) {
 #ifdef SHARED_LOG
         if(logfp) {
-            fprintf(logfp, "%s:%d alloc %ld @ 0x%lx\n", File, Line, (long)size, (long)(memory+GUARD_SIZE + CELLSIZE));
+            fprintf(logfp, "%s:%d alloc %ld @ 0x%lx\n", short_filename (File), Line, (long)size, (long)(memory+GUARD_SIZE + CELLSIZE));
             fflush(logfp);
         }
 #endif
@@ -1989,7 +1997,7 @@ char *shmalloc_guard(shm_t *map, size_t size LOGPARAMS)
 #ifdef SHARED_LOG
     else
         if(logfp) {
-            fprintf(logfp, "%s:%d alloc %ld FAILED\n", File, Line, (long)size);
+            fprintf(logfp, "%s:%d alloc %ld FAILED\n", short_filename (File), Line, (long)size);
             fflush(logfp);
         }
 #endif
@@ -2002,7 +2010,7 @@ void shmfree_guard(shm_t *map, char *block LOGPARAMS)
     int size;
 #ifdef SHARED_LOG
     if(logfp) {
-        fprintf(logfp, "%s:%d free @ 0x%lx\n", File, Line, (long)block);
+        fprintf(logfp, "%s:%d free @ 0x%lx\n", short_filename (File), Line, (long)block);
         fflush(logfp);
     }
 #endif
@@ -2031,7 +2039,7 @@ int shmdealloc_guard(shm_t *shm, char *data LOGPARAMS)
     int size;
 #ifdef SHARED_LOG
     if(logfp) {
-        fprintf(logfp, "%s:%d dealloc @ 0x%lx\n", File, Line, (long)data);
+        fprintf(logfp, "%s:%d dealloc @ 0x%lx\n", short_filename (File), Line, (long)data);
         fflush(logfp);
     }
 #endif
