@@ -1,3 +1,7 @@
+06/18/2012 karl
+    * Add support to stapi postgres tables for speedtable search 
+      options -array and -array_get
+
 06/11/2012 karl
     * Factor a gen_refresh_ctable_sql proc out of refresh_ctable.
 

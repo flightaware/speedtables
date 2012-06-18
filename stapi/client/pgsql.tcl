@@ -527,16 +527,10 @@ namespace eval ::stapi {
   proc sql_ctable_search {level ns cmd args} {
     array set search $args
 
-    if {[info exists search(-array_get)]} {
-      return -code error "Unimplemented: search -array_get"
-    }
-
-    if {[info exists search(-array)]} {
-      return -code error "Unimplemented: search -array"
-    }
-
     if {![info exists search(-code)] &&
 	![info exists search(-key)] &&
+	![info exists search(-array)] &&
+	![info exists search(-array_get)] &&
 	![info exists search(-array_get_with_nulls)] &&
 	![info exists search(-array_with_nulls)]} {
 	set search(-countOnly) 1
@@ -549,12 +543,20 @@ namespace eval ::stapi {
 
     set code {}
     set array ${ns}::select_array
+
+    if {[info exists search(-array)]} {
+        set array $search(-array)
+    }
     if {[info exists search(-array_with_nulls)]} {
       set array $search(-array_with_nulls)
     }
 
     if {[info exists search(-array_get_with_nulls)]} {
       lappend code "set $search(-array_get_with_nulls) \[array get $array]"
+    }
+
+    if {[info exists search(-array_get)]} {
+      lappend code "set $search(-array_get) \[array get $array]"
     }
 
     if {[info exists search(-key)]} {
@@ -564,7 +566,16 @@ namespace eval ::stapi {
     lappend code $search(-code)
     lappend code "incr ${ns}::select_count"
     set ${ns}::select_count 0
-    uplevel #$level [list pg_select [conn] $sql $array [join $code "\n"]]
+
+    set selectCommand [list pg_select]
+    if {[info exists search(-array)] || [info exists search(-array_get)]} {
+        lappend selectCommand "-withoutnulls"
+    }
+    lappend selectCommand [conn] $sql $array [join $code "\n"]
+
+puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
+
+    uplevel #$level $selectCommand
     return [set ${ns}::select_count]
   }
 
