@@ -573,7 +573,7 @@ namespace eval ::stapi {
     }
     lappend selectCommand [conn] $sql $array [join $code "\n"]
 
-puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
+    #puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
 
     uplevel #$level $selectCommand
     return [set ${ns}::select_count]
