@@ -1,3 +1,6 @@
+06/20/2012 karl
+    * Make -fields work properly for sql-based stapi searches.
+
 06/18/2012 karl
     * Add support to stapi postgres tables for speedtable search 
       options -array and -array_get

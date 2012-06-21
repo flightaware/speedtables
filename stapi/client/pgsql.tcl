@@ -696,7 +696,7 @@ puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCo
       }
 
       if {[info exists req(-fields)]} {
-        set cols $req(fields)
+        set cols $req(-fields)
       } else {
         set cols $fields
       }
