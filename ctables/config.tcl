@@ -33,12 +33,12 @@
     set sharedTraceFile -none
     #set sharedTraceFile -stderr
 
-    #set sharedBase 0xA0000000; ### Default (FreeBSD...)
-    #if { "$tcl_platform(os)" == "Darwin" } {
-    #	set sharedBase 0xA000000; ## OS X
-    #}
+    set sharedBase 0xA0000000; ### Default (FreeBSD...)
+    if { "$tcl_platform(os)" == "Darwin" } {
+    	set sharedBase 0xA000000; ## OS X
+    }
     #set sharedBase -1 ; # Use this one to probe on first allocation
-    set sharedBase NULL
+    #set sharedBase NULL
 
     # Add guard checks to shared memory code
     set sharedGuard 0

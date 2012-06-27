@@ -68,7 +68,6 @@ FILE *logfp;
 #ifndef WITH_TCL
 char *ckalloc(size_t size)
 {
-#error "shouldn't load this"
     char *p = malloc(size);
     if(!p)
         shmpanic("Out of memory!");
