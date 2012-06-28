@@ -5,6 +5,11 @@
 #ifndef SHM_SHARED_H
 #define SHM_SHARED_H
 
+// debug
+// #define SHM_DEBUG_TRACE
+// #define SHARED_GUARD
+// #define SHARED_LOG "/var/tmp/speedtable_shared_log.txt"
+
 #ifdef SHM_DEBUG_TRACE
 #define IFDEBUG(x) x				/* Debug code included*/
 #ifdef SHM_DEBUG_TRACE_FILE
