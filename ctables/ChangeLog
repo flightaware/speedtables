@@ -1,3 +1,8 @@
+6/28/2012 karl
+    * Make MAP_NOCORE a shared memory flag default so that coredumps by
+      default don't include the shared memory segment.  This can be
+      enabled with "flags core" when mounting the shared memory segment.
+
 6/11/2012 karl
     * Allow the OS to pick the location of shared memory segments.
 

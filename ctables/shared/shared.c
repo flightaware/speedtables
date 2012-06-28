@@ -107,10 +107,10 @@ void shared_perror(char *text) {
 
 
 #ifdef MAP_NOSYNC
-# define DEFAULT_FLAGS (MAP_SHARED|MAP_NOSYNC)
+# define DEFAULT_FLAGS (MAP_SHARED|MAP_NOSYNC|MAP_NOCORE)
 # define WITH_FLAGS 1
 #else
-# define DEFAULT_FLAGS MAP_SHARED
+# define DEFAULT_FLAGS (MAP_SHARED|MAP_NOCORE)
 # ifdef MAP_NOCORE
 #  define WITH_FLAGS 1
 # else
