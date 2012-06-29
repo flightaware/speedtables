@@ -963,7 +963,7 @@ namespace eval ::stapi {
 	  }
 	  # bend over backwards, if it's nottext, MAKE it text.
 	  if {"[string tolower $types($key)]" != "varchar"} {
-	    set sql_key TEXT($sql_key)
+	    set sql_key coalesce($sql_key,'')
 	  }
 
 	  lappend sql_keys $sql_key

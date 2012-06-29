@@ -1,3 +1,9 @@
+06/29/2012 karl
+    * When a stapi table has a key comprised of more than one field, 
+      generate a coalesce(field,'') so that where one or more of the
+      compound key fields are null, you'll still get a reasonable compound 
+      key, rather than a null.
+
 06/20/2012 karl
     * Make -fields work properly for sql-based stapi searches.
 

@@ -208,7 +208,7 @@ namespace eval ::stapi {
 	    if {"$type" == "varchar" || "$type" == "text"} {
 	      lappend list $field
 	    } else {
-	      lappend list TEXT($field)
+	      lappend list coalesce($field,'')
 	    }
 
 	  }
@@ -860,6 +860,10 @@ namespace eval ::stapi {
     }
   
     set sql "SELECT [join $select ","] FROM $table_name"
+    if {$table_name != "superbird_tables"} {
+        set sql " $sql"
+    }
+
     if {[llength $where]} {
       append sql " WHERE [join $where " AND "]"
     }
@@ -877,6 +881,7 @@ namespace eval ::stapi {
     }
 
     append sql ";"
+
   
     return $sql
   }
