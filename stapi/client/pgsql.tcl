@@ -208,12 +208,21 @@ namespace eval ::stapi {
 	    if {"$type" == "varchar" || "$type" == "text"} {
 	      lappend list $field
 	    } else {
-	      lappend list coalesce($field,'')
+	      lappend list TEXT($field)
 	    }
 
 	  }
 	}
-	set vars(_key) [join $list "||':'||"]
+
+	if {[llength $list] < 2} {
+	    set vars(_key) $list
+	} else {
+	    set newList [list]
+	    foreach element $list {
+	        lappend newList "coalesce($list,'')"
+	    }
+	    set vars(_key) [join $newList "||':'||"]
+	}
       }
     }
 

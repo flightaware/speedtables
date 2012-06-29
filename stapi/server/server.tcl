@@ -963,7 +963,7 @@ namespace eval ::stapi {
 	  }
 	  # bend over backwards, if it's nottext, MAKE it text.
 	  if {"[string tolower $types($key)]" != "varchar"} {
-	    set sql_key coalesce($sql_key,'')
+	    set sql_key TEXT($sql_key)
 	  }
 
 	  lappend sql_keys $sql_key
@@ -971,7 +971,17 @@ namespace eval ::stapi {
 	  return -code error "Key '$key' not found in $table_name"
         }
       }
-      lappend columns [list _key "" [join $sql_keys "||':'||"]]
+
+      if {[llength $sql_keys] < 2} {
+          set keyString $sql_keys
+      } else {
+          set newList [list]
+	  foreach element $sql_keys {
+	      lappend newList "coalesce($element,'')"
+	  }
+	  set keyString [join $newList "||':'||"]
+      }
+      lappend columns [list _key "" $keyString]
     }
 
     # If we don't have "-with", then use "-with all"
