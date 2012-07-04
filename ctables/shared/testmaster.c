@@ -13,7 +13,7 @@
 
 int main(int ac, char **av)
 {
-    mapinfo *mapinfo = map_file("test.map", MAPADDR, 1024*1024*50);
+    mapinfo *mapinfo = map_file("test.map", MAPADDR, MAPSIZE);
     char *chunks[1024];
     int i;
 

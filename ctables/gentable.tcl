@@ -2167,7 +2167,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls, int quoteType, char *nullString) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls, int quoteType, char *nullString, int poll_interval, Tcl_Obj *poll_code) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = NULL;
@@ -2181,6 +2181,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     int		     col;
     int		    *newFieldNums = NULL;
     int	             status = TCL_OK;
+    int		     poll_counter = 0;
 
     if ((channel = Tcl_GetChannel (interp, channelName, &mode)) == NULL) {
         return TCL_ERROR;
@@ -2240,6 +2241,23 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
     while (1) {
 	char            *key;
+
+	if (poll_interval) {
+	    if (++poll_counter >= poll_interval) {
+		poll_counter = 0;
+		if (poll_code) {
+		    int result = Tcl_EvalObjEx (interp, poll_code, 0);
+		    if (result == TCL_ERROR) {
+			Tcl_BackgroundError(interp);
+			Tcl_ResetResult(interp);
+			// Stop polling if the poll command fails
+			poll_interval = 0;
+		    }
+		} else {
+		    Tcl_DoOneEvent(0);
+		}
+	    }
+	}
 
 	do {
             Tcl_SetStringObj (lineObj, "", 0);

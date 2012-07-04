@@ -1,3 +1,8 @@
+7/4/2012 peter
+    * Add -poll_interval and -poll_code options to read_tabsep and
+      import_postgres_result. These work the same as the corresponding
+      options in search.
+
 6/28/2012 karl
     * Make MAP_NOCORE a shared memory flag default so that coredumps by
       default don't include the shared memory segment.  This can be
