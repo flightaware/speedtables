@@ -1,3 +1,6 @@
+7/14/2012 Peter
+    * Add -foreground option to poll code.
+
 7/4/2012 peter
     * Add -poll_interval and -poll_code options to read_tabsep and
       import_postgres_result. These work the same as the corresponding

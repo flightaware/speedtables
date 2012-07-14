@@ -2167,7 +2167,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *string, int 
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls, int quoteType, char *nullString, int poll_interval, Tcl_Obj *poll_code) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls, int quoteType, char *nullString, int poll_interval, Tcl_Obj *poll_code, int poll_foreground) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = NULL;
@@ -2247,7 +2247,23 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 		poll_counter = 0;
 		if (poll_code) {
 		    int result = Tcl_EvalObjEx (interp, poll_code, 0);
-		    if (result == TCL_ERROR) {
+		    if (poll_foreground) {
+			switch (result) {
+		            case TCL_ERROR: {
+				Tcl_AppendResult (interp, " in -poll_code", (char *)NULL);
+				status = TCL_ERROR;
+				goto cleanup;
+			    }
+			    case TCL_BREAK: {
+				status = TCL_OK;
+				goto cleanup;
+			    }
+			    case TCL_RETURN: {
+				status = TCL_RETURN;
+				goto cleanup;
+			    }
+			}
+		    } else if(result == TCL_ERROR) {
 			Tcl_BackgroundError(interp);
 			Tcl_ResetResult(interp);
 			// Stop polling if the poll command fails

@@ -202,5 +202,18 @@ if {$count != 50} {
     error "polling: got count=$count expected 50"
 }
 
+puts "polling foreground"
+set count 0
+t reset
+set fp [open top-brands.tsv r]
+t read_tabsep $fp -foreground -poll_interval 2 -poll_code {
+	incr count
+	if {$count == 2} break
+}
+close $fp
+if {$count != 2} {
+    error "polling: got count=$count expected 2"
+}
+
 puts "finished"
 
