@@ -15,6 +15,7 @@ namespace eval ::stapi {
   variable default_user
   variable default_db
   variable dio_initted 0
+  variable cache_table_columns 1
 
   #
   # set_DIO - try to create a global DIO object ::DIO with a default connection
@@ -144,6 +145,13 @@ namespace eval ::stapi {
   #  type specification and return them as a list of pairs
   #
   proc get_columns {table} {
+    variable tableColumnCache
+    variable cache_table_columns
+
+    if {$cache_table_columns && [info exists tableColumnCache($table)]} {
+        return $tableColumnCache($table)
+    }
+
     set sql "SELECT a.attnum, a.attname AS col, t.typname AS type
 		FROM pg_class c, pg_attribute a, pg_type t
 		WHERE c.relname = '$table'
@@ -151,12 +159,19 @@ namespace eval ::stapi {
 		  and a.attrelid = c.oid
 		  and a.atttypid = t.oid
 		ORDER BY a.attnum;"
+
     pg_select [conn] $sql row {
       lappend result $row(col) $row(type)
     }
+
     if ![info exists result] {
       return -code error "Can't get columns for $table"
     }
+
+    if {$cache_table_columns} {
+	set tableColumnCache($table) $result
+    }
+
     return $result
   }
 

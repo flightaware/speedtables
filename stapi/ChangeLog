@@ -1,3 +1,10 @@
+07/09/2012 karl
+    * Provide a variable ::stapi::cache_table_columns that if set (default 1),
+      caches the results of ::stapi::get_columns to get all the field names
+      and data types of each field for a specified table.  Should greatly
+      reduce contention for pg_class, pg_attribute and pg_type when lots
+      of children are using stapi to connect to lots of tables.
+
 06/29/2012 karl
     * When a stapi table has a key comprised of more than one field, 
       generate a coalesce(field,'') so that where one or more of the
