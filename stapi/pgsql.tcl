@@ -234,6 +234,46 @@ namespace eval ::stapi {
   }
 
   #
+  # read_ctable_from_sql_async - specify a ctable and a SQL select statement and
+  #  this code invokes the SQL statement and loads the results into the
+  #  specified ctable, asynchronously
+  #
+  # does a Tcl error if it gets an error from postgres unless error variable
+  # is specified, in which case it sets the error message into the error
+  # variable and returns -1.
+  #
+  # if successful it returns the number of tuples read, from zero on up.
+  #
+  proc read_ctable_from_sql_async {ctable sql callback} {
+    pg_blocking [conn] 0
+
+    # it either errors or returns nothing.  why catch the error and pass
+    # it back, just let the error go on its own
+    pg_sendquery [conn] $sql
+
+    read_ctable_async_poll $ctable $callback
+  }
+
+  #
+  # read_ctable_async_poll - async poll routine invoked by 
+  # read_ctable_from_sql_async
+  #
+  proc read_ctable_async_poll {ctable callback} {
+    if {![pg_isbusy [conn]]} {
+	set pg_res [pg_getresult [conn]]
+	if {$pg_res == ""} {
+	    uplevel #0 {*}$callback 
+	    pg_blocking [conn] 0
+	    return
+	}
+
+	$ctable import_postgres_result $pg_res -poll_code update -poll_interval 100
+	pg_result $pg_res -clear
+    }
+    after 10 [list ::stapi::read_ctable_async_poll $ctable $callback]
+  }
+
+  #
   # generate a SQL time from an integer clock time (seconds since 1970),
   # accurate to the second, without timezone info (using local timezone)
   #
