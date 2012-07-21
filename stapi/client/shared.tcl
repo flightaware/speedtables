@@ -43,6 +43,8 @@ namespace eval ::stapi {
     set uri ctable://$address/$table_path
 
     set ns ::stapi::shared[incr shared_serial]
+
+    # insert handler proc (below) into namespace
     namespace eval $ns [list proc handler {args} [info body shared_handler]]
 
     remote_ctable $uri ${ns}::master
