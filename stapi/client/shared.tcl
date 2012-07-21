@@ -44,7 +44,7 @@ namespace eval ::stapi {
 
     set ns ::stapi::shared[incr shared_serial]
 
-    # insert handler proc (below) into namespace
+    # insert handler proc (below) into namespace, and create the namespace
     namespace eval $ns [list proc handler {args} [info body shared_handler]]
 
     remote_ctable $uri ${ns}::master
@@ -60,6 +60,8 @@ namespace eval ::stapi {
     namespace eval :: [list package require [string totitle $prop(extension)]]
     $prop(type) create ${ns}::reader reader $handle
 
+    # Everything's been successfully completed, remember that in the created
+    # namespace.
     set ${ns}::handle $handle
     set ${ns}::table $prop(type)
     return ${ns}::handler
@@ -67,6 +69,12 @@ namespace eval ::stapi {
   register shared connect_shared
 
   # Simple handler, most commands are passed straight to the master.
+  #
+  # Note cheesy object model!
+  #
+  # This executes in the stapi::sharedN namespace created in connect_shared,
+  # never in this namespace, so references to "reader" and "master" are
+  # the two stapi objects created there.
   proc shared_handler {args} {
     set method [lindex $args 0]
     switch -glob -- [lindex $args 0] {
@@ -77,6 +85,7 @@ namespace eval ::stapi {
 	master destroy
 	reader destroy
       }
+      # Insert "detach" case here TODO
       default {
 	uplevel 1 [namespace which master] $args
       }
