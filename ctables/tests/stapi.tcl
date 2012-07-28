@@ -2,8 +2,9 @@
 # $Id$
 #
 
-# Because
-lappend auto_path /usr/local/lib/rivet/packages-local
+# Because we need to be testing from the development version of stapi!
+set dir [exec sh -c "cd ../../stapi; pwd"]
+source $dir/pkgIndex.tcl
 
 package require st_shared
 
@@ -26,6 +27,7 @@ set num [llength $names]
 
 puts "Scanning 1000 samples"
 
+set missing 0
 for {set i 0} {$i < 1000} {incr i} {
     set n [expr {int(rand() * $num)}]
     set k [lindex $names $n]
@@ -43,15 +45,13 @@ for {set i 0} {$i < 1000} {incr i} {
 	incr found
     }
     if {!$found} {
-       puts "Missing $comp"
-    }
-    if {$i % 100 == 0} {
-	puts -nonewline "$found"; flush stdout
+       incr missing
     }
     after 15
 }
 
 puts "1000 passes [llength [array names changed]] modified"
+puts "Missed $missing"
 
 puts "Faster scanning 10000 samples"
 
@@ -88,6 +88,28 @@ foreach id [array names idwant] {
     if {$idwant($id) != $idfound($id)} {
 	puts "$id: wanted $idwant($id) found $idfound($id)"
     }
+}
+
+puts "Testing detach"
+
+$r detach
+
+puts "Reading from detached table"
+
+set found 0
+$r search -key k -array_get a -code {
+    incr found
+}
+
+if {$found == 0} {
+    error "Searching detached table failed"
+}
+
+puts "Attempting to fail access to detached table"
+
+set error [catch {$r exists 1}]
+if {!$error} {
+    error "Failed to fail exists on detached table"
 }
 
 puts "deleting STAPI connection"
