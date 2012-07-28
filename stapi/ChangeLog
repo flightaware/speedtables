@@ -1,5 +1,5 @@
 07/21/2012 peter
-    * Add detach option for sockets (untested)
+    * Add detach option for sockets for shared memory speedtables.
 
 07/09/2012 karl
     * Provide a variable ::stapi::cache_table_columns that if set (default 1),
