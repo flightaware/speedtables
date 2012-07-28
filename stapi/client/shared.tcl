@@ -64,6 +64,7 @@ namespace eval ::stapi {
     # namespace.
     set ${ns}::handle $handle
     set ${ns}::table $prop(type)
+    set ${ns}::attached 1
     return ${ns}::handler
   }
   register shared connect_shared
@@ -77,17 +78,29 @@ namespace eval ::stapi {
   # the two stapi objects created there.
   proc shared_handler {args} {
     set method [lindex $args 0]
+    variable attached
     switch -glob -- [lindex $args 0] {
       search* {
 	uplevel 1 [namespace which reader] $args
       }
       destroy {
-	master destroy
+	if {$attached} {
+	  master destroy
+	}
 	reader destroy
       }
-      # Insert "detach" case here TODO
+      detach {
+	if {$attached} {
+	  master destroy
+	  set attached 0
+	}
+      }
       default {
-	uplevel 1 [namespace which master] $args
+	if {$attached} {
+	  uplevel 1 [namespace which master] $args
+	} else {
+	  return -code error "Detached shared table can only 'search' and 'destroy'"
+	}
       }
     }
   }

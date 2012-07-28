@@ -1,3 +1,6 @@
+07/21/2012 peter
+    * Add detach option for sockets (untested)
+
 07/09/2012 karl
     * Provide a variable ::stapi::cache_table_columns that if set (default 1),
       caches the results of ::stapi::get_columns to get all the field names
