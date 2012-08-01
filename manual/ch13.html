@@ -1,0 +1,466 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables Examples</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch12.html">Back</a><a href=index.html>Index</a><a href="ch14.html">Next</a></div>
+<!-- %END LINKS% -->
+<H2> 13 - Speed Tables Examples</H2>
+<div class="blue">This chapter contains numerous examples of using speed tables.</div>
+<H3>Find the number of rows matching a value</H3>
+<p>The result of a search is the number of matching rows.</p>
+<pre>set count [$table search -compare {{= fieldname value}}]</pre>
+<H3>Find the lowest (highest) value of a field</H3>
+<p>If the field is indexed, you can use <i>index span</i>:</p>
+<pre>
+set span [$table index span fieldname]
+set lowest [lindex $span 0]
+set highest [lindex $span 1]
+</pre>
+<p>otherwise, sort by the field, with a limit of 1.</p>
+<pre># To find the lowest value, sort ascending.
+$table search -fields fieldname -get row -sort fieldname -limit 1 -code {
+    set lowest [lindex $row 0]
+}
+
+# To find the highest value, sort descending
+$table search -fields fieldname -get row -sort -fieldname -limit 1 -code {
+    set highest [lindex $row 0]
+}</pre>
+<H3>Find the meta-table (class) or definition for a speed table</H3>
+<pre>
+set meta_table [table type]
+
+set definition [$meta_table cextension]
+</pre>
+<H3>Define a new method for a Speed Table</H3>
+<pre>
+proc field_max {table field} {
+    if {[lsearch [$table field indexed] $field] != -1} {
+	return [lindex [$table index span $field] 1]
+    } else {
+	set max ""
+        $table search -sort -$field -limit 1 -code { set max $field }
+	return $max
+    }
+}
+
+[anim_characters type] method max field_max
+
+puts "Oldest character is [anim_characters max age]"
+</pre>
+<H3>Copy Speed Table to a File</H3>
+<p>The <tt>-write_tabsep</tt> option to <i>search</i> lets you write all
+or part of a Speed Table to a file</p>
+<pre>
+tableType create t
+...
+set fp [open t.out w]
+t search -write_tabsep $fp
+close $fp
+</pre>
+<p><span>This copies the entire table <b>t</b> to the file <span class="file">t.out</span>. Note that you could as easily have specified an open socket or any other sort of Tcl channel that might exist in place of the file. You could restrict what gets copied using addition search options, for example:</p>
+<pre>
+set fp [open high-severity-report.tsv w]
+t search \
+    -compare {{&gt; severity 90}} \
+    -fields {name device severity} \
+    -write_tabsep $fp
+close $fp
+</pre>
+<H3>Load a Speed Table from a file</H3>
+<p>Given a token-separated file, you use the <i>read_tabsep</i> method.</p>
+<pre>
+set fp [open new_anim_characters.txt r]
+t read_tabsep $fp
+close $fp
+</pre>
+<p>When reading a large table, it may be faster to drop the indexes before
+reading the table, and recreate them afterwards:</p>
+<pre>
+t index drop name
+t index from show
+set fp [open really_big_file r]
+t read_tabsep $fp
+close $fp
+t index create name
+t index create show
+</pre>
+<p>Or, if you don't know all the indexes:</p>
+<pre>
+set indexed [t index indexed]
+foreach f $indexed {t index drop $f}
+set fp [open really_big_file r]
+t read_tabsep $fp
+close $fp
+foreach f $indexed {t index create $f}
+</pre>
+<H3>Exporting a Speed Table to PostgreSQL</H3>
+<p>PostgreSQL supports copying from a file (or standard input) to a table:</p>
+<pre>
+ COPY tablename [ ( column [, ...] ) ]
+ FROM { 'filename' | STDIN }
+ [ [ WITH ] 
+  [ BINARY ]
+  [ OIDS ]
+  [ DELIMITER [ AS ] 'delimiter' ]
+  [ NULL [ AS ] 'null string' ]
+  [ CSV [ HEADER ]
+   [ QUOTE [ AS ] 'quote' ] 
+   [ ESCAPE [ AS ] 'escape' ]
+   [ FORCE NOT NULL column [, ...] ]
+</pre>
+<p>In the Tcl bindings for PostgreSQL, the database connection is actually
+a Tcl channel. This means you can use <TT>COPY table FROM STDIN</TT> and then
+use <tt>search -write_tabsep $connection</tt> to write the table to the
+database.</p>
+
+<p>Here's an example of taking a speed table and copying it it to a PostgreSQL table.</p>
+<pre>
+package require Pgtcl
+source cpescan.ct
+package require Cpe_scan
+
+# Note that the null_value is applied to the meta-table (the speed table
+# class, so as to speak) and not the individual speed table itself.
+cpe_scan null_value \\N
+
+# read the table from a file
+cpe_scan create cpe
+set fp [open saved_cpe_scan.txt]
+cpe read_tabsep $fp
+close $fp
+
+# Open the database connection
+set db [pg_connect -conninfo $login_info]
+
+#
+# note double-backslashing on the null value and that we set the null value
+# to match the null_value set with the speed table.
+#
+set res [
+    pg_exec $db "copy cpe_scan_info from stdin with delimiter as '\t' null as '\\\\N'"
+]
+
+#
+# after you've started it, you expect the postgres response handle's status
+# to be PGRES_COPY_IN
+#
+if {[pg_result $res -status] != "PGRES_COPY_IN"} {
+    puts "[pg_result $res -status] - bailing"
+    puts "[pg_result $res -error]"
+    exit
+}
+
+#
+# next you use the write_tabsep search option to write to the database handle
+#
+cpe search -write_tabsep $db
+
+#
+# then send a special EOF sequence.
+#
+puts $db "\\."
+
+#
+# the result handle previously returned will now have magically changed
+# its status to the normal PGRES_COMMAND_OK response.
+#
+puts [pg_result $res -status]
+
+# And clean up
+pg_result $res -clear
+</pre>
+<p>NOTE that all the records must be accepted by PostgreSQL, i.e. not violate any constraints, etc, or none of them will be.</p>
+</BODY>
+</HTML>
+
+<H3>Importing a Speed Table from PostgreSQL</H3>
+<p>The complementary operation is simpler. You use <tt>pg_exec</tt>
+(or <tt>pg_exec_prepared</tt> or even the
+asynchronous <i>Pgtcl</i> commands <tt>pg_sendquery</tt> and
+</tt>pg_sendquery_prepared</tt> in association with
+<tt>pg_getresult</tt> -- see the <i>Pgtcl</i> documentation for more info),
+then if it's successful use <i>import_postgres_result</i>.</p>
+<pre>
+set res [pg_exec $conn "select * from cpe_scan_info"]
+if {[pg_result $res -status] == "PGRES_RESULT_OK"} {
+    cpe_scan import_postgres_result $res
+}
+pg_result $res clear
+</pre>
+
+<H3>Automatically number records</H3>
+<p>Often you don't actually care what the key for a record is, so long as each
+new record has a unique key. In SQL you use the <tt>INSERT</tt> operation to
+add records, and <tt>UPDATE</tt> to modify them. In Speed Tables the <i>set</i>
+method can both create and modify records, depending on whether the key you
+are using exists or not. There is also a <i>store</i> operation, which does
+not take an explicit key. If it finds the key in the record you are inserting,
+it uses it, otherwise it generates a new numeric key, and returns the key it
+used. The name for the key, if the table does not have a <tt>key</tt>
+field explicitly named, is "_key".</p>
+<pre>
+% t store name "New character" show "The newbie show"
+<b>1</b>
+
+# Store also accepts the name-value list as a single parameter, just like set.
+% t store {name "Another character" show "The newbie show"}
+<b>2</b>
+
+# The special field name _key refers to the anonymous key.
+% t store _key 1 alive 0
+<b>1</b>
+</pre>
+<p>You can also load tab-separated files using the same auto-number
+sequence. Read_tabsep will return the last automatic key used.</p>
+<pre>
+% set fp [open newbie-show-extra.txt r]
+% t read_tabsep $fp -nokeys
+<b>76</b>
+% close $fp
+</pre>
+<H3>Using a Speed Table to buffer database operations</H3>
+<p>To reduce the overhead of database operations, Speed Tables can be used to efficiently buffer inserts or other operations on a table, by duplicating the structure of the SQL table with a CTABLE.</p>
+<pre>
+package require st_server
+
+::stapi::set_conn $conn
+
+#
+# Fetch the table definition from SQL
+#
+set table_columns [::stapi::from_table sql_table key_column]
+
+#
+# Prepare a buffer table
+#
+::stapi::init_ctable buffer sql_table {} $table_columns
+
+#
+# Open the buffer table
+#
+::stapi::open_raw_ctable buffer
+
+#
+# Set the buffer's null value to "\N" for teh SQL import
+#
+[buffer type] null_value "\\N"
+
+#
+# Example insert routine:
+#    Insert a name-value list of rows into the buffered table
+#
+proc insert_buffered {args} {
+    buffer store $args
+}
+
+#
+# Flush the buffer in the background every $frequency seconds
+#
+proc flush_buffer {$conn freqency} {
+    if {[buffer count] > 0} {
+        set r [
+	    pg_exec $db "copy sql_table from stdin with delimiter as '\t' null as '\\\\N'"
+	]
+
+        if {"[pg_result $r -status]" != "PGRES_COPY_IN"} {
+	    set error [pg_result $r -error]
+	} else {
+	    #
+	    # The "-delete" operation will atomically write the buffer and
+	    # empty it
+	    #
+	    buffer search -write_tabsep $db -delete 1
+	    puts $conn "\\."
+
+	    if {"[pg_result $r -status]" != "PGRES_COMMAND_OK"} {
+	        set error [pg_result $r -error]
+	    }
+	}
+	pg_result $r -clear
+
+	if [info exists error] {
+	    error $error
+	}
+    }
+
+    # Flush the buffer again
+    after [expr $freq * 1000] [list flush_buffer $conn $frequency]
+}
+</pre>
+<p>If there is a limit to the rate that records should be written, then you
+can put a limit on the write_tabset command. If the order doesn't matter
+then this will efficiently write up to 1000 records and delete the records
+that were written:</p>
+<pre>
+buffer search -write_tabsep $db -limit 1000 -delete 1
+</pre>
+
+<H3>Saving modified records to a log.</H3>
+<p>The special name <tt>_dirty</tt> is another pseudo-field. It's set to 1
+when a record is modified, and can be reset to zero.</p>
+<pre>
+% t search -compare {{= -dirty 1}}
+<b>78</b>
+</pre>
+<p>to append the modied records only to a file, and clear the <tt>_dirty</tt>
+fields at the same time, you can use <tt>search -write_tabsep ... -update</tt>:
+<pre>
+set fp [open transaction_log.txt a]
+t search -compare {{= _dirty 1}} -write_tabsep $fp -update {_dirty 0}
+close $fp
+</pre>
+
+<H3>Updating a secondary index</H3>
+<p>If you maintain a secondary index for a field, for example using a setter
+method as described in chapter 6, it will be necessary to
+update it after reading multiple records from a file or database. You can
+use the <tt>_dirty</tt> pseudo-field to update changed records.</p>
+<pre>
+# Load the new show
+set fp [open $showname.txt r]
+anim_characters read_tabsep $fp
+close $fp
+
+# Don't forget to buffer the search, since you're modifying the table in place.
+anim_characters search \
+  -compare {{= _dirty 1}} \
+  -update {_dirty 0} \
+  -buffer 1 \
+  -key k -get row -fields name \
+  -code {
+      anim_characters set $k search_name [string tolower [lindex $row 0]]
+  }
+</pre>
+<p>Note: this technique can not be used directly with client-server tables:
+you have to run the code on the server, perhaps by registering a method.</p>
+
+<H3>Loading partial tables</H3>
+<p>Loading partial tables can be a useful technique to save memory. Loading
+partial tables from SQL is easy - you simply <tt>SELECT</tt> only those rows
+that you want. When loading a tab separated file, though, you can sometimes
+benefit from a careful choice of keys. Since the key is an arbitrary string
+you can carefully select a key, for example you could incorporate the time
+in the key:</p>
+<pre>
+t set [clock format [clock seconds] -format "%Y%m%d.[incr sequence]"] $record
+</pre>
+<p>After writing or logging (as in the previous example) rows to a file, you could
+then pull ip records created in a specific month:</p>
+<pre>
+set fp [open audit.log r]
+t read_tabsep $fp -glob "200801*"
+close $fp
+</pre>
+<p>Other useful keys could be based on an IP address or a user name. In
+one application we used the MAC address and matched on the last two
+hex digits to pull in a reasonably well-distributed sample of cable
+modems to poll.</p>
+
+<H3>Extending Speed Tables with "C" search filters</H3>
+<p>Tcl is slow. C is fast. That's the whole point of Speed Tables. Since a Speed Tables
+row is internally a "C" structure, it's natural and easy to write "C" code that
+can be used to filter search results.</p>
+<p>Example:</p>
+<pre>
+   cfilter latorlong args {double target} code {
+     if(Tcl_GetDoubleFromObj (interp, filter, &target) != TCL_OK)
+       return TCL_ERROR;
+     if(row->latitude == target || row->longitude == target) return TCL_OK;
+     return TCL_CONTINUE;
+   }
+</pre>
+<p>To use this filter:</p>
+<pre>
+t search -filter [list latorlong $coord] -array_get a -code { puts $a }
+</pre>
+<p>If the parameter to the filter is complex, it can be worthwhile to cache the result of parsing it. This can
+be done safely by tracking the sequence ID of the search. For example:</p>
+<pre>
+cfilter distance code {
+  static double target_lat, target_long, target_range;
+  static int lastSequence = 0;
+
+  // Only parse target information if the search ID changes.
+  if(sequence != lastSequence) {
+    Tcl_Obj **filterList;
+    int       filterCount;
+    if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)
+      return TCL_ERROR;
+    if(filterCount != 3) {
+      Tcl_AppendResult(interp, "wrong number of arguments: expected lat long range", NULL);
+      return TCL_ERROR;
+    }
+    if(Tcl_GetDoubleFromObj (interp, filterList[0], &target_lat) != TCL_OK)
+      return TCL_ERROR;
+    if(Tcl_GetDoubleFromObj (interp, filterList[1], &target_long) != TCL_OK)
+      return TCL_ERROR;
+    if(Tcl_GetDoubleFromObj (interp, filterList[2], &target_range) != TCL_OK)
+      return TCL_ERROR;
+    lastSequence = sequence;
+  }
+
+  double dlat = target_lat - row->latitude;
+  double dlong = target_long - row->longitude;
+  if( ((dlat * dlat) + (dlong * dlong)) <= (target_range * target_range) )
+    return TCL_OK;
+  return TCL_CONTINUE;
+}
+</pre>
+<p><b>If you let cfilter generate the arguments, this will happen automatically:</b></p>
+<pre>  cfilter distance args {
+    double target_lat
+    double target_long
+    double target_range
+  } code {
+    double dlat = target_lat - row->latitude;
+    double dlong = target_long - row->longitude;
+    if( ((dlat * dlat) + (dlong * dlong)) <= (target_range * target_range) )
+	return TCL_OK;
+    return TCL_CONTINUE;
+  }
+</pre>
+<p>This generates:</p>
+<pre>
+int track_filter_distance (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence)
+{
+    struct track *row = (struct track*)vRow;
+    static int lastSequence = 0;
+    static double target_lat = 0.0;
+    static double target_long = 0.0;
+    static double target_range = 0.0;
+    if (sequence != lastSequence) {
+        lastSequence = sequence;
+        Tcl_Obj **filterList;
+        int       filterCount;
+        if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)
+             return TCL_ERROR;
+        if(Tcl_GetDoubleFromObj (interp, filterList[0], &target_lat) != TCL_OK)
+            return TCL_ERROR;
+        if(Tcl_GetDoubleFromObj (interp, filterList[1], &target_long) != TCL_OK)
+            return TCL_ERROR;
+        if(Tcl_GetDoubleFromObj (interp, filterList[2], &target_range) != TCL_OK)
+            return TCL_ERROR;
+    }
+
+    double dlat = target_lat - row->latitude;
+    double dlong = target_long - row->longitude;
+    if( ((dlat * dlat) + (dlong * dlong)) <= (target_range * target_range) )
+	return TCL_OK;
+    return TCL_CONTINUE;
+}
+</pre>
+
+<!-- INSERT LOGO -->
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch12.html">Back</a><a href=index.html>Index</a><a href="ch14.html">Next</a></div>
+<!-- %END LINKS% -->
+</body>
+</html>

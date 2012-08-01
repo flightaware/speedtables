@@ -1,0 +1,199 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables API - STAPI</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch08.html">Back</a><a href=index.html>Index</a><a href="ch10.html">Next</a></div>
+<!-- %END LINKS% -->
+<H2> 9 - STAPI - Speed Tables API</H2>
+<p>STAPI allows the Speed Tables API, originally implemented in ctables, to be used for a variety of table-like objects. This includes remote ctables through ctable_server and SQL databases. There are two main sets of routines in STAPI, and they're not normally used together.</p>
+<p>st_server, a set of routines for automatically creating a ctable from an SQL table as a local read_only cache for the table, or as a workspace to be used for preparing rows to be inserted into the table. It's normally used in a ctable_server task providing a local cache for client processes.</p>
+<p>st_client, which provides the general interface for creating STAPI objects identified by URIs.</p>
+<H3>st_server</H3>
+<dl>
+<dt><tt>
+package require st_server<br>
+::stapi::init ?options?</tt><dd>
+<p>Options:</p>
+<dl>
+<dt>-dir work_directory<dd>
+<p>Root of directory tree for the ctables</p>
+<dt>-mode mode<dd>
+<p>Octal UNIX mode bits for new directories</p>
+<dt>-conn connection<dd>
+<p>Pgsql connection (if not specified, assumes DIO is being used and a DIO object named DIO exists and has already been connected to the database)</p>
+<dt>-cache minutes<dd>
+<p>How long to treat a cached tsv file as "good"</p>
+</dl>
+<dt><tt>::stapi::init_ctable name table_list where_clause ?columns|column...?</tt><dd>
+<p>Initialize a cached speed table based on one or more SQL tables. If necessary, this builds a ctable based on the columns, and generates new SQL to read the table.</p>
+<p>Parameters:</p>
+<dl>
+<dt>name<dd>
+<p>base name of speed table</p>
+<dt>table_list<dd>
+<p>list of SQL tables to extract data from. If it's empty then use the base name of the speed table as the name of the SQL table.</p>
+<dt>where_clause<dd>
+<p>An optional SQL "WHERE" clause to limit the rows selected into the speed table, or an empty string</p>
+<dt><p class="code">columns<dd>
+<p>list of column definitions.</p>
+<p>At least two columns must be defined -- the first is the speed table key, the rest are the fields of the ctable. If there is only one "column" argument, it's assumed to be a list of column arguments.</p>
+<p>Column entries are each a list of 
+<tt>{field type expr ?name value?...}</tt></p>
+<ul>
+<li><i>field</i> -
+field name
+<li><i>type</i> -
+SQL type
+<li><i>expr</i> -
+SQL expression to derive the value
+<li><i>name value</i> -
+speed table arguments for the field
+</ul>
+<p>(Only the field name is absolutely required.)</p>
+<p>If the type is missing or blank, it's assumed to be <i>varchar</i>. If the expression is missing or blank, it's assumed to be the same as the field name.</p>
+<p>In most cases the list of column definitions can be created by querying the SQL database itself using <tt>from_table</tt>:</p>
+</dl>
+<dt><tt>::stapi::from_table table_name keys ?-option value?...</tt><dd>
+<p>Generate a column list for <tt>init_ctable</tt> by querying the SQL database for the table definition.</p>
+<dl>
+<dt>keys<dd>
+<p>a list of columns that define the key for the table</p>
+<p>Keys can be empty, to allow you to combine from_table lists with an appropriate "WHERE" clause to use <tt>init_ctable</tt> to create a view that spans tables.</p>
+</dl>
+<p>Options:</p>
+<dl>
+<dt>-with column<dd>
+<p>Include column name in table. If <i>any</i> <tt>-with</tt> clauses are provided, only the named columns will be included.</p>
+<dt>-without column<dd>
+<p>Exclude column name from table. You must not provide both "-with" and "-without" options.</p>
+<dt>-index column<dd>
+<p>Make this column indexable. The index will actually be created after the cache is loaded.</p>
+<dt>-column {name type ?sql? ?args}<dd>
+<p>Add an explicit derived column. This can be used for the creation of ctables from SQL tables that have multi-column keys.</p>
+<dt>-table name<dd>
+<p>If specified, generate implicit column-name as "table.column" in the SQL. This allows for the cache to be created from a query on more than one table.</p>
+<dt>-prefix text<dd>
+<p>If specified, prefix column names with "$prefix"</p>
+</dl>
+<dt><tt>::stapi::open_cached name ?pattern? ?-opt val?...</tt><dd>
+<p>Open an initialized speed table, maintaining a local cache of the underlying SQL table in a .tsv file in the workdir.</p>
+<p>Options</p>
+<dl>
+<dt>-pat pattern<dd>
+<p>Only read lines matching the pattern from the cache, if the cache is good. This is an optimization to avoid reading the entire table into memory when only a part of the table will be used . If the cache is old or missing, then the entire table will still be read into memory.</p>
+<dt>-time cache_timeout<dd>
+<p>Override the default cache timeout.</p>
+<dt>-col name<dd>
+<p>Name of column in the table that contains the last_changed time of each entry, if any. This is used as an optimization to only load modified lines when the schema supports that.</p>
+<dt>-index field_name<dd>
+<p>Name of a field to create an index on. Multiple <tt>-index</tt> entries are allowed.</p>
+</dl>
+<dt><tt>::stapi::refresh_ctable ctable ?last_read? ?err?</tt><dd>
+<p>Update new rows from SQL for speed table <tt>ctable</tt>.</p>
+<p>If <tt>last_read</tt> is non-zero, use that rather than last modify time of the cache file.</p>
+<p>If <tt>err</tt> is provided, it will return success or failure of the SQL request and put the error in <i>$err</i>, otherwise it will generate a Tcl error for SQL errors.</p>
+<p>This uses the parameters set up in <tt>open_cached</tt>, and if there is no column in the table that can be used to determine the last change time, then the whole table will be re-read.</p>
+<dt><tt>::stapi::save_ctable ctable ?tsv_file?</tt><dd>
+<p>Save a table locally on disk. If the<tt> tsv_file</tt> is provided, it writes to that file. If not, it locates and locks the existing tsv file for the table, writes it, and unlocks it. This does not save the table back to the SQL data source.</p>
+<dt><tt>::stapi::remove_tsv_file table_name
+<br>::stapi::remove_tcl_file table_name</tt><dd>
+<p>Remove the cached <b>tcl</b> or <b>tsv</b> files, which will force the cache to be reread (if the <b>tsv</b> file is missing) or reconstructed using SQL queries (if the <b>tcl</b> file is missing). These are not normally used directly, but are available if the table is known to be out of date.</p>
+<dt><tt>::stapi::open_raw_ctable name</tt><dd>
+<p>Open an initialized speed table (as in <tt>open_cached</tt>) but don't fetch anything from SQL. This is used internally by <tt>open_cached</tt>, and is also useful for setting up temporary tables and workspaces.</p>
+</dl>
+<H3>st_client</H3>
+<p>st_client implements the ::stapi::connect front end for ctables and other speedtable API objects.</p>
+<dl>
+<dt><tt>::stapi::connect uri ?-name value...?</tt><dd>
+<p>Connect to a speed table server or other database providing a speed table interface via a URI.  Returns an open speed table.</p>
+<p>Options:</p>
+<dl>
+<dt>-key col<dd>
+<p>Define the column used to generate the key.</p>
+<dt>-keys {col col ...}<dd>
+<p>Define the columns used to generate the key.</p>
+<dt>-keysep "string"<dd>
+<p>Define the separator used to build the key.</p>
+</dl>
+<p>One of -key or -keys/-keysep should be provided. Depending on the underlying object, -keys may not be compatible and STAPI will need to create a wrapper function.</p>
+<p>If neither is provided, some STAPI capabilities may not be available.</p>
+
+<dt><tt>::stapi::register method transport_handler</tt><dd>
+<p> register a transport method for ::stapi::connect.</p>
+</dl>
+<H3>Using a ctable server via sttp (client/server)</H3>
+<dl>
+<dt><tt>package require st_client
+<br><b>sttp://[host:port]/[dir/]table[/stuff][?stuff]</b></p>
+</dl>
+<H3>Using a ctable server via sttp (shared memory)</H3>
+<dl>
+<dt><tt>package require st_shared
+<br><b>shared://port/[dir/]table[/stuff][?stuff]</b></tt><dd>
+<p>Access a speed table server on localhost, using shared memory for the "search" method and sttp: for other methods.</p>
+<p>The speed table must reside on the same machine for shared memory table access to be used. Concurrent access and update of shared memory speed tables is supported and provides a mechanism to use multiple processors to access a table concurrently. Like, really concurrently, whereas pure client/server table access is inherently single threaded.</p>
+<p>The ctable built by the server must be in auto_path, or in the directory defined by the "-build" option.</p>
+</dl>
+<H3>Using a PostgreSQL database directly</H3>
+<dl>
+<dt><tt>package require st_client_pgtcl
+   <br>::stapi::set_conn connection <i>...or...</i>
+   <br>::stapi::set_DIO ?db? ?user?</tt>
+<br><b>sql://connection/table[/col[:type]/col...][?param&amp;param...]</b></tt><dd>
+<p>Create a stapi interface to a PostgreSQL table</p>
+<dl>
+<dt>connection:<dd>
+<p>Not implemented yet, will be:
+<tt>[user[:password]]@[host:]database</tt></p>
+<dt>cols:<dd>
+<p>If no keys defined, first column is assumed to be the key.</p>
+<dt>params:<dd>
+<dl>
+<dt>column=sql_code<dd>Define the SQL required to perform the selection
+<dt>_key=sql_code
+<br>_key=column
+<dd>Define the SQL for the key. If this is a simple column name no explicit "_key" will be created.
+<dt>_keys=column:column:...<dd>
+Define the key in terms of a list of columns.
+</dl>
+</dl>
+<p>This uses the methods defined in st_server.</p>
+<p>Examples:</p>
+<p class="code"><b>sql:///users?_key=login</b></p>
+<p>Pull in all the columns from "users", using login as the key.</p>
+<p class="code"><b>sql:///users/login/password</b></p>
+<p>Pull in login and password from "users", using login as the key.</p>
+</dl>
+<H3>Using an already opened speed table</H3>
+<dl>
+<dt><tt>package require st_client</tt>
+<br><b>name</b></tt> (no method)<dd>
+<p>If the URI is not URI format, it assumes it's an object that provides stapi semantics already... typically a ctable, an already-opened ctable_client connection, or the result of a previous call to ::stapi::connect. It queries the object using the <tt>methods</tt> command, and if necessary creates a wrapper around the ctable to implement the extra methods that STTP provides.</p>
+<p>Required methods to avoid the creation of a wrapper:</p>
+<ul>
+<li>key
+<li>makekey
+</ul>
+</dl>
+<H3>stapi::extend - the sttp API extensions to ctables</H3>
+<p>These extensions may be required for packages like STdisplay, which may need methods that are not be provided by all speedtable-compatible packages, so ::stapi::extend creates a wrapper object when needed.</p>
+<dl>
+<dt><tt>::stapi::extend::connect object key-list ?-keysep string?</tt><dd>
+<p>This is also called internally by ::stapi::connect if the "-key" or "-keys" option is provided.</p>
+<p>If the <i>object</i> was created by ::stapi::extend::connect, or if it can use the <tt>methods</tt> call to determine that the object provides all the necessary methods, then the STAPI object is returned immediately. That makes it always safe to use this on an opened speedtable.</p>
+<p>Note: this does not to change any parameters of an existing STAPI object.</p>
+<p>Otherwise, this behaves identically to calling ::stapi::connect with the -key/-keys argument, and creates a wrapper object that understands at least the <tt>key</tt>, <tt>makekey</tt>, and <tt>store</tt> methods.</p>
+</dl>
+<!-- INSERT LOGO -->
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch08.html">Back</a><a href=index.html>Index</a><a href="ch10.html">Next</a></div>
+<!-- %END LINKS% -->
+</BODY>
+</HTML>

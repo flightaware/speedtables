@@ -1,0 +1,146 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables - An Example Definition</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch03.html">Back</a><a href=index.html>Index</a><a href="ch05.html">Next</a></div>
+<!-- %END LINKS% -->
+<H2> 4 -  An Example Speed Table Definition</H2>
+<div class="blue">This chapter provides an example speed table definition, explains it, and shows some basic usage of a speed table.</div>
+<pre>
+package require speedtable
+<br>
+speedtables Animinfo 1.1 {
+    table animation_characters {
+        varstring name indexed 1 unique 0
+        varstring home
+        varstring show indexed 1 unique 0
+        varstring dad
+        boolean alive default 1
+        varstring gender default male
+        int age
+        int coolness
+    }
+}
+</pre>
+
+<p>Speed tables are defined inside the code block of the <i>speedtables package</i>.  </p>
+<p>Executing this will generate table-specific a Tcl extension package named <i>Animinfo</i>, compile it and link it it into a shared library. This package is implemented by application-specific C language code generated from the <i>table</i> definitions in the package.</p>
+<p>Multiple speed tables can be defined in one speedtables package.</p>
+<p>The package name must start with an uppercase letter, and can not contain any digits... this is a limitation of the Tcl package and shared library model.</p>
+<p>The name of the package follows the "speedtables" keyword, followed by a version number, and then a code body containing table definitions.</p>
+<H3>Loading Your Speed Table Package</H3>
+<p>After sourcing in the above definition, you can do a <tt>package require Animinfo</tt> or <tt>package require Animinfo 1.1</tt> and Tcl will load the extension and make it available.</p>
+<p>For efficiency's sake, we detect whether or not the package has been altered since the last time it was generated as a shared library, and avoid the compilation and linking phase when it isn't necessary.</p>
+<p>Sourcing the above code body and doing a <tt>package require Animinfo</tt> will create one new command,<i> animation_characters</i>, corresponding to the defined table. We call this command a <i>Speed tables Class</i> because it behaves similarly to iTcl classes, Tk widgets, and other object-oriented extensions to Tcl. It's also referred to as a <i>meta table</i> or a <i>creator table</i>.</p>
+<p><span class="code">animation_characters create t</span> creates a new object, <b>t</b>, that is a Tcl command that will manage and manipulate zero or more rows of the <i>animation_characters</i> table.</p>
+<div class="blue-indent">One meta table can create many speed tables</div>
+<div class="blue-block">
+<p>You can create additional instances of the table using the meta table's <i>create</i> method. All tables created from the same meta table operate independently of each other, although they share the meta table data structure that speed table implementation code uses to understand and operate on the tables.</p>
+</div>
+<p>You can also say...</p>
+<pre>
+ set obj [animation_characters create #auto]
+</pre>
+<p>...to create a new instance of the table (containing, at first, zero rows), without having to generate a unique name for it.</p>
+<H3>Speed Table Basic Usage Examples</H3>
+<pre>
+t set shake name "Master Shake" \
+ show "Aqua Teen Hunger Force"
+</pre>
+<p>This creates a new row in the speed table named <b>t</b>. Currently all rows in a speed table must have unique key value, which resides outside of the table definition itself. The key for this row is "shake" <a href=#1>[1]</a>. The name and show fields in the row are set to the passed-in values.</p>
+<p>We can set other fields in the same row:</p>
+<pre>
+t set shake age 4 coolness -5
+</pre>
+<p>And increment them in one operation:</p>
+<pre>
+% t incr shake age 1 coolness -1
+<b>5 -6</b>
+</pre>
+<p>I can fetch a single value pretty naturally...</p>
+<pre>
+if {[t get $key age] &gt; 18} {...}
+</pre>
+<p>Or I can get all the fields in definition order:</p>
+<pre>
+puts [t get shake]
+<b>{} {} {} {} {} 1 male 5 -6</b>
+</pre>
+<p>Forgot what fields are available?</p>
+<pre>
+% t fields
+<b>id name home show dad alive gender age coolness</b>
+</pre>
+<p>You can get a list of fields in array get format:</p>
+<pre>
+array set data [t array_get shake]
+puts "$data(name) $data(coolness)"
+</pre>
+<p>In the above example, if a field's value is null then the field name and value will not be returned by <i>array_get</i>. So if a field can be null, you'll want to check for its existence using <i>array_get_with_nulls</i>, which will always provide all the fields' values, substituting a settable null value (typically the empty string) when the value is null.</p>
+<p>Want to see if something exists?</p>
+<pre>
+t exists frylock
+<b>0</b>
+</pre>
+<p>Let's load up our table from a file tab-separated data:</p>
+<pre>
+set fp [open animation_characters.tsv]
+t read_tabsep $fp
+close $fp
+</pre>
+<H3>Search</H3>
+<p>Search is one of the most useful capabilities of speed tables. Let's use search to write all of the rows in the table to a save file:</p>
+<pre>
+set fp [open save.tsv]
+t search -write_tabsep $fp
+close $fp
+</pre>
+<p>Want to restrict the results to a certain set of fields? Use the <tt>-fields</tt> option followed by a list of the names of the fields you want.</p>
+<pre>
+t search -write_tabsep $fp \
+-fields {name show coolness}
+</pre>
+<p>Sometimes you might want to include the names of the fields as the first line...</p>
+<pre>
+t search -write_tabsep $fp \
+-fields {name show coolness} \
+-with_field_names 1
+</pre>
+<p>Let's find everyone who's on the Venture Brothers show who's over 20 years old, and execute code for each result:</p>
+<pre>
+t search -compare {{= show "Venture Brothers} {&gt; age 20}} \ -array_get data -code {
+ puts $data
+}
+</pre>
+<H3>Additional meta table methods</H3>
+<p><i>animation_characters info</i> - which currently does nothing (boring)</p>
+<p><i>animation_characters null_value \\N</i> - which sets the
+default null value for all tables of this table type to, in this
+case, \N</p>
+<p class="bug">Bug: This should be settable on a per-table basis.</p>
+<p><i>animation_characters method foo bar</i> - this will register a new method named <i>foo</i> and then invoke the proc <i>bar</i> with the arguments being the name of the object followed by whatever arguments were passed.</p>
+<p>For example, if after executing <tt>animation_characters method foo bar</tt> and creating an instance of the <i>animation_characters</i> table named <b>t</b>, if you executed</p>
+<pre>
+   t foo a b c d
+</pre>
+<p> ...then proc <i>bar</i> would be called with the arguments "<i>x a b c d</i>".</p>
+<p>Implementation note: the generated C source code, some copied .c and .h files, the compiled .o object file, and shared library (the "Speed Tables Objects") are written in a directory called <span class="file">stobj</span> underneath the directory that's current at the time the Speed Tables Package is sourced, unless a build path is specified. For example, after the "package require speedtable" and outside of and prior to the package definition, if you invoke</p>
+<pre>
+CTableBuildPath /tmp
+</pre>
+<p>...then those files will be generated in the <span class="file">/tmp</span> directory. (It's a bad idea to use <span class="tmp">/tmp</span> on a multiuser machine, of course, but could be OK for a dedicated appliance or something like that.)</p>
+<p>Note that the specified build path is appended to the Tcl library search path variable, <i>auto_path</i>, if it isn't already in there.</p>
+<a name="1"><p class="foot">[1] It feels a bit clumsy to have an external key like this, and we are working on making the key a part of the row itself, which seems better.  Currently the "key" data type is used, and if no "key" is defined then the pseudo-field "_key" is created.</p>
+<!-- INSERT LOGO -->
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch03.html">Back</a><a href=index.html>Index</a><a href="ch05.html">Next</a></div>
+<!-- %END LINKS% -->
+</body>
+</html>

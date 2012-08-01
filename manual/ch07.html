@@ -1,0 +1,151 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables - Client-Server Tables</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch06.html">Back</a><a href=index.html>Index</a><a href="ch08.html">Next</a></div>
+<!-- %END LINKS% -->
+<H2> 7 -  Client-Server Speed Tables</H2>
+<div class="blue">This chapter describes the rationale for creating a client-server interface to Speed Tables, explains the pluses and minuses of the current implementation, explains how to use the client interface, and gives an example of how to use it.</div>
+<p>Tables created with Speed Tables, as currently implemented, are normally local to the Tcl interpreter that created them.</p>
+<p>A mechanism that uses shared memory and supports multiple readers is now available. It maintains the entire table, keys, and indexes in shared memory, and may be used when there is sufficient physical memory available. It operates locklessly and so does not support multiple writers.</p>
+<p>Only the "search" command operates over the shared memory interface, all other commands use the client-server API.</p>
+<p>Even with these limitations, client-server speed tables - with or without shared memory - can be quite useful.</p>
+<p>Early in our work it became clear that we needed a client-server way to talk to Speed Tables that was highly compatible with accessing Speed Tables natively.</p>
+<p>The simplicity and uniformity of the speed tables interface and the rigorous use of key-value pairs as arguments to search made it possible to implement a Speed Tables client and server in around 500 lines of Tcl code. This code implements the Speed Table Transfer Protocol (STTP).</p>
+<p>This implementation provides near-identical behavior for client-server Speed Tables as direct Speed Tables for <i>get, set, array_get, array_get_with_nulls, exists, delete, count, type, fields, fieldtype, needs_quoting, names, reset, destroy, statistics, </i>and<i> search</i>.</p>
+<div class="blue-indent">Authentication, lack thereof</div>
+<div class="blue-block">
+<p>The current implementation of the speed table server does <b>no authentication</b>, so it is only appropriate for use behind a firewall or with a protection mechanism "in front of" it.</p>
+<p>For instance, you might use your system's firewall rules to prevent access to the ports speed table server is using (or you're having it use) other than between the machines you designate. Alternatively you could add the TLS extension, do authentication and substitute SSL sockets for the plain ones -- Speed Tables wouldn't even notice a difference.</p>
+</div>
+<p>There is a Tcl interpreter on the server side, pointing to the possibility of deploying server-side code to interact with Speed Tables <a href=#1>[1]</a>. There is a limited mechanism to execute server code from the client, if this option is enabled, using the 'eval' and 'trigger' methods.</p>
+<p>Speed Tables' <i>register</i> method appears to be a natural fit for implementing an interface to row-oriented server-side code invoked from a client.</p>
+<p>Speed Tables can be operated in safe interpreters if desired, as one part of a solution for running server-side code, should you choose to take it on.</p>
+<p>Once you start considering using Speed Tables as a way to cache tens of millions of rows of data across many tables, if the application is large enough, you may start to consider having machines basically serve as dedicated Speed Table servers.</p>
+<p>Take generic machines and stuff them with the max amount of RAM at your appropriate density/price threshold. Boot up your favorite Linux or BSD off of a small hard drive, thumb drive, or from the network. Start up your Speed Tables server processes, load them up with data, and start serving speed tables at far higher performance that traditional SQL databases.</p>
+<H3>Speed Table URLs</H3>
+<p class="code">sttp://foo.com/bar</p>
+<p class="code">sttp://foo.com:2345/bar</p>
+<p class="code">sttp://foo.com/bar/snap</p>
+<p class="code">sttp://foo.com:1234/bar/snap</p>
+<p class="code">sttp://foo.com/bar?moreExtraStuff=sure</p>
+<p>The default speed table client/server port is 11111. It can be overridden as above. There's a host name, an optional port, an optional directory, a table name, and optional extra stuff. Currently the optional directory and optional extra stuff are parsed, but ignored.</p>
+<p>A typical server-side use of a speed table URL wildcards the hostname:</p>
+<p class="code">sttp://*:2345/bar</p>
+<H3>Example Client Code</H3>
+<pre>
+package require ctable_client
+
+remote_ctable sttp://127.0.0.1/dumbData t
+
+t search -sort -coolness -limit 5 -key key -array_get_with_nulls data -code {
+ puts "$key -&gt; $data" 
+}
+</pre>
+
+<H3>Example Server Code</H3>
+
+<pre>
+package require ctable_server
+
+::ctable_server::register sttp://*/dumbData t
+</pre>
+<p>That's all there is to it. You have to allow the Tcl event loop to run, either by doing a <i>vwait </i>or by periodically calling <i>update</i> if your application is not event-loop driven, but as long as you do so, your app will be able to serve out speedtables.</p>
+<H3>Client-Server Performance</H3>
+<p>Performance of client-server speed tables is necessarily slower than that of native, local speed tables. Network round-trips and the Tcl interpreter being involved on both the client and server side for every method invoked on a remote speed table inevitably impacts performance.</p>
+<p>That being said, a couple of techniques we will now explain can have a dramatic impact on client/server speed table performance.</p>
+<H3>Batching Client-Server Speed Table Operations for Speed</H3>
+<p>Consider a case where you know you're going to set values in dozens to hundreds of rows in a table. You can batch up the sets into a single batch set command.</p>
+<pre>
+$remoteCtable set key1 var value ?var value...?
+$remoteCtable set key2 var value ?var value...?
+$remoteCtable set key3 var value ?var value...?
+$remoteCtable batch {
+    set key1 var value ?var value...?
+    set key2 var value ?var value...?
+    set key3 var value ?var value...?
+}
+</pre>
+<p>In the second example, all of the set commands are sent over in a single remote speed table command, processed as a single batch by the speed table server (with no Tcl interpreter involvement in processing on a per-command basis inside the batch).  A list is returned comprising the results of all of the commands executed. (See the batch method for more details.)</p>
+<p>Most speed table commands can be batched, except for the search methods, the results of attempting such a thing being undefined. In particular, get, delete, and exists can be pretty useful.</p>
+<H3>Using Client-Server Search To Get Many Rows At Once</H3>
+<p>Another common use of speed tables is to retrieve values from rows in some kind of loop. Perhaps something like...</pre>
+<pre>
+foreach key $listOfRows {
+    set data [$ctable get $key]
+    ...
+}
+</pre>
+<p>Unfortunately there is only a single channel for communication, and the server is single-threaded, so the places this can be used are limited. Even if it did, every "get" would cause a network roundtrip to the speed table server handling that table. If we substitute a search for the above, we can get all the data for all the rows in a single roundtrip. The "in" compare method can be particularly useful for this...</p>
+<pre>
+$ctable search -compare {in key $listOfRows} -array_with_nulls data {
+    ...
+}
+</pre>
+<div class="blue-indent">STTP does not support NULLs.</div>
+<div class="blue-block">
+<p>Note that -array_with_nulls retrieves null fields. STTP passes rows around internally as token separated files, and hence when used in client-server speed tables there is no equivalent to -array or -array_get.</p>
+<p>Because tab-separated data doesn't have an out-of-band facility for communicating that a field is null, null values must be communicated in-band.</p>
+</div>
+
+<H3>Differences between local and client-server Speed Tables</H3>
+<p>These methods do not work or work differently:</p>
+<dl>
+<dt>foreach (deprecated)<dd>
+<p>Not implemented.</p>
+<dt>search<dd>
+<p>The server is single-threaded, so you can't use it from inside a
+<tt>search</tt> code body at all. Avoid constructs like <tt>$table search ... -code { $table set ... }</tt>.</p>
+<p>There is no provision for passing nulls back from the server, so you should only use <tt>-array_with_nulls</tt> and <tt>-array_get_with_nulls</tt> in <i>search</i>.</p>
+<dt>import_postgres_result<dd>
+<dt>read_tabsep<dd>
+<dt>write_tabsep<dd>
+<p>Not implemented.</p>
+</dl>
+<p>These additional methods are provided by the server:</p>
+<dl>
+<dt>shutdown ?-nowait?<dd>
+<p>Terminates the server after waiting for all active client connections to complete. The <tt>-nowait</tt> option disables this waiting period and closes all client connections <i>immediately</i>.</p>
+<dt>redirect <i>remoteURL</i> ?-shutdown?<dd>
+<p>Client connections are redirected to a new sttp: URL. If the <tt>-shutdown</tt> option is provided, the server terminates after the last client disconnects</p>
+<p>
+Typical usage for redirection would be to reload a long-running ctable with
+an updated copy of an SQL table. It may be more efficient to load a new ctable
+than to update one in place, if incremental updates aren't possible, or
+you may need to keep serving requests while initializing the new table.
+</p>
+<dt>info ?-verbose?<dd>
+<p>Returns the server version followed by the list of extended commands. The <tt>-verbose</tt> option returns the commands and command arguments.</p>
+<dt>tables<dd>
+<p>Returns a list of tables supported by this server</p>
+<dt>tablemakers<dd>
+<p>Returns a list of table types supported by this server</p>
+<dt>create <i>tableName</i><dd>
+<p>Only applicable to a tablemaker. Creates a new table named <i>tableName</i>.</p>
+<dt>eval <i>codeBlock</i><dd>
+<p>Only applicable if eval is enabled for this table.</p>
+<dt>trigger <i>?method? ?proc?</i><dd>
+<p><b>Server only</b>, creates a new method for the ctable server. The <i>proc</i> is called as <tt>proc URL tableName method ?args...?</tt>. This is done <i>before</i> the underlying Speed Table or STAPI table is accessed, and allows the Speed Table server to front-end table types that do not support the <i>method</i> meta-table method. If the <i>proc</i> returns with <tt>return -break</tt> the underlying table will not be called at all.</p>
+</dl>
+
+<H3>STAPI support for ctable_server</H3>
+<p>The success of the ctable_server led to the creation of a generic URI-based API for the ctable server and for other ctable-compatible objects and classes. This API, the Speed Table API (STAPI), allows ctables, the ctable server, and other compatible objects to be used interchangably by applications.</p>
+<p>To open a table using the STAPI you need to <tt>package require </tt>any packages needed for the STAPI connection method you need, then call</p> <p class="code">::stapi::connect method://server_spec/table_spec</p>
+<p>For the speedtable server, the method is <tt>sttp:</tt> (speed tables transfer protocol), and the URI syntax is exactly the same as in <tt>remote_speedtable</tt></p>
+<p>As a special case, when the URI is not in URI format it is assumed to be the name of an already opened ctable.</p>
+<p>STAPI connection methods already defined also include sql, which provides direct access to PostgreSQL tables through pgsql as if they were ctables.</p>
+<p>STAPI is described in more detail in section 9.</p>
+<a name=1><p class="foot">[1] Fairly analogous to stored procedures in a SQL database, Tcl code running on the server's interpreter could perform multiple speed table actions in one invocation, reducing client/server communications overhead and any delays associated with it.</p>
+<!-- INSERT LOGO -->
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch06.html">Back</a><a href=index.html>Index</a><a href="ch08.html">Next</a></div>
+<!-- %END LINKS% -->
+</body>
+</html>

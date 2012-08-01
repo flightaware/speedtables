@@ -1,0 +1,95 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables - Data Types</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch02.html">Back</a><a href=index.html>Index</a><a href="ch04.html">Next</a></div>
+<!-- %END LINKS% -->
+<H2> 3 -  Speed Table Fields and Data Types</H2>
+<div class="blue">This chapter explains the various types of fields that can be contained in a speed table.</div>
+<p>The following data types are available</span><a href=#1>[1]</a>:</p>
+<ul>
+<li> <i>boolean</i> - a single 0/1 bit
+<li> <i>varstring</i> - a variable-length string
+<li> <i>fixedstring</i> - a fixed-length string
+<li> <i>short</i> - a short integer
+<li> <i>int</i> - a machine native integer
+<li> <i>long</i> - a machine native long
+<li> <i>wide</i> - a 64-bit wide integer (Tcl Wide)
+<li> <i>float</i> - a floating point number
+<li> <i>double</i> - a double-precision floating point number
+<li> <i>char</i> - a single character (deprecation likely)
+<li> mac - an ethernet MAC address
+<li> <i>inet</i> - an internet IP address
+<li> <i>tclobj</i> - a Tcl object... more on this powerful capability later
+<li> <i>key</i> - not really a type, this is an alias for the row's key.
+<li> <i>cfilter</i> - Define a search filter in native "C" code.<br/>Does not create a field.
+</ul>
+<p>Fields are defined by the data type followed by the field name, for example...</p>
+<pre>double longitude</pre>
+<p>...to define a double-precision field named longitude.</p>
+<p>Field definitions can followed by one or more key-value pairs that define additional attributes about the field. Supported attributes include</p>
+<dl>
+<dt><i>indexed </i><dd>
+<p>If indexed is specified with a true (nonzero) value, the code generated for the speed table will include support for generating, maintaining, and using a skip list index on the field being defined.</p>
+<p>Indexed traversal can be performed in conjunction with the speed table's search functions to accelerate searches and avoid sorts. Defaults to "indexed 0" aka the field is not generated with index support.</p>
+<p>Indexed support is not provided for boolean fields.</p>
+<dt><i>notnull</i><dd>
+<p>If notnull is specified with a true (nonzero) value, the code generated for the speed table will have code for maintaining an out-of-band null/not-null status suppressed, resulting in a substantial performance increase for fields for which out-of-band null support is not needed. Defaults to "notnull 0" aka null values are supported.</p>
+<dt><i>default</i><dd>
+<p>If default is specified, the following value is defined as the default value and will be set into rows that are created when the field does not have a value assigned.</p>
+<p>There is no default default value, however if no default value is defined and the field is declared as notnull, strings will default to empty and numbers will default to zero.</p>
+<dt><i>length</i><dd>
+<p>Currently only valid for fixedstring fields, length specifies the length of the field in bytes. There is no default length; length must be specified for fixedstring fields.</p>
+<dt><i>unique</i><dd>
+<p>If unique is specified with a true value, the field is defined as indexed ,and an index has been created and is in existence for this field for the current table, a unique check will be performed on this field upon insertion into the speed table.</p>
+</dl>
+<p>There are additional special fields that all tables may have:</p>
+<dl>
+<dt>_key<dd>
+<p>If the key is not given an explicit alias in the table, then there is
+an additional field named <i>_key</i> automatically created.</p>
+<dt>_dirty<dd>
+<p>This is a boolean, set to 1 when any record in the field is modified. It
+may be manually cleared.</p>
+</dl>
+<p class="bug">Bug: Unique checks are not currently being performed as of 12/31/06.</p>
+<p class="bug">Bug: String search matching functions don't yet work for fixedstrings and fixedstrings have not had a lot of use as of 12/31/06.</p>
+<p>In addition, "C Filters" can be created that can be used to speed up searching ctables with fragments of native code. They look
+much like field definitions, for a "field type" of "cfilter", but will not show up in the ctable as a field and only have the
+one parameter, a code fragment.</p>
+<p><tt>cfilter distance args {type name type name} code { ... c code goes here ... }</tt></p>
+<p>This code fragment is not guaranteed to be a separate c function, but it can be conceptually thought of as one with the 
+following declaration:<p>
+<p><tt>int table_filter_name(TCL_Interp *interp, struct ctableTable *ctable, struct ${ctable_name} *row, Tcl_Obj *filter, int sequence);</tt></p>
+<ul>
+<li><i>interp</i> - A pointer to the Tcl interpeter
+<li><i>ctable</i> - A pointer to this ctable instance
+<li><i>row</i> - A pointer to the row being examined
+<li><i>filter</i> - A TclObj filter argument passed from search
+<li><i>sequence</i> - A unique ID for each search operation
+</ul>
+<p>If arguments are provided, then code is transparently generated to extract the arguments from the Tcl Object. If only one argument is provided, the filter parameter will be used as a whole. If more than one argument is provided, the filter parameter will be treated as a list.
+The types of the arguments are Tcl types, the actual C variable will be a "char *", a "double", an "int", or a "long" depending on the type provided.</p>
+<p>As a special case, "args {list argc argv}" will extract an integer argc (or whatever name is provided) and a list of TclObjs argv.</p>
+<p>The filter can examine any fields in the CTable by name, as "row->fieldname". It can also look at "row->_fieldname_IsNull" to
+see if the field is null (has never been assigned a value, or has been assigned the table's null value string). It should return
+TCL_OK for a matched row, TCL_CONTINUE for a missed match, TCL_BREAK to terminate the search at this point (here there be dragons),
+and TCL_ERROR for an error.</p>
+<p>To speed up filters, a non-zero sequence number is provided. This ID is unique to each search operation: if it hasn't changed,
+then the filter object hasn't changed, and any calculations based on the filter object (such as parsing a list of parameters) can
+be re-used.</p>
+<p>Helper functions can be added in "ccode" blocks defined before any speedtables.</p>
+<a name=1><p class="foot">[1] Additional data types can be added, although over Speed Tables' evolution it has become an increasingly complicated undertaking.</p>
+<!-- INSERT LOGO -->
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch02.html">Back</a><a href=index.html>Index</a><a href="ch04.html">Next</a></div>
+<!-- %END LINKS% -->
+</body>
+</html>

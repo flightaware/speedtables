@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables Troubleshooting</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch11.html">Back</a><a href=index.html>Index</a><a href="ch13.html">Next</a></div>
+<!-- %END LINKS% -->
+<H2> 13 -  Troubleshooting</H2>
+<div class="blue">This chapter describes what to do when speed tables doesn't work.</div>
+<H3>Compiler Errors and Warnings When Building a Speed Table</H3>
+<p>Speed Tables has been carefully coded to generate C code that will compile cleanly, specifically with the GNU C Compiler, gcc 3.3 and gcc 4.0. Right now we run the compiler with error warning levels set very high and any warnings causing the speed tables library generation process to fail. This has helped us to catch many bugs during development and we've done the work to make sure all the routines are being used with correct argument types, etc.</p>
+<p>Should you come across a compiler warning that stops the speed table generation process, you may want to look at speed tables' software and try to fix it.</p>
+<p>If you want to see what compiler commands speed tables is executing, you can turn on compiler debugging.</p>
+<pre>
+set ::ctable::showCompilerCommands 1
+</pre>
+<p>Do this after your "package require speedtable" and before you declare your C extensions.</p>
+<p>How we invoke the compiler can be found in <span type="file">gentable.tcl</span>. We currently only support FreeBSD and Mac OS X, and a general solution will likely involve producing a GNU configure.in script and running autoconf, configure, etc. We'd love some help on this.</p>
+<H3>Simple Syntax Errors May Cause Compiler Errors</H3>
+<p>Most syntax errors in a C extension definition will be caught by speed tables and reported. When sourcing a speed table definition, you may get the message</p>
+<pre>
+<b>(run ::ctable::get_error_info to see speed table's internal errorInfo)</b>
+</pre>
+<p>This means that speed tables has caught some kind of unexpected internal error within itself. It has suppressed its own error traceback because it isn't valuable to anyone who isn't looking to dig into the error.</p>
+<p>If you're not running tclsh interactively, you'll probably want to do so and then source in whatever is causing the error. After you get the above error message, you can execute...</p>
+<pre>
+::speedtable::get_error_info
+</pre>
+<p>...to see what the commotion is about.</p>
+<p>A known bug in early December of 2006 is that if you define two fields in a table with the exact same name, you'll get a semi-strange traceback rather than a nice message telling you what you did. That's kind of characteristic of what I'm talking about.</p>
+<H3>Core Dumps at Runtime</H3>
+<p>Speed Tables shouldn't ever dump core but, if it does, you may want to try to figure it out. If you want to be able to use your C debugger on the speed tables code, turn on compiler debugging after you've loaded the speedtable package and before you load your extension.</p>
+<pre>
+set ::ctable::genCompilerDebug 1
+</pre>
+<p>Ideally you'll also build Tcl with debugging enabled. When building Tcl, add <tt>--enable-symbols</tt> to your configure options to get a Tcl library that you can run your debugger over.</p>
+<p>Run gdb on tclsh and when you hit your segmentation violation or whatever, if all is well, gdb should be on the line where the trap occurred and let you poke around all of the C variables and structures and the like.</p>
+<p>If gdb can't find any symbols, try moving up through some stack frames (see gdb's documentation for more information). If in the speed tables routines you aren't getting file name and line number information and access to your local variables and the like, you probably haven't managed to build it with debugging enabled. Turn on showing compiler commands and make sure you see <b>-g</b> being specified when the commands are being run.</p>
+<p>If you don't see the compiler being run, try deleting the contents of your build directory. That'll trigger a regeneration and recompile of the speed table code for your extension.</p>
+<H3>Speed table configuration variables</H3>
+<p>There are a number of variables that can be set to change the behavior of
+Speed Tables. Many of these are useful for debugging. They are globally configured in the file <tt>config.tcl</tt> in the Speed Tables installation
+directory. You can also change them after loading SpeedTables, for example:</p>
+<pre>
+set ::ctable::genCompilerDebug 1
+</pre>
+<dl>
+<dt>errorDebug<dd>
+<p>This disables the trapping of errors into ::ctable::get_error_info</p>
+<dt>genCompilerDebug<dd>
+<p>This builds and links the generated speed table with debug libraries.</p>
+<dt>memDebug<dd>
+<p>this in addition includes the memory debug libraries, if available, and
+enables the <i>memory</i> method.</p>
+<dt>showCompilerCommands<dd>
+<p>Displays the compile commands.</p>
+<dt>withPgtcl<dd>
+<p>Includes pgtcl support, normally 1 on FreeBSD, 0 on OSX.</p>
+<dt>withSharedTables<dd>
+<p>Includes support for shared memory tables, including the <tt>master</tt> and <tt>reader</tt> commands for the <i>create</i> method, and the <i>share</i> method. Normally 1.</p>
+<dt>withDirty<dd>
+<p>Include support for the <tt>_dirty</tt> pseudo-field. Normally 1.</p>
+</dl>
+<p>Changing these variables should trigger a rebuild of the table. If it
+doesn't, that's a bug, do let us know.</p>
+<!-- INSERT LOGO -->
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch11.html">Back</a><a href=index.html>Index</a><a href="ch13.html">Next</a></div>
+<!-- %END LINKS% -->
+</BODY>
+</HTML>

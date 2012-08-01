@@ -1,0 +1,615 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- $Id$ -->
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>Speed Tables - Methods</title>
+  <link rel="stylesheet" href="manual.css">
+</head>
+<body>
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch04.html">Back</a><a href=index.html>Index</a><a href="ch06.html">Next</a></div>
+<!-- %END LINKS% -->
+<H2> 5 -  Methods for Manipulating Speed Tables</H2>
+<div class="blue">This chapter enumerates all of the defined methods that are available to interact with Speed Tables, with examples.</div>
+<H3>Speedtables (Global) Functions</H3>
+<p>All Speed Tables are defined in a <b>speedtables</b> block. Inside this block you can have any number of common
+tables and helper functions.</p>
+<dl compact>
+<dt>speedtables {block}<dd>
+<p>Top level block, starts definition of a Speed Table C Extension.</p>
+<dt>ccode {block}<dd>
+<p>Raw C code passed through to the compiler.</p>
+<dt>table {block}<dd>
+<p>Structured Speed Table definition, see Chapter 3 for data types, Chapter 4 for example.</p>
+</dl>
+<H3>Meta-table (Class) Methods</H3>
+<p>The following methods are available as arguments to the meta-table (class)
+of the Speed Table:</p>
+<dl compact>
+<dt>create table_name ?master|reader ?name value?...?<dd>
+<p>Create a new table instance. The syntax for master or reader shared memory tables are described in chapter 8</p>
+<dt>package<dd>
+<p>dump the code used to define the Speed Tables Package that created the table.</p>
+<dt>info<dd><p>Reserved for future use</p>
+<dt>method method_name method_proc<dd>
+<p>Register a new method into the class. When the table is called with the
+named method, the arguments are passed to the named proc. The proc will
+be invoked with the table as its first argument, followed by any method
+arguments.
+<dt>null_value ?value?<dd>
+<p>Define or fetch the null value for a class.</p>
+</dl>
+<H3> Table (Object) Methods </H3>
+<p>The following built-in methods are available as arguments to each instance of a speed table:</p>
+<p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep</i>, <i>key</i>, <i>makekey</i>, <i>store</i>, <i>share</i>, <i>getprop</i>, <i>attach</i></p>
+<p>For the examples, assume we have done a "<tt>cable_info create x</tt>"</p>
+<dl compact>
+
+<dt>set ?-nocomplain? <i>key field value ?field value...?</i><dd>
+<dt>set ?-nocomplain? <i>key keyValueList</i><dd>
+<p>The key is required and unique. It can contain anything you want. It's not an element of the table, though it may appear as a field or the pseudo-field <tt>_key</tt>.</p>
+<p>There is provision for tables to have automatically numbered keys inserted with the <i>store</i> method and updated with <i>set</i>. There may be provision in the future for the key to be a true OID, or to be any field type rather than a simple string, and also to allow more than one key. But for now this is how it works. For more than one key, you can create some kind of compound key the same way you do with Tcl hashes.</p>
+<pre>
+% anim_characters set fred age 37 name "Fred Flintstone" coolness 5 show "The Flintstones"
+</pre>
+<p>In the above example, we create a row in the <b>anim_characters</b> table named "fred", with age 37, coolness 5, and a name of "Fred Flintstone".
+All fields in the row that have not been set will be marked as null. (Also any field set with the null value will also be marked as null.)</p>
+<pre>
+% set values {age 37 name "Fred Flintstone" coolness 5 show "The Flintstones"}
+% anim_characters set fred $list
+</pre>
+<p>In this example, we specify the value as a list of key-value pairs. This is a natural way to pull an array into a speed table row:</p>
+<pre>
+% anim_characters set fred [array get new_character]
+</pre>
+<p>By default it is an error to attempt to set a field in a row
+that does not exist. However, if <tt>-nocomplain</tt> is specified,
+such errors are suppressed, all matching fields are set and
+any keys that do not exist in the table are silently ignored. This
+is useful when an array contains some fields that you want to store
+in a speedtable row but may contain additional fields that you do
+not want to store but which, without <tt>-nocomplain</tt>, you'd
+have to remove from the array prior to invoking <tt>set</tt>.</p>
+
+<dt>store ?-nocomplain? <i>field value ?field value?</i><dd>
+<dt>store ?-nocomplain? <i>keyValueList</i><dd>
+<p>Store is similar to "set", but extracts the key from the provided fields. If the table does not have a field explicitly designated as a key, then the pseudo-field "_key" is used. If the key is not present in the list, then the next autogenerated value (see read_tabsep) will be used.</p>
+<p>Store returns the key used to store the list.</p>
+
+<dt>makekey <i>field value ?field value?</i><dd>
+<dt>makekey <i>keyValueList</i><dd>
+</pre>
+<p>This simply calculates what the appropriate key value for the list would be.</p>
+<p>For example, for a table where the field "ip" was a key:</p>
+<pre>
+x makekey {ip 10.2.3.1 name host1}
+</pre>
+<p>would return "10.2.3.1"</p>
+
+<dt>key<dd>
+<p>Returns the name of the key field specified for the table, or "_key" if none were specified.</p>
+
+<dt>fields<dd>
+<p>"fields" returns a list of defined fields, in the order they were defined.</p>
+<pre>
+% x fields
+<b>ip mac name address addressNumber geos i j ij</b>
+</pre>
+
+<dt>field <i>field_name</i> proplist<dd>
+<dt>field <i>field_name</i> properties<dd>
+<dt>field <i>field_name</i> getprop <i>propname</i><dd>
+<p>"field" returns information about the values that defined the field. You can use this command to retrieve all the key-value pairs that define a field.</p>
+<p>Since we accept (and ignore) arguments to field definitions for keys we don't recognize, you can define your own key-value pairs in field definitions inside of speed table definitions and access them using this method.</p>
+<p>Following the name of the field should be one of the keywords <tt>getprop</tt>, <tt>properties</tt>, or <tt>proplist</tt>. <tt>properties</tt> will return the names of all of the properties as a Tcl list. <tt>proplist</tt> will return the names and values of all the properties as a Tcl list, in what we would call "array set" format. <tt>getprop</tt> will return the value associated with the key passed as an argument.</p>
+<pre>
+% $ctable field $fieldName proplist
+<b>default 1 name alive type boolean</b>
+% $ctable field $fieldName properties
+<b>default name type</b>
+% $ctable field $fieldName getprop default
+</pre>
+
+<dt>get <i>key ?field_name...?</i><dd>
+<p>Get fields. Get specified fields, or all fields if none are specified, returning them as a Tcl list.</p>
+<pre>
+% x get peter
+<b>127.0.0.1 {} {Peter da Silva} {} {} {} 501 {} {}</b>
+% x get peter ip name
+<b>127.0.0.1 {Peter da Silva}</b>
+</pre>
+
+<dt>array_get <i>key ?field_name...?</i><dd>
+<p>Get specified fields, or all fields if none are specified, in "array get" (key-value pair) format. Note that if a field is null, it will not be fetched.</p>
+<pre>
+% x array_get peter
+<b>ip 127.0.0.1 name {Peter da Silva} i 501</b>
+% x array_get peter ip name mac
+<b>ip 127.0.0.1 name {Peter da Silva}</b>
+</pre>
+
+<dt>array_get_with_nulls <i>key ?field_name...?</i><dd>
+<p>Get specified fields, or all fields if none are specified, in "array get" (key-value pair) format. If a field contains the null value, it is fetched anyway. (Yes this should probably be an option switch to array_get instead of its own method.)</p>
+<pre>
+% x array_get_with_nulls peter
+<b>ip 127.0.0.1 mac {} name {Peter da Silva} address {} addressNumber </b>...
+% x array_get_with_nulls peter ip name mac
+<b>ip 127.0.0.1 name {Peter da Silva} mac {}</b>
+</pre>
+<p>Note that if the null value has been set, that value will be returned other than the default null value of an empty Tcl object.</p>
+<pre>
+% cable_info null_value \\N
+% x array_get_with_nulls peter
+<b>ip 127.0.0.1 mac \N name {Peter da Silva} address \N addressNumber </b>...
+% x array_get_with_nulls peter ip name mac
+<b>ip 127.0.0.1 name {Peter da Silva} mac \N</b>
+</pre>
+<dt>exists <i>key</i><dd>
+<p>Return 1 if the specified key exists, 0 otherwise.</p>
+<pre>
+% x exists peter
+<b>1</b>
+% x exists karl
+<b>0</b>
+</pre>
+<dt>delete <i>key</i><dd>
+<p>Delete the specified row from the table. Returns 1 if the row existed, 0 if it did not.</p>
+<pre>
+% x delete karl
+<b>0</b>
+% x set karl
+% x delete karl
+<b>1</b>
+% x delete karl
+<b>0</b>
+</pre>
+
+<dt>count<dd>
+<p>Return a count the number of rows in the table.</p>
+<pre>
+% x count
+<b>1</b>
+</pre>
+
+<dt>batch <i>command_list</i><dd>
+<p>Take a list of speed table commands (minus the table name, as that's implicit), and invoke each element of the list as a method invocation on the current speed table.</p>
+<p>A result list is constructed.</p>
+<p>As each command within the batch is invoked, if the invocation is successful and no value is returned, nothing is added to the result list.</p>
+<p>If the invocation is successful and a value is returned, a list is added to the result list containing two elements: the number of the element of the batch list and a sublist containing the Tcl result code (0) and whatever the result was that was returned.</p>
+<p>If the invocation failed, a list is added to the result list, containing the element index, as above, but with the Tcl result code set to TCL_ERROR (1) and the result portion is the error message returned.</p>
+<pre>
+% x batch {{set dean age 17} {incr dean age 1} {incr brock age foo}}
+<b>{{1 {0 18}} {2 {1 {expected integer but got "foo" while converting age</b> ...
+</pre>
+<p>In this example, setting Dean's age to 17 produced no result. Incrementing it returned the incremented value (18), and trying to set Brock's age to a non-integer value recorded an error.</p>
+<p>Note that errors in batched commands do not cause batch to return an error. It is up to the caller to examine the result of the batch command to see what happened.</p>
+<p>"batch" will return an error in the event of bad arguments passed to it, the batch list being unparseable as a list, etc.</p>
+
+<dt>search <i>-option value ?-option value?...</i><dd>
+<p>Search for matching rows and take actions on them, with optional sorting. Search exploits indexes on fields when available, or performs a brute force search if there are no indexed fields available in the compare list. These indexes are implemented using skip lists.</p>
+<p>The result of a search is the number of rows matched by the search, unless a <tt>-code</tt> body executes a return.</p>
+<div class="blue-indent">Brute-Force Search Is Brutally Fast</div>
+<div class="blue-block">
+<p>Search can perform brute-force multivariable searches on a speed table and take actions on matching records, without any scripting code running on an every-row basis.</p>
+<p>On a typical Intel or AMD machine from 2006, speed table search can perform, for example, unanchored string match searches at a rate of sixteen million rows per CPU second (around 60 nanoseconds per row).</p>
+<p>On the other hand, skip lists point to a future where there isn't any key that's external to the row -- that is, what would have been the external key would exist as a normal field in the row.</p>
+<p>Whether you should use indexes (skiplists) or not depends on the characteristics of the table. On one of our test systems, inserting a row into the table takes about 2.3 microseconds, but a single index increases this to about 7 microseconds. On the other hand, an indexed search on that field may be O(logN) on the number of rows in the table.</p>
+</div>
+<p>Search is a powerful element of the speed tables tool that can be leveraged to do a number of the things traditionally done with database systems that incur much more overhead.</p>
+<p>The full list of search options:</p>
+<pre>
+$table search \
+    ?-sort {?-?field..}? ?-fields fieldList? ?-glob pattern? \
+    ?-compare list? ?-filter list? ?-offset offset? ?-limit limit? \
+    ?-code codeBody? ?-key keyVar? ?-get varName? \
+    ?-array_get varName? ?-array_get_with_nulls varName? \
+    ?-array varName? ?-array_with_nulls varName? ?-index field? \
+    ?-write_tabsep channel? ?-tab string? ?-with_field_names 0|1? \
+    ?-nokeys 0|1? ?-null string? \
+    ?-delete 0|1? ?-buffer 0|1? ?-update {field value}? \
+    ?-poll_interval interval? ?-poll_code codeBody?
+</pre>
+<p>Search options:</p>
+<dl>
+
+<dt>-sort <i>fieldList</i><dd>
+<p>Sort results based on the specified field or fields. If multiple fields are specified, they are applied in order, the first field is the primary sort field, followed by the second and so on.</p>
+<p>If you want to sort a field in descending order, put a dash in front of the field name.</p>
+<p class="bug">Bug: Speed tables are currently hard-coded to sort null values "high". As this is not always what one wants, an ability to specify whether nulls are to sort high or low will likely be added in the future.</p>
+
+<dt>-fields <i>fieldList</i><dd>
+<p>Restrict search results to the specified fields.</p>
+<p>If you have a lot of fields in your table and only need a few, using -fields to restrict retrieval to the specified fields will provide a nice performance boost.</p>
+<p>Fields that are used for sorting and/or for comparison expressions do not need to be included in -fields in order to be examined.</p>
+
+<dt>-glob <i>pattern</i><dd>
+<p>Perform a glob-style comparison on the key, excluding the examination of rows not matching.</p>
+
+<dt>-offset <i>offset</i><dd>
+<p>If specified, begins actions on search results at the "offset" row found. For example, if offset is 100, the first 100 matching records are bypassed before the search action begins to be taken on matching rows.</p>
+
+<dt>-limit <i>limit</i><dd>
+<p>If specified, limits the number of rows matched to "limit".</p>
+<p>Even if used with -countOnly, -limit still works, so if, for example, you want to know if there are at least 10 matching records in the table but you don't care what they contain or if there are more than that many, you can search with -countOnly 1 -limit 10 and it will return 10 if there are ten or more matching rows.</p>
+
+<dt>-write_tabsep <i>channel</i><dd>
+<p>Matching rows are written tab-separated to the file or socket (or postgresql database handle) "channel".</p>
+
+<dt>-tab <i>string</i><dd>
+<p>Specify the separator string for write_tabsep (default "\t").</p>
+
+<dt>-null <i>string</i><dd>
+<p>Specify the string to be used for null values for write_tabsep</p>
+
+<dt>-with_field_names 1<dd>
+<p>If you are doing -write_tabsep, <tt>-with_field_names 1</tt> will cause the first line emitted to be a tab-separated list of field names.</p>
+
+<dt>-quote <i>type</i><dd>
+<p>When performing -write_tabsep, use the quoting strategy <i>type</i>:</p>
+<ul>
+<li>none - default
+<li>uri - URI-encoding, percent followed by two hex digits (eg %0a).
+<li>escape - backslash-escape compatible with PostgreSQL (eg \n).
+</ul><p></p>
+
+<dt>-key <i>keyVar</i><dd>
+<dt>-get <i>listVar</i><dd>
+<dt>-array <i>arrayName</i><dd>
+<dt>-array_with_nulls <i>arrayName</i><dd>
+<dt>-array_get <i>listVar</i><dd>
+<dt>-array_get_with_nulls <i>listVar</i><dd>
+<dt>-code <i>codeBody</i><dd>
+<p>Run scripting code on matching rows.</p>
+<p>If <tt>-key</tt> is specified, the key value of each matching row is written into the variable specified as the argument that follows it.</p>
+<p>If <tt>-get</tt> is specified, the fields of the matching row are written into the variable specified as the argument to -get. If <tt>-fields</tt> is specified, you get those fields in the same order. If <tt>-fields</tt> is not specified, you get all the fields in the order they were defined. If you have any question about the order of the fields, just ask the speed table with <tt>$table fields</tt>.</p>
+<p><tt>-array_get</tt> works like <tt>-get</tt> except that the field names and field values are written into the specified variable as a list, in a manner that <i>array get</i> can load into an array. I call this "array set" format. Fields that are null are not retrieved with -array_get.</p>
+<p><tt>-array_get_with_nulls</tt> pulls all the fields, substituting the null value (by default, an empty string) for any fields that are null.</p>
+<p>Note it is a common bug to use <tt>-array_get</tt> in a <tt>-code</tt> loop, array set the returned list of key-value pairs into an array, and not <i>unset</i> the array before resuming the loop, resulting in null variables not being unset -- that is, from a previous row match, field x had a value, and in the current row, it doesn't.</p>
+<p>If you haven't unset your array, and you "array get" the new result into the array, the previous value of x will still be there. So either unset (-nocomplain is a useful, not widely known optional argument to unset) or use array_get_with_nulls.</p>
+<p>Better yet would be to just use -array or -array_with_nulls, both of which directly put the stuff in an array on your behalf and do the right thing with respect to null values.</p>
+<p><tt>-array</tt> sets field names and field values into the named array. Any fields that are null are specifically removed (unset) from the array.</p>
+<p>Thus, if you use -array to and you with to access a field can be null, you need to check to see if the field exists (using [info exists array(fieldName)], etc) before trying to look at its value.</p>
+<p>If you don't want to do that, consider using -array_with_nulls instead.</p>
+<p><tt>-array_with_nulls</tt> sets field names and field values into the named array. Any fields that are null are set into the array as the null value (by default, an empty string), as set by the <i>null_value</i> method of the creator table.</p>
+
+<dt>-compare <i>list</i><dd>
+<p>Perform a comparison to select rows.</p>
+<p>Compare expressions are specified as a list of lists. Each list consists of an operator and one or more arguments.</p>
+<p>When the search is being performed, for each row all of the expressions are evaluated left to right and form a logical "and". That is, if any of the expressions fail, the row is skipped.</p>
+<p>Here's an example:</p>
+<pre>
+$table search -compare {{&gt; coolness 50} \
+{&gt; hipness 50}} ...
+</pre>
+<p>In this case you're selecting every row where coolness is greater than 50 and hipness is greater than 50.</p>
+<p>Here are the available expressions:</p>
+<dl compact>
+<dt>{false field}<dd>
+<p>Expression compares true if field's value is false. (For booleans, false. For shorts, ints and wides, false is 0 and anything else is true.</p>
+<dt>{true field}<dd>
+<p>Expression compares true if field is true.</p>
+<dt>{null field}<dd>
+<p>Expression compares true if field is null.</p>
+<dt>{notnull field}<dd>
+<p>Expression compares true if field is not null.</p>
+<dt>{&lt; field value}<dd>
+<p>Expression compares true if field less than value. This works with both strings and numbers, and yes, compares the numbers as numbers and not strings.</p>
+<dt>{&lt;= field value}<dd>
+<p>Expression compares true if field is less than or equal to value.</p>
+<dt>{= field value}<dd>
+<p>Expression compares true if field is equal to value.</p>
+<dt>{!= field value}<dd>
+<p>Expression compares true if field is not equal to value.</p>
+<dt>{&gt;= field value}<dd>
+<p>Expression compares true if field is greater than or equal to value.</p>
+<dt>{&gt; field value}<dd>
+<p>Expression compares true if field is greater than value.</p>
+<dt>{match field expression}<dd>
+<p>Expression compares true if field matches glob expression. Case is insensitive.</p>
+<dt>{match_case field expression}<dd>
+<p>Expression compares true if field matches glob expression, case-sensitive.</p>
+<dt>{notmatch field expression}<dd>
+<p>Expression compares true if field does not match glob expression. Case is insensitive.</p>
+<dt>{notmatch_case field expression}<dd>
+<p>Expression compares true if field does not match glob expression, case-sensitive.</p>
+<dt>{range field low hi}<dd>
+<p>Expression compares true if field is within the range of low &lt;= field &lt; hi.</p>
+<dt>{in field valueList}<dd>
+<p>Expression compares true if the field's value appears in the value list.  </p>
+<p>The "in" search expression has very high performance, in particular with client-server ctables, as it is much faster to go find many rows in one query than to repeatedly cause a TCP/IP command/response roundtrip on a per-row basis.</p>
+</dl>
+
+<dt>-filter <i>list</i><dd>
+<p>Filter the search results through a C filter function defined in the speedtable definition. The parameter is a list of name-value pairs, the name being the name of the filter, and the value being the filter value passed to the filter function. If a filter function needs more than one parameter, they will be passed as a single list. If the filter function needs no parameters, pass an empty list.</p>
+<p>Filters are distinct from comparison expressions because no field is required... the filter operates on the entire row and can perform complex multi-field operations in one call. The fields relevant to the filter are determined by the filter's code.</p>
+<pre>ctable point {
+  varstring id
+  double    latitude
+  double    longitude
+  bool      is_valid
+  ...
+}
+
+$points search -filter [list [list distance [concat $fieldLatLong 150]]] -code { ... }</pre>
+<p>This example uses a distance filter (see examples) that selects all valid points within a certain range of an airfield, implicitly using two fields in the ctable</p>
+
+<dt>-index <i>fieldName</i><dd>
+<p>Use the index on the named field to search. Note that this is just a hint to the query optimizer.</p>
+
+<dt>-buffer 1<dd>
+<p>Modifying the index being followed from the code body of a search can have undefined behavior. You may miss entries, visit entries twice, or possibly even crash the program. to avoid this, you can use a buffered search. The <tt>-buffer</tt> option transactionalizes the operation, at the cost of allocating a temporary internal array for the matched rows.</p>
+<p>The <tt>-delete</tt> and <tt>-update</tt> options are automatically transactionalized when necessary. The <tt>-sort</tt> option uses the transaction buffer for sorting, so there is no additional overhead for <tt>-buffer</tt> on a sorted search unless the sort is optimized out by the query optimizer. Searches on shared memory tables are always buffered.</p>
+<p>Note: It is not safe to delete rows from the code body of a search, whether buffered or not, because only the <i>index being traversed</i> is buffered, the row itself is freed immediately and removed from other indexes by the delete operation. Use the <tt>-delete</tt> option instead. Attempting to perform a delete inside the code body of a search on the same table is treated as an error.</p>
+<p class=bug>Bug: Indexes should be checked and the indexed field should be locked, so that modifying it unbuffered is defined as an error.</p>
+
+<dt>-delete 1<dd>
+<p>Delete the matched records, safely.</p>
+
+<dt>-update {<i>field value</i>}<dd>
+<p>Update the named field to a new value.</p>
+<p>
+
+<dt>-poll_interval <i>interval</i><dd>
+<p>Perform an <tt>update</tt> operation every <tt>interval</tt> rows, to allow background processing to work in the background while a long search is going on.</p>
+<dt>-poll_code <i>codeBody</i><dd>
+<p>Perform the specified <tt>code</tt> every <tt>-poll_interval</tt> rows. Errors from the code will be handled by the </tt>bgerror</tt> mechanism. If no poll interval is specified then a default (1024) is used.</p>
+
+<dt>-countOnly 1<dd>
+<p><tt>countOnly</tt> is deprecated, it only exists for legacy reasons.</p>
+
+</dl>
+
+<p>Search Examples:</p>
+<p>Write everything in the table tab-separated to channel $channel</p>
+<pre>
+$table search -write_tabsep $channel
+</pre>
+<p>Write everything in the table with coolness &gt; 50 and hipness &gt; 50:</p>
+<pre>
+$table search -write_tabsep $channel \
+  -compare {{&gt; coolness 50} {&gt; hipness 50}}
+</pre>
+<p>Create some code to populate a Tcl array for every record in the table matching above:</p>
+<pre>
+set fp [open oldschool.tcl w]
+$table search \
+  -compare {{&gt; coolness 50} {&gt; hipness 50}} \
+  -key key -array_get data -code {
+      puts $fp [concat [list array set array($key)] $data]
+  }
+close $fp
+</pre>
+
+<dt>incr<dd>
+<p>Increment the specified numeric values, returning a list of the new incremented values</p>
+<pre>
+% x incr $key a 4 b 5
+</pre>
+<p>...will increment $key's a field by 4 and b field by 5, returning a list containing the new incremented values of a and b.</p>
+
+<dt>type<dd>
+<p>Return the "type" of the object, i.e. the name of the meta-table (class) that created it.</p>
+<pre>
+% x type
+<b>cable_info</b>
+</pre>
+
+<dt>import_postgres_result <i>handle</i> ?-nokeys? ?-nocomplain?<dd>
+<p>Given a <i>Pgtcl</i> result handle, <i>import_postgresql_result</i> will iterate over all of the result rows and create corresponding rows in the table, matching the SQL column names to the field names.</p>
+<p>If the "-nocomplain" option is specified unknown columns in the result will be ignored.</p>
+<p>If the "-nokeys" option is specified the key is derived from the key column specified for the table, or autogenerated as described in <i>read_tabsep</i>.</p>
+<p>This is extremely fast as it does not do any intermediate Tcl evaluation on a per-row basis.</p>
+<p>The result handle can come from any Pgtcl source, such as <tt>pg_exec</tt>. You use pg_result to check if the request was successful.</p>
+<pre>
+set res [pg_exec $connection "select * from mytable"]
+if {[pg_result $res -status] != "PGRES_RESULT_OK"} {... error handling ...}
+x import_postgres_result $res
+</pre>
+<div class="blue-indent">Importing PostgreSQL Results Is Pretty Fast</div>
+<div class="blue-block">
+<p>On a 2 GHz AMD64 we are able to import about 200,000 10-element rows per CPU second, i.e. around 5 microseconds per row. Importing goes more slowly if one or more fields of the speed table has had an index created for it.</p>
+</div>
+
+<dt>fieldtype <i>fieldName</i><dd>
+<p>Return the datatype of the named field.</p>
+<pre>
+foreach field [x fields] {
+ puts "$field type is [x fieldtype $field]"
+ }
+<b>ip type is inet</b>
+<b>mac type is mac</b>
+<b>name type is varstring</b>
+<b>address type is varstring</b>
+<b>addressNumber type is varstring</b>
+<b>geos type is varstring</b>
+<b>i type is int</b>
+<b>j type is int</b>
+<b>ij type is long</b>
+</pre>
+
+<dt>needs_quoting <i>fieldName</i><dd>
+<p>Given a field name, return 1 if it might need quoting. For example, varstrings and strings may need quoting as they can contain any characters, while integers, floats, IP addresses, MAC addresses, etc, do not, as their contents are predictable and their input routines do not accept tabs.</p>
+
+<dt>names<dd>
+<p>Return a list of all of the keys in the table. This is fine for small tables but can be inefficient for large tables as it generates a list containing each key, so a 650K table will generate a list containing 650K elements -- in such a case we recommend that you use <i>search</i> instead.</p>
+<p>This should probably be deprecated.</p>
+
+<dt>null <i>key</i><dd>
+<p>Return a list of the fields for the row with the key <i>key</i> that
+are null.</p>
+<pre>
+% x null 1337
+foo
+</pre>
+<dt>null <i>key</i> <i>field ?field?...</i><dd>
+<p>Set the named fields for the indicated row to null</p>
+<pre>
+% x null 1337 baz
+% x null 1337
+foo baz
+</pre>
+<dt>isnull <i>key</i> <i>field ?field?...</i><dd>
+<p>Test if the field(s) for the indicated row are null.</p>
+<pre>
+% x isnull 1337 foo bar
+1 0
+</pre>
+
+<dt>reset<dd>
+<p>Clear everything out of the table. This deletes all of the rows in the table, freeing all memory allocated for the rows, the rows' hashtable entries, etc.</p>
+<pre>
+% x count
+<b>652343</b>
+% x reset
+% x count
+<b>0</b>
+</pre>
+
+<dt>destroy<dd>
+<p>Delete all the rows in the table, free all of the memory, and destroy the object.</p>
+<pre>
+% x destroy
+% x asdf
+<b> invalid command name "x"</b>
+</pre>
+
+<dt>getprop <i>?name?...</i><dd>
+<p>Extract certain static information about a speedtable. If no names a provided a complete name-value list of the properties will be returned, otherwise a list of the named properties will be returned.</p>
+<ul>
+<li>type - the meta-table or class of the table.
+<li>extension - the package name for loading the table.
+<li>key - the name of the key field of the table.
+<li>quote - a list of quoting strategies supported by the table.
+</ul><p></p>
+
+<dt>share<dd>
+<dt>attach<dd>
+<p><i>Share</i> accesses information about the underlying shared memory associated with a shared memory table
+<i>Attach</i> creates an attachment for a shared reader table in a shared master table. Returns a set of <i>create</i> parameters to use to complete the attachment.
+See chapter 8 for more information on these commands.</p>
+
+<dt>statistics<dd>
+<p> Report information about the hash table such as the number of entries, number of buckets, bucket utilization, etc. It's fairly useless, but can give you a sense that the hash table code is pretty good.</p>
+<pre>
+% x statistics
+<b>1000000 entries in table, 1048576 buckets</b>
+<b>number of buckets with 0 entries: 407387</b>
+<b>number of buckets with 1 entries: 381489</b>
+<b>number of buckets with 2 entries: 182642</b>
+<b>number of buckets with 3 entries: 59092</b>
+<b>number of buckets with 4 entries: 14490</b>
+<b>number of buckets with 5 entries: 2944</b>
+<b>number of buckets with 6 entries: 462</b>
+<b>number of buckets with 7 entries: 63</b>
+<b>number of buckets with 8 entries: 6</b>
+<b>number of buckets with 9 entries: 0</b>
+<b>number of buckets with 10 or more entries: 1</b>
+<b>average search distance for entry: 1.5</b>
+</pre>
+
+<dt>write_tabsep <i>channel ?-option?... ?fieldName?...</i><dd>
+<p>Deprecated: use search -write_tabsep.</p>
+<p>Options are:
+<tt>-quote <i>type</i></tt>,
+<tt>-glob <i>pattern</i></tt>,
+<tt>-nokeys</tt>,
+<tt>-with_field_names</tt>,
+<tt>-tab <i>string</i></tt>, and
+<tt>-null <i>string</i></tt>.</p>
+</pre>
+<p>Write the table tab-separated to a channel, with the names of desired fields specified, else all fields if none are specified.</p>
+<pre>
+set fp [open /tmp/output.tsv w]
+x write_tabsep $fp
+close $fp
+</pre>
+<p>If the glob pattern is specified and the key of a row does not match the glob pattern, the row is not written.</p>
+<p>The first field written will be the key, unless -nokeys is specified and the key value is not written to the destination.</p>
+<p>If -with_field_names is specified, then the names of the fields will be the first row output.</p>
+<p>If -tab is specified then the string provided will be used as the tab.</p>
+<p>If -null is specified then the string provided will be used as the null.</p>
+<p>The <tt>-quote type</tt> options are compatible with <tt>search -write_tabsep</tt></p>
+<p>For compatibility, the default quoting for tabs and newlines inside a field is "none". It is recommended that <tt>-quote escape</tt> or <tt>-quote uri</tt> is used for writing and reading tab-separated files.</p>
+
+<dt>read_tabsep <i>channel ?-option?... ?fieldName?...</i><dd>
+<p>Options are:
+<tt>-glob <i>pattern</i></tt>,
+<tt>-nokeys</tt>,
+<tt>-with_field_names</tt>,
+    <tt>-tab <i>string</i></tt>,
+<tt>-quote <i>type</i></tt>,
+<tt>-with_nulls</tt>
+<tt>-null <i>string</i></tt>,
+<tt>-nocomplain</tt>
+<tt>-skip <i>pattern</i></tt>, and
+<tt>-term <i>pattern</i></tt>.
+</pre>
+<p>Read tab-separated entries from a channel, with a list of fields specified, or all fields if none are specified.</p>
+<pre>
+set fp [open /tmp/output.tsv r]
+x read_tabsep $fp
+close $fp
+</pre>
+<p>The first column is normally expected to be the key, unless -nokeys is specified, or the key pseudo-field (_key or a "key" type) is in the field list. If you name five fields, then, each row in the input file (or socket or whatever) should contain six elements.</p>
+<p>It's an error if the number of fields read doesn't match the number expected.</p>
+<p>If the <tt>-glob pattern</tt> is defined, it's applied to the key and if it doesn't match, the row is not inserted.</p>
+<p>If <tt>-tab string</tt> is specified, then the string provided will be used as the tab separator. There is no explicit limit on the length of the string, so you can use something like <tt>-tab {%JULIE@ANDREWS%}</tt> with <i>read_tabsep</i> and <i>write_tabsep</i> (or <i>search -write_tabsep</i>) to reduce the possibility of a conflict.</p>
+<p>if <tt>-skip pattern</tt> is specified, then lines matching that pattern are ignored. This is sometimes necessary for files containing comments.</p>
+<p>If <tt>-with_field_names</tt> is specified, the first row read is expected to be a tab-separated list of field names, and Speedtables will read that line and use its contents to determine which fields each of the following lines of tab-separated values will be stored as. (This is the counterpart to the <tt>-with_field_names<tt> argument to speedtables's <i>search</i> method when invoked with the </tt>-write_tabsep</tt> option.)</p>
+<p>If <tt>-nokeys</tt> is specified, the first field of each row is not used as the key -- rather, the key is taken from the provided fields (as if <i>makekey</i> was called for each row), and if there is no key it is automatically created as an ascending integer starting from 0. The last key generated will be returned as the value of <i>read_tabsep</i>.</p>
+<p>If you subsequently do another <i>read_tabsep</i> with -nokeys specified, the auto key will continue from where it left off. If you invoke the table's reset method, the auto key will reset to zero.</p>
+<p>If you later want to insert at the end of the table, you need to use <i>store</i> rather than <i>set</i>.</p>
+<p><i>read_tabsep</i> stops when it reaches end of file OR when it reads an empty line:
+You can indicate end of input with an empty line and then do something else with the data that follows.
+Since you must have a key and at least one field, this is safe. However it might not be safe with <tt>-nokeys</tt>.</p>
+<p>With <tt>-term pattern</tt> then read_tabsep will instead terminate on a line that matches <tt>pattern</tt>. For example, to emulate SQL "COPY FROM stdin" you could use <tt>-term "\\."</tt>.</p>
+<p>With <tt>-nocomplain</tt> then the file being read is allowed to specify columns that do not match fields</p>
+<p>Blank or missing fields literally insert empty strings unless <tt>-with_nulls</tt> is set, indicating that the file was created with null values.</p>
+<p>The <tt>-quote type</tt> options are compatible with <tt>search -write_tabsep</tt></p>
+<p>For compatibility, the default quoting for tabs and newlines inside a field is "none". It is recommended that <tt>-quote escape</tt> or <tt>-quote uri</tt> is used for writing and reading tab-separated files.</p>
+<p>The <tt>-null string</tt> allows you to specify the string expected to be seen for a null. The null string must be an entire field, and it is evaluated before quoting is applied.
+
+<dt>index create <i>fieldName</i><dd>
+<dt>index drop <i>fieldName</i><dd>
+<dt>index count <i>fieldName</i><dd>
+<dt>index span <i>fieldName</i><dd>
+<dt>index dump <i>fieldName</i><dd>
+<dt>index indexable<dd>
+<dt>index indexed<dd>
+<p>Index is used to create skip list indexes on fields in a table, which can be used to greatly speed up certain types of searches.</p>
+<pre>
+x index create foo 24
+</pre>
+<p>...creates a skip list index on field "foo" and sets it to for an optimal size of 2^24 rows. The size value is optional. (How this works will be improved/altered in a subsequent release.) It will index all existing rows in the table and any future rows that are added. Also if a <i>set</i>, <i>read_tabsep</i>, etc, causes a row's indexed value to change, its index will be updated.</p>
+<p>If there is already an index present on that field, does nothing.</p>
+<pre>
+x index drop foo
+</pre>
+<p>....drops the skip list on field "foo." if there is no such index, does nothing.</p>
+<pre>
+x index dump foo
+</pre>
+<p>...dumps the skip list for field "foo". This can be useful to help understand how they work and possibly to look for problems.</p>
+<pre>
+x index count foo
+</pre>
+<p>...returns a count of the skip list for field "foo". This number should always match the row count of the table (x count). If it doesn't, there's a bug in index handling.</p>
+<pre>x index span foo</pre>
+<p>...returns a list containing the lexically lowest entry and the lexically highest entry in the index. If there are no rows in the table, an empty list is returned.</p>
+<pre>
+x index indexable
+</pre>
+<p>...returns a (potentially empty) list of all of the field names that can have indexes created for them. Fields must be explicitly defined as indexable when the field is created with <tt>indexed 1</tt> arguments. (This keeps us from incurring a lot of overhead creating various things to be ready to index any field for fields that just couldn't ever reasonably be used as an index anyway.</p>
+<pre>
+x index indexed
+</pre>
+<p>...returns a (potentially empty) list of all of the field names in table x that current have an index in existence for them, meaning that index create has been invoked on that field.</p>
+</dl>
+<!-- INSERT LOGO -->
+<!-- %BEGIN LINKS% -->
+<div class=links><a href="ch04.html">Back</a><a href=index.html>Index</a><a href="ch06.html">Next</a></div>
+<!-- %END LINKS% -->
+</body>
+</html>
