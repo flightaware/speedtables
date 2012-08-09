@@ -69,7 +69,7 @@ compile_time_assert(sizeof(size_t) == 8, SIZE_T_should_be_32_bits);
 #define READERS_PER_BLOCK 64
 
 // How many garbage entries to allocate at a time.
-#define GARBAGE_POOL_SIZE 1024
+#define GARBAGE_POOL_SIZE (1024*1024*1024)
 
 // How long to leave garbage uncollected after it falls below the horizon
 // (measured in lock cycles)

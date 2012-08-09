@@ -760,6 +760,18 @@ static void shmdump(shm_t *shm)
     fflush(stderr);
 }
 
+static int garbage_size(shm_t *shm)
+{
+    int length = 0;
+    garbage *garbage = shm->garbage;
+    while(garbage) {
+	garbage = garbage->next;
+	length++;
+	if(garbage == shm->garbage) return -length;
+    }
+    return length;
+}
+
 // Return estimate of free memory available.  Does not include memory waiting to be garbage collected.
 size_t shmfreemem(shm_t *shm, int check)
 {
@@ -1234,15 +1246,18 @@ void garbage_collect(shm_t   *shm)
     cell_t       horizon = shm->horizon;
     int          collected = 0;
     int          skipped = 0;
+    int		 last_size = 0;
+    int		 new_size = 0;
 
-    if(horizon != LOST_HORIZON) {
-        horizon -= TWILIGHT_ZONE;
-        if(horizon == LOST_HORIZON)
-            horizon --;
-    }
 IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm);\n");)
 
     while(garbp) {
+	// debugging
+        new_size = garbage_size(shm);
+	if(new_size < 0) shmpanic("Garbage loop");
+	if(last_size && new_size > last_size) shmpanic("Garbage Growing");
+	last_size = new_size;
+
         int delta = horizon - garbp->cycle;
         if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || delta > 0) {
             garbage *next = garbp->next;
@@ -1262,6 +1277,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm);\n");)
             skipped++;
         }
     }
+
 IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm): cycle 0x%08lx, horizon 0x%08lx, collected %d, skipped %d\n", (long)shm->map->cycle, (long)shm->horizon, collected, skipped);)
 }
 
