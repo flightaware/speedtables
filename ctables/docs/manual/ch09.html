@@ -140,6 +140,7 @@ speed table arguments for the field
 <p>Access a speed table server on localhost, using shared memory for the "search" method and sttp: for other methods.</p>
 <p>The speed table must reside on the same machine for shared memory table access to be used. Concurrent access and update of shared memory speed tables is supported and provides a mechanism to use multiple processors to access a table concurrently. Like, really concurrently, whereas pure client/server table access is inherently single threaded.</p>
 <p>The ctable built by the server must be in auto_path, or in the directory defined by the "-build" option.</p>
+<p>An additional method "detach" is available for this transport. The "detach" method closes the reader side of the socket, so only the shared memory table is retained. After this operation, only the "search" method will be available.</p>
 </dl>
 <H3>Using a PostgreSQL database directly</H3>
 <dl>

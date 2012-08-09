@@ -43,6 +43,8 @@ namespace eval ::stapi {
     set uri ctable://$address/$table_path
 
     set ns ::stapi::shared[incr shared_serial]
+
+    # insert handler proc (below) into namespace, and create the namespace
     namespace eval $ns [list proc handler {args} [info body shared_handler]]
 
     remote_ctable $uri ${ns}::master
@@ -58,25 +60,47 @@ namespace eval ::stapi {
     namespace eval :: [list package require [string totitle $prop(extension)]]
     $prop(type) create ${ns}::reader reader $handle
 
+    # Everything's been successfully completed, remember that in the created
+    # namespace.
     set ${ns}::handle $handle
     set ${ns}::table $prop(type)
+    set ${ns}::attached 1
     return ${ns}::handler
   }
   register shared connect_shared
 
   # Simple handler, most commands are passed straight to the master.
+  #
+  # Note cheesy object model!
+  #
+  # This executes in the stapi::sharedN namespace created in connect_shared,
+  # never in this namespace, so references to "reader" and "master" are
+  # the two stapi objects created there.
   proc shared_handler {args} {
     set method [lindex $args 0]
+    variable attached
     switch -glob -- [lindex $args 0] {
       search* {
 	uplevel 1 [namespace which reader] $args
       }
       destroy {
-	master destroy
+	if {$attached} {
+	  master destroy
+	}
 	reader destroy
       }
+      detach {
+	if {$attached} {
+	  master destroy
+	  set attached 0
+	}
+      }
       default {
-	uplevel 1 [namespace which master] $args
+	if {$attached} {
+	  uplevel 1 [namespace which master] $args
+	} else {
+	  return -code error "Detached shared table can only 'search' and 'destroy'"
+	}
       }
     }
   }

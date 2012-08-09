@@ -4,7 +4,7 @@
 . test_common.sh
 
 echo "Prebuilding master table"
-${TCLSH} ./master_prebuild.tcl
+${TCLSHSTAPI} ./master_prebuild.tcl
 
 delay=1
 changes=66
@@ -22,18 +22,18 @@ do
 done
 
 echo "Starting ./master_server.tcl"
-echo + ${TCLSH} ./master_server.tcl $delay $changes
-${TCLSH} ./master_server.tcl $delay $changes &
+echo + ${TCLSHSTAPI} ./master_server.tcl $delay $changes
+${TCLSHSTAPI} ./master_server.tcl $delay $changes &
 master_pid=$!
 trap 'kill $master_pid 2>/dev/null' 2
 sleep 5
 echo "Started ./master_server.tcl"
 
 echo "Running ./$script"
-${TCLSH} $script
+${TCLSHSTAPI} $script
 
 echo "Shutting down master"
-${TCLSH} ./shutdown_master.tcl
+${TCLSHSTAPI} ./shutdown_master.tcl
 
 echo "Finished"
 
