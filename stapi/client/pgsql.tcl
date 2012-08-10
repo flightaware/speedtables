@@ -868,10 +868,8 @@ namespace eval ::stapi {
       }
     }
   
-    set sql "SELECT [join $select ","] FROM $table_name"
-    if {$table_name != "superbird_tables"} {
-        set sql " $sql"
-    }
+    # NB include a space for load balancing - total kludge, please remove asap
+    set sql " SELECT [join $select ","] FROM $table_name"
 
     if {[llength $where]} {
       append sql " WHERE [join $where " AND "]"
