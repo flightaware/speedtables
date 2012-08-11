@@ -2,7 +2,7 @@
 
 package require ctable_client
 
-set URL ctable://localhost:1984/test
+set URL sttp://localhost:1984/test
 remote_ctable $URL c_test -timeout 500
 
 set status 0
