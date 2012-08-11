@@ -4,7 +4,7 @@ package require ctable_client
 lappend auto_path build
 package require C_test
 
-remote_ctable ctable://localhost:1984/test remote
+remote_ctable sttp://localhost:1984/test remote
 c_test create local
 
 set status 0

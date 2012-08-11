@@ -14,7 +14,7 @@ package require ncgi
 #
 # remote_ctable - declare a ctable as going to a remote host
 #
-# remote_ctable $serverHost myTable
+# remote_ctable $url myTable
 #
 #  myTable is now a command that works like a ctable except it's all
 #  client server behind your back.

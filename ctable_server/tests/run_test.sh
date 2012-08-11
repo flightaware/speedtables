@@ -2,14 +2,22 @@
 
 # $Id$
 
-for tclsh in /usr/bin/tclsh8.4 /usr/local/bin/tclsh8.4
+TCLVERSION=8.5
+
+for tclsh in /usr/bin/tclsh${TCLVERSION} /usr/local/bin/tclsh${TCLVERSION}
 do
   if [ -f $tclsh ]
   then TCLSH=$tclsh; break
   fi
 done
 
-URL=ctable://localhost:1984/test
+if [ -z "$TCLSH" ]
+then
+  echo "Can't find Tcl"
+  exit 1
+fi
+
+URL=sttp://localhost:1984/test
 
 case "$TCLSH" in
   /usr/bin*) export TCLLIBPATH="$TCLLIBPATH /usr/local/lib";;
