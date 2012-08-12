@@ -5796,6 +5796,9 @@ proc compile {fileFragName version} {
 	set pgString ""
     }
 
+    # Keep sysconfig(ccflags) from overriding optimization level
+    regsub -all { -O[0-9] } " $sysconfig(ccflags) " { } sysconfig(ccflags)
+
     myexec "$sysconfig(cc) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $stubString $memDebugString -c $sourceFile -o $objFile"
 
     set ld_cmd "$sysconfig(ld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
