@@ -1,3 +1,6 @@
+8/12/2012 peter
+    * Remove surplus optimization flags from ccflags.
+
 7/14/2012 Peter
     * Add -foreground option to poll code.
 
