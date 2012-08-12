@@ -914,6 +914,12 @@ void shmfree_raw(shm_t *shm, char *memory)
 {
     garbage *entry;
 
+    // If we haven't any readers yet, just free it
+    if(!has_readers(shm)) {
+        shmdealloc_raw(shm, memory);
+        return;
+    }
+
 IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw(shm, 0x%lX);\n", (long)memory);)
 
     if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
