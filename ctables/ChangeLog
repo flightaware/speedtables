@@ -1,4 +1,5 @@
 8/12/2012 peter
+    * Remove surplus optimization flags from ccflags.
     * Don't put chunks in the garbage list if there are no readers
     * Increase size of garbage pool blocks from 1K to 1M chunks.
 
