@@ -35,8 +35,8 @@ compile_time_assert(sizeof(size_t) == 4, SIZE_T_should_be_32_bits);
 #else /* 64 bit long */
 typedef size_t cell_t;
 #define cellabs(t) llabs(t)
-compile_time_assert(sizeof(size_t) == sizeof(long long), SIZE_T_should_be_int);
-compile_time_assert(sizeof(size_t) == 8, SIZE_T_should_be_32_bits);
+compile_time_assert(sizeof(size_t) == sizeof(long long), SIZE_T_should_be_long_long);
+compile_time_assert(sizeof(size_t) == 8, SIZE_T_should_be_64_bits);
 #endif
 
 #define CELLSIZE (sizeof (cell_t))
@@ -70,6 +70,7 @@ compile_time_assert(sizeof(size_t) == 8, SIZE_T_should_be_32_bits);
 
 // How many garbage entries to allocate at a time.
 #define GARBAGE_POOL_SIZE (1024*1024)
+#define SMALL_GARBAGE_POOL_SIZE 1024
 
 // How long to leave garbage uncollected after it falls below the horizon
 // (measured in lock cycles)

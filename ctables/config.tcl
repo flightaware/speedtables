@@ -7,7 +7,7 @@
     variable withPipe 1
 
     # set to 1 to build with debugging and link to tcl debugging libraries
-    set genCompilerDebug 0
+    set genCompilerDebug 1
 
     # set to 1 to link to mem debug libraries
     set memDebug 0
@@ -19,7 +19,7 @@
     set fullStatic 1
 
     # set to 1 to show compiler commands
-    set showCompilerCommands 0
+    set showCompilerCommands 1
 
 # Less common parameters
 
