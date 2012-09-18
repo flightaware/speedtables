@@ -105,25 +105,29 @@ void shared_perror(char *text) {
         }
 }
 
-
 #ifdef MAP_NOSYNC
-# define DEFAULT_FLAGS (MAP_SHARED|MAP_NOSYNC|MAP_NOCORE)
-# define WITH_FLAGS 1
+#define NOSYNC_FLAG MAP_NOSYNC
 #else
-# define DEFAULT_FLAGS (MAP_SHARED|MAP_NOCORE)
-# ifdef MAP_NOCORE
-#  define WITH_FLAGS 1
-# else
-#  define WITH_FLAGS 0
-# endif
+#define NOSYNC_FLAG 0
 #endif
+
+#ifdef MAP_NOCORE
+#define NOCORE_FLAG MAP_NOCORE
+#else
+#define NOCORE_FLAG 0
+#endif
+
+#define DEFAULT_FLAGS (MAP_SHARED|NOSYNC_FLAG|NOCORE_FLAG)
 
 #define REQUIRED_FLAGS MAP_SHARED
+
 #ifdef MAP_STACK
-#define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE|MAP_STACK)
+#define STACK_FLAG MAP_STACK
 #else
-#define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE)
+#define STACK_FLAG 0
 #endif
+
+#define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE|STACK_FLAG)
 
 // linkup_assoc_data - attach the bits of data that multiple speedtables
 // C shared libraries need to share
@@ -1460,7 +1464,7 @@ int parse_flags(char *s)
 {
     int   flags = DEFAULT_FLAGS;
 
-#if defined(WITH_FLAGS) && (defined(MAP_NOCORE) || defined(MAP_NOSYNC))
+#if (defined(MAP_NOCORE) || defined(MAP_NOSYNC))
     while(*s) {
         char *word;
         while(isspace((unsigned char)*s)) s++;
@@ -1470,15 +1474,27 @@ int parse_flags(char *s)
         if(*s) *s++ = 0;
 
 #ifdef MAP_NOCORE
-             if(strcmp(word, "nocore") == 0) flags |= MAP_NOCORE;
-        else if(strcmp(word, "core") == 0) flags &= ~MAP_NOCORE;
-#ifdef MAP_NOSYNC
-        else
+             if (strcmp(word, "nocore") == 0) {
+	         flags |= MAP_NOCORE;
+		 continue;
+	    }
+
+            if (strcmp(word, "core") == 0) {
+	        flags &= ~MAP_NOCORE;
+		continue;
+	    }
 #endif
-#endif
+
 #ifdef MAP_NOSYNC
-             if(strcmp(word, "nosync") == 0) flags |= MAP_NOSYNC;
-        else if(strcmp(word, "sync") == 0) flags &= MAP_NOSYNC;
+            if (strcmp(word, "nosync") == 0) {
+	         flags |= MAP_NOSYNC;
+		 continue;
+	    }
+
+            if (strcmp(word, "sync") == 0) {
+	        flags &= MAP_NOSYNC;
+		continue;
+	    }
 #endif
     }
 #endif
