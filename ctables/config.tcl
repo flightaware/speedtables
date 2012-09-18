@@ -47,6 +47,8 @@
     #set sharedLog shmDebug.log
 
     # approx number of ctable row pools required to fill all shared memory
+    #   0 to disable pools
+    #  16 default
     set poolRatio 16
 
     # Create and manage the "dirty" flag

@@ -181,7 +181,9 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			goto createError;
 
 #ifndef SHARED_GUARD
+#if POOL_RATIO != 0
 		    shmaddpool(share, sizeof (struct ${table}), (share_size / POOL_RATIO) / sizeof (struct ${table}), 0);
+#endif
 #endif
 		} else {
 

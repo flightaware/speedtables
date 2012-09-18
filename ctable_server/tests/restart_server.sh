@@ -9,7 +9,7 @@ do
   fi
 done
 
-URL=ctable://localhost:1984/test
+URL=sttp://localhost:1984/test
 LOGFILE=${1:-server.log}
 
 case "$TCLSH" in

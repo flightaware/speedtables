@@ -1,3 +1,12 @@
+8/21/2012 peter
+    * Defer deallocation of blocks when garbage list is not being used
+      to avoid crashes from conservative-use-after-free bugs.
+
+8/12/2012 peter
+    * Remove surplus optimization flags from ccflags.
+    * Don't put chunks in the garbage list if there are no readers
+    * Increase size of garbage pool blocks from 1K to 1M chunks.
+
 7/14/2012 Peter
     * Add -foreground option to poll code.
 

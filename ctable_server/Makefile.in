@@ -229,9 +229,7 @@ install-doc: doc
 #	done
 
 test: binaries libraries
-	server/test.tcl
-	client/test.tcl
-
+	cd tests; make test
 
 shell: binaries libraries
 	@$(TCLSH) $(SCRIPT)

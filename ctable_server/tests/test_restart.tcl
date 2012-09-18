@@ -2,7 +2,7 @@
 
 package require ctable_client
 
-remote_ctable ctable://localhost:1984/test c_test
+remote_ctable sttp://localhost:1984/test c_test
 
 set status 0
 
