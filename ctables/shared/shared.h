@@ -84,8 +84,8 @@ compile_time_assert(sizeof(size_t) == 8, SIZE_T_should_be_64_bits);
 #define LOST_HORIZON 0
 
 // internal errors
-int shared_errno;
-char *shared_errmsg[];
+extern int shared_errno;
+extern const char *shared_errmsg[];
 enum shared_error_e {
 	SH_ERROR_0,
 	SH_NEW_FILE,
@@ -98,16 +98,16 @@ enum shared_error_e {
 	SH_MAP_FULL,
 	SH_ADDRESS_MISMATCH,
 };
-void shared_perror(char *text);
+void shared_perror(const char *text);
 
 // shared memory that is no longer needed but can't be freed until the
 // last reader that was "live" when it was in use has released it
-typedef struct _garbage {
-    struct _garbage	*next;
+typedef struct _garbage_t {
+    struct _garbage_t	*next;
     cell_t	         cycle;		// read cycle it's waiting on
     char		*memory;	// address of block in shared mem
 					// (free memory pointer, not raw block pointer)
-} garbage;
+} garbage_t;
 
 // Pool control block
 //
@@ -135,7 +135,7 @@ typedef struct _poolhead_t {
     struct _chunk_t	*chunks;
     struct _shm_t	*share;
     int			 nblocks;
-    int			 blocksize;
+    size_t		 blocksize;
     int			 numchunks;
     int			 maxchunks;
     pool_freelist_t	*freelist;
@@ -211,7 +211,7 @@ typedef struct _shm_t {
     poolhead_t		*pools;
     volatile freeblock	*freelist;
     size_t		 free_space;
-    garbage		*garbage;
+    garbage_t		*garbage;
     poolhead_t		*garbage_pool;
     cell_t		 horizon;
 // client-only fields:
@@ -221,8 +221,8 @@ typedef struct _shm_t {
 // Macros
 #define has_readers(shm) ((shm)->map->readers != NULL)
 
-int open_new(char *file, size_t size);
-shm_t *map_file(char *file, char *addr, size_t default_size, int flags, int create);
+int open_new(const char *file, size_t size);
+shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, int create);
 int unmap_file(shm_t *shm);
 void shminitmap(shm_t *shm);
 int shmcheckmap(volatile mapheader *map);
@@ -245,15 +245,15 @@ int read_lock(shm_t *shm);
 void read_unlock(shm_t *shm);
 void garbage_collect(shm_t *shm);
 cell_t oldest_reader_cycle(shm_t *shm);
-void shmpanic(char *message);
+void shmpanic(const char *message);
 int add_symbol(shm_t *shm, char *name, char *value, int type);
 int set_symbol(shm_t *shm, char *name, char *value, int type);
 char *get_symbol(shm_t *shm, char *name, int wanted);
 int shmattachpid(shm_t *info, int pid);
 int use_name(shm_t *share, char *symbol);
 void release_name(shm_t *share, char *symbol);
-int parse_size(char *s, size_t *ptr);
-int parse_flags(char *s);
+int parse_size(const char *s, size_t *ptr);
+int parse_flags(const char *s);
 char *flags2string(int flags);
 size_t shmfreemem(shm_t *shm, int check);
 
@@ -264,10 +264,11 @@ size_t shmfreemem(shm_t *shm, int check);
 #ifdef WITH_TCL
 #define ATTACH_ONLY ((size_t)-1)
 
+int Shared_Init(Tcl_Interp *interp);
 void setShareBase(char *new_base);
 int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr);
-void TclShmError(Tcl_Interp *interp, char *name);
-int doCreateOrAttach(Tcl_Interp *interp, char *sharename, char *filename, size_t size, int flags, shm_t **sharePtr);
+void TclShmError(Tcl_Interp *interp, const char *name);
+int doCreateOrAttach(Tcl_Interp *interp, const char *sharename, const char *filename, size_t size, int flags, shm_t **sharePtr);
 int doDetach(Tcl_Interp *interp, shm_t *share);
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 #endif

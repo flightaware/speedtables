@@ -568,7 +568,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  if (ctable->share_type == CTABLE_SHARED_MASTER) {
 	      int	 pid = -1;
 	      Tcl_Obj	*resultObj = Tcl_GetObjResult(interp);
-	      char	*resultList[4];
+	      CONST char	*resultList[4];
 	      int	 i;
 
 	      if (objc != 3) {
@@ -1248,7 +1248,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #ifdef MANIACDEBUGGER
 {
   char buffer[9999];
-  char *s=buffer;
+  char *s = buffer;
   
   if(fieldIds) {
     *s++ = '{';

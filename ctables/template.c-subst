@@ -94,7 +94,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    }
 
 #ifdef WITH_SHARED_TABLES
-	    linkup_assoc_data(interp);
+	    //linkup_assoc_data(interp);
 
 	    if(!share_name) share_name = commandName;
 
@@ -400,13 +400,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	     * when the method is invoked
 	     */
 	    Tcl_HashEntry *hashEntry;
-	    int               new;
+	    int               newVal;
 
 	    if (objc != 4) {
 		Tcl_WrongNumArgs (interp, 2, objv, "name proc");
 		return TCL_ERROR;
 	    }
-	    hashEntry = Tcl_CreateHashEntry (creator->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
+	    hashEntry = Tcl_CreateHashEntry (creator->registeredProcTablePtr, Tcl_GetString (objv[2]), &newVal);
 	    Tcl_IncrRefCount(objv[3]);
 	    Tcl_SetHashValue (hashEntry, (ClientData)objv[3]);
 	    return TCL_OK;

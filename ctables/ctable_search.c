@@ -297,10 +297,10 @@ CTABLE_INTERNAL void ctable_FreeInRows(CTable *ctable, CTableSearchComponent *co
 	int i;
 	for(i = 0; i < component->inCount; i++) {
 	    if(component->inListRows[i]) {
-	        ctable->creator->delete (ctable, component->inListRows[i], CTABLE_INDEX_PRIVATE);
+	        ctable->creator->delete_row (ctable, component->inListRows[i], CTABLE_INDEX_PRIVATE);
 	    }
 	}
-	ckfree((void *)component->inListRows);
+	ckfree(component->inListRows);
 	component->inListRows = NULL;
     }
 }
@@ -812,7 +812,7 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
 
       // walk the result and delete the matched rows
       for (rowIndex = search->offset; rowIndex < search->offsetLimit; rowIndex++) {
-	  (*creator->delete) (ctable, search->tranTable[rowIndex], CTABLE_INDEX_NORMAL);
+	  (*creator->delete_row) (ctable, search->tranTable[rowIndex], CTABLE_INDEX_NORMAL);
 	  ctable->count--;
       }
 
@@ -844,7 +844,7 @@ updateParseError:
 	// Convert the names to field indices
 	for(fieldIndex = 0; fieldIndex < objc/2; fieldIndex++) {
 	    if (Tcl_GetIndexFromObj (interp, objv[fieldIndex*2], creator->fieldNames, "field", TCL_EXACT, &updateFields[fieldIndex]) != TCL_OK) {
-		ckfree((void *)updateFields);
+		ckfree(updateFields);
 		goto updateParseError;
 	    }
 	}
@@ -855,14 +855,14 @@ updateParseError:
 
 	    for(fieldIndex = 0; fieldIndex < objc/2; fieldIndex++) {
 		if((*creator->set)(interp, ctable, objv[fieldIndex*2+1], row, updateFields[fieldIndex], CTABLE_INDEX_NORMAL) == TCL_ERROR) {
-		    ckfree((void *)updateFields);
+		    ckfree(updateFields);
 		    Tcl_AppendResult (interp, " (update may be incomplete)", (char *)NULL);
 		    return TCL_ERROR;
 		}
 	    }
 	}
 
-	ckfree((void *)updateFields);
+	ckfree(updateFields);
 
         return TCL_OK;
     }
@@ -1429,7 +1429,7 @@ restart_search:
     // hashtable, so we can't do a hash search.
     if (search->reqIndexField != CTABLE_SEARCH_INDEX_NONE && search->nComponents > 0) {
 	int index = 0;
-	int try;
+	int trynum;
 
 	if(search->reqIndexField != CTABLE_SEARCH_INDEX_ANY) {
 	    while(index < search->nComponents) {
@@ -1441,7 +1441,7 @@ restart_search:
 
 	// Look for the best usable search field starting with the requested
 	// one
-	for(try = 0; try < search->nComponents; try++, index++) {
+	for(trynum = 0; trynum < search->nComponents; trynum++, index++) {
 	    if(index >= search->nComponents)
 	        index = 0;
 	    CTableSearchComponent *component = &search->components[index];
@@ -1464,7 +1464,7 @@ restart_search:
 		        inCount = component->inCount;
 		    } else { //    WALK_HASH_EQ
 			inOrderWalk = 1; // degenerate case, only one result.
-			row1 = component->row1;
+			row1 = (ctable_BaseRow*) component->row1;
 			key = row1->hashEntry.key;
 		    }
 
@@ -1524,7 +1524,7 @@ restart_search:
 	        }
 		case SKIP_NEXT_ROW: {
 		    inOrderWalk = 1;
-		    row1 = component->row1;
+		    row1 = (ctable_BaseRow*) component->row1;
 		    row2 = component->row2;
 		    break;
 		}
@@ -2381,7 +2381,7 @@ ctable_TeardownSearch (CTableSearch *search) {
     int i;
 
     if (search->filters) {
-	ckfree((void *)search->filters);
+	ckfree(search->filters);
 	search->filters = NULL;
     }
 
@@ -2394,15 +2394,15 @@ ctable_TeardownSearch (CTableSearch *search) {
 	CTableSearchComponent  *component = &search->components[i];
 
 	if (component->row1 != NULL) {
-	    search->ctable->creator->delete (search->ctable, component->row1, CTABLE_INDEX_PRIVATE);
+	    search->ctable->creator->delete_row (search->ctable, component->row1, CTABLE_INDEX_PRIVATE);
 	}
 
 	if (component->row2 != NULL) {
-	    search->ctable->creator->delete (search->ctable, component->row2, CTABLE_INDEX_PRIVATE);
+	    search->ctable->creator->delete_row (search->ctable, component->row2, CTABLE_INDEX_PRIVATE);
 	}
 
 	if (component->row3 != NULL) {
-	    search->ctable->creator->delete (search->ctable, component->row3, CTABLE_INDEX_PRIVATE);
+	    search->ctable->creator->delete_row (search->ctable, component->row3, CTABLE_INDEX_PRIVATE);
 	}
 
 	if (component->clientData != NULL) {

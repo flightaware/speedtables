@@ -11,7 +11,7 @@
 // ctable_ListInit - initialize a list -- zero out the row pointer from the list.
 //
 CTABLE_INTERNAL INLINE void
-ctable_ListInit (ctable_BaseRow **listPtr, char *file, int line)
+ctable_ListInit (ctable_BaseRow **listPtr, CONST char *file, int line)
 {
 #ifdef LISTDEBUG
     fprintf(stderr, "ctable_ListInit(0x%lx) at %s:%d\n", (long)listPtr, file, line);

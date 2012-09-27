@@ -62,7 +62,7 @@
     t->search_compare = ${table}_search_compare;
     t->sort_compare = ${table}_sort_compare;
 
-    t->delete = ${table}_delete;
+    t->delete_row = ${table}_delete;
 
     t->command = ${table}ObjCmd;
 

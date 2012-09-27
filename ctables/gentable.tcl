@@ -359,7 +359,7 @@ proc gen_sanity_checks {table} {
 variable reinsertRowSource {
 int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struct ${table} *row, int indexCtl)
 {
-    ctable_HashEntry *new, *old;
+    ctable_HashEntry *newrow, *oldrow;
     int isNew = 0;
     int flags = KEY_VOLATILE;
     char *key = value;
@@ -369,8 +369,8 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
 #endif
 
     // Check for duplicates
-    old = ctable_FindHashEntry(ctable->keyTablePtr, value);
-    if(old) {
+    oldrow = ctable_FindHashEntry(ctable->keyTablePtr, value);
+    if(oldrow) {
 	Tcl_AppendResult (interp, "Duplicate key '", value, "' when setting key field", (char *)NULL);
 	return TCL_ERROR;
     }
@@ -402,10 +402,10 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
     }
 
     // Insert existing row with new key
-    new = ctable_StoreHashEntry(ctable->keyTablePtr, key, (ctable_HashEntry *)row, flags, &isNew);
+    newrow = ctable_StoreHashEntry(ctable->keyTablePtr, key, (ctable_HashEntry *)row, flags, &isNew);
 
 #ifdef SANITY_CHECKS
-    ${table}_sanity_check_pointer(ctable, (void *)new, CTABLE_INDEX_NORMAL, "${table}_reinsert_row");
+    ${table}_sanity_check_pointer(ctable, (void *)newrow, CTABLE_INDEX_NORMAL, "${table}_reinsert_row");
 #endif
 
     if(!isNew) {
@@ -4539,7 +4539,7 @@ proc gen_field_names {} {
     emit "[string range $typeList 0 end-1]\n$rightCurly;\n"
 
     emit "// define per-field array for ${table} saying what fields need quoting"
-    set needsQuoting "int ${table}_needs_quoting\[\] = $leftCurly"
+    set needsQuoting "static int ${table}_needs_quoting\[\] = $leftCurly"
     foreach myField $fieldList {
 	upvar ::ctable::fields::$myField field
 
@@ -4578,16 +4578,16 @@ proc gen_field_names {} {
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
-	set propstring "char *[field_to_var $table $fieldName propkeys]\[] = $leftCurly"
+	set propstring "static CONST char *[field_to_var $table $fieldName propkeys]\[] = $leftCurly"
     
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$fieldName\", "
 	}
-	emit "${propstring}(char *)NULL$rightCurly;"
+	emit "${propstring}(CONST char *)NULL$rightCurly;"
     }
     emit ""
 
-    set propstring "static char **${table}_propKeys\[] = $leftCurly"
+    set propstring "static CONST char **${table}_propKeys\[] = $leftCurly"
     foreach fieldName $fieldList {
         append propstring "[field_to_var $table $fieldName propkeys],"
     }
@@ -4599,16 +4599,16 @@ proc gen_field_names {} {
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
-	set propstring "char *[field_to_var $table $fieldName propvalues]\[] = $leftCurly"
+	set propstring "static CONST char *[field_to_var $table $fieldName propvalues]\[] = $leftCurly"
     
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$field($fieldName)\", "
 	}
-	emit "${propstring}(char *)NULL$rightCurly;"
+	emit "${propstring}(CONST char *)NULL$rightCurly;"
     }
     emit ""
 
-    set propstring "static char **${table}_propValues\[] = $leftCurly"
+    set propstring "static CONST char **${table}_propValues\[] = $leftCurly"
     foreach fieldName $fieldList {
         append propstring "[field_to_var $table $fieldName propvalues],"
     }
@@ -4616,14 +4616,14 @@ proc gen_field_names {} {
     emit ""
     # end of values
 
-    emit "Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
+    emit "static Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
     emit ""
 
-    emit "Tcl_Obj *${table}_DefaultEmptyStringObj;"
+    emit "static Tcl_Obj *${table}_DefaultEmptyStringObj;"
     emit ""
 
     emit "// define the null value object"
-    emit "Tcl_Obj *${table}_NullValueObj;"
+    emit "static Tcl_Obj *${table}_NullValueObj;"
     emit ""
 
     emit "// define default objects for varstring fields, if any"
@@ -4632,7 +4632,7 @@ proc gen_field_names {} {
 
 	if {$field(type) == "varstring" && [info exists field(default)]} {
 	    if {$field(default) != ""} {
-		emit "Tcl_Obj *${table}_${myField}DefaultStringObj;"
+		emit "static Tcl_Obj *${table}_${myField}DefaultStringObj;"
 	    }
 	    lappend defaultStrings [cquote $field(default)]
 	} else {
@@ -4658,12 +4658,12 @@ proc gen_field_names {} {
     }
 
     emit "// define fields that may be null"
-    emit "int ${table}_nullable_fields\[] = { [join $nullableList ", "] };"
+    emit "static int ${table}_nullable_fields\[] = { [join $nullableList ", "] };"
     emit ""
 
     if {$withSharedTables} {
         emit "// define default string list"
-        emit "char *${table}_defaultStrings\[] = $leftCurly"
+        emit "static CONST char *${table}_defaultStrings\[] = $leftCurly"
         emit "    \"[join $defaultStrings {", "}]\""
         emit "$rightCurly;"
         emit ""
@@ -5680,7 +5680,7 @@ puts [info level 0]
 #
 # Generate the fully qualified path to a file
 #
-proc target_name {name version {ext .c}} {
+proc target_name {name version {ext .cpp}} {
     return [file join [target_path $name] $name-$version$ext]
 }
 
@@ -5799,7 +5799,7 @@ proc compile {fileFragName version} {
     # Keep sysconfig(ccflags) from overriding optimization level
     regsub -all { -O[0-9] } " $sysconfig(ccflags) " { } sysconfig(ccflags)
 
-    myexec "$sysconfig(cc) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $stubString $memDebugString -c $sourceFile -o $objFile"
+    myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $stubString $memDebugString -c $sourceFile -o $objFile"
 
     set ld_cmd "$sysconfig(ld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
 

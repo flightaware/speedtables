@@ -11,19 +11,19 @@
 
 #include "shared.h"
 
-char *ckalloc(size_t bytes)
+void *ckalloc(size_t bytes)
 {
-    char *mem = malloc(bytes);
+    void *mem = malloc(bytes);
     if(!mem) panic("NO mem");
     fprintf(stderr, "ckalloc 0x%lX: %ld\n", mem, bytes);
     return mem;
 }
-ckfree(char *p)
+void ckfree(void *p)
 {
     fprintf(stderr, "ckfree 0x%lX\n", p);
     free(p);
 }
-panic(char *s) {
+void panic(const char *s) {
     fprintf(stderr, "PANIC: %s\n", s);
     abort();
 }

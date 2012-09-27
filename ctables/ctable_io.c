@@ -8,18 +8,18 @@
 // string was modified and needs to be freed.
 //
 CTABLE_INTERNAL int
-ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, char *quotedChars)
+ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, CONST char *quotedChars)
 {
     int          i, j = 0;
     CONST char  *string = *stringPtr;
     int          length = stringLengthPtr ? *stringLengthPtr : strlen(string);
-    char        *new = NULL;
+    char        *newptr = NULL;
     int		 quoteChar = '\0'; // no quote by default
     int		 maxExpansion = 4; // worst possible worst case
     int		 strict = 0;
 
-    static char *special = "\b\f\n\r\t\v\\";
-    static char *replace = "bfnrtv\\";
+    static CONST char *special = "\b\f\n\r\t\v\\";
+    static CONST char *replace = "bfnrtv\\";
 
     if(quoteType == CTABLE_QUOTE_STRICT_URI) {
 	quoteType = CTABLE_QUOTE_URI;
@@ -49,39 +49,39 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 	unsigned char c = string[i];
 	if(c == quoteChar || strchr(quotedChars, c)
 	|| c < 0x20 || (strict && (c & 0x80)) ) {
-	    if(!new) {
-	        new = ckalloc(maxExpansion * length + 1);
+	    if(!newptr) {
+	        newptr = ckalloc(maxExpansion * length + 1);
 	        for(j = 0; j < i; j++)
-		     new[j] = string[j];
+		     newptr[j] = string[j];
 	    }
 	    switch(quoteType) {
 		case CTABLE_QUOTE_URI:
-		    snprintf(&new[j], 4, "%%%02x", c);
+		    snprintf(&newptr[j], 4, "%%%02x", c);
 		    j += 3;
 		    break;
 		case CTABLE_QUOTE_ESCAPE: {
 		    char *off = strchr(special, c);
-		    new[j++] = '\\';
+		    newptr[j++] = '\\';
 		    if(off) {
-			new[j++] = replace[off - special];
+			newptr[j++] = replace[off - special];
 		    } else {
-			snprintf(&new[j], 4, "%03o", c);
+			snprintf(&newptr[j], 4, "%03o", c);
 			j += 3;
 		    }
 		    break;
 		}
 		case CTABLE_QUOTE_NONE: // can't happen
-		    new[j++] = c;  // but do something sane anyway
+		    newptr[j++] = c;  // but do something sane anyway
 		    break;
 	    }
-	} else if(new) {
-	    new[j++] = c;
+	} else if(newptr) {
+	    newptr[j++] = c;
 	}
     }
 
-    if(new) {
-	new[j] = '\0';
-	*stringPtr = new;
+    if(newptr) {
+	newptr[j] = '\0';
+	*stringPtr = newptr;
 	if(stringLengthPtr) *stringLengthPtr = j;
 	return 1;
     }

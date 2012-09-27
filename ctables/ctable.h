@@ -12,6 +12,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -452,7 +453,7 @@ typedef struct ctableCreatorTable {
     int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer);
     int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
 
-    void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
+    void (*delete_row) (struct ctableTable *ctable, void *row, int indexCtl);
 
     int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
