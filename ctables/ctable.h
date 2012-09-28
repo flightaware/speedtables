@@ -431,7 +431,7 @@ typedef struct ctableCreatorTable {
     int			     nFilters;
 
     void *(*make_empty_row) (struct ctableTable *ctable);
-    void *(*find_row) (struct ctableTable *ctable, char *key);
+    void *(*find_row) (struct ctableTable *ctable, CONST char *key);
 
     int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, void *row, int field, int indexCtl);
     int (*set_null) (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field, int indexCtl);
@@ -445,7 +445,7 @@ typedef struct ctableCreatorTable {
     int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
-    void (*dstring_append_get_tabsep) (CONST char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, char *sepstr, int quoteType, char *nullString);
+    void (*dstring_append_get_tabsep) (CONST char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
 
     int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
     int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
@@ -458,7 +458,7 @@ typedef struct ctableCreatorTable {
     int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 #ifdef SANITY_CHECKS
-    void (*sanity_check_pointer)(struct ctableTable *ctable, void *ptr, int indexCtl, char *where);
+    void (*sanity_check_pointer)(struct ctableTable *ctable, void *ptr, int indexCtl, CONST char *where);
 #endif
     LIST_HEAD(instances, ctableTable) instances;
 } ctable_CreatorTable;

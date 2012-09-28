@@ -109,7 +109,7 @@ static jsw_node_t *new_node ( ctable_BaseRow *row, size_t height, void *share )
 
 #ifdef WITH_SHARED_TABLES
   if(share) {
-    node  = (jsw_node_t *)shmalloc (share, sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
+    node  = (jsw_node_t *)shmalloc ((shm_t*)share, sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
     if(!node) {
       //if(DUMPER) shmdump(share);
       panic("Can't allocate shared memory for skiplist");
@@ -139,7 +139,7 @@ static void free_node ( jsw_node_t *node, void *share )
     shmfree((shm_t *)share, (char *)node);
   else
 #endif
-    ckfree ( (void *)node );
+    ckfree ( (char *)node );
 }
 
 //
@@ -199,7 +199,11 @@ jsw_skip_t *jsw_private ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share, 
 
   // Fill in static private data
   skip->maxh = max;
+#ifdef WITH_SHARED_TABLES
+  skip->share = (shm_t*) share;
+#else
   skip->share = share;
+#endif
   skip->cmp = cmp;
   return skip;
 }
@@ -210,8 +214,8 @@ jsw_skip_t *jsw_private ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share, 
 void jsw_free_private_copy(jsw_skip_t *skip)
 {
     if(skip->fix)
-	ckfree((void *)skip->fix);
-    ckfree((void *)skip);
+	ckfree((char *)skip->fix);
+    ckfree((char *)skip);
 }
 
 //
@@ -296,7 +300,7 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip, int final )
 
   free_node ( skip->publicdata->head, skip->share );
 
-  ckfree ( (void *)skip->fix );
+  ckfree ( (char *)skip->fix );
 
 #ifdef WITH_SHARED_TABLES
   if(skip->share) {
@@ -304,7 +308,7 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip, int final )
       shmfree(skip->share, (char *)skip);
   } else
 #endif
-    ckfree ( (void *)skip );
+    ckfree ( (char *)skip );
 }
 
 //

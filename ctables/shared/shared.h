@@ -122,9 +122,9 @@ typedef struct _pool_freelist_t {
 typedef struct _chunk_t {
     cell_t              magic;          // magic number (CHUNK_MAGIC)
     struct _chunk_t	*next;		// next pool chunk
-    char		*start;		// start of pool shared memory
+    void		*start;		// start of pool shared memory
     int		 	 avail;		// number of elements unallocated
-    char		*brk;		// start of unallocated space
+    void		*brk;		// start of unallocated space
 } chunk_t;
 
 // Pool header block
@@ -228,16 +228,16 @@ void shminitmap(shm_t *shm);
 int shmcheckmap(volatile mapheader *map);
 poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share);
 int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks);
-char *palloc(poolhead_t *head, size_t size);
+void *palloc(poolhead_t *head, size_t size);
 void freepools(poolhead_t *head, int also_free_shared);
 void remove_from_freelist(shm_t *shm, volatile freeblock *block);
 void insert_in_freelist(shm_t *shm, volatile freeblock *block);
-char *_shmalloc(shm_t *map, size_t size);
-char *shmalloc_raw(shm_t *map, size_t size);
-void shmfree_raw(shm_t *map, char *block);
-int shmdepool(poolhead_t *head, char *block);
+void *_shmalloc(shm_t *map, size_t size);
+void *shmalloc_raw(shm_t *map, size_t size);
+void shmfree_raw(shm_t *map, void *block);
+int shmdepool(poolhead_t *head, void *block);
 void setfree(volatile freeblock *block, size_t size, int is_free);
-int shmdealloc_raw(shm_t *shm, char *data);
+int shmdealloc_raw(shm_t *shm, void *data);
 int write_lock(shm_t *shm);
 void write_unlock(shm_t *shm);
 volatile reader *pid2reader(volatile mapheader *map, int pid);
@@ -246,9 +246,9 @@ void read_unlock(shm_t *shm);
 void garbage_collect(shm_t *shm);
 cell_t oldest_reader_cycle(shm_t *shm);
 void shmpanic(const char *message);
-int add_symbol(shm_t *shm, char *name, char *value, int type);
-int set_symbol(shm_t *shm, char *name, char *value, int type);
-char *get_symbol(shm_t *shm, char *name, int wanted);
+int add_symbol(shm_t *shm, CONST char *name, char *value, int type);
+int set_symbol(shm_t *shm, CONST char *name, char *value, int type);
+char *get_symbol(shm_t *shm, CONST char *name, int wanted);
 int shmattachpid(shm_t *info, int pid);
 int use_name(shm_t *share, char *symbol);
 void release_name(shm_t *share, char *symbol);
@@ -302,7 +302,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 #  define shmdealloc shmdealloc_guard
 #  define LOGPARAMS
 # endif
-  char *shmalloc_guard(shm_t *map, size_t size LOGPARAMS);
+  void *shmalloc_guard(shm_t *map, size_t size LOGPARAMS);
   void shmfree_guard(shm_t *map, char *block LOGPARAMS);
   int shmdealloc_guard(shm_t *shm, char *data LOGPARAMS);
 #else

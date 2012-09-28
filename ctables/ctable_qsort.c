@@ -64,7 +64,7 @@ static inline void	 swapfunc(char *, char *, int, int);
 	es % sizeof(long) ? 2 : es == sizeof(long)? 0 : 1;
 
 static inline void
-swapfunc(char *a, char *b, int n, int swaptype)
+swapfunc(void *a, void *b, int n, int swaptype)
 {
 	if(swaptype <= 1)
 		swapcode(long, a, b, n)
@@ -176,7 +176,7 @@ loop:	SWAPINIT(a, es);
 	pn = (char *)a + n * es;
 	r = min(pa - (char *)a, pb - pa);
 	vecswap(a, pb - r, r);
-	r = min(pd - pc, pn - pd - es);
+	r = min((size_t)(pd - pc), (size_t)((pn - pd) - es));
 	vecswap(pb, pn - r, r);
 	if ((r = pb - pa) > es)
 #ifdef I_AM_QSORT_R

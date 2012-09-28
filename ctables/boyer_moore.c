@@ -79,8 +79,8 @@ boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *need
 
 CTABLE_INTERNAL void
 boyer_moore_teardown (struct ctableSearchMatchStruct *bm) {
-    ckfree ((void *)bm->skip);
-    ckfree ((void *)bm->needle);
+    ckfree ((char *)bm->skip);
+    ckfree ((char *)bm->needle);
 }
 
 CTABLE_INTERNAL const unsigned char *

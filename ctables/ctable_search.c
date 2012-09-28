@@ -117,7 +117,7 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **f
 
     for (i = 0; i < nFields; i++) {
 	if (Tcl_GetIndexFromObj (interp, fieldsObjv[i], fieldNames, "field", TCL_EXACT, &fieldList[i]) != TCL_OK) {
-	    ckfree ((void *)fieldList);
+	    ckfree ((char *)fieldList);
 	    *fieldListPtr = NULL;
 	    return TCL_ERROR;
 	  }
@@ -179,8 +179,8 @@ ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char
 	    if (fieldNameNeedsFreeing) {
 		Tcl_DecrRefCount (fieldNameObj);
 	    }
-	    ckfree ((void *)sort->fields);
-	    ckfree ((void *)sort->directions);
+	    ckfree ((char *)sort->fields);
+	    ckfree ((char *)sort->directions);
 	    sort->fields = NULL;
 	    sort->directions = NULL;
 	    return TCL_ERROR;
@@ -300,7 +300,7 @@ CTABLE_INTERNAL void ctable_FreeInRows(CTable *ctable, CTableSearchComponent *co
 	        ctable->creator->delete_row (ctable, component->inListRows[i], CTABLE_INDEX_PRIVATE);
 	    }
 	}
-	ckfree(component->inListRows);
+	ckfree((char*)component->inListRows);
 	component->inListRows = NULL;
     }
 }
@@ -844,7 +844,7 @@ updateParseError:
 	// Convert the names to field indices
 	for(fieldIndex = 0; fieldIndex < objc/2; fieldIndex++) {
 	    if (Tcl_GetIndexFromObj (interp, objv[fieldIndex*2], creator->fieldNames, "field", TCL_EXACT, &updateFields[fieldIndex]) != TCL_OK) {
-		ckfree(updateFields);
+	        ckfree((char*)updateFields);
 		goto updateParseError;
 	    }
 	}
@@ -855,7 +855,7 @@ updateParseError:
 
 	    for(fieldIndex = 0; fieldIndex < objc/2; fieldIndex++) {
 		if((*creator->set)(interp, ctable, objv[fieldIndex*2+1], row, updateFields[fieldIndex], CTABLE_INDEX_NORMAL) == TCL_ERROR) {
-		    ckfree(updateFields);
+		    ckfree((char*)updateFields);
 		    Tcl_AppendResult (interp, " (update may be incomplete)", (char *)NULL);
 		    return TCL_ERROR;
 		}
@@ -1331,7 +1331,7 @@ restart_search:
 	// while exercise again...
 
         if (search->tranTable != NULL) {
-	    ckfree ((void *)search->tranTable);
+	    ckfree ((char *)search->tranTable);
 	    search->tranTable = NULL;
         }
 
@@ -1537,7 +1537,7 @@ restart_search:
 			goto clean_and_return;
 		    }
 		    inListRows = component->inListRows;
-		    row1 = component->row1;
+		    row1 = (ctable_BaseRow*) component->row1;
 		    break;
 		}
 		default: { // Can't happen
@@ -1907,7 +1907,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
   // We only jump to this on an error
   clean_and_return:
     if (search->tranTable != NULL) {
-	ckfree ((void *)search->tranTable);
+	ckfree ((char *)search->tranTable);
     }
 
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
@@ -2420,13 +2420,13 @@ ctable_TeardownSearch (CTableSearch *search) {
 	ctable_FreeInRows(search->ctable, component);
     }
 
-    ckfree ((void *)search->components);
+    ckfree ((char *)search->components);
     search->components = NULL;
 
     if (search->sortControl.fields != NULL) {
-        ckfree ((void *)search->sortControl.fields);
+        ckfree ((char *)search->sortControl.fields);
 	search->sortControl.fields = NULL;
-        ckfree ((void *)search->sortControl.directions);
+        ckfree ((char *)search->sortControl.directions);
 	search->sortControl.directions = NULL;
     }
 }

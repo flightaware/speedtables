@@ -296,25 +296,25 @@ void ${table}_shmpanic(CTable *ctable)
     );
 }
 
-char *${table}_allocate(CTable *ctable, size_t amount)
+void *${table}_allocate(CTable *ctable, size_t amount)
 {
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
-	char *memory = shmalloc(ctable->share, amount);
+	void *memory = shmalloc(ctable->share, amount);
 	if(!memory)
 	    ${table}_shmpanic(ctable);
 	return memory;
     }
-    return (char *)ckalloc(amount);
+    return (void *)ckalloc(amount);
 }
 
-char *${table}_allocate_may_fail(CTable *ctable, size_t amount)
+void *${table}_allocate_may_fail(CTable *ctable, size_t amount)
 {
-    char *memory;
+    void *memory;
 
     if(ctable->share_type == CTABLE_SHARED_MASTER) {
 	memory = shmalloc(ctable->share, amount);
     } else {
-	memory = (char *)ckalloc(amount);
+	memory = (void *)ckalloc(amount);
     }
 
     return memory;
@@ -331,7 +331,7 @@ proc gen_allocate_function {table} {
 }
 
 variable sanitySource {
-void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, char *where)
+void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, CONST char *where)
 {
 #ifdef WITH_SHARED_TABLES
     if(indexCtl != CTABLE_INDEX_NEW) {
@@ -1654,7 +1654,7 @@ variable fieldSetSwitchSource {
 }
 
 variable fieldObjGetSource {
-struct $table *${table}_find (CTable *ctable, char *key) {
+struct $table *${table}_find (CTable *ctable, CONST char *key) {
     ctable_HashEntry *hashEntry;
 
     hashEntry = ctable_FindHashEntry (ctable->keyTablePtr, key);
@@ -2805,7 +2805,7 @@ proc gen_ctable_type_stuff {} {
     variable leftCurly
     variable rightCurly
 
-    emit "static char *ctableTypes\[\] = $leftCurly"
+    emit "static CONST char *ctableTypes\[\] = $leftCurly"
     foreach type $ctableTypes {
         emit "    \"$type\","
     }

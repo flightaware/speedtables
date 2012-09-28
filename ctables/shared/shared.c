@@ -409,7 +409,7 @@ IFDEBUG(init_debug();)
     size = share->size;
     fd = share->fd;
     ckfree(share->filename);
-    ckfree(share);
+    ckfree((char*)share);
 
     munmap(map, size);
     close(fd);
@@ -429,7 +429,7 @@ void unmap_all(void)
 
         assocData->share_list = assocData->share_list->next;
 
-        ckfree(p);
+        ckfree((char*)p);
 
         munmap(map, size);
         close(fd);
@@ -519,7 +519,7 @@ poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share)
     if(blocksize % CELLSIZE)
         blocksize += CELLSIZE - blocksize % CELLSIZE;
 
-    memset((void*)head, 0, sizeof *head);
+    memset(head, 0, sizeof *head);
     head->magic = POOL_MAGIC;
     head->share = share;
     head->nblocks = nblocks;
@@ -545,7 +545,7 @@ chunk_t *addchunk(poolhead_t *head)
         return NULL;
 
     chunk = (chunk_t *)ckalloc(sizeof *chunk);
-    memset((void*)chunk, 0, sizeof *chunk);
+    memset(chunk, 0, sizeof *chunk);
     chunk->magic = CHUNK_MAGIC;
 
     if(head->share) {
@@ -558,7 +558,7 @@ chunk_t *addchunk(poolhead_t *head)
         // If we can't allocate memory, set maxchunks to -1 to make
         // sure we don't try again.
         head->maxchunks = -1;
-        ckfree(chunk);
+        ckfree((char*)chunk);
         return NULL;
     }
 
@@ -597,19 +597,19 @@ int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks)
     return 1;
 }
 
-char *palloc(poolhead_t *head, size_t wanted)
+void *palloc(poolhead_t *head, size_t wanted)
 {
     chunk_t *chunk;
-    char *block;
+    void *block;
 
     // align size
-    if(wanted % CELLSIZE)
-        wanted += CELLSIZE - wanted % CELLSIZE;
+    if((wanted % CELLSIZE) != 0)
+        wanted += CELLSIZE - (wanted % CELLSIZE);
 
     // find a pool list that is the right size;
     while(head) {
         if (head->magic != POOL_MAGIC)
-           shmpanic("Invalid pool magic!");
+            shmpanic("Invalid pool magic!");
 
         if(head->blocksize == wanted)
             break;
@@ -635,7 +635,7 @@ char *palloc(poolhead_t *head, size_t wanted)
 
     // Pull another block out of the pool
     block = chunk->brk;
-    chunk->brk += head->blocksize;
+    chunk->brk = ((char*)chunk->brk) + head->blocksize;
     chunk->avail--;
 
     return block;
@@ -655,16 +655,16 @@ void freepools(poolhead_t *head, int also_free_shared)
 
             head->chunks = head->chunks->next;
             if(head->share == NULL)
-                ckfree(chunk->start);
+	        ckfree((char*)chunk->start);
             else if(also_free_shared)
                 shmfree_raw(head->share, chunk->start);
 
             chunk->magic = 0;
-            ckfree(chunk);
+            ckfree((char*)chunk);
         }
 
         head->magic = 0;
-        ckfree(head);
+        ckfree((char*)head);
         head = next;
     }
 }
@@ -824,7 +824,7 @@ size_t shmfreemem(shm_t *shm, int check)
     return freemem;
 }
 
-char *_shmalloc(shm_t   *shm, size_t nbytes)
+void *_shmalloc(shm_t   *shm, size_t nbytes)
 {
     volatile freeblock *block = shm->freelist;
     freeblock *freebase = (freeblock*)block;
@@ -924,9 +924,9 @@ if (0) {
     return NULL;
 }
 
-char *shmalloc_raw(shm_t   *shm, size_t size)
+void *shmalloc_raw(shm_t   *shm, size_t size)
 {
-    char *block;
+    void *block;
 IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld);\n", (long)size);)
 
     // align size
@@ -941,7 +941,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld);\n", (long)size);)
     if(!block)
         return NULL;
 
-    if (block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
+    if (block < (void *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
         shmpanic("Ludicrous block!");
 IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld) => 0x%8lx\n", (long)size, (long)block);)
 
@@ -949,11 +949,11 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld) => 0x%8lx\n", (long)size, 
 }
 
 // Add a block of memory into the garbage pool to be deleted later.
-void shmfree_raw(shm_t *shm, char *memory)
+void shmfree_raw(shm_t *shm, void *memory)
 {
     garbage_t *entry;
     static shm_t *last_shm = NULL;
-    static char *last_memory = NULL;
+    static void *last_memory = NULL;
 
 IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw(shm, 0x%lX);\n", (long)memory);)
 
@@ -991,14 +991,14 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw quarantined memory, returning\n");)
         shmpanic("Can't allocate memory in garbage pool");
 
     entry->cycle = shm->map->cycle;
-    entry->memory = memory;
+    entry->memory = (char*)memory;
     entry->next = shm->garbage;
     shm->garbage = entry;
 IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw to garbage pool 0x%08lx\n", (long)shm->garbage);)
 }
 
 // Attempt to put a pending freed block back in a pool
-int shmdepool(poolhead_t *head, char *block)
+int shmdepool(poolhead_t *head, void *block)
 {
     while(head) {
         chunk_t *chunk = head->chunks;
@@ -1006,7 +1006,7 @@ int shmdepool(poolhead_t *head, char *block)
           shmpanic("Invalid pool magic!");
         while(chunk) {
             pool_freelist_t *free;
-            ssize_t offset = block - chunk->start;
+            ssize_t offset = ((char*)block) - ((char*)chunk->start);
             if (chunk->magic != CHUNK_MAGIC)
               shmpanic("Invalid chunk magic!");
 
@@ -1069,7 +1069,7 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)s
 //    char data[size-12];
 //    cell_t -size;
 
-int shmdealloc_raw(shm_t *shm, char *memory)
+int shmdealloc_raw(shm_t *shm, void *memory)
 {
     ssize_t size;
     freeblock *block;
@@ -1400,9 +1400,8 @@ cell_t oldest_reader_cycle(shm_t   *shm)
 // removed from the list) and the list is never updated with an incomplete
 // entry, so no locking is necessary.
 
-int add_symbol(shm_t   *shm, char *name, char *value, int type)
+int add_symbol(shm_t   *shm, CONST char *name, char *value, int type)
 {
-    int i;
     int namelen = strlen(name);
     volatile mapheader *map = shm->map;
     volatile symbol *s;
@@ -1413,15 +1412,14 @@ int add_symbol(shm_t   *shm, char *name, char *value, int type)
     s = (symbol *)shmalloc_raw(shm, len);
     if(!s) return 0;
 
-    for(i = 0; i <= namelen; i++)
-        s->name[i] = name[i];
+    memcpy((void*)(s->name), name, namelen + 1);
 
     if(type == SYM_TYPE_STRING) {
         s->addr = &s->name[namelen+1];
         len = strlen(value);
-        for(i = 0; i <= len; i++)
-            s->name[namelen+1+i] = value[i];
+        memcpy((void*)(s->addr), value, len + 1);
     } else {
+        // take ownership of the pointer.
         s->addr = value;
     }
 
@@ -1438,7 +1436,7 @@ int add_symbol(shm_t   *shm, char *name, char *value, int type)
 // freed, because we don't know what they're used for and we don't want to
 // lock the garbage collector for long-term symbol use. It's up to the
 // caller to determine if the value can be freed and to do it.
-int set_symbol(shm_t *shm, char *name, char *value, int type)
+int set_symbol(shm_t *shm, CONST char *name, char *value, int type)
 {
     volatile mapheader *map = shm->map;
     volatile symbol *s = map->namelist;
@@ -1448,7 +1446,7 @@ int set_symbol(shm_t *shm, char *name, char *value, int type)
                 return 0;
             }
             if(type == SYM_TYPE_STRING) {
-                char *copy = shmalloc_raw(shm, strlen(value));
+	        char *copy = (char*) shmalloc_raw(shm, strlen(value));
                 if(!copy) return 0;
 
                 strcpy(copy, value);
@@ -1464,20 +1462,20 @@ int set_symbol(shm_t *shm, char *name, char *value, int type)
 }
 
 // Get a symbol back.
-char *get_symbol(shm_t *shm, char *name, int wanted)
+char *get_symbol(shm_t *shm, CONST char *name, int wanted)
 {
     volatile mapheader *map = shm->map;
     volatile symbol *s = map->namelist;
     while(s) {
-        if(strcmp(name, (char *)s->name) == 0) {
+        if(strcmp(name, (const char*) s->name) == 0) {
             if(wanted != SYM_TYPE_ANY && wanted != s->type) {
                 return NULL;
             }
-            return (char *)s->addr;
+            return (char *) s->addr;
         }
         s = s->next;
     }
-    return NULL;
+    return (char*) NULL;
 }
 
 // Attach to an object (represented by an arbitrary string) in the shared
@@ -1506,7 +1504,7 @@ void release_name(shm_t *share, char *name)
         if(strcmp(ob->name, name) == 0) {
             if(prev) prev->next = ob->next;
             else share->objects = ob->next;
-            ckfree(ob);
+            ckfree((char*)ob);
             return;
         }
         prev = ob;
