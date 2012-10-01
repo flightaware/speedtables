@@ -52,7 +52,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
 	        shmfree(ctable->share, row->hashEntry.key);
 	} else
 #endif
-            ckfree (row->hashEntry.key);
+            ckfree(row->hashEntry.key);
 	row->hashEntry.key = NULL;
 
 	${table}_delete(ctable, (struct ${table} *)row, indexCtl);
@@ -215,7 +215,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    calloutObjv[i] = objv[i];
 	}
 	result = Tcl_EvalObjv (interp, objc, calloutObjv, 0);
-	ckfree ((void *)calloutObjv);
+	ckfree((char *)calloutObjv);
 	return result;
     }
 
@@ -493,7 +493,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  // And since the sharename is null, we pass the share in cData.
 	  result = shareCmd((ClientData)ctable->share, interp, objc, newObjv);
 
-	  ckfree((void *)newObjv);
+	  ckfree((char *)newObjv);
 
 	  return result;
 #else
@@ -506,7 +506,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       case OPT_STATISTICS: {
           CONST char *stats = ctable_HashStats (ctable->keyTablePtr);
 	  Tcl_SetStringObj (Tcl_GetObjResult (interp), stats, -1);
-	  ckfree ((void *)stats);
+	  ckfree((char *)stats);
 	  break;
       }
 
@@ -1236,7 +1236,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		    if(nocomplain) {
 			fieldIds[i] = -1;
 		    } else {
-			ckfree((void *)fieldIds);
+			ckfree((char *)fieldIds);
 		        return TCL_ERROR;
 		    }
 		}
@@ -1277,7 +1277,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls, quoteType, nullString, poll_interval, poll_code, poll_foreground);
 	}
 
-	if(fieldIds) ckfree((void *)fieldIds);
+	if(fieldIds) ckfree((char *)fieldIds);
 
 	break;
       }

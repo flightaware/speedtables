@@ -273,7 +273,7 @@ CTABLE_INTERNAL int ctable_CreateInRows(Tcl_Interp *interp, CTable *ctable, CTab
     if(component->inListRows || component->inCount == 0)
 	return TCL_OK;
 
-    component->inListRows = (void **)ckalloc(component->inCount * sizeof (void *));
+    component->inListRows = (ctable_BaseRow **)ckalloc(component->inCount * sizeof (ctable_BaseRow *));
 
     // Since the main loop may abort, make sure this is clean
     for(i = 0; i < component->inCount; i++) {
@@ -379,7 +379,6 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		goto err;
 	    }
 	} else {
-	    void *row;
 
 	    if (term == CTABLE_COMP_IN) {
 	        if (termListCount != 3) {
@@ -392,7 +391,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		}
 
 	    } else if (term == CTABLE_COMP_RANGE) {
-	        void *row;
+	        ctable_BaseRow *row;
 
 	        if (termListCount != 4) {
 		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[0]), "\" require 4 arguments (term, field, lowValue, highValue)", (char *) NULL);
@@ -447,6 +446,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
 		    // This test should never fail.
 		    if(i > 0) {
+		        ctable_BaseRow *row;
 		        prefix[i] = '\0';
 
 		        row = (*ctable->creator->make_empty_row) (ctable);
@@ -473,11 +473,14 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
 	    /* stash what we want to compare to into a row as in "range"
 	     */
-	    row = (*ctable->creator->make_empty_row) (ctable);
-	    if ((*ctable->creator->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
-		goto err;
+	    {
+		ctable_BaseRow *row;
+		row = (*ctable->creator->make_empty_row) (ctable);
+		if ((*ctable->creator->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
+			goto err;
+		}
+		component->row1 = row;
 	    }
-	    component->row1 = row;
 	}
     }
 
@@ -862,7 +865,7 @@ updateParseError:
 	    }
 	}
 
-	ckfree(updateFields);
+	ckfree((char*)updateFields);
 
         return TCL_OK;
     }
@@ -1012,7 +1015,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 
 	for(i = 0; i < search->nFilters; i++) {
 	    filterFunction_t f = search->filters[i].filterFunction;
-	    filterResult = (*f) (interp, ctable, (void *)row, search->filters[i].filterObject, search->sequence);
+	    filterResult = (*f) (interp, ctable, row, search->filters[i].filterObject, search->sequence);
 	    if(filterResult != TCL_OK)
 		return filterResult;
 	}
@@ -1271,7 +1274,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     ctable_BaseRow	  *row = NULL;
     ctable_BaseRow	  *row1 = NULL;
     ctable_BaseRow	  *walkRow;
-    void                  *row2 = NULL;
+    ctable_BaseRow        *row2 = NULL;
     char	  	  *key = NULL;
 
     int			   bestScore = 0;
@@ -1288,15 +1291,15 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
     enum walkType_e	   walkType	= WALK_DEFAULT;
 
-    enum skipStart_e	   skipStart = 0;
-    enum skipEnd_e	   skipEnd = 0;
-    enum skipNext_e	   skipNext = 0;
+    enum skipStart_e	   skipStart = SKIP_START_NONE;
+    enum skipEnd_e	   skipEnd = SKIP_END_NONE;
+    enum skipNext_e	   skipNext = SKIP_NEXT_NONE;
 
     int			   myCount;
 
     int			   inIndex = 0;
     Tcl_Obj		 **inListObj = NULL;
-    void		 **inListRows = NULL;
+    ctable_BaseRow	 **inListRows = NULL;
     int			   inCount = 0;
 
     int			   canUseHash = 1;
@@ -1364,9 +1367,9 @@ restart_search:
 
         walkType = WALK_DEFAULT;
 
-        skipStart = 0;
-        skipEnd = 0;
-        skipNext = 0;
+        skipStart = SKIP_START_NONE;
+        skipEnd = SKIP_END_NONE;
+        skipNext = SKIP_NEXT_NONE;
     
         inIndex = 0;
         inListObj = NULL;
@@ -1453,7 +1456,7 @@ restart_search:
 	    // If it's the key, then see if it's something we can walk
 	    // using a hash.
 	    if(field == creator->keyField && canUseHash) {
-		int tryWalkType = hashTypes[comparisonType];
+		walkType_e tryWalkType = hashTypes[comparisonType];
 
 		if (tryWalkType != WALK_DEFAULT) {
 		    walkType = tryWalkType;
@@ -1517,7 +1520,7 @@ restart_search:
 		    // For a match, we use row2 and row3 as row1 and row2,
 		    // otherwise treat it as a range
 		    inOrderWalk = 1;
-		    row1 = component->row2;
+		    row1 = (ctable_BaseRow*)component->row2;
 		    row2 = component->row3;
 		    skipNext = SKIP_NEXT_ROW;
 		    break;
@@ -1686,7 +1689,7 @@ fprintf(stderr, "WALK_SKIP\n");
 #endif
 	    // save the main restart condition
 	    main_restart.row1 = row1;
-	    main_restart.row2 = row2;
+	    main_restart.row2 = (ctable_BaseRow*)row2;
 	    main_restart.skipStart = skipStart;
 	    main_restart.skipEnd = skipEnd;
 	    main_restart.compareFunction = compareFunction;
@@ -2381,7 +2384,7 @@ ctable_TeardownSearch (CTableSearch *search) {
     int i;
 
     if (search->filters) {
-	ckfree(search->filters);
+	ckfree((char*)search->filters);
 	search->filters = NULL;
     }
 
@@ -2408,13 +2411,13 @@ ctable_TeardownSearch (CTableSearch *search) {
 	if (component->clientData != NULL) {
 	    // this needs to be pluggable
 	    if ((component->comparisonType == CTABLE_COMP_MATCH) || (component->comparisonType == CTABLE_COMP_NOTMATCH) || (component->comparisonType == CTABLE_COMP_MATCH_CASE) || (component->comparisonType == CTABLE_COMP_NOTMATCH_CASE)) {
-		struct ctableSearchMatchStruct *sm = component->clientData;
+		struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct*) component->clientData;
 		if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
 		    boyer_moore_teardown (sm);
 		}
 	    }
 
-	    ckfree (component->clientData);
+	    ckfree ((char*)component->clientData);
 	}
 
 	ctable_FreeInRows(search->ctable, component);
@@ -2591,7 +2594,7 @@ ctable_ListIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum) {
 CTABLE_INTERNAL INLINE void
 ctable_RemoveFromIndex (CTable *ctable, void *vRow, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
-    ctable_BaseRow *row = vRow;
+    ctable_BaseRow *row = (ctable_BaseRow*) vRow;
     int index = ctable->creator->fields[field]->indexNumber;
 
 #ifdef SEARCHDEBUG
@@ -2646,7 +2649,7 @@ fflush(stdout);
 //
 //
 CTABLE_INTERNAL void
-ctable_RemoveFromAllIndexes (CTable *ctable, void *row) {
+ctable_RemoveFromAllIndexes (CTable *ctable, ctable_BaseRow *row) {
     int         field;
     
     // everybody's in index 0, take this guy out
@@ -2668,12 +2671,11 @@ ctable_RemoveFromAllIndexes (CTable *ctable, void *row) {
 // index on that field.
 //
 CTABLE_INTERNAL INLINE int
-ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, void *vRow, int field) {
+ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *row, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_FieldInfo *f;
     Tcl_Obj *utilityObj;
     ctable_CreatorTable *creator = ctable->creator;
-    ctable_BaseRow *row = vRow;
     int index = creator->fields[field]->indexNumber;
 
     if (skip == NULL) {

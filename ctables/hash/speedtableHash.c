@@ -373,7 +373,7 @@ ctable_DeleteHashTable(
      */
 
     if (tablePtr->buckets != tablePtr->staticBuckets) {
-	ckfree(tablePtr->buckets);
+	ckfree((char*)tablePtr->buckets);
     }
 }
 
@@ -690,7 +690,7 @@ RebuildTable(
      */
 
     if (oldBuckets != tablePtr->staticBuckets) {
-	ckfree(oldBuckets);
+	ckfree((char*)oldBuckets);
     }
 
     // printf("done\n");

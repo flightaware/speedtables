@@ -252,7 +252,7 @@ typedef struct ctable_baseRowStruct {
 
 // Forward reference to avoid a warning
 struct ctableTable;
-typedef int (*filterFunction_t)(Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence);
+typedef int (*filterFunction_t)(Tcl_Interp *interp, struct ctableTable *ctable, ctable_BaseRow *row, Tcl_Obj *filter, int sequence);
 typedef int (*fieldCompareFunction_t) (const ctable_BaseRow *row1, const ctable_BaseRow *row2);
 
 // ctable sort struct - this controls everything about a sort
@@ -282,12 +282,12 @@ struct ctableSearchMatchStruct {
 // ctable search
 typedef struct {
     void                    *clientData;
-    void                    *row1;
-    void                    *row2;
-    void		    *row3;
+    ctable_BaseRow          *row1;
+    ctable_BaseRow          *row2;
+    ctable_BaseRow          *row3;
     fieldCompareFunction_t   compareFunction;
     Tcl_Obj                **inListObj;
-    void		   **inListRows;
+    ctable_BaseRow	   **inListRows;
     int                      inCount;
     int                      fieldID;
     int                      comparisonType;
@@ -366,7 +366,7 @@ typedef struct {
 
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsepIncludeFieldNames;
-    char				*sepstr;
+    CONST char				*sepstr;
 
     // count of matches during a search
     int                                  matchCount;
@@ -396,7 +396,7 @@ typedef struct {
 typedef struct {
     CONST char              *name;
     Tcl_Obj                 *nameObj;
-    char                   **propKeys;
+    CONST char             **propKeys;
     char                   **propValues;
     fieldCompareFunction_t   compareFunction;
     int                      number;
@@ -430,30 +430,30 @@ typedef struct ctableCreatorTable {
     CONST filterFunction_t  *filterFunctions;
     int			     nFilters;
 
-    void *(*make_empty_row) (struct ctableTable *ctable);
-    void *(*find_row) (struct ctableTable *ctable, CONST char *key);
+    ctable_BaseRow *(*make_empty_row) (struct ctableTable *ctable);
+    ctable_BaseRow *(*find_row) (struct ctableTable *ctable, CONST char *key);
 
-    int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, void *row, int field, int indexCtl);
-    int (*set_null) (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field, int indexCtl);
+    int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, ctable_BaseRow *row, int field, int indexCtl);
+    int (*set_null) (Tcl_Interp *interp, struct ctableTable *ctable, ctable_BaseRow *row, int field, int indexCtl);
 
-    Tcl_Obj *(*get) (Tcl_Interp *interp, void *row, int field);
-    CONST char *(*get_string) (const void *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
+    Tcl_Obj *(*get) (Tcl_Interp *interp, ctable_BaseRow *row, int field);
+    CONST char *(*get_string) (const ctable_BaseRow *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
 
-    Tcl_Obj *(*gen_list) (Tcl_Interp *interp, void *pointer);
-    Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, void *pointer);
-    Tcl_Obj *(*gen_nonnull_keyvalue_list) (Tcl_Interp *interp, void *pointer);
-    int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
-    int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
-    int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
-    void (*dstring_append_get_tabsep) (CONST char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
+    Tcl_Obj *(*gen_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
+    Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
+    Tcl_Obj *(*gen_nonnull_keyvalue_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
+    int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
+    int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
+    int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
+    void (*dstring_append_get_tabsep) (CONST char *key, ctable_BaseRow *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
 
-    int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
-    int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
+    int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
+    int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
 
-    int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer);
-    int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
+    int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, ctable_BaseRow *pointer);
+    int (*sort_compare) (void *clientData, const ctable_BaseRow *pointer1, const ctable_BaseRow *pointer2);
 
-    void (*delete_row) (struct ctableTable *ctable, void *row, int indexCtl);
+    void (*delete_row) (struct ctableTable *ctable, ctable_BaseRow *row, int indexCtl);
 
     int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
@@ -494,8 +494,7 @@ typedef struct ctableTable {
     LIST_ENTRY(ctableTable)              instance;
 } CTable;
 
-CTABLE_INTERNAL int
-ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth);
+CTABLE_INTERNAL int ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth);
 
 // Helpers
 #define is_hidden_obj(obj) (Tcl_GetString(obj)[0] == '_')

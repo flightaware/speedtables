@@ -368,7 +368,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    if(share) doDetach(interp, share);
 #endif
 	    if(ctable)
-		ckfree((void *)ctable);
+		ckfree((char *)ctable);
 
 	    return TCL_ERROR;
 	}

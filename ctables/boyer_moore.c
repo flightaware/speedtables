@@ -36,8 +36,8 @@ static int boyermoore_needlematch
 static int bm_max(int a, int b) { return a > b ? a : b; }
 
 static void
-boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *needle, int nlen, int nocase) {
-    int a;
+boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *needle, size_t nlen, int nocase) {
+    unsigned a;
 
     bm->skip = (int *)ckalloc ((nlen + 1) * sizeof (int));
     bm->needle = (unsigned char *)ckalloc (nlen * sizeof (unsigned char));
@@ -68,7 +68,7 @@ boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *need
 
     // preprocess step 2, init skip[]
     for (a = 0; a < nlen; ++a) {
-	int value = 0;
+	unsigned value = 0;
 
 	while (value < nlen && !boyermoore_needlematch (bm->needle, nlen, a, value)) {
 	    ++value;
@@ -84,8 +84,8 @@ boyer_moore_teardown (struct ctableSearchMatchStruct *bm) {
 }
 
 CTABLE_INTERNAL const unsigned char *
-boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, int hlen, int nocase) {
-    int hpos;
+boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, size_t hlen, int nocase) {
+    unsigned hpos;
 
     // printf("bm needle '%s' %d haystack '%s' %d\n", bm->needle, bm->nlen, haystack, hlen);
     for (hpos = 0; hpos <= hlen - bm->nlen; )
