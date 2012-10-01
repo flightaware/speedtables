@@ -12,7 +12,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 {
     int          i, j = 0;
     CONST char  *string = *stringPtr;
-    int          length = stringLengthPtr ? *stringLengthPtr : strlen(string);
+    int          length = (stringLengthPtr ? *stringLengthPtr : strlen(string));
     char        *newptr = NULL;
     int		 quoteChar = '\0'; // no quote by default
     int		 maxExpansion = 4; // worst possible worst case
@@ -93,9 +93,9 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 // format error.
 //
 CTABLE_INTERNAL int
-ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
+ctable_copyDequoted(char *dst, CONST char *src, int length, int quoteType)
 {
-    int i = 0, j = 0, c;
+    int i = 0, j = 0;
     int strict = 0;
 
     if(length < 0) length = strlen(src);
@@ -120,15 +120,13 @@ ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
 	    || !isxdigit((unsigned char)src[i+2])) {
 		if(strict) return -1;
 		else goto ignore;
+	    } else {
+	        char hextmp[3] = { src[i+1], src[i+2], '\0' };
+		dst[j++] = strtol(hextmp, NULL, 16);
+		i += 3;
 	    }
-
-	    c = src[i+3];
-	    src[i+3] = '\0';
-	    dst[j++] = strtol(&src[i+1], NULL, 16);
-	    src[i+3] = c;
-	    i += 3;
 	} else if(dequoteType == CTABLE_QUOTE_ESCAPE && src[i] == '\\') {
-	    c = src[++i];
+	    char c = src[++i];
 	    if(c >= '0' && c <= '7') {
 		int digit;
 		// Doing this longhand because I need to get to the end
@@ -160,8 +158,9 @@ ignore:	    dst[j++] = src[i++];
     }
 
     // Only add a null terminator to original if it's truncated.
-    if(j < i || dst != src)
+    if(j < i || dst != src) {
 	dst[j] = '\0';
+    }
 
     return j;
 }
@@ -201,8 +200,9 @@ CTABLE_INTERNAL Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp)
     if (!result) {
         int index;
 	result = Tcl_NewObj();
-        for(index = 0; ctable_quote_names[index]; index++)
+        for(index = 0; ctable_quote_names[index]; index++) {
 	    Tcl_ListObjAppendElement(interp, result, Tcl_NewStringObj(ctable_quote_names[index], -1));
+	}
 	Tcl_IncrRefCount(result);
     }
     return result;
