@@ -2503,7 +2503,7 @@ proc gen_filters {} {
     foreach name $filterList {
 	catch {array unset filter}
 	array set filter $filters($name)
-	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence)"
+	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct CTable *ctable, void *vRow, Tcl_Obj *filter, int sequence)"
 	emit "$leftCurly"
 	emit "    struct ${table} *row = (struct ${table}*)vRow;"
         if [info exists filter(args)] {
