@@ -854,7 +854,7 @@ updateParseError:
 
 	// Perform update
         for (rowIndex = search->offset; rowIndex < search->offsetLimit; rowIndex++) {
-	    void *row = search->tranTable[rowIndex];
+	    ctable_BaseRow *row = search->tranTable[rowIndex];
 
 	    for(fieldIndex = 0; fieldIndex < objc/2; fieldIndex++) {
 		if((*creator->set)(interp, ctable, objv[fieldIndex*2+1], row, updateFields[fieldIndex], CTABLE_INDEX_NORMAL) == TCL_ERROR) {
@@ -934,7 +934,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
     }
 
     if(search->sortControl.nFields) {	// sorting
-      ctable_qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, creator->sort_compare);
+      ctable_qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, (cmp_t*) creator->sort_compare);
     }
 
     if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
@@ -1024,7 +1024,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     //
     // run the supplied compare routine
     //
-    compareResult = (*ctable->creator->search_compare) (interp, search, (void *)row);
+    compareResult = (*ctable->creator->search_compare) (interp, search, row);
     if (compareResult == TCL_CONTINUE) {
 	return TCL_CONTINUE;
     }
@@ -2543,7 +2543,7 @@ ctable_IndexCount (Tcl_Interp *interp, CTable *ctable, int field) {
 CTABLE_INTERNAL int
 ctable_DumpIndex (CTable *ctable, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
-    void       *row;
+    ctable_BaseRow *row;
     Tcl_Obj    *utilityObj = Tcl_NewObj ();
     CONST char *s;
 
@@ -2573,7 +2573,7 @@ ctable_DumpIndex (CTable *ctable, int field) {
 CTABLE_INTERNAL int
 ctable_ListIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum) {
     jsw_skip_t *skip = ctable->skipLists[fieldNum];
-    void       *p;
+    ctable_BaseRow    *p;
     Tcl_Obj    *resultObj = Tcl_GetObjResult (interp);
 
     if (skip == NULL) {

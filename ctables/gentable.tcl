@@ -340,7 +340,7 @@ void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, CONS
 		panic("%s: ctable->share_type = %d but ctable->share = NULL", where, ctable->share_type);
 	    if((char *)ptr < (char *)ctable->share->map)
 		panic("%s: ctable->share->map = 0x%lX but ptr == 0x%lX", where, (long)ctable->share->map, (long)ptr);
-	    if((char *)ptr - (char *)ctable->share->map > ctable->share->size)
+	    if((size_t)((char *)ptr - (char *)ctable->share->map) > ctable->share->size)
 		panic("%s: ctable->share->size = %ld but ptr is at %ld offset from map", where, (long)ctable->share->size, (long)((char *)ptr - (char *)ctable->share->map));
 	}
     }
@@ -1382,7 +1382,7 @@ variable varstringCompSource {
 	      // matchMeansKeep will be 1 if matching means keep,
 	      // 0 if it means discard
 	      int matchMeansKeep = ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE));
-	      struct ctableSearchMatchStruct *sm = component->clientData;
+	      struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct *)component->clientData;
 
 	      if (sm->type == CTABLE_STRING_MATCH_ANCHORED) {
 		  char *field;
@@ -1484,7 +1484,7 @@ variable keyCompSource {
 	      // matchMeansKeep will be 1 if matching means keep,
 	      // 0 if it means discard
 	      int matchMeansKeep = ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_MATCH_CASE));
-	      struct ctableSearchMatchStruct *sm = component->clientData;
+	      struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct *)component->clientData;
 
 	      if (sm->type == CTABLE_STRING_MATCH_ANCHORED) {
 		  char *field;
@@ -1932,6 +1932,7 @@ ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *ds
     Tcl_DStringAppend (dsPtr, "\n", 1);
 }
 
+// TODO: stringPtr argument should probably be CONST and not modified.
 int
 ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *stringPtr, int *nFieldsPtr, int **fieldNumsPtr, int *noKeysPtr, CONST char *sepstr, int nocomplain)
 {
@@ -2072,6 +2073,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     return TCL_OK;
 }
 
+// TODO: stringPtr should probably be CONST and not modified.
 int
 ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, int *fieldIds, int nFields, int keyColumn, CONST char *sepstr, CONST char *nullString, int quoteType) {
     struct $table *row;
@@ -2084,11 +2086,10 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, i
     char           keyNumberString[32];
     char	  *keyCopy = NULL;
     int		   seplen = strlen(sepstr);
-    char	   save = '\0';
 
     if (keyColumn == -1) {
         sprintf (keyNumberString, "%d", ctable->autoRowNumber++);
-	key = keyNumberString;
+        key = keyNumberString;
     } else {
         // find the beginning of the "keyColumn"th column in the string.
         for (key = stringPtr, i = 0; key && i < keyColumn; i++) {
@@ -2096,18 +2097,19 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, i
 	    if(key) key += seplen;
         }
         if (key) {
-	    char *keyEnd = strstr(key, sepstr);
-	    if(keyEnd) {
-		save = *keyEnd;
-		*keyEnd = 0;
-	    }
-	    keyCopy = ckalloc(strlen(key)+1);
-	    if(quoteType)
-		ctable_copyDequoted(keyCopy, key, -1, quoteType);
-	    else
-		strcpy(keyCopy, key);
-	    key = keyCopy;
-	    if(keyEnd) *keyEnd = save;
+			int keyLength;
+			CONST char *keyEnd = strstr(key, sepstr);
+			if(keyEnd) {
+				keyLength = keyEnd - key;
+			}
+			keyCopy = ckalloc(keyLength+1);
+			if(quoteType) {
+			    ctable_copyDequoted(keyCopy, key, keyLength, quoteType);
+			} else {
+				strncpy(keyCopy, key, keyLength);
+				keyCopy[keyLength] = '\0';
+			}
+			key = keyCopy;
         }
 	if(!key)
 	    key = "";
@@ -2115,6 +2117,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, i
 
     row = ${table}_find_or_create (interp, ctable, key, &indexCtl);
     if(!row) {
+    if(keyCopy) ckfree(keyCopy);
 	return TCL_ERROR;
     }
 
@@ -2150,6 +2153,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, i
 	    Tcl_SetStringObj (utilityObj, field, -1);
 	    if (${table}_set (interp, ctable, utilityObj, row, fieldIds[col], indexCtl) == TCL_ERROR) {
 	        Tcl_DecrRefCount (utilityObj);
+			if(keyCopy) ckfree(keyCopy);
 	        return TCL_ERROR;
 	    }
 	}
@@ -2157,9 +2161,12 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, i
 	col++;
     }
 
-    if (indexCtl == CTABLE_INDEX_NEW)
-        if(${table}_index_defaults(interp, ctable, row) == TCL_ERROR)
-	    return TCL_ERROR;
+    if (indexCtl == CTABLE_INDEX_NEW) {
+        if(${table}_index_defaults(interp, ctable, row) == TCL_ERROR) {
+			if(keyCopy) ckfree(keyCopy);
+			return TCL_ERROR;
+		}
+	}
 
     Tcl_DecrRefCount (utilityObj);
     if(keyCopy) ckfree(keyCopy);
@@ -2167,17 +2174,16 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, i
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, char *sepstr, char *skip, char *term, int nocomplain, int withNulls, int quoteType, char *nullString, int poll_interval, Tcl_Obj *poll_code, int poll_foreground) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, CONST char *pattern, int noKeys, int withFieldNames, CONST char *sepstr, CONST char *skip, CONST char *term, int nocomplain, int withNulls, int quoteType, CONST char *nullString, int poll_interval, Tcl_Obj *poll_code, int poll_foreground) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = NULL;
-    char            *string;
+    char            *stringPtr;                  // TODO: should probably be CONST and not modified.
     int              recordNumber = 0;
     char             keyNumberString[32];
     int		     keyColumn;
     int		     i;
     int		     seplen = strlen(sepstr);
-    char	     save = '\0';
     int		     col;
     int		    *newFieldNums = NULL;
     int	             status = TCL_OK;
@@ -2203,10 +2209,10 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	        Tcl_DecrRefCount (lineObj);
 	        return TCL_OK;
 	    }
-	    string = Tcl_GetString (lineObj);
-	} while(skip && Tcl_StringMatch(string, skip));
+	    stringPtr = Tcl_GetString (lineObj);
+	} while(skip && Tcl_StringMatch(stringPtr, skip));
 
-	if (${table}_get_fields_from_tabsep(interp, string, &nFields, &newFieldNums, &noKeys, sepstr, nocomplain) == TCL_ERROR) {
+	if (${table}_get_fields_from_tabsep(interp, stringPtr, &nFields, &newFieldNums, &noKeys, sepstr, nocomplain) == TCL_ERROR) {
 	    status = TCL_ERROR;
 	    goto cleanup;
 	}
@@ -2240,7 +2246,6 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     }
 
     while (1) {
-	char            *key;
 
 	if (poll_interval) {
 	    if (++poll_counter >= poll_interval) {
@@ -2281,14 +2286,16 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 		goto done;
 	    }
 
-	    string = Tcl_GetString (lineObj);
+	    stringPtr = Tcl_GetString (lineObj);
 
-	    if(term && term[0] && Tcl_StringCaseMatch (string, term, 1)) goto done;
-	} while(skip && Tcl_StringMatch(string, skip));
+	    if(term && term[0] && Tcl_StringCaseMatch (stringPtr, term, 1)) goto done;
+	} while(skip && Tcl_StringMatch(stringPtr, skip));
 
 	// if pattern exists, see if it does not match key and if so, skip
 	if (pattern != NULL) {
-	    for (key = string, i = 0; key && i < keyColumn; i++) {
+		char *key;
+		char save;         // modifying read-only strings is gross.
+	    for (key = stringPtr, i = 0; key && i < keyColumn; i++) {
 		key = strstr(key, sepstr);
 		if(key) key += seplen;
 	    }
@@ -2299,12 +2306,12 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 		    *keyEnd = 0;
 		}
 
-	        if (!Tcl_StringCaseMatch (string, pattern, 1)) continue;
+	        if (!Tcl_StringCaseMatch (stringPtr, pattern, 1)) continue;
 		if(keyEnd) *keyEnd = save;
 	    }
 	}
 
-	if (${table}_set_from_tabsep (interp, ctable, string, fieldNums, nFields, keyColumn, sepstr, nullString, quoteType) == TCL_ERROR) {
+	if (${table}_set_from_tabsep (interp, ctable, stringPtr, fieldNums, nFields, keyColumn, sepstr, nullString, quoteType) == TCL_ERROR) {
 	    char lineNumberString[32];
 
 	    sprintf (lineNumberString, "%d", recordNumber + 1);
@@ -5923,7 +5930,8 @@ proc control_line {} {
 #  generate, compile and link the shared library next time we're run
 #
 proc save_extension_code {name version code} {
-    set fp [open [target_name $name $version .ct] w]
+    set filename [target_name $name $version .ct]
+    set fp [open $filename w]
 
     puts $fp [control_line]
     puts $fp $code
