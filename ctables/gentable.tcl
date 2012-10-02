@@ -759,7 +759,7 @@ variable varstringSetSource {
 	    // can't use our proc here yet because of the
 	    // default empty string obj fanciness
 	    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
-		row->$fieldName = \"[cquote $default]\";
+		row->$fieldName = (char*)\"[cquote $default]\";      // TODO: gross cast discards const.
 		if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 		    return TCL_ERROR;
 		}
@@ -776,8 +776,8 @@ variable varstringSetSource {
 
 	// new string value
 	// if the allocated length is less than what we need, get more,
-	// else reuse the previously allocagted space
-	if (row->_${fieldName}AllocatedLength <= length) {
+	// else reuse the previously allocated space
+	if (row->$fieldName == NULL || row->_${fieldName}AllocatedLength <= length) {
 	    // Allocating shmem may fail, so allocate mem ahead of time
 	    char *mem = (char*)[
 	        gen_allocate_may_fail ctable \
@@ -1370,9 +1370,9 @@ proc gen_assign_length_with_default {table fieldName varName rowName shortcut} {
 variable varstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
-	  char *[gen_assign_string_with_default $table $fieldName string row 1]
+	  CONST char *[gen_assign_string_with_default $table $fieldName string row 1]
 	  [gen_assign_length_with_default $table $fieldName stringLength row 1]
-	  char *string1 = NULL;
+	  CONST char *string1 = NULL;
 
 [gen_standard_comp_null_check_source $table $fieldName]
 
@@ -1385,8 +1385,8 @@ variable varstringCompSource {
 	      struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct *)component->clientData;
 
 	      if (sm->type == CTABLE_STRING_MATCH_ANCHORED) {
-		  char *field;
-		  char *match;
+		  CONST char *field;
+		  CONST char *match;
 
 		  exclude = !matchMeansKeep;
 		  for (field = string, match = string1; *match != '*' && *match != '\0'; match++, field++) {
@@ -1533,13 +1533,13 @@ variable keyCompSource {
 #####
 
 variable fieldObjSetSource {
-struct $table *${table}_make_empty_row (CTable *ctable) {
+ctable_BaseRow *${table}_make_empty_row (CTable *ctable) {
     struct $table *row;
 
     row = (struct $table *)ckalloc (sizeof (struct $table));
     ${table}_init (ctable, row);
 
-    return row;
+    return (ctable_BaseRow*) row;
 }
 
 //
@@ -1549,9 +1549,9 @@ struct $table *${table}_make_empty_row (CTable *ctable) {
 //
 // Must handle this in caller beacuse we're not passing an interpreter in
 //
-struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char *key, int *indexCtlPtr) {
+struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, const char *key, int *indexCtlPtr) {
     int flags = KEY_VOLATILE;
-    char *key_value = key;
+    const char *key_value = key;
     struct $table *row = NULL;
 
     static struct $table *savedRow = NULL;
@@ -1582,13 +1582,14 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char
 
 #ifdef WITH_SHARED_TABLES
     if(isShared) {
-        key_value = (char *)shmalloc(ctable->share, strlen(key)+1);
-	if(!key_value) {
+        char *new_key_value = (char *)shmalloc(ctable->share, strlen(key)+1);
+	if(!new_key_value) {
 	    if(ctable->share_panic) ${table}_shmpanic(ctable);
 	    TclShmError(interp, key);
 	    return NULL;
 	}
-	strcpy(key_value, key);
+	strcpy(new_key_value, key);
+	key_value = new_key_value;
 	flags = KEY_STATIC;
     }
 #endif
@@ -1611,7 +1612,7 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, char
 	if(flags == KEY_STATIC) {
 	    // Don't need to "shmfree" because the key was never made visible to
 	    // any readers.
-	    shmdealloc(ctable->share, key_value);
+	    shmdealloc(ctable->share, (char*)key_value);
 	}
 #endif
     }
@@ -1646,7 +1647,8 @@ ${table}_set_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct 
 
 variable fieldSetSource {
 int
-${table}_set (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, int field, int indexCtl) $leftCurly
+${table}_set (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, ctable_BaseRow *vRow, int field, int indexCtl) $leftCurly
+    ${table} *row = (${table}*) vRow;
 }
 
 variable fieldSetSwitchSource {
@@ -1654,7 +1656,7 @@ variable fieldSetSwitchSource {
 }
 
 variable fieldObjGetSource {
-struct $table *${table}_find (CTable *ctable, CONST char *key) {
+ctable_BaseRow *${table}_find (CTable *ctable, CONST char *key) {
     ctable_HashEntry *hashEntry;
 
     hashEntry = ctable_FindHashEntry (ctable->keyTablePtr, key);
@@ -1662,7 +1664,7 @@ struct $table *${table}_find (CTable *ctable, CONST char *key) {
         return (struct $table *) NULL;
     }
     
-    return (struct $table *) hashEntry;
+    return (ctable_BaseRow *)(${table}*) hashEntry;
 }
 
 Tcl_Obj *
@@ -2073,17 +2075,16 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     return TCL_OK;
 }
 
-// TODO: stringPtr should probably be CONST and not modified.
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, int *fieldIds, int nFields, int keyColumn, CONST char *sepstr, CONST char *nullString, int quoteType) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *stringPtr, int *fieldIds, int nFields, int keyColumn, CONST char *sepstr, CONST char *nullString, int quoteType) {
     struct $table *row;
-    char          *key;
-    char          *field;
+    const char    *key;
     int            indexCtl;
     int            i;
     int		   col;
     Tcl_Obj       *utilityObj = Tcl_NewObj ();
     char           keyNumberString[32];
+	char           blankString[] = { '\0' };
     char	  *keyCopy = NULL;
     int		   seplen = strlen(sepstr);
 
@@ -2093,14 +2094,16 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, i
     } else {
         // find the beginning of the "keyColumn"th column in the string.
         for (key = stringPtr, i = 0; key && i < keyColumn; i++) {
-	    key = strstr(key, sepstr);
-	    if(key) key += seplen;
+			key = strstr(key, sepstr);
+			if(key) key += seplen;
         }
         if (key) {
 			int keyLength;
 			CONST char *keyEnd = strstr(key, sepstr);
 			if(keyEnd) {
 				keyLength = keyEnd - key;
+			} else {
+				keyLength = strlen(key);
 			}
 			keyCopy = ckalloc(keyLength+1);
 			if(quoteType) {
@@ -2111,65 +2114,77 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, char *stringPtr, i
 			}
 			key = keyCopy;
         }
-	if(!key)
-	    key = "";
+		if(!key) {
+			keyNumberString[0] = '\0';
+			key = keyNumberString;
+		}
     }
 
     row = ${table}_find_or_create (interp, ctable, key, &indexCtl);
+	if(keyCopy) {
+		// done with keyCopy so free it now before checking the row result.
+		ckfree(keyCopy);
+		key = keyCopy = NULL;
+	}
     if(!row) {
-    if(keyCopy) ckfree(keyCopy);
-	return TCL_ERROR;
+		return TCL_ERROR;
     }
 
     for (col = i = 0; col < nFields; i++) {
-	if(stringPtr) {
-	    field = stringPtr;
+		const char *field;
+		int fieldLength;
+
+		if(stringPtr) {
+			field = stringPtr;
             stringPtr = strstr (stringPtr, sepstr);
-	    if(stringPtr) {
-	        *stringPtr = '\0';
-	        stringPtr += seplen;
-	    }
-	} else {
-	    field = nullString ? nullString : "";
-	}
+			if(stringPtr) {
+				fieldLength = (stringPtr - field);
+				stringPtr += seplen;
+			} else {
+				fieldLength = -1;
+			}
+		} else {
+			field = (nullString != NULL ? nullString : "");
+			fieldLength = -1;
+		}
 
-	if(i == keyColumn) {
-	    continue;
-	}
-	if(fieldIds[col] == -1) {
-	    col++;
-	    continue;
-	}
+		if(i == keyColumn) {
+			continue;
+		}
+		if(fieldIds[col] == -1) {
+			col++;
+			continue;
+		}
 
-	if(nullString == NULL ||
-	   ${table}_nullable_fields[fieldIds[col]] == 0 ||
-	   (field != nullString &&
-	    field[0] != nullString[0] &&
-	    strcmp(field, nullString) != 0)
-	) {
-	    if (${table}_needs_quoting[fieldIds[col]] && quoteType)
-		ctable_dequoteString(field, -1, quoteType);
+		if(nullString == NULL ||
+		   ${table}_nullable_fields[fieldIds[col]] == 0 ||
+		   (field != nullString &&
+			field[0] != nullString[0] &&
+			strcmp(field, nullString) != 0)
+		) {
+			Tcl_SetStringObj (utilityObj, field, fieldLength);
 
-	    Tcl_SetStringObj (utilityObj, field, -1);
-	    if (${table}_set (interp, ctable, utilityObj, row, fieldIds[col], indexCtl) == TCL_ERROR) {
-	        Tcl_DecrRefCount (utilityObj);
-			if(keyCopy) ckfree(keyCopy);
-	        return TCL_ERROR;
-	    }
-	}
+			if (${table}_needs_quoting[fieldIds[col]] && quoteType && field != blankString) {
+				fieldLength = ctable_dequoteString(Tcl_GetString(utilityObj), -1, quoteType);
+				Tcl_SetObjLength(utilityObj, fieldLength);
+			}
 
-	col++;
+			if (${table}_set (interp, ctable, utilityObj, row, fieldIds[col], indexCtl) == TCL_ERROR) {
+				Tcl_DecrRefCount (utilityObj);
+				return TCL_ERROR;
+			}
+		}
+
+		col++;
     }
 
     if (indexCtl == CTABLE_INDEX_NEW) {
         if(${table}_index_defaults(interp, ctable, row) == TCL_ERROR) {
-			if(keyCopy) ckfree(keyCopy);
 			return TCL_ERROR;
 		}
 	}
 
     Tcl_DecrRefCount (utilityObj);
-    if(keyCopy) ckfree(keyCopy);
     return TCL_OK;
 }
 
@@ -2294,20 +2309,25 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	// if pattern exists, see if it does not match key and if so, skip
 	if (pattern != NULL) {
 		char *key;
-		char save;         // modifying read-only strings is gross.
 	    for (key = stringPtr, i = 0; key && i < keyColumn; i++) {
 		key = strstr(key, sepstr);
 		if(key) key += seplen;
 	    }
 	    if (key) {
-		char *keyEnd = strstr(key, sepstr);
+			char *keyEnd = strstr(key, sepstr);
 	        if(keyEnd) {
-		    save = *keyEnd;
-		    *keyEnd = 0;
-		}
+				char save = *keyEnd;   // modifying read-only strings is gross.
+				*keyEnd = '\0';
+				if (!Tcl_StringCaseMatch (stringPtr, pattern, 1)) {
+					*keyEnd = save;
+					continue;
+				}
+				*keyEnd = save;
+			} else {
+				if (!Tcl_StringCaseMatch (stringPtr, pattern, 1)) continue;
+			}
 
-	        if (!Tcl_StringCaseMatch (stringPtr, pattern, 1)) continue;
-		if(keyEnd) *keyEnd = save;
+
 	    }
 	}
 
@@ -3722,8 +3742,8 @@ proc gen_set_null_function {table} {
     variable setNullNotNullSource
 
     emit "int"
-    emit "${table}_set_null (Tcl_Interp *interp, CTable *ctable, struct $table *row, int field, int indexCtl) $leftCurly"
-
+    emit "${table}_set_null (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *vRow, int field, int indexCtl) $leftCurly"
+	emit "    ${table} *row = (${table} *)vRow;"
     emit "    switch ((enum ${table}_fields) field) $leftCurly"
 
     foreach myField $fieldList {
@@ -4040,7 +4060,7 @@ proc gen_shared_string_allocator {} {
     emit ""
 
     emit "   ctable->emptyString = (char *)&bundle\[0];"
-    emit "   ctable->defaultStrings = (char **)defaultList;"
+    emit "   ctable->defaultStrings = (const char **)defaultList;"
     emit ""
 
     emit [join $sets "\n"]
@@ -4808,6 +4828,7 @@ proc gen_preamble {} {
     variable localDefines
     variable localCode
 
+	emit "/* -*- mode: c++; buffer-read-only: 1; -*- */"
     emit "/* autogenerated by ctable table generator [clock format [clock seconds]] */"
     emit "/* DO NOT EDIT */"
     emit ""
@@ -4819,7 +4840,7 @@ proc gen_preamble {} {
     if {$fullStatic} {
 	# Make all possible symbols static except for explicitly exported ones.
 	emit "#define CTABLE_INTERNAL static"
-	emit "#define CTABLE_EXTERNAL extern"
+	emit "#define CTABLE_EXTERNAL extern \"C\""
 	emit "#if defined(__GNUC__) && (__GNUC__ >= 4)"
 	emit "  #define CTABLE_EXTERNAL2 __attribute__ ((visibility (\"default\")))"
 	emit "#elif defined(_WIN32) || defined(__CYGWIN__)"
@@ -4831,7 +4852,7 @@ proc gen_preamble {} {
     } else {
 	# Leave all symbols exported.
 	emit "#define CTABLE_INTERNAL"
-	emit "#define CTABLE_EXTERNAL extern"
+	emit "#define CTABLE_EXTERNAL extern \"C\""
 	emit "#define CTABLE_EXTERNAL2"
     }
     emit ""
@@ -5796,7 +5817,7 @@ proc compile {fileFragName version} {
 
     myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $stubString $memDebugString -c $sourceFile -o $objFile"
 
-    set ld_cmd "$sysconfig(ld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
+    set ld_cmd "$sysconfig(cxxld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
 
     if {$withPgtcl} {
 	set pgtcl_lib $sysconfig(pgtclprefix)/lib

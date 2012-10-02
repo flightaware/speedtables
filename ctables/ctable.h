@@ -476,8 +476,8 @@ struct CTable {
     char				*nullKeyValue;
 #ifdef WITH_SHARED_TABLES
     int					 was_locked;
-    char				*emptyString;
-    char			       **defaultStrings;
+    const char				*emptyString;
+    const char			       **defaultStrings;
 
     int					 share_type;
     int					 share_panic;
