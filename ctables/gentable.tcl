@@ -3013,7 +3013,7 @@ emit "    (long)row->_ll_nodes\[$listnum].next);"
 emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
 }
 	    if {"$def" != "" && "$field(type)" == "varstring"} {
-		emit "        row->$fieldName = \"[cquote $def]\";"
+		emit "        row->$fieldName = (char*)\"[cquote $def]\";  // TODO: discards const"
 	    }
 	    emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
 	    emit "            return TCL_ERROR;"
