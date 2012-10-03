@@ -2523,7 +2523,7 @@ proc gen_filters {} {
     foreach name $filterList {
 	catch {array unset filter}
 	array set filter $filters($name)
-	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct CTable *ctable, void *vRow, Tcl_Obj *filter, int sequence)"
+	emit "int ${table}_filter_${name} (Tcl_Interp *interp, struct CTable *ctable, ctable_BaseRow *vRow, Tcl_Obj *filter, int sequence)"
 	emit "$leftCurly"
 	emit "    struct ${table} *row = (struct ${table}*)vRow;"
         if [info exists filter(args)] {
@@ -3707,21 +3707,23 @@ proc gen_sets {} {
 # setNullSource - code that gets substituted for nonnull fields for set_null
 #
 variable setNullSource {
-      case $optname: 
-        if (row->_${myField}IsNull) {
-	    break;
+	case $optname: {
+		${table} *row = (${table} *)vRow;
+		if (row->_${myField}IsNull) {
+			break;
+		}
+		
+		if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
+			ctable_RemoveFromIndex (ctable, row, field);
+		}
+		row->_${myField}IsNull = 1; 
+		if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
+			if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
+				return TCL_ERROR;
+			}
+		}
+		break;
 	}
-
-	if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
-	    ctable_RemoveFromIndex (ctable, row, field);
-	}
-        row->_${myField}IsNull = 1; 
-	if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
-	    if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
-		return TCL_ERROR;
-	    }
-	}
-	break;
 }
 
 variable setNullNotNullSource {
@@ -3743,19 +3745,18 @@ proc gen_set_null_function {table} {
 
     emit "int"
     emit "${table}_set_null (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *vRow, int field, int indexCtl) $leftCurly"
-	emit "    ${table} *row = (${table} *)vRow;"
     emit "    switch ((enum ${table}_fields) field) $leftCurly"
 
     foreach myField $fieldList {
-	upvar ::ctable::fields::$myField field
+        upvar ::ctable::fields::$myField field
 
         set optname [field_to_enum $myField]
 
-	if {[info exists field(notnull)] && $field(notnull)} {
-	    emit [subst -nobackslashes -nocommands $setNullNotNullSource]
-	} else {
-	    emit [subst -nobackslashes -nocommands $setNullSource]
-	}
+        if {[info exists field(notnull)] && $field(notnull)} {
+            emit [subst -nobackslashes -nocommands $setNullNotNullSource]
+        } else {
+            emit [subst -nobackslashes -nocommands $setNullSource]
+        }
     }
 
     emit "    $rightCurly"
@@ -3779,14 +3780,14 @@ proc gen_is_null_function {table} {
     emit "    switch ((enum ${table}_fields) field) $leftCurly"
 
     foreach myField $fieldList {
-	upvar ::ctable::fields::$myField field
+        upvar ::ctable::fields::$myField field
 
         set optname [field_to_enum $myField]
 
-	if {!([info exists field(notnull)] && $field(notnull))} {
-	    emit "        case [field_to_enum $myField]:"
-	    emit "            return row->_${myField}IsNull;"
-	}
+        if {!([info exists field(notnull)] && $field(notnull))} {
+            emit "        case [field_to_enum $myField]:"
+            emit "            return row->_${myField}IsNull;"
+        }
     }
 
     emit "        default:"
