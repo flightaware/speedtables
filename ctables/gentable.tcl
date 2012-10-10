@@ -3260,6 +3260,9 @@ proc gen_struct {} {
 
     emit "struct $table : public ctable_BaseRow $leftCurly"
 
+	# this array must be first, since it will overlap with the empty list defined at the end of ctable_BaseRow.
+    putfield "ctable_LinkedListNode"  "_ll_nodes\[$NLINKED_LISTS\]"
+
     foreach fieldName $nonBooleans {
 	upvar ::ctable::fields::$fieldName field
 
