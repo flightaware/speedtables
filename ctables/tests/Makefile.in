@@ -52,10 +52,6 @@ compare:
 	rm -rf stobj
 	$(TCLSH) index-compare.tcl
 
-searchget:
-	rm -rf stobj
-	$(TCLSH) searchget.tcl
-
 null:
 	rm -rf stobj
 	$(TCLSH) null-tests.tcl
