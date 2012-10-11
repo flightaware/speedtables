@@ -736,7 +736,7 @@ proc gen_default_test {varName lengthName default defaultLength} {
 #
 variable varstringSetSource {
       case $optname: {
-	char *stringPtr = NULL;
+	const char *stringPtr = NULL;
 	int   length;
 [gen_null_check_during_set_source $table $fieldName]
 
@@ -814,7 +814,7 @@ variable varstringSetSource {
 #
 variable charSetSource {
       case $optname: {
-	char *stringPtr;
+	const char *stringPtr;
 [gen_null_check_during_set_source $table $fieldName]
 	stringPtr = Tcl_GetString (obj);
 [gen_unset_null_during_set_source $table $fieldName \
@@ -833,7 +833,7 @@ variable charSetSource {
 #
 variable fixedstringSetSource {
       case $optname: {
-	char *stringPtr;
+	const char *stringPtr;
 	int   len;
 [gen_null_check_during_set_source $table $fieldName]
 	stringPtr = Tcl_GetStringFromObj (obj, &len);
