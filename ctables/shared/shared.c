@@ -47,7 +47,7 @@ static struct speedtablesAssocData *assocData = NULL;
 #ifndef WITH_TCL
 char *ckalloc(size_t size)
 {
-    char *p = malloc(size);
+    char *p = (char*) malloc(size);
     if(!p)
         shmpanic("Out of memory!");
     return p;
@@ -56,21 +56,22 @@ char *ckalloc(size_t size)
 #endif
 
 
+static char last_shmem_error[256] = { '\0' };
+void set_last_shmem_error(const char *message) {
+    strncpy(last_shmem_error, message, sizeof(last_shmem_error));
+}
+
+const char *get_last_shmem_error() {
+    return last_shmem_error;
+}
+
 // Callable by master or slaves.
 void shared_perror(const char *text) {
-  /*
-        static char bigbuf [1024];
-        if(shared_errno < 0) {
-                fprintf(stderr, "%s: %s\n", text, shared_errmsg[-shared_errno]);
-        } else if(shared_errno > 0) {
-                strcpy(bigbuf, text);
-                strcat(bigbuf, ": ");
-                strcat(bigbuf, shared_errmsg[shared_errno]);
-                perror(bigbuf);
-        } else {
-                perror(text);
-        }
-  */
+    if(last_shmem_error[0] != '\0') {
+        fprintf(stderr, "%s: %s\n", text, last_shmem_error);
+    } else {
+        perror(text);
+    }
 }
 
 
@@ -143,8 +144,11 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
     managed_mapped_file *mmf;
     mapheader_t *mh;
     try {
+
+      fprintf(stderr, "map_file (%s, %d, %d)\n", file, (int)default_size, create);
         if (create != 0) {
-            mmf = new managed_mapped_file(open_or_create, file, default_size, (void*)addr);
+	    mmf = new managed_mapped_file(open_or_create, file, default_size, (void*)addr);
+            //mmf = new managed_mapped_file(create_only, file, default_size, (void*)addr);
 	} else {
             mmf = new managed_mapped_file(open_only, file, (void*)addr);
 	}
@@ -167,9 +171,11 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
 	std::size_t size  = region.get_size();
 	
 	*/
+	fprintf(stderr, "created managed_mapped_file\n");
 
 	mh = mmf->find_or_construct<mapheader_t>("mapheader")();
-    } catch (...) {
+    } catch (interprocess_exception &Ex) {
+        snprintf(last_shmem_error, sizeof(last_shmem_error), "caught error while initialized managed_mapped_file: %s\n", Ex.what());
         return NULL;
     }
 
@@ -725,24 +731,13 @@ int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr)
 
 void TclShmError(Tcl_Interp *interp, const char *name)
 {
-  /*
-    if(shared_errno >= 0) {
-        char CONST*msg = Tcl_PosixError(interp);
-        Tcl_AppendResult(interp, name, ": ", msg, NULL);
-    } else {
-        Tcl_AppendResult(interp, name, NULL);
-        shared_errno = -shared_errno;
-    }
-    if(shared_errno) {
-        Tcl_AppendResult(interp, ": ", shared_errmsg[shared_errno], NULL);
-    }
-  */
+  Tcl_AppendResult(interp, get_last_shmem_error(), NULL);
 }
 
-void setShareBase(char *new_base)
+void setShareBase(Tcl_Interp *interp, char *new_base)
 {
     if (assocData == NULL) {
-        shmpanic("linkup_assoc_data hasn't been called yet");
+        linkup_assoc_data(interp);
     }
 
     if(!assocData->share_base) {

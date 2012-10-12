@@ -173,8 +173,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		    }
 
 #ifdef SHARE_BASE
-		    if(SHARE_BASE != NULL && set_share_base == NULL)
-			setShareBase(set_share_base = SHARE_BASE);
+		    if(SHARE_BASE != NULL && set_share_base == NULL) {
+		        set_share_base = SHARE_BASE;
+			setShareBase(interp, SHARE_BASE);
+		    }
 #endif
 
 		    if(doCreateOrAttach(interp, share_name, share_file, share_size, share_flags, &share) != TCL_OK)
