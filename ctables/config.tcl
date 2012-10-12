@@ -33,10 +33,18 @@
     set sharedTraceFile -none
     #set sharedTraceFile -stderr
 
-    set sharedBase 0xA0000000; ### Default (FreeBSD...)
-    if { "$tcl_platform(os)" == "Darwin" } {
-    	set sharedBase 0xA000000; ## OS X
-    }
+    if {$tcl_platform(pointerSize) == 8} {
+		# 64-bit platform
+		set sharedBase 0xA0000000000;
+	} else {
+		# 32-bit platform
+		if { "$tcl_platform(os)" == "Darwin" } {
+			set sharedBase 0xA000000; ## OS X
+		} else {
+			set sharedBase 0xA0000000; ### Default (FreeBSD...)
+		}
+	}
+
     #set sharedBase -1 ; # Use this one to probe on first allocation
     #set sharedBase NULL
 
