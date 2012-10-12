@@ -134,8 +134,10 @@ tclobj:
 
 barnrow:
 	rm -rf stobj
+	rm -f *.dat
 	$(TCLSH) barnrow.tcl
 
 gbarnrow:
 	rm -rf stobj
+	rm -f *.dat
 	gdb $(TCLSH)
