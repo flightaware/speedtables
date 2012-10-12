@@ -20,9 +20,8 @@
 
 #include "shared.h"
 
-#ifndef max
-#define max(a,b) (((a)>(b))?(a):(b))
-#endif
+
+
 
 // Data that must be shared between multiple speedtables C extensions
 //
@@ -37,45 +36,13 @@ struct speedtablesAssocData {
     int      autoshare;
     char    *share_base;
     shm_t   *share_list;
+
+    managed_mapped_file *share_manager;
 };
 
 static struct speedtablesAssocData *assocData = NULL;
 #define ASSOC_DATA_KEY "speedtables"
 
-#ifdef SHARED_LOG
-FILE *logfp;
-#endif
-
-#ifdef SHM_DEBUG_TRACE
-# ifdef SHM_DEBUG_TRACE_FILE
-    static void init_debug(void)
-    {
-        time_t now;
-        SHM_DEBUG_FP = fopen(SHM_DEBUG_TRACE_FILE, "a");
-        if(!SHM_DEBUG_FP) {
-            perror(SHM_DEBUG_TRACE_FILE);
-            SHM_DEBUG_FP = stderr;
-            return;
-        }
-        now = time(NULL);
-        fprintf(SHM_DEBUG_FP, "\n# TRACE BEGINS %s\n", ctime(&now));
-    }
-# else
-#   define init_debug()
-# endif
-
-  void _dumpblock (volatile freeblock *block, char *blockname) 
-  {
-      fprintf(SHM_DEBUG_FP, "DUMPING %s at 0x%lX:\n", blockname, (long)block);
-      fprintf(SHM_DEBUG_FP, "    MAGIC=0x%lX\n", (long)block->magic);
-      fprintf(SHM_DEBUG_FP, "    SIZE =0x%lX\n", (long)block->size);
-      fprintf(SHM_DEBUG_FP, "    PREV =0x%lX\n", (long)block->prev);
-      fprintf(SHM_DEBUG_FP, "    NEXT =0x%lX\n", (long)block->next);
-  }
-# define DUMPBLOCK(b) _dumpblock(b, #b)
-#else
-# define DUMPBLOCK(b) 
-#endif
 
 #ifndef WITH_TCL
 char *ckalloc(size_t size)
@@ -88,22 +55,10 @@ char *ckalloc(size_t size)
 # define ckfree(p) free(p)
 #endif
 
-int shared_errno;
-const char *shared_errmsg[] = {
-        "unknown",                              // SH_ERROR_0
-        "Creating new mapped file",             // SH_NEW_FILE
-        "In private memory",                    // SH_PRIVATE_MEMORY
-        "When mapping file",                    // SH_MAP_FILE
-        "Opening existing mapped file",         // SH_OPEN_FILE
-        "Map or file doesn't exist",            // SH_NO_MAP
-        "Existing map is inconsistent",         // SH_ALREADY_MAPPED
-        "Map or file is too small",             // SH_TOO_SMALL
-        "Out of shared memory",                 // SH_MAP_FULL
-        "Can't map correct address",            // SH_ADDRESS_MISMATCH
-        NULL
-};
 
+// Callable by master or slaves.
 void shared_perror(const char *text) {
+  /*
         static char bigbuf [1024];
         if(shared_errno < 0) {
                 fprintf(stderr, "%s: %s\n", text, shared_errmsg[-shared_errno]);
@@ -115,46 +70,26 @@ void shared_perror(const char *text) {
         } else {
                 perror(text);
         }
+  */
 }
 
-#ifdef MAP_NOSYNC
-#define NOSYNC_FLAG MAP_NOSYNC
-#else
-#define NOSYNC_FLAG 0
-#endif
 
-#ifdef MAP_NOCORE
-#define NOCORE_FLAG MAP_NOCORE
-#else
-#define NOCORE_FLAG 0
-#endif
-
-#define DEFAULT_FLAGS (MAP_SHARED|NOSYNC_FLAG|NOCORE_FLAG)
-
-#define REQUIRED_FLAGS MAP_SHARED
-
-#ifdef MAP_STACK
-#define STACK_FLAG MAP_STACK
-#else
-#define STACK_FLAG 0
-#endif
-
-#define FORBIDDEN_FLAGS (MAP_ANON|MAP_FIXED|MAP_PRIVATE|STACK_FLAG)
-
+#ifdef WITH_TCL
 // linkup_assoc_data - attach the bits of data that multiple speedtables
-// C shared libraries need to share
+// C shared libraries need to share.
+// Callable by master or slaves.
 static void
 linkup_assoc_data (Tcl_Interp *interp)
 {
     if (assocData != NULL) {
-        IFDEBUG(fprintf(SHM_DEBUG_FP, "previously found assocData at %lX\n", (long unsigned int)assocData);)
+      //IFDEBUG(fprintf(SHM_DEBUG_FP, "previously found assocData at %lX\n", (long unsigned int)assocData);)
         return;
     }
 
     // locate the associated data 
     assocData = (struct speedtablesAssocData *)Tcl_GetAssocData (interp, ASSOC_DATA_KEY, NULL);
     if (assocData != NULL) {
-        IFDEBUG(fprintf(SHM_DEBUG_FP, "found assocData at %lX\n", (long unsigned int)assocData);)
+        //IFDEBUG(fprintf(SHM_DEBUG_FP, "found assocData at %lX\n", (long unsigned int)assocData);)
         return;
     }
 
@@ -162,51 +97,13 @@ linkup_assoc_data (Tcl_Interp *interp)
     assocData->autoshare = 0;
     assocData->share_base = NULL;
     assocData->share_list = NULL;
+    assocData->share_manager = NULL;
 
-    IFDEBUG(fprintf(SHM_DEBUG_FP, "on interp %lX, constructed assocData at %lX\n", (long unsigned int) interp, (long unsigned int)assocData);)
+    //IFDEBUG(fprintf(SHM_DEBUG_FP, "on interp %lX, constructed assocData at %lX\n", (long unsigned int) interp, (long unsigned int)assocData);)
     Tcl_SetAssocData (interp, ASSOC_DATA_KEY, NULL, (ClientData)assocData);
 }
+#endif
 
-// open_new - open a new large, empty, mappable file. Return open file
-// descriptor or -1. Errno WILL be set on failure.
-int open_new(const char *file, size_t size)
-{
-    char        *buffer;
-    size_t       nulbufsize = NULBUFSIZE;
-    ssize_t      nbytes;
-    int          fd = open(file, O_RDWR|O_CREAT, 0666);
-
-IFDEBUG(init_debug();)
-    if(fd == -1) {
-        shared_errno = SH_NEW_FILE;
-        return -1;
-    }
-
-    if(nulbufsize > size)
-        nulbufsize = (size + 1023) & ~1023;
-
-    // Use calloc because it is more efficient than bzeroing in some
-    // systems, and this is a BIG allocation
-    buffer = (char*)calloc(nulbufsize/1024, 1024);
-    if(!buffer) {
-        close(fd);
-        return -1;
-    }
-
-    while(size > 0) {
-        if(nulbufsize > size) nulbufsize = size;
-
-        nbytes = write(fd, buffer, nulbufsize);
-
-        if(nbytes < 0) { close(fd); unlink(file); return -1; }
-
-        size -= nbytes;
-    }
-
-    free(buffer);
-
-    return fd;
-}
 
 // map_file - map a file at addr. If the file doesn't exist, create it first
 // with size default_size. Return share or NULL on failure. Errno
@@ -218,135 +115,84 @@ IFDEBUG(init_debug();)
 //
 // If the file is already mapped, but at a different address, this is an error
 //
-shm_t   *map_file(const char *file, char *addr, size_t default_size, int flags, int create)
+// Callable by master or slaves.
+//
+shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, int create)
 {
-    char    *map;
-    size_t   size;
-    int      fd;
-    shm_t   *p = assocData->share_list;
+    shm_t *p = assocData->share_list;
 
-IFDEBUG(init_debug();)
-    IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: file '%s', addr %lX, size %d, flags %x, create %d\n", file, (long unsigned int)addr, (int)default_size, (int)flags, create);)
-
-    if(!flags)
-        flags = DEFAULT_FLAGS;
-    else {
-        flags |= REQUIRED_FLAGS;
-        flags &= ~(FORBIDDEN_FLAGS);
-    }
 
     // Look for an already mapped share
     while(p) {
-        IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: checking '%s' against '%s'\n", file, p->filename);)
+        //IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: checking '%s' against '%s'\n", file, p->filename);)
         if(file && p->filename && strcmp(p->filename, file) == 0) {
             if((addr != NULL && addr != (char *)p->map)) {
-		IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: map address mismatch between %lX and %lX, mapping to the latter\n", (long unsigned int)addr, (long unsigned int)p->map);)
+		//IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: map address mismatch between %lX and %lX, mapping to the latter\n", (long unsigned int)addr, (long unsigned int)p->map);)
             }
             if(default_size && default_size > p->size) {
-		IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: requested size %ld bigger than segment size %ld\n", (long)default_size, (long)p->size);)
-                shared_errno = -SH_TOO_SMALL;
+		//IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: requested size %ld bigger than segment size %ld\n", (long)default_size, (long)p->size);)
                 return NULL;
             }
-	    IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: resolved '%s' to same map at %lX\n", file, (long unsigned int)p);)
+	    //IFDEBUG(fprintf (SHM_DEBUG_FP, "map_file: resolved '%s' to same map at %lX\n", file, (long unsigned int)p);)
 	    p->attach_count++;
             return p;
         }
         p = p->next;
     }
 
-IFDEBUG(init_debug();)
-    // look for an already mapped file
-    fd = open(file, O_RDWR, 0);
+    managed_mapped_file *mmf;
+    mapheader_t *mh;
+    try {
+        if (create != 0) {
+            mmf = new managed_mapped_file(open_or_create, file, default_size, (void*)addr);
+	} else {
+            mmf = new managed_mapped_file(open_only, file, (void*)addr);
+	}
+	/*
+	  
+	//Create a file mapping
+	file_mapping m_file(FileName, read_write);
+	
+	//Map the whole file with read-write permissions in this process
+	mapped_region region(m_file, read_write);
+	mapped_region region ( shm                         //Map shared memory
+	, read_write                  //Map it as read-write
+	, 0                           //Map from offset 0
+	, 0                           //Map until the end
+	, (void*)0x3F000000           //Map it exactly there
+	);
+	
+	//Get the address of the mapped region
+	void * addr       = region.get_address();
+	std::size_t size  = region.get_size();
+	
+	*/
 
-    if(fd == -1) {
-        // No file, and not creator, can't recover
-        if(!create) {
-            shared_errno = -SH_NO_MAP;
-            return 0;
-        }
-
-        fd = open_new(file, default_size);
-
-        if(fd == -1)
-            return 0;
-
-        size = default_size;
-    } else {
-        struct stat sb;
-
-        if(fstat(fd, &sb) < 0) {
-            shared_errno = SH_OPEN_FILE;
-            return NULL;
-        }
-
-        if(addr == 0) {
-            mapheader tmp;
-            if(read(fd, &tmp, sizeof (mapheader)) == sizeof (mapheader)) {
-                if(shmcheckmap(&tmp))
-                    addr = tmp.addr;
-            }
-            lseek(fd, 0L, SEEK_SET);
-        }
-
-        if(default_size > (size_t) sb.st_size) {
-            close(fd);
-
-            fd = open_new(file, default_size);
-
-            if(fd == -1) {
-                shared_errno = SH_TOO_SMALL;
-                return 0;
-            }
-
-            size = default_size;
-        } else {
-            if(default_size)
-                size = default_size;
-            else
-                size = (size_t) sb.st_size;
-        }
-    }
-
-    if(addr == (char *)-1)
-        addr = 0;
-    if(addr) flags |= MAP_FIXED;
-    map = (char*)mmap(addr, size, PROT_READ|PROT_WRITE, flags, fd, (off_t) 0);
-IFDEBUG(fprintf(SHM_DEBUG_FP, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (long)addr, (long)size, flags, fd, (long)map);)
-
-    if(map == MAP_FAILED) {
-        shared_errno = SH_MAP_FILE;
-        close(fd);
+	mh = mmf->find_or_construct<mapheader_t>("mapheader")();
+    } catch (...) {
         return NULL;
     }
 
-    if(addr != 0 && !create && map != addr) {
-        munmap(map, size);
-        shared_errno = SH_ADDRESS_MISMATCH;
-        close(fd);
-        return NULL;
-    }
-
-    p = (shm_t*)ckalloc(sizeof(*p));
+    p = (shm_t*)ckalloc(sizeof(shm_t));
     p->filename = ckalloc(strlen(file)+1);
     strcpy(p->filename, file);
 
     // Completely initialise all fields!
-    p->next = assocData->share_list;
-    p->map = (mapheader *)map;
-    p->size = size;
+    p->map = mh;
+    p->managed_shm = mmf;
+    p->size = default_size;
     p->flags = flags;
-    p->fd = fd;
+    p->fd = -1;
     p->name = NULL;
     p->creator = 0;
-    p->pools = NULL;
-    p->freelist = NULL;
     p->garbage = NULL;
-    p->garbage_pool = NULL;
     p->horizon = LOST_HORIZON;
     p->self = NULL;
     p->objects = NULL;
     p->attach_count = 1;
 
+    // Hook in this new structure.
+    p->next = assocData->share_list;
     assocData->share_list = p;
 
     return p;
@@ -354,41 +200,35 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "mmap(0x%lX, %ld, rw, %d, %d, 0) = 0x%lX;\n", (lon
 
 // unmap_file - Unmap the open and mapped associated with the memory mapped
 // for share. Return 0 on error, -1 if the map is still busy, 1 if it's
-// been umapped. Errno is not meaningful after faillure, shared_errno is.
+// been umapped.
+// Callable by master or slaves.
 int unmap_file(shm_t   *share)
 {
-    char                *map;
-    size_t               size;
-    int                  fd;
-    volatile reader     *r;
-
-IFDEBUG(init_debug();)
-    IFDEBUG(fprintf (SHM_DEBUG_FP, "unmap_file called on %lX\n", (long unsigned int)share);)
+    volatile reader_t   *r;
 
     // If there's anyone still using the share, it's a no-op
-    if(share->objects)
+    if(share->objects) {
         return -1;
+    }
 
     // if we have multiple attachments and this isn't the last one, we're done
     if (--share->attach_count > 0) {
-	IFDEBUG(fprintf (SHM_DEBUG_FP, "unmap_file called on %lX, still %d attachments left\n", (long unsigned int)share, share->attach_count);)
         return 1;
     }
 
     // remove from list
     if(!assocData->share_list) {
-        shared_errno = -SH_NO_MAP;
         return 0;
     } else if(assocData->share_list == share) {
         assocData->share_list = share->next;
     } else {
         shm_t   *p = assocData->share_list;
 
-        while(p && p->next != share)
+        while(p && p->next != share) {
             p = p->next;
+	}
 
         if(!p) {
-            shared_errno = -SH_NO_MAP;
             return 0;
         }
 
@@ -402,777 +242,100 @@ IFDEBUG(init_debug();)
         r->cycle = LOST_HORIZON;
     }
 
-    freepools(share->pools, 0);
-    freepools(share->garbage_pool, 0);
-
-    map = (char *)share->map;
-    size = share->size;
-    fd = share->fd;
     ckfree(share->filename);
+    delete share->managed_shm;
+
     ckfree((char*)share);
 
-    munmap(map, size);
-    close(fd);
-
-    IFDEBUG(fprintf (SHM_DEBUG_FP, "unmap_file freed everything\n");)
     return 1;
 }
 
 // unmap_all - Unmap all mapped files.
+// Callable by master or slaves.
 void unmap_all(void)
 {
     while(assocData->share_list) {
-        shm_t   *p    = assocData->share_list;
-        char    *map  = (char *)p->map;
-        size_t   size = p->size;
-        int      fd   = p->fd;
+        shm_t *p    = assocData->share_list;
+        shm_t *next = p->next;
 
-        assocData->share_list = assocData->share_list->next;
+	unmap_file(p);
 
-        ckfree((char*)p);
-
-        munmap(map, size);
-        close(fd);
+	assocData->share_list = next;
     }
 }
 
-// Verify that a map file has already been configured.
-int shmcheckmap(volatile mapheader *map)
-{
-IFDEBUG(init_debug();)
-    if(map->magic != MAP_MAGIC) return 0;
-    if(map->headersize != sizeof *map) return 0;
-    return 1;
-}
 
 // Initialize a map file for use.
+// Callable only by master.
+// Should only be called by the master.
 void shminitmap(shm_t   *shm)
 {
-    volatile mapheader  *map = shm->map;
-    cell_t              *block;
-    cell_t               freesize;
+    volatile mapheader_t  *map = shm->map;
 
-#ifdef SHARED_LOG
-    if(!logfp) {
-        logfp = fopen(SHARED_LOG, "a");
-        if(logfp) {
-            long now = time(NULL);
-            fprintf(logfp, "START LOGGING @ %s\n", ctime(&now));
-        }
-        fflush(logfp);
-    }
-#endif
-
-IFDEBUG(init_debug();)
     // COMPLETELY initialise map.
     map->magic = MAP_MAGIC;
-    map->headersize = sizeof *map;
+    map->headersize = sizeof(mapheader_t);
     map->mapsize = shm->size;
     map->addr = (char *)map;
     map->namelist = NULL;
     map->cycle = LOST_HORIZON;
-    map->readers = NULL;
+    memset((void*)map->readers, 0, sizeof(reader_t) * MAX_SHMEM_READERS);
 
     // freshly mapped, so this stuff is void
     shm->garbage = NULL;
-    shm->garbage_pool = NULL;
-    shm->freelist = NULL;
-    shm->free_space = 0;
-    shm->pools = NULL;
     shm->horizon = LOST_HORIZON;
 
     // Remember that we own this.
     shm->creator = 1;
 
-    // Initialise the freelist by making the whole of the map after the
-    // header three blocks:
-    block = (cell_t *)&map[1];
-
-    //  One block just containing a special lower sentinel
-    *block++ = SENTINAL_MAGIC;
-
-    //  One "used" block, freesize bytes long with a sentinel on both ends.
-    freesize = shm->size - sizeof(*map) - 2 * CELLSIZE;
-
-    setfree((freeblock *)block, freesize, FALSE);
-
-    //  One block containing a special upper sentinel.
-    *((cell_t *)(((char *)block) + freesize)) = SENTINAL_MAGIC;
-
-    //  Some functionality assertions.
-    if (!is_prev_sentinal(block))
-      shmpanic("is_prev_sentinal failed");
-    if (!is_next_sentinal(block))
-      shmpanic("is_next_sentinal failed");
-    if (((freeblock*)block)->magic != BUSY_MAGIC)
-      shmpanic("invalid magic");
-
-    // Finally, initialize the free list by freeing it.
-    shmdealloc_raw(shm, block2data(block));
 }
 
-poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share)
-{
-    poolhead_t *head = (poolhead_t *)ckalloc(sizeof *head);
 
-    // align size
-    if(blocksize % CELLSIZE)
-        blocksize += CELLSIZE - blocksize % CELLSIZE;
-
-    memset(head, 0, sizeof *head);
-    head->magic = POOL_MAGIC;
-    head->share = share;
-    head->nblocks = nblocks;
-    head->blocksize = blocksize;
-    head->chunks = NULL;
-    head->next = NULL;
-    head->numchunks = 0;
-    head->maxchunks = maxchunks;
-    head->freelist = NULL;
-
-    return head;
-}
-
-// allocate a new pool chunk to a pool
-chunk_t *addchunk(poolhead_t *head)
-{
-    chunk_t *chunk;
-
-    if (head->magic != POOL_MAGIC)
-        shmpanic("Invalid pool magic!");
-
-    if(head->maxchunks && head->numchunks >= head->maxchunks)
-        return NULL;
-
-    chunk = (chunk_t *)ckalloc(sizeof *chunk);
-    memset(chunk, 0, sizeof *chunk);
-    chunk->magic = CHUNK_MAGIC;
-
-    if(head->share) {
-        chunk->start = _shmalloc(head->share, head->blocksize*head->nblocks);
-    } else {
-        chunk->start = ckalloc(head->blocksize * head->nblocks);
-    }
-
-    if(!chunk->start) {
-        // If we can't allocate memory, set maxchunks to -1 to make
-        // sure we don't try again.
-        head->maxchunks = -1;
-        ckfree((char*)chunk);
-        return NULL;
-    }
-
-    chunk->avail = head->nblocks;
-    chunk->brk = chunk->start;
-    chunk->next = head->chunks;
-
-    head->chunks = chunk;
-    head->numchunks++;
-
-    return chunk;
-}
-
-int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks)
-{
-    poolhead_t *head;
-
-    // align size
-    if(blocksize % CELLSIZE)
-        blocksize += CELLSIZE - blocksize % CELLSIZE;
-
-    // avoid duplicates - must not have multiple pools the same size
-    for(head = shm->pools; head; head=head->next) {
-        if (head->magic != POOL_MAGIC)
-            shmpanic("Invalid pool magic!");
-        if(head->blocksize == blocksize)
-            return 1;
-    }
-
-    head = makepool(blocksize, nblocks, maxchunks, shm);
-    if(!head) return 0;
-
-    head->next = shm->pools;
-    shm->pools = head;
-
-    return 1;
-}
-
-void *palloc(poolhead_t *head, size_t wanted)
-{
-    chunk_t *chunk;
-    void *block;
-
-    // align size
-    if((wanted % CELLSIZE) != 0)
-        wanted += CELLSIZE - (wanted % CELLSIZE);
-
-    // find a pool list that is the right size;
-    while(head) {
-        if (head->magic != POOL_MAGIC)
-            shmpanic("Invalid pool magic!");
-
-        if(head->blocksize == wanted)
-            break;
-        head = head->next;
-    }
-
-    // No pools for this size, return null
-    if(!head)
-        return NULL;
-
-    // Use a free block if available
-    if(head->freelist) { // use a free block if available
-        block = (char *)head->freelist;
-        head->freelist = head->freelist->next;
-        return block;
-    }
-
-    // If there's no room in the pool, get a new chunk
-    if(head->chunks && head->chunks->avail > 0)
-        chunk = head->chunks;
-    else if (!(chunk = addchunk(head)))
-        return NULL;
-
-    // Pull another block out of the pool
-    block = chunk->brk;
-    chunk->brk = ((char*)chunk->brk) + head->blocksize;
-    chunk->avail--;
-
-    return block;
-}
-
-void freepools(poolhead_t *head, int also_free_shared)
-{
-    while(head) {
-        poolhead_t *next = head->next;
-        if (head->magic != POOL_MAGIC)
-            shmpanic("Invalid pool magic!");
-
-        while(head->chunks) {
-            chunk_t *chunk = head->chunks;
-            if (chunk->magic != CHUNK_MAGIC)
-              shmpanic("Invalid chunk magic!");
-
-            head->chunks = head->chunks->next;
-            if(head->share == NULL)
-	        ckfree((char*)chunk->start);
-            else if(also_free_shared)
-                shmfree_raw(head->share, chunk->start);
-
-            chunk->magic = 0;
-            ckfree((char*)chunk);
-        }
-
-        head->magic = 0;
-        ckfree((char*)head);
-        head = next;
-    }
-}
-
-// Take a specific block of memory out of the list of free memory.
-void remove_from_freelist(shm_t   *shm, volatile freeblock *block)
-{
-    volatile freeblock *next = block->next, *prev = block->prev;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "remove_from_freelist(shm, 0x%lX);\n", (long)block);)
-//IFDEBUG(fprintf(SHM_DEBUG_FP, "    prev = 0x%lX, next=0x%lX\n", (long)prev, (long)next);)
-    DUMPBLOCK(prev);
-    DUMPBLOCK(next);
-    DUMPBLOCK(block);
-    if(block->magic != FREE_MAGIC)
-        shmpanic("Invalid free block magic!");
-    if(!next)
-        shmpanic("Freeing freed block (next == NULL)!");
-    if(!prev)
-        shmpanic("Freeing freed block (prev == NULL)!");
-
-    // We don't need this any more.
-    block->magic = 0;
-    block->next = block->prev = NULL;
-
-    if(next == block || prev == block) {
-        if(next != prev)
-            shmpanic("Corrupt free list (half-closed list)!");
-        if(block != shm->freelist)
-            shmpanic("Corrupt free list (closed list != freelist)!");
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    last free, empty freelist\n");)
-        shm->freelist = NULL;
-        return;
-    }
-
-    if(prev->magic != FREE_MAGIC)
-        shmpanic("Invalid free prev magic");
-    if(prev->next != block)
-        shmpanic("Corrupt free list (prev->next != block)!");
-    if(next->magic != FREE_MAGIC)
-        shmpanic("Invalid next prev magic");
-    if(next->prev != block)
-        shmpanic("Corrupt free list (next->prev != block)!");
-        
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    set 0x%lX->next = 0x%lX\n", (long)prev, (long)next);)
-    prev->next = next;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    set 0x%lX->prev = 0x%lX\n", (long)next, (long)prev);)
-    next->prev = prev;
-
-#if 1
-    // Adjust the start of the freelist to point to the block
-    // prior to the one we just removed.  This ensures that we'll
-    // avoid wasting time always walking over the same tiny blocks.
-    shm->freelist = prev;
-#else
-    if(shm->freelist == block) {
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    set freelist = 0x%lX\n", (long)next);)
-        shm->freelist = next;
-    }
-#endif
-}
-
-// Add a block of memory to the list of free memory available for immediate reuse.
-void insert_in_freelist(shm_t   *shm, volatile freeblock *block)
-{
-    volatile freeblock *next, *prev;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "insert_in_freelist(shm, 0x%lX);\n", (long)block);)
-
-    if (block->magic != FREE_MAGIC)
-      shmpanic("Invalid free magic");
-
-    if(!shm->freelist) {
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    empty freelist, set all to block\n");)
-        shm->freelist = block->next = block->prev = block;
-        return;
-    }
-    next = block->next = shm->freelist;
-    if (next->magic != FREE_MAGIC)
-      shmpanic("Invalid next free magic");
-
-    prev = block->prev = shm->freelist->prev;
-    if (prev->magic != FREE_MAGIC)
-      shmpanic("Invalid prev free magic");
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    insert between 0x%lX and 0x%lX\n", (long)prev, (long)next);)
-DUMPBLOCK(next);
-DUMPBLOCK(prev);
-DUMPBLOCK(block);
-    next->prev = prev->next = block;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    double-verify\n");)
-DUMPBLOCK(next);
-DUMPBLOCK(prev);
-DUMPBLOCK(block);
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    done\n");)
-}
-
-// Prints out diagnostic information about the state of memory blocks.
-static void shmdump(shm_t *shm)
-{
-    fprintf(stderr, "#DUMP 0x%08lx at 0x%08lx (%ld bytes)\n",
-        (long)shm, (long)shm->map->addr, (long)shm->map->mapsize);
-
-    freeblock *freelist = (freeblock *)shm->freelist;
-    freeblock *freebase = freelist;
-
-    while(freelist) {
-        fprintf(stderr, "#  FREE BLOCK 0x%08lx (%ld bytes)\n", (long)freelist, (long)freelist->size);
-        freelist = (freeblock *)freelist->next;
-        if(freelist == freebase) break;
-    }
-
-    garbage_t *garbage = shm->garbage;
-    while(garbage) {
-        fprintf(stderr, "#  GARBAGE 0x%08lx (cycle 0x%08lx)\n", (long)garbage->memory, (long)garbage->cycle);
-        garbage = garbage->next;
-        if(garbage == shm->garbage) break;
-    }
-
-    fprintf(stderr, "#DUMP end\n");
-    fflush(stderr);
-}
-
-#ifdef GARBAGE_LIST_DEBUG
-static int garbage_size(shm_t *shm)
-{
-    int length = 0;
-    garbage_t *garbage = shm->garbage;
-    while(garbage) {
-	garbage = garbage->next;
-	length++;
-	if(garbage == shm->garbage) return -length;
-    }
-    return length;
-}
-#endif
 
 // Return estimate of free memory available.  Does not include memory waiting to be garbage collected.
-size_t shmfreemem(shm_t *shm, int check)
+// Callable only by master.
+size_t shmfreemem(shm_t *shm, int /*check*/)
 {
-    if(!check) return shm->free_space;
-
-    freeblock *freelist = (freeblock *)shm->freelist;
-    freeblock *freebase = freelist;
-    size_t freemem = 0;
-
-    while(freelist) {
-        if (freelist->magic != FREE_MAGIC) {
-            shmpanic("Invalid free magic!");
-        }
-        if (freelist->size < (ssize_t)sizeof(freeblock)) {
-            shmpanic("Invalid freeblock size (was negative or too small)");
-        }
-        freemem += freelist->size;
-        freelist = (freeblock *)freelist->next;
-        if(freelist == freebase) break;
-    }
-
-    return freemem;
+    return shm->managed_shm->get_free_memory();
 }
 
+// Allocate some memory from the shared-memory heap.
+// May return NULL if the allocation failed.
+// Callable only by master.
 void *_shmalloc(shm_t   *shm, size_t nbytes)
 {
-    volatile freeblock *block = shm->freelist;
-    freeblock *freebase = (freeblock*)block;
-    size_t              needed;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "_shmalloc(shm_t  , %ld);\n", (long)nbytes);)
-
-    // align size - increase requested size to a multiple of CELLSIZE
-    if(nbytes % CELLSIZE)
-        nbytes += CELLSIZE - nbytes % CELLSIZE;
-
-    // miminum allocation is CELLSIZE * 2
-    if(nbytes < CELLSIZE * 4)
-	nbytes = CELLSIZE * 4;
-
-    // Actual allocation includes our structure plus an upper sentinal.
-    // We really only need room initall for a busyblock, but since the
-    // freeblock struct is larger we need to ensure there is room to
-    // also allow this block to become freed later.
-    needed = nbytes + sizeof(freeblock) + CELLSIZE;
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, " actual allocation %ld\n", (long)needed);)
-
-    // really a do-while loop, null check should never fail
-    while(block) {
-        ssize_t space = block->size;
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, "  considering 0x%lx\n", (long)block);)
-DUMPBLOCK(block);
-        if (block->magic != FREE_MAGIC)
-            shmpanic("invalid free magic");
-
-        if(space < 0)
-            shmpanic("trying to allocate non-free block");
-
-        if (prevsize(nextblock(block)) != block->size)
-            shmpanic("block upper sentinal size does not agree with header size");
-
-        if(space >= (ssize_t)needed) {
-            size_t left = space - needed;
-            size_t used = needed;
-
-            // See if the remaining chunk is big enough to be worth saving
-            if(left <= sizeof (freeblock) + 2 * CELLSIZE) {
-                used = space;
-                left = 0;
-            }
-
-	    shm->free_space -= used;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    removing block size %ld\n", (long)used);)
-            remove_from_freelist(shm, block);
-            setfree(block, used, FALSE);
-
-            // If there's space left
-            if(left) {
-                freeblock *new_block = (freeblock *)(((char *)block) + needed);
-                
-                // make it a valid freelist entry
-                setfree(new_block, left, TRUE);
-                new_block->next = new_block->prev = NULL;
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    adding new block 0s%lX size %ld\n", (long)new_block, (long)left);)
-                // add it into the free list
-                insert_in_freelist(shm, new_block);
-            }
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, "      return block2data(0x%lX) ==> 0x%lX\n", (long)block, (long)block2data(block));)
-
-            if((char *)block < (char *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
-                shmpanic("Ludicrous block!");
-            return block2data(block);
-        }
-
-        if(block == block->next)
-            break;
-
-        block = block->next;
-
-        if (block == freebase)
-            break;
-    }
-
-    shared_errno = -SH_MAP_FULL;
-
-// Change to "if(1)" to enable fallback panic
-if (0) {
-  static int debugcountdown = 30;
-  if(debugcountdown-- <= 0) {
-    shmpanic("out of memory");
-  }
-}
-// Change to "if(1)" to dump shared memory when done
-if (0) {
-  fprintf(stderr, "_shmalloc(shm, 0x%08lx) failed\n", (long)nbytes);
-  shmdump(shm);
+    return shm->managed_shm->allocate(nbytes, std::nothrow);
 }
 
-    return NULL;
-}
-
-void *shmalloc_raw(shm_t   *shm, size_t size)
+// Allocate some memory from the shared-memory heap.
+// May return NULL if the allocation failed.
+// Callable only by master.
+void *shmalloc_raw(shm_t   *shm, size_t nbytes)
 {
-    void *block;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld);\n", (long)size);)
-
-    // align size
-    if(size % CELLSIZE)
-        size += CELLSIZE - size % CELLSIZE;
-    if(size < CELLSIZE * 4)
-	size = CELLSIZE * 4;
-
-    if(!(block = palloc(shm->pools, size)))
-        block = _shmalloc(shm, size);
-
-    if(!block)
-        return NULL;
-
-    if (block < (void *)shm->map || (char *)block > (char *)shm->map + shm->map->mapsize)
-        shmpanic("Ludicrous block!");
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmalloc_raw(shm, %ld) => 0x%8lx\n", (long)size, (long)block);)
-
-    return block;
+    return shm->managed_shm->allocate(nbytes, std::nothrow);
 }
 
 // Add a block of memory into the garbage pool to be deleted later.
+// Callable only by master.
 void shmfree_raw(shm_t *shm, void *memory)
 {
     garbage_t *entry;
-    static shm_t *last_shm = NULL;
-    static void *last_memory = NULL;
 
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw(shm, 0x%lX);\n", (long)memory);)
-
-    // If something was in quarantine, free it.
-    if(last_shm) {
-IFDEBUG(fprintf(SHM_DEBUG_FP, "deallocating quarantined memory at 0x%lX\n", (long)last_memory);)
-	shmdealloc_raw(last_shm, last_memory);
-	last_shm = NULL;
-	last_memory = NULL;
-    }
-
-    // If we haven't any readers yet, quarantine it and return.
-    if(!has_readers(shm)) {
-	last_shm = shm;
-	last_memory = memory;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw quarantined memory, returning\n");)
-        return;
-    }
-
-    if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
-        shmpanic("Trying to free pointer outside mapped memory!");
-
-    if(!shm->garbage_pool) {
-       size_t pool_size = GARBAGE_POOL_SIZE;
-       if ( (pool_size * (sizeof *entry)) > shm->size / 32)
-           pool_size = SMALL_GARBAGE_POOL_SIZE;
-
-        shm->garbage_pool = makepool(sizeof *entry, pool_size, 0, NULL);
-        if(!shm->garbage_pool)
-            shmpanic("Can't create garbage pool");
-    }
-
-    entry = (garbage_t *)palloc(shm->garbage_pool, sizeof *entry);
-    if(!entry)
-        shmpanic("Can't allocate memory in garbage pool");
+    entry = (garbage_t *)ckalloc(sizeof(garbage_t));
 
     entry->cycle = shm->map->cycle;
     entry->memory = (char*)memory;
     entry->next = shm->garbage;
+
     shm->garbage = entry;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmfree_raw to garbage pool 0x%08lx\n", (long)shm->garbage);)
 }
 
-// Attempt to put a pending freed block back in a pool
-int shmdepool(poolhead_t *head, void *block)
-{
-    while(head) {
-        chunk_t *chunk = head->chunks;
-        if (head->magic != POOL_MAGIC)
-          shmpanic("Invalid pool magic!");
-        while(chunk) {
-            pool_freelist_t *free;
-            ssize_t offset = ((char*)block) - ((char*)chunk->start);
-            if (chunk->magic != CHUNK_MAGIC)
-              shmpanic("Invalid chunk magic!");
 
-            if(offset < 0 || offset > (ssize_t)(head->nblocks * head->blocksize)) {
-                chunk = chunk->next;
-                continue;
-            }
-
-            if((offset % head->blocksize) != 0)
-                shmpanic("Unalligned free from pool!");
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, "freeing 0x%lx into pool freelist\n", (long)block);)
-            // Thread block into free list. We do not store size in or coalesce
-            // pool blocks, they're always all the same size, so all we have in
-            // them is the address of the next free block.
-            free = (pool_freelist_t *)block;
-            free->next = head->freelist;
-            head->freelist = free;
-
-            return 1;
-        }
-        head = head->next;
-    }
-    return 0;
-}
-
-// Marks a block as free or busy, by storing the size of the block at both
-// ends... positive if free, negative if not.
-void setfree(volatile freeblock *block, size_t size, int is_free)
-{
-IFDEBUG(fprintf(SHM_DEBUG_FP, "setfree(0x%lX, %ld, %d);\n", (long)block, (long)size, is_free);)
-    volatile cell_t *cell;
-    if (size <= sizeof(freeblock))
-      shmpanic("Invalid block size!");
-
-    block->magic = (is_free ? FREE_MAGIC : BUSY_MAGIC);
-    block->size = (is_free ? ((ssize_t)size) : -((ssize_t)size));
-
-    // put a trailing sentinal containing the size
-    cell = (cell_t *) &((char *)block)[size]; // point to next block;
-    cell--; // step back one word;
-    *cell = is_free ? ((ssize_t)size) : -((ssize_t)size);
-}
-
-// attempt to free a block
-// first, try to free it into a pool as an unstructured block
-// then, thread it on the free list
-
-// free block structure:
-//    cell_t magic == FREE_MAGIC
-//    cell_t size;
-//    pointer next
-//    pointer free
-//    char unused[size - 12 - sizeof(freeblock)];
-//    cell_t size;
-
-// busy block structure:
-//    cell_t magic == BUSY_MAGIC
-//    cell_t -size;
-//    char data[size-12];
-//    cell_t -size;
-
+// Free a block immediately.
+// Callable only by master.
 int shmdealloc_raw(shm_t *shm, void *memory)
 {
-    ssize_t size;
-    freeblock *block;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "shmdealloc_raw(shm=0x%lX, memory=0x%lX);\n", (long)shm, (long)memory);)
-
-    if(memory < (char *)shm->map || memory >= ((char *)shm->map)+shm->map->mapsize)
-        shmpanic("Trying to dealloc pointer outside mapped memory!");
-
-    // Try and free it back into a pool.
-    if(shmdepool(shm->pools, memory)) return 1;
-
-    // step back to block header
-    block = data2block(memory);
-IFDEBUG(fprintf(SHM_DEBUG_FP, "  block=0x%lX\n", (long)memory);)
-
-    if (block->magic != BUSY_MAGIC)
-        shmpanic("invalid busy magic");
-
-    size = block->size;
-IFDEBUG(fprintf(SHM_DEBUG_FP, "  size=%ld\n", (long)size);)
-
-    // negative size means it's allocated, positive it's free
-    if(((ssize_t)size) > 0)
-        shmpanic("freeing freed block");
-
-    size = -size;
-
-    shm->free_space += size;
-
-    // merge previous freed blocks
-    while(!is_prev_sentinal(block)) {
-        freeblock *prev = prevblock(block);
-        ssize_t new_size;
-
-        if ((char*)prev < (char*)shm->map) {
-          shmpanic("Previous block is outside mapped memory!");
-        }
-
-        if (prev->magic != FREE_MAGIC) {
-          if (prev->magic != BUSY_MAGIC) {
-            shmpanic("found bad magic for previous block");
-          }
-          break;
-        }
-        new_size = prev->size;
-        if (new_size <= 0)
-            shmpanic("invalid free size");
-        if (prevsize(block) != new_size)
-            shmpanic("inconsistent sizes at lower vs upper sentinal");
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    merge prev block 0x%lX size %ld\n", (long)prev, (long)new_size);)
-        // remove it from the free list
-        remove_from_freelist(shm, prev);
-
-        // increase the size of the previous block to include this block
-        new_size += size;
-        setfree(prev, new_size, FALSE); // not in freelist so not really free
-
-        // *become* the previous block
-        block = prev;
-        size = new_size;
-    }
-
-    // merge following free blocks
-    while(!is_next_sentinal(block)) {
-        freeblock *next = nextblock(block);
-        ssize_t new_size;
-
-        if((char*)next >= ((char *)shm->map)+shm->map->mapsize) {
-          shmpanic("Next block is outside mapped memory!");
-        }
-
-        if (next->magic != FREE_MAGIC) {
-          if (next->magic != BUSY_MAGIC) {
-            shmpanic("found bad magic for next block");
-          }
-          break;
-        }
-
-        new_size = next->size;
-        if (new_size <= 0)
-            shmpanic("invalid free size");
-        if (nextsize(block) != new_size)
-          shmpanic("inconsistent sizes at lower vs upper sentinal");
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, "    merge next block 0x%lX\n", (long)next);)
-        // remove next from the free list
-        remove_from_freelist(shm, next);
-
-        // increase the size of this block to include it
-        size += new_size;
-        setfree(block, size, FALSE); // not in freelist so not free
-    }
-
-    // Finally, create a new free block from all merged blocks
-    setfree(block, size, TRUE);
-
-    // contents of free block is a freelist entry, create it
-    block->next = block->prev = NULL;
-
-IFDEBUG(fprintf(SHM_DEBUG_FP, "  inserting newly merged block(s) in freelist\n");)
-    insert_in_freelist(shm, block);
-IFDEBUG(fprintf(SHM_DEBUG_FP, "  deallocated 0x%lX size %ld\n", (long)block, (long)size);)
+    shm->managed_shm->deallocate(memory);
     return 1;
 }
 
@@ -1180,10 +343,11 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "  deallocated 0x%lX size %ld\n", (long)block, (lo
 // Increments the cycle number and returns the new cycle number.
 int write_lock(shm_t   *shm)
 {
-    volatile mapheader *map = shm->map;
+    volatile mapheader_t *map = shm->map;
 
-    while(++map->cycle == LOST_HORIZON)
+    while(++map->cycle == LOST_HORIZON) {
         continue;
+    }
 
     return map->cycle;
 }
@@ -1206,8 +370,9 @@ void write_unlock(shm_t   *shm)
     new_horizon = oldest_reader_cycle(shm);
 
     // If no active readers, then work back from current time
-    if(new_horizon == LOST_HORIZON)
+    if(new_horizon == LOST_HORIZON) {
         new_horizon = shm->map->cycle;
+    }
 
     age = new_horizon - shm->horizon;
 
@@ -1219,70 +384,51 @@ void write_unlock(shm_t   *shm)
 
 
 // Find the reader structure associated with a reader's pid.
+// Callable by slaves.
 // Returns NULL if no match found.
-volatile reader *pid2reader(volatile mapheader *map, int pid)
+volatile reader_t *pid2reader(volatile mapheader_t *map, int pid)
 {
-    volatile reader_block *b = map->readers;
-    if(!pid) return NULL;
-    while(b) {
-        if(b->count) {
-            unsigned i;
-            for(i = 0; i < b->count && i < READERS_PER_BLOCK; i++)
-                if(b->readers[i].pid == (cell_t)pid)
-                    return &b->readers[i];
+    for (unsigned i = 0; i < MAX_SHMEM_READERS; i++) {
+        if(map->readers[i].pid == (cell_t)pid) {
+	    return &map->readers[i];
         }
-        b = b->next;
     }
     return NULL;
 }
 
+
+// Add ourself (pid) to the list of readers.
+// Callable by slaves.
+// Returns 1 on success, 0 on failure.
 int shmattachpid(shm_t   *share, int pid)
 {
-    volatile mapheader *map = share->map;
-    volatile reader_block *b = map->readers;
+    volatile mapheader_t *map = share->map;
 
-    if(!pid) return 0;
-    if(pid2reader(map, pid)) return 1;
+    if(!pid) return 0;         // invalid pid
+    if(pid2reader(map, pid)) return 1;    // success, already added.
 
-    while(b) {
-        unsigned i;
-        for(i = 0; i < b->count; i++) {
-            if(b->readers[i].pid == 0) {
-                b->readers[i].pid = (cell_t)pid;
-                b->readers[i].cycle = LOST_HORIZON;
-                return 1;
-            }
-        }
-        if(b->count < READERS_PER_BLOCK) {
-            b->readers[b->count].pid = (cell_t)pid;
-            b->readers[b->count].cycle = LOST_HORIZON;
-            b->count++;
-            return 1;
-        }
-        b = b->next;
+    for (unsigned i = 0; i < MAX_SHMEM_READERS; i++) {
+        if (map->readers[i].pid == 0) {
+	    map->readers[i].pid = (cell_t)pid;
+	    map->readers[i].cycle = LOST_HORIZON;
+	    return 1;     // successfully added.
+	}
     }
-    b = (reader_block *)shmalloc_raw(share, sizeof *b);
-    if(!b) return 0;
 
-    memset((void*)b, 0, sizeof *b);
-    b->count = 0;
-    b->next = map->readers;
-    map->readers = (reader_block *)b;
-    b->readers[b->count].pid = (cell_t)pid;
-    b->readers[b->count].cycle = LOST_HORIZON;
-    b->count++;
-    return 1;
+    return 0;     // no space for any more readers.
 }
 
 // Called by a reader to start a read transaction on the current state of memory.
+// Callable by slaves.
 // Returns the cycle number that is locked, or LOST_HORIZON (0) on error.
 int read_lock(shm_t   *shm)
 {
-    volatile mapheader *map = shm->map;
-    volatile reader *self = shm->self;
+    volatile mapheader_t *map = shm->map;
+    volatile reader_t *self = shm->self;
 
-    if(!self)
+    if(!self) {
         shm->self = self = pid2reader(map, getpid());
+    }
     if(!self) {
         fprintf(stderr, "%d: Can't find reader slot!\n", getpid());
         return LOST_HORIZON;
@@ -1291,9 +437,10 @@ int read_lock(shm_t   *shm)
 }
 
 // Called by a reader to end a read transaction on the current state of memory.
+// Callable by slaves.
 void read_unlock(shm_t   *shm)
 {
-    volatile reader *self = shm->self;
+    volatile reader_t *self = shm->self;
 
     if(!self)
         return;
@@ -1302,6 +449,7 @@ void read_unlock(shm_t   *shm)
 }
 
 // Go through each garbage block and, if it's not in use by any readers, return it to the free list.
+// Callable only by master.
 void garbage_collect(shm_t   *shm)
 {
     garbage_t   *garbp = shm->garbage;
@@ -1309,31 +457,20 @@ void garbage_collect(shm_t   *shm)
     cell_t       horizon = shm->horizon;
     int          collected = 0;
     int          skipped = 0;
-#ifdef GARBAGE_LIST_DEBUG
-    int		 last_size = 0;
-    int		 new_size = 0;
-#endif
 
     if(horizon != LOST_HORIZON) {
         horizon -= TWILIGHT_ZONE;
         if(horizon == LOST_HORIZON)
-            horizon --;
+            horizon--;
     }
-IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm);\n");)
 
     while(garbp) {
-#ifdef GARBAGE_LIST_DEBUG
-        new_size = garbage_size(shm);
-	if(new_size < 0) shmpanic("Garbage loop");
-	if(last_size && new_size > last_size) shmpanic("Garbage Growing");
-	last_size = new_size;
-#endif
 
         int delta = horizon - garbp->cycle;
         if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || delta > 0) {
             garbage_t *next = garbp->next;
             shmdealloc_raw(shm, garbp->memory);
-            shmdepool(shm->garbage_pool, (char *)garbp);
+            ckfree((char *)garbp);
             garbp = next;
 
             if(garbo)
@@ -1349,49 +486,48 @@ IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm);\n");)
         }
     }
 
-IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm): cycle 0x%08lx, horizon 0x%08lx, collected %d, skipped %d\n", (long)shm->map->cycle, (long)shm->horizon, collected, skipped);)
+//IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm): cycle 0x%08lx, horizon 0x%08lx, collected %d, skipped %d\n", (long)shm->map->cycle, (long)shm->horizon, collected, skipped);)
 }
 
 // Find the cycle number for the oldest reader.
+// Callable only by master.
 cell_t oldest_reader_cycle(shm_t   *shm)
 {
-    volatile reader_block *r = shm->map->readers;
+    volatile mapheader_t *map  = shm->map;
     cell_t new_cycle = LOST_HORIZON;
-    cell_t map_cycle = shm->map->cycle;
+    cell_t map_cycle = map->cycle;
     cell_t rdr_cycle = LOST_HORIZON;
     int oldest_age = 0;
     int age;
 
-    while(r) {
-        unsigned i;
-        for(i = 0; i < r->count && i < READERS_PER_BLOCK; i++) {
-            if(r->readers[i].pid) {
-                if (kill(r->readers[i].pid, 0) == -1) {
-                    // Found a pid belonging to a dead process.  Remove it.
-                    IFDEBUG(fprintf(SHM_DEBUG_FP, "oldest_reader_cycle: found dead reader pid %d, removing\n", (int) r->readers[i].pid);)
-                    r->readers[i].pid = 0;
-                    r->readers[i].cycle = LOST_HORIZON;
-                    continue;
-                }
+    for(unsigned i = 0; i < MAX_SHMEM_READERS; i++) {
+        if(map->readers[i].pid) {
+	    if (kill(map->readers[i].pid, 0) == -1) {
+	        // Found a pid belonging to a dead process.  Remove it.
+	        //IFDEBUG(fprintf(SHM_DEBUG_FP, "oldest_reader_cycle: found dead reader pid %d, removing\n", (int) map->readers[i].pid);)
+	        map->readers[i].pid = 0;
+	        map->readers[i].cycle = LOST_HORIZON;
+	        continue;
+	    }
 
-                rdr_cycle = r->readers[i].cycle;
+	    rdr_cycle = map->readers[i].cycle;
 
-                if(rdr_cycle == LOST_HORIZON)
-                    continue;
+	    if(rdr_cycle == LOST_HORIZON)
+	        continue;
 
-                age = map_cycle - rdr_cycle;
+	    age = map_cycle - rdr_cycle;
 
-                if(new_cycle == LOST_HORIZON || age >= oldest_age) {
-                    oldest_age = age;
-                    new_cycle = rdr_cycle;
-                }
-            }
-        }
-        r = r->next;
+	    if(new_cycle == LOST_HORIZON || age >= oldest_age) {
+	        oldest_age = age;
+		new_cycle = rdr_cycle;
+	    }
+	}
     }
     return new_cycle;
 }
 
+
+#ifdef WITH_SHMEM_SYMBOL_LIST
 // Add a symbol to the internal namelist. This will allow the master to
 // pass things like the address of a ctable to the reader without having
 // more addresses than necessary involved.
@@ -1403,13 +539,13 @@ cell_t oldest_reader_cycle(shm_t   *shm)
 int add_symbol(shm_t   *shm, CONST char *name, char *value, int type)
 {
     int namelen = strlen(name);
-    volatile mapheader *map = shm->map;
-    volatile symbol *s;
-    int len = sizeof(symbol) + namelen + 1;
+    volatile mapheader_t *map = shm->map;
+    volatile symbol_t *s;
+    int len = sizeof(symbol_t) + namelen + 1;
     if(type == SYM_TYPE_STRING)
         len += strlen(value) + 1;
 
-    s = (symbol *)shmalloc_raw(shm, len);
+    s = (symbol_t *)shmalloc_raw(shm, len);
     if(!s) return 0;
 
     memcpy((void*)(s->name), name, namelen + 1);
@@ -1438,8 +574,8 @@ int add_symbol(shm_t   *shm, CONST char *name, char *value, int type)
 // caller to determine if the value can be freed and to do it.
 int set_symbol(shm_t *shm, CONST char *name, char *value, int type)
 {
-    volatile mapheader *map = shm->map;
-    volatile symbol *s = map->namelist;
+    volatile mapheader_t *map = shm->map;
+    volatile symbol_t *s = map->namelist;
     while(s) {
         if(strcmp(name, (char *)s->name) == 0) {
             if(type != SYM_TYPE_ANY && type != s->type) {
@@ -1464,8 +600,8 @@ int set_symbol(shm_t *shm, CONST char *name, char *value, int type)
 // Get a symbol back.
 char *get_symbol(shm_t *shm, CONST char *name, int wanted)
 {
-    volatile mapheader *map = shm->map;
-    volatile symbol *s = map->namelist;
+    volatile mapheader_t *map = shm->map;
+    volatile symbol_t *s = map->namelist;
     while(s) {
         if(strcmp(name, (const char*) s->name) == 0) {
             if(wanted != SYM_TYPE_ANY && wanted != s->type) {
@@ -1477,10 +613,12 @@ char *get_symbol(shm_t *shm, CONST char *name, int wanted)
     }
     return (char*) NULL;
 }
+#endif // WITH_SHMEM_SYMBOL_LIST
+
 
 // Attach to an object (represented by an arbitrary string) in the shared
-// memory file
-int use_name(shm_t *share, char *name)
+// memory file.  Always returns 1.
+int use_name(shm_t *share, const char *name)
 {
     object_t *ob = share->objects;
     while(ob) {
@@ -1496,7 +634,7 @@ int use_name(shm_t *share, char *name)
 }
 
 // Detach from an object (represented by a string) in the shared memory file
-void release_name(shm_t *share, char *name)
+void release_name(shm_t *share, const char *name)
 {
     object_t *ob = share->objects;
     object_t *prev = NULL;
@@ -1520,7 +658,6 @@ void shmpanic(const char *s)
 }
 
 // parse a string of type "nnnnK" or "mmmmG" to bytes;
-
 int parse_size(const char *s, size_t *ptr)
 {
     size_t size = 0;
@@ -1541,48 +678,16 @@ int parse_size(const char *s, size_t *ptr)
     return 1;
 }
 
-int parse_flags(char *s)
+// NOTE: modifies the supplied string while parsing it.
+int parse_flags(char * /*s*/)
 {
-    int   flags = DEFAULT_FLAGS;
+    int   flags = 0;     // we don't actually support any flags anymore, so we ignore the input.
 
-#if (defined(MAP_NOCORE) || defined(MAP_NOSYNC))
-    while(*s) {
-        char *word;
-        while(isspace((unsigned char)*s)) s++;
-
-        word = s;
-        while(*s && !isspace((unsigned char)*s)) s++;
-        if(*s) *s++ = 0;
-
-#ifdef MAP_NOCORE
-             if (strcmp(word, "nocore") == 0) {
-	         flags |= MAP_NOCORE;
-		 continue;
-	    }
-
-            if (strcmp(word, "core") == 0) {
-	        flags &= ~MAP_NOCORE;
-		continue;
-	    }
-#endif
-
-#ifdef MAP_NOSYNC
-            if (strcmp(word, "nosync") == 0) {
-	         flags |= MAP_NOSYNC;
-		 continue;
-	    }
-
-            if (strcmp(word, "sync") == 0) {
-	        flags &= MAP_NOSYNC;
-		continue;
-	    }
-#endif
-    }
-#endif
     return flags;
 }
 
-char *flags2string(int flags)
+// NOTE: returns a pointer to a static buffer.
+const char *flags2string(int flags)
 {
     static char buffer[32]; // only has to hold "nocore nosync shared"
 
@@ -1620,6 +725,7 @@ int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr)
 
 void TclShmError(Tcl_Interp *interp, const char *name)
 {
+  /*
     if(shared_errno >= 0) {
         char CONST*msg = Tcl_PosixError(interp);
         Tcl_AppendResult(interp, name, ": ", msg, NULL);
@@ -1627,14 +733,21 @@ void TclShmError(Tcl_Interp *interp, const char *name)
         Tcl_AppendResult(interp, name, NULL);
         shared_errno = -shared_errno;
     }
-    if(shared_errno)
+    if(shared_errno) {
         Tcl_AppendResult(interp, ": ", shared_errmsg[shared_errno], NULL);
+    }
+  */
 }
 
 void setShareBase(char *new_base)
 {
-        if(!assocData->share_base)
-                assocData->share_base = new_base;
+    if (assocData == NULL) {
+        shmpanic("linkup_assoc_data hasn't been called yet");
+    }
+
+    if(!assocData->share_base) {
+        assocData->share_base = new_base;
+    }
 }
 
 int doCreateOrAttach(Tcl_Interp *interp, const char *sharename, const char *filename, size_t size, int flags, shm_t **sharePtr)
@@ -1671,10 +784,15 @@ int doCreateOrAttach(Tcl_Interp *interp, const char *sharename, const char *file
 
     if (creator) {
         shminitmap(share);
-    } else if (!shmcheckmap(share->map)) {
+    } else {
+        // TODO: should probably do some more validation here.
+      /*
+	if (!shmcheckmap(share->map)) {
         Tcl_AppendResult(interp, "Not a valid share: ", filename, NULL);
         unmap_file(share);
         return TCL_ERROR;
+	}
+      */
     }
 
     // assocData->share_base = (char *)share + size;
@@ -1700,12 +818,9 @@ int doCreateOrAttach(Tcl_Interp *interp, const char *sharename, const char *file
 
 int doDetach(Tcl_Interp *interp, shm_t *share)
 {
-IFDEBUG(init_debug();)
-    IFDEBUG(fprintf (SHM_DEBUG_FP, "do_detach called on %lX\n", (long unsigned int)share);)
-
-    if(share->objects)
-	IFDEBUG(fprintf (SHM_DEBUG_FP, "do_detach called on %lX with share->objects %lX, returning\n", (long unsigned int)share, (long unsigned int)share->objects);)
+    if(share->objects) {
         return TCL_OK;
+    }
 
     if(share->name) {
         ckfree(share->name);
@@ -1726,8 +841,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     char        *sharename = NULL;
     shm_t       *share     = NULL;
 
-    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "pools", "pool", "free", "dump", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_POOLS, CMD_POOL, CMD_FREE, CMD_DUMP };
+    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "free", (char *)NULL};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_FREE };
 
     static CONST struct {
         int need_share;         // if a missing share is an error
@@ -1743,10 +858,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         {1, -4, "name ?name?..."}, // CMD_MULTIGET
         {1, -5, "name value ?name value?..."}, // CMD_SET
         {1,  3, ""}, // CMD_INFO
-        {1,  3, ""}, // CMD_POOLS
-        {1,  6, "size blocks/chunk max_chunks"}, // CMD_POOL
-        {1,  -3, "?quick?"}, // CMD_FREE
-        {1, 3, ""} // CMD_DUMP
+        {1,  -3, "?quick?"} // CMD_FREE
     };
 
     if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
@@ -1758,7 +870,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         (cmdtemplate[cmdIndex].nargs < 0 && objc < -cmdtemplate[cmdIndex].nargs)
     ) {
         int nargs = abs(cmdtemplate[cmdIndex].nargs);
-        Tcl_WrongNumArgs (interp, max(nargs,3), objv, cmdtemplate[cmdIndex].args);
+        Tcl_WrongNumArgs (interp, (nargs > 3 ? nargs : 3), objv, cmdtemplate[cmdIndex].args);
         return TCL_ERROR;
     }
 
@@ -1794,7 +906,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         case CMD_CREATE: {
             char      *filename;
             size_t     size;
-            int        flags = DEFAULT_FLAGS;
+            int        flags = 0;
 
             if(share) {
                  Tcl_AppendResult(interp, "Share already exists: ", sharename, NULL);
@@ -1850,66 +962,6 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return TCL_OK;
         }
 
-        // list pools
-        case CMD_POOLS: {
-            poolhead_t *head;
-            char tmp[32];
-            pool_freelist_t *free;
-            int avail;
-
-            if((head = share->garbage_pool)) {
-
-                avail = head->chunks ? head->chunks->avail : 0;
-                for(free = head->freelist; free; free=free->next)
-                    avail++;
-
-                // garbage pool size is virtually zero.
-                Tcl_AppendElement(interp, "0");
-                sprintf(tmp, "%d", head->nblocks);
-                Tcl_AppendElement(interp, tmp);
-                sprintf(tmp, "%d", head->numchunks);
-                Tcl_AppendElement(interp, tmp);
-                sprintf(tmp, "%d", avail);
-                Tcl_AppendElement(interp, tmp);
-
-            }
-
-            for(head = share->pools; head; head=head->next) {
-
-                avail = head->chunks ? head->chunks->avail : 0;
-                for(free = head->freelist; free; free=free->next)
-                    avail++;
-
-                sprintf(tmp, "%d", (int)head->blocksize);
-                Tcl_AppendElement(interp, tmp);
-                sprintf(tmp, "%d", head->nblocks);
-                Tcl_AppendElement(interp, tmp);
-                sprintf(tmp, "%d", head->numchunks);
-                Tcl_AppendElement(interp, tmp);
-                sprintf(tmp, "%d", avail);
-                Tcl_AppendElement(interp, tmp);
-
-            }
-            return TCL_OK;
-        }
-
-        // add a pool
-        case CMD_POOL: {
-            int nblocks;
-            int blocksize;
-            int maxchunks;
-            if (Tcl_GetIntFromObj(interp, objv[3], &nblocks) == TCL_ERROR)
-                return TCL_ERROR;
-            if (Tcl_GetIntFromObj(interp, objv[4], &blocksize) == TCL_ERROR)
-                return TCL_ERROR;
-            if (Tcl_GetIntFromObj(interp, objv[5], &maxchunks) == TCL_ERROR)
-                return TCL_ERROR;
-            if(!shmaddpool(share, nblocks, blocksize, maxchunks)) {
-                TclShmError(interp, "add pool");
-                return TCL_ERROR;
-            }
-            return TCL_OK;
-        }
 
         // Return miscellaneous info about the share as a name-value list
         case CMD_INFO: {
@@ -1940,17 +992,17 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return TCL_OK;
         }
 
+#ifdef WITH_SHMEM_SYMBOL_LIST
         // Return a list of names
         case CMD_NAMES: {
             if (objc == 3) { // No args, all names
-                volatile symbol *sym = share->map->namelist;
+                volatile symbol_t *sym = share->map->namelist;
                 while(sym) {
-                    Tcl_AppendElement(interp, (char *)sym->name);
+		  Tcl_AppendElement(interp, (char *)(sym->name));
                     sym = sym->next;
                 }
             } else { // Otherwise, just the names defined here
-                int i;
-                for (i = 3; i < objc; i++) {
+                for (int i = 3; i < objc; i++) {
                     char *name = Tcl_GetString(objv[i]);
                     if(get_symbol(share, name, SYM_TYPE_ANY))
                         Tcl_AppendElement(interp, name);
@@ -1972,8 +1024,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         }
 
         case CMD_MULTIGET: {
-            int   i;
-            for (i = 3; i < objc; i++) {
+            for (int i = 3; i < objc; i++) {
                 char *name = Tcl_GetString(objv[i]);
                 char *s = get_symbol(share, name, SYM_TYPE_STRING);
                 if(!s) {
@@ -1987,7 +1038,6 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         }
 
         case CMD_SET: {
-            int   i;
 
             if (!share->creator) {
                 Tcl_AppendResult(interp, "Can not write to ",sharename,": Permission denied", NULL);
@@ -1998,15 +1048,17 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
                 return TCL_ERROR;
             }
 
-            for (i = 3; i < objc; i+=2) {
+            for (int i = 3; i < objc; i += 2) {
                 char *name = Tcl_GetString(objv[i]);
-                if(get_symbol(share, name, SYM_TYPE_ANY))
+                if(get_symbol(share, name, SYM_TYPE_ANY)) {
                     set_symbol(share, name, Tcl_GetString(objv[i+1]), SYM_TYPE_STRING);
-                else
+		} else {
                     add_symbol(share, name, Tcl_GetString(objv[i+1]), SYM_TYPE_STRING);
+		}
             }
             return TCL_OK;
         }
+#endif // WITH_SHMEM_SYMBOL_LIST
 
         case CMD_FREE: {
             // TODO: this could be a compile-time selection.
@@ -2021,10 +1073,6 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return TCL_OK;
         }
 
-	case CMD_DUMP: {
-	    shmdump(share);
-	    return TCL_OK;
-	}
     }
     Tcl_AppendResult(interp, "Should not happen, internal error: no defined subcommand or missing break in switch", NULL);
     return TCL_ERROR;
@@ -2045,122 +1093,5 @@ Shared_Init(Tcl_Interp *interp)
 #else
     return TCL_OK;
 #endif
-}
-#endif
-
-#ifdef SHARED_GUARD
-static void shmhexdump(unsigned char* start, size_t length)
-{
-        int i;
-        fprintf(stderr, "\n0x%lX", (long)start);
-        for(i = 0; i < length; i++) {
-                fprintf(stderr, " %02x", start[i]);
-        }
-        fprintf(stderr, "\n0x%lX", (long)start);
-        for(i = 0; i < length; i++) {
-                if(start[i] < 0x7F && start[i] > 0x1F) {
-                        fprintf(stderr, "  %c", start[i]);
-                } else {
-                        fprintf(stderr, "   ");
-                }
-        }
-        fprintf(stderr, "\n");
-}
-
-static char *short_filename (char *fileName) {
-    char *myFileName = strrchr (fileName, '/');
-    if (myFileName != NULL) {
-        return myFileName + 1;
-    }
-    return fileName;
-}
-
-char *shmalloc_guard(shm_t *map, size_t size LOGPARAMS)
-{
-    unsigned char *memory = (unsigned char *)shmalloc_raw(map, size+GUARD_SIZE * 2 + CELLSIZE);
-    if(memory) {
-#ifdef SHARED_LOG
-        if(logfp) {
-            fprintf(logfp, "%s:%d alloc %ld @ 0x%lX\n", short_filename (File), Line, (long)size, (long)(memory+GUARD_SIZE + CELLSIZE));
-            fflush(logfp);
-        }
-#endif
-        int i;
-
-        for(i = 0; i < GUARD_SIZE; i++)
-            *memory++ = 0xA5;
-
-        ((cell_t *)memory)[0] = size;
-        memory += CELLSIZE;
-
-        for(i = 0; i < GUARD_SIZE; i++)
-            memory[size + i] = 0xA5;
-    }
-#ifdef SHARED_LOG
-    else
-        if(logfp) {
-            fprintf(logfp, "%s:%d alloc %ld FAILED\n", short_filename (File), Line, (long)size);
-            fflush(logfp);
-        }
-#endif
-    return (char *)memory;
-}
-
-void shmfree_guard(shm_t *map, char *block LOGPARAMS)
-{
-    unsigned char *memory = (unsigned char *)block - CELLSIZE - GUARD_SIZE;
-    int size;
-#ifdef SHARED_LOG
-    if(logfp) {
-        fprintf(logfp, "%s:%d free @ 0x%lX\n", short_filename (File), Line, (long)block);
-        fflush(logfp);
-    }
-#endif
-
-    int i;
-
-    for(i = 0; i < GUARD_SIZE; i++)
-        if(memory[i] != 0xA5) {
-            shmhexdump(memory, GUARD_SIZE * 2);
-            shmpanic("Bad low guard!");
-        }
-    size = ((cell_t *)block)[-1];
-
-    for(i = 0; i < GUARD_SIZE; i++)
-        if(memory[i+size+CELLSIZE+GUARD_SIZE] != 0xA5) {
-            shmhexdump(memory + size + CELLSIZE + GUARD_SIZE, GUARD_SIZE * 2);
-            shmpanic("Bad high guard!");
-        }
-
-    shmfree_raw(map, (char *)memory);
-}
-
-int shmdealloc_guard(shm_t *shm, char *data LOGPARAMS)
-{
-    unsigned char *memory = (unsigned char *)data - CELLSIZE - GUARD_SIZE;
-    int size;
-#ifdef SHARED_LOG
-    if(logfp) {
-        fprintf(logfp, "%s:%d dealloc @ 0x%lX\n", short_filename (File), Line, (long)data);
-        fflush(logfp);
-    }
-#endif
-
-    int i;
-
-    for(i = 0; i < GUARD_SIZE; i++)
-        if(memory[i] != 0xA5) {
-            shmhexdump(memory, GUARD_SIZE * 2);
-            shmpanic("Bad low guard!");
-        }
-    size = ((cell_t *)data)[-1];
-
-    for(i = 0; i < GUARD_SIZE; i++)
-        if(memory[i+size+CELLSIZE+GUARD_SIZE] != 0xA5) {
-            shmhexdump(memory + size + CELLSIZE + GUARD_SIZE, GUARD_SIZE * 2);
-            shmpanic("Bad high guard!");
-        }
-
-    return shmdealloc_raw(shm, (char *)memory);
 }
 #endif

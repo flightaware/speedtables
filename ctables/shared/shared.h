@@ -5,200 +5,121 @@
 #ifndef SHM_SHARED_H
 #define SHM_SHARED_H
 
-// debug
-// #define SHM_DEBUG_TRACE
-// #define SHARED_GUARD
-// #define SHARED_LOG "/var/tmp/speedtable_shared_log.txt"
-
-#ifdef SHM_DEBUG_TRACE
-#define IFDEBUG(x) x				/* Debug code included*/
-#ifdef SHM_DEBUG_TRACE_FILE
-FILE *SHM_DEBUG_FP;
-#else
-#define SHM_DEBUG_FP stderr
-#endif
-#else
-#define IFDEBUG(x)				/* Debug code elided */
-#endif
-
-#define compile_time_assert(cond, msg)  char msg[(cond) ? 1 : 0]
 
 #include <limits.h>
 #include <stddef.h>
+#include <boost/static_assert.hpp>
+#include <boost/interprocess/managed_mapped_file.hpp>
+#include <boost/interprocess/containers/vector.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+using namespace boost::interprocess;
+
+
+#define WITH_SHMEM_SYMBOL_LIST
+
+
+#define TRUE 1
+#define FALSE 0
+
 
 // Atomic word size, "cell_t".
 #if (LONG_MAX == 4294967296L) /* 32 bit long */
-typedef size_t cell_t;
-#define cellabs(t) abs(t)
-compile_time_assert(sizeof(size_t) == sizeof(int), SIZE_T_should_be_int);
-compile_time_assert(sizeof(size_t) == 4, SIZE_T_should_be_32_bits);
+  typedef size_t cell_t;
+  #define cellabs(t) abs(t)
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(int), SIZE_T_should_be_int);
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 4, SIZE_T_should_be_32_bits);
 #else /* 64 bit long */
-typedef size_t cell_t;
-#define cellabs(t) llabs(t)
-compile_time_assert(sizeof(size_t) == sizeof(long long), SIZE_T_should_be_long_long);
-compile_time_assert(sizeof(size_t) == 8, SIZE_T_should_be_64_bits);
+  typedef size_t cell_t;
+  #define cellabs(t) llabs(t)
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(long long), SIZE_T_should_be_long_long);
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 8, SIZE_T_should_be_64_bits);
 #endif
 
 #define CELLSIZE (sizeof (cell_t))
 
-// Marker for the beginning of the list
-#define MAP_MAGIC (((((('B' << 8) | 'O') << 8) | 'F') << 8) | 'H')
-#define CHUNK_MAGIC (((((('C' << 8) | 'h') << 8) | 'n') << 8) | 'K')
-#define POOL_MAGIC (((((('P' << 8) | 'o') << 8) | 'o') << 8) | 'L')
-#define FREE_MAGIC (((((('F' << 8) | 'r') << 8) | 'e') << 8) | 'E')
-#define BUSY_MAGIC (((((('B' << 8) | 'u') << 8) | 's') << 8) | 'Y')
-#define SENTINAL_MAGIC (((((('S' << 8) | 'n') << 8) | 't') << 8) | 'L')
-
-// Booleans
-#define TRUE 1
-#define FALSE 0
 
 // If defining a TCL extension, using TCL
-#ifdef SHARED_TCL_EXTENSION
-# ifndef WITH_TCL
+#if defined(SHARED_TCL_EXTENSION) && !defined(WITH_TCL)
 #  define WITH_TCL
-# endif
 #endif
 
 // TUNING
 
-// How big a buffer of nulls to use when zeroing a file
-#define NULBUFSIZE (1024L * 1024L)
+// Maximum number of readers
+#define MAX_SHMEM_READERS 256
 
-// allocate a new reader block every READERS_PER_BLOCK readers
-#define READERS_PER_BLOCK 64
-
-// How many garbage entries to allocate at a time.
-#define GARBAGE_POOL_SIZE (1024*1024)
-#define SMALL_GARBAGE_POOL_SIZE 1024
 
 // How long to leave garbage uncollected after it falls below the horizon
 // (measured in lock cycles)
 //#define TWILIGHT_ZONE 1024
 #define TWILIGHT_ZONE 64
 
-// How often to check for GC (1 in every LAZY_GC write cycles
+// How often to check for GC (1 in every LAZY_GC write cycles)
 #define LAZY_GC 10
 
 // Sentinel for a reader that isn't holding any garbage
 #define LOST_HORIZON 0
 
-// internal errors
-extern int shared_errno;
-extern const char *shared_errmsg[];
-enum shared_error_e {
-	SH_ERROR_0,
-	SH_NEW_FILE,
-	SH_PRIVATE_MEMORY,
-	SH_MAP_FILE,
-	SH_OPEN_FILE,
-	SH_NO_MAP,
-	SH_ALREADY_MAPPED,
-	SH_TOO_SMALL,
-	SH_MAP_FULL,
-	SH_ADDRESS_MISMATCH,
-};
-void shared_perror(const char *text);
+
+// Marker for the beginning of the list
+#define MAP_MAGIC (((((('B' << 8) | 'E') << 8) | 'E') << 8) | 'F')
+
 
 // shared memory that is no longer needed but can't be freed until the
 // last reader that was "live" when it was in use has released it
-typedef struct _garbage_t {
-    struct _garbage_t	*next;
+struct garbage_t {
+    garbage_t		*next;
     cell_t	         cycle;		// read cycle it's waiting on
     char		*memory;	// address of block in shared mem
 					// (free memory pointer, not raw block pointer)
-} garbage_t;
+};
 
-// Pool control block
-//
-// Pools have much lower overhead for small blocks, because you don't need
-// to merge blocks
-struct _shm_t;		// forward
 
-typedef struct _pool_freelist_t {
-    struct _pool_freelist_t *next;
-} pool_freelist_t;
-
-typedef struct _chunk_t {
-    cell_t              magic;          // magic number (CHUNK_MAGIC)
-    struct _chunk_t	*next;		// next pool chunk
-    void		*start;		// start of pool shared memory
-    int		 	 avail;		// number of elements unallocated
-    void		*brk;		// start of unallocated space
-} chunk_t;
-
-// Pool header block
-//
-typedef struct _poolhead_t {
-    cell_t               magic;         // magic number (POOL_MAGIC)
-    struct _poolhead_t	*next;
-    struct _chunk_t	*chunks;
-    struct _shm_t	*share;
-    int			 nblocks;
-    size_t		 blocksize;
-    int			 numchunks;
-    int			 maxchunks;
-    pool_freelist_t	*freelist;
-} poolhead_t;
-
+#ifdef WITH_SHMEM_SYMBOL_LIST
 // Symbol table, to pass addresses of internal structures to readers
-typedef struct _symbol {
-    volatile struct _symbol *next;
+struct symbol_t {
+    volatile symbol_t       *next;
     volatile char	    *addr;
     int			     type;
     char		     name[];
-} symbol;
+};
+#else
+typedef void symbol_t;
+#endif
 
-// Reader control block, containing READERS_PER_BLOCK reader records
-typedef struct _reader {
+
+// Reader control block.
+struct reader_t {
     cell_t		 pid;
     cell_t		 cycle;
-} reader;
-
-typedef struct _rblock {
-    struct _rblock 	*next;		// offset of next reader block
-    cell_t		 count;		// number of live readers in block
-    reader		 readers[READERS_PER_BLOCK];
-} reader_block;
+};
 
 // shm_t->map points to this structure, at the front of the mapped file.
-typedef struct _mapheader {
+struct mapheader_t {
     cell_t           magic;		// Magic number, "initialised" (MAP_MAGIC)
-    cell_t           headersize;	// Size of this header
-    cell_t           mapsize;		// Size of this map
-    char	    *addr;		// Address mapped to
-    volatile symbol *namelist;		// Internal symbol table
+    cell_t           headersize;	// Size of this heade
+    cell_t           mapsize;		// Size of this map (not really used anymore)
+    char	    *addr;		// Address mapped to (not really used anymore)
+    volatile symbol_t *namelist;		// Internal symbol table
     cell_t           cycle;		// incremented every write
-    reader_block    *readers;		// advisory locks for readers
-} mapheader;
+    reader_t    readers[MAX_SHMEM_READERS];	// advisory locks for readers
+};
 
-// Freelist entry
-typedef struct _freeblock {
-    cell_t                        magic;   // Magic number (FREE_MAGIC)
-    ssize_t			  size;    // always a positive number for free blocks.
-    volatile struct _freeblock   *next;
-    volatile struct _freeblock   *prev;
-} freeblock;
-
-// Busy block
-typedef struct {
-    cell_t                        magic;    // Magic number (BUSY_MAGIC)
-    ssize_t			  size;     // always a negative number for busy blocks.
-    char			  data[];
-} busyblock;
 
 // Object in shared memory for the object list.
 // File is unmapped when the last object used by this process is released
 //
 // Every object has a name in the shared memory symbol table.
-typedef struct _object_t {
-    struct _object_t  *next;
+struct object_t {
+    object_t          *next;
     char               name[];
-} object_t;
+};
 
-typedef struct _shm_t {
-    struct _shm_t	*next;
-    volatile mapheader	*map;
+struct shm_t {
+    shm_t	*next;
+
+    managed_mapped_file *managed_shm;
+    volatile mapheader_t	*map;          // points to front of shmem.
     size_t		 size;
     int			 flags;
     int			 fd;
@@ -207,54 +128,53 @@ typedef struct _shm_t {
     char		*filename;
     int                  attach_count;
     object_t		*objects;
-// server-only fields:
-    poolhead_t		*pools;
-    volatile freeblock	*freelist;
-    size_t		 free_space;
-    garbage_t		*garbage;
-    poolhead_t		*garbage_pool;
+
+// (master) server-only fields:
+    garbage_t		*garbage;          // TODO: make this a dequeue container
     cell_t		 horizon;
-// client-only fields:
-    volatile reader	*self;
-} shm_t;
 
-// Macros
-#define has_readers(shm) ((shm)->map->readers != NULL)
+// (reader) client-only fields:
+    volatile reader_t	*self;        // points into shmem       
+};
 
-int open_new(const char *file, size_t size);
+
+//int open_new(const char *file, size_t size);
 shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, int create);
 int unmap_file(shm_t *shm);
 void shminitmap(shm_t *shm);
-int shmcheckmap(volatile mapheader *map);
-poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share);
-int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks);
-void *palloc(poolhead_t *head, size_t size);
-void freepools(poolhead_t *head, int also_free_shared);
-void remove_from_freelist(shm_t *shm, volatile freeblock *block);
-void insert_in_freelist(shm_t *shm, volatile freeblock *block);
+//int shmcheckmap(volatile mapheader_t *map);
+//poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share);
+//int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks);
+//void *palloc(poolhead_t *head, size_t size);
+//void freepools(poolhead_t *head, int also_free_shared);
+//void remove_from_freelist(shm_t *shm, volatile freeblock *block);
+//void insert_in_freelist(shm_t *shm, volatile freeblock *block);
 void *_shmalloc(shm_t *map, size_t size);
 void *shmalloc_raw(shm_t *map, size_t size);
 void shmfree_raw(shm_t *map, void *block);
-int shmdepool(poolhead_t *head, void *block);
-void setfree(volatile freeblock *block, size_t size, int is_free);
+//int shmdepool(poolhead_t *head, void *block);
+//void setfree(volatile freeblock *block, size_t size, int is_free);
 int shmdealloc_raw(shm_t *shm, void *data);
 int write_lock(shm_t *shm);
 void write_unlock(shm_t *shm);
-volatile reader *pid2reader(volatile mapheader *map, int pid);
+volatile reader_t *pid2reader(volatile mapheader_t *map, int pid);
 int read_lock(shm_t *shm);
 void read_unlock(shm_t *shm);
 void garbage_collect(shm_t *shm);
 cell_t oldest_reader_cycle(shm_t *shm);
+void shared_perror(const char *text);
 void shmpanic(const char *message);
+#ifdef WITH_SHMEM_SYMBOL_LIST
 int add_symbol(shm_t *shm, CONST char *name, char *value, int type);
 int set_symbol(shm_t *shm, CONST char *name, char *value, int type);
 char *get_symbol(shm_t *shm, CONST char *name, int wanted);
+#endif
+int use_name(shm_t *share, const char *symbol);
+void release_name(shm_t *share, const char *symbol);
 int shmattachpid(shm_t *info, int pid);
-int use_name(shm_t *share, char *symbol);
-void release_name(shm_t *share, char *symbol);
 int parse_size(const char *s, size_t *ptr);
 int parse_flags(const char *s);
-char *flags2string(int flags);
+const char *flags2string(int flags);
 size_t shmfreemem(shm_t *shm, int check);
 
 #define SYM_TYPE_STRING 1
@@ -273,40 +193,12 @@ int doDetach(Tcl_Interp *interp, shm_t *share);
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 #endif
 
-// shift between the data inside a variable sized block, and the block itself
-#define data2block(dataptr) ((freeblock *)( ((char *)(dataptr)) - offsetof(busyblock, data)) )
-#define block2data(block) (((busyblock *)(block))->data)
 
-#define prevsize(block) (((ssize_t *)block)[-1])
-#define nextblock(block) ((freeblock *)(((char *)block) + cellabs( (ssize_t) ((freeblock*)(block))->size)) )
-#define nextsize(block) (nextblock(block)->size)
-#define prevblock(block) ((freeblock *)(((char *)block) - cellabs( (ssize_t) prevsize(block))) )
-
-#define is_prev_sentinal(block) (prevsize(block) == SENTINAL_MAGIC)
-#define is_next_sentinal(block) (*((cell_t*)nextblock(block)) == SENTINAL_MAGIC)
-
-
-
-#endif
-
-#ifdef SHARED_GUARD
-# define GUARD_SIZE 8
-# ifdef SHARED_LOG
-#  define shmalloc(m,s) shmalloc_guard(m,s,__FILE__,__LINE__)
-#  define shmfree(m,a) shmfree_guard(m,a,__FILE__,__LINE__)
-#  define shmdealloc(m,a) shmdealloc_guard(m,a,__FILE__,__LINE__)
-#  define LOGPARAMS , char *File, int Line
-# else
-#  define shmalloc shmalloc_guard
-#  define shmfree shmfree_guard
-#  define shmdealloc shmdealloc_guard
-#  define LOGPARAMS
-# endif
-  void *shmalloc_guard(shm_t *map, size_t size LOGPARAMS);
-  void shmfree_guard(shm_t *map, char *block LOGPARAMS);
-  int shmdealloc_guard(shm_t *shm, char *data LOGPARAMS);
-#else
 # define shmalloc shmalloc_raw
 # define shmfree shmfree_raw
 # define shmdealloc shmdealloc_raw
+
+
+
 #endif
+

@@ -487,7 +487,7 @@ struct CTable {
     size_t				 share_min_free;
 // reader-only
     volatile struct CTable		*share_ctable;
-    volatile reader			*my_reader;
+    volatile reader_t			*my_reader;
 #endif
     Tcl_Command                          commandInfo;
     long                                 count;
