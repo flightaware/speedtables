@@ -90,11 +90,11 @@ suck_in_top_brands_nokeys m
 puts "m getprop -> [m getprop]"
 puts "m share info -> [m share info]"
 
-puts "pools: [m share pools]"
+#puts "pools: [m share pools]"
 puts "public changes: [time {random_changes m 1000}]"
-puts "pools: [m share pools]"
+#puts "pools: [m share pools]"
 puts "public inserts: [time {random_inserts m 1000}]"
-puts "pools: [m share pools]"
+#puts "pools: [m share pools]"
 
 m destroy
 
@@ -143,7 +143,7 @@ suck_in_top_brands_nokeys m
 
 puts "public changes: [time {random_changes m 100000}] pools: {$l}"
 puts "public inserts: [time {random_inserts m 100000}] pools: {$l}"
-puts "         pools: [m share pools]"
+#puts "         pools: [m share pools]"
 
 m destroy
 }
