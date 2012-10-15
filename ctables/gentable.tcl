@@ -402,7 +402,7 @@ int ${table}_reinsert_row(Tcl_Interp *interp, CTable *ctable, char *value, struc
     }
 
     // Insert existing row with new key
-    newrow = ctable_StoreHashEntry(ctable->keyTablePtr, key, (ctable_HashEntry *)row, flags, &isNew);
+    newrow = ctable_StoreHashEntry(ctable->keyTablePtr, key, &row->hashEntry, flags, &isNew);
 
 #ifdef SANITY_CHECKS
     ${table}_sanity_check_pointer(ctable, (void *)newrow, CTABLE_INDEX_NORMAL, "${table}_reinsert_row");
@@ -1594,7 +1594,7 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, cons
     }
 #endif
 
-    row = (struct $table *)ctable_StoreHashEntry (ctable->keyTablePtr, key_value, (ctable_HashEntry *)nextRow, flags, indexCtlPtr);
+    row = (struct $table *)ctable_StoreHashEntry (ctable->keyTablePtr, key_value, &nextRow->hashEntry, flags, indexCtlPtr);
 
     // If we actually added a row, add it to the hash
     if (*indexCtlPtr) {
@@ -3057,7 +3057,7 @@ void ${table}_deleteHashEntry(CTable *ctable, struct ${table} *row)
 	row->hashEntry.key = ctable->nullKeyValue;
     }
 #endif
-    ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row, ctable->nullKeyValue);
+    ctable_DeleteHashEntry (ctable->keyTablePtr, &row->hashEntry, ctable->nullKeyValue);
 }
 }
 
@@ -3091,7 +3091,7 @@ proc gen_delete_subr {subr struct} {
     if {$withSharedTables} {
 	emit "        ${table}_deleteKey(ctable, row, TRUE);"
     }
-    emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, (ctable_HashEntry *)row, ctable->nullKeyValue);"
+    emit "        ctable_DeleteHashEntry (ctable->keyTablePtr, &row->hashEntry, ctable->nullKeyValue);"
     emit "        break;"
     emit "      case CTABLE_INDEX_FASTDELETE: // Key has already been deleted"
     emit "        break;"
