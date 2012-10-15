@@ -47,6 +47,7 @@ all:
 clean:
 	rm -rf stobj
 	rm -f *.dat
+	rm -f *.core vgcore*
 
 compare:
 	rm -rf stobj
