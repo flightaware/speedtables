@@ -19,7 +19,7 @@
     set fullStatic 1
 
     # set to 1 to show compiler commands
-    set showCompilerCommands 1
+    set showCompilerCommands 0
 
 # Less common parameters
 
