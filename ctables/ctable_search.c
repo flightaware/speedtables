@@ -1246,7 +1246,7 @@ CTABLE_INTERNAL void ctable_PrepareTransactions(CTable *ctable, CTableSearch *se
     // if we're buffering,
     // allocate a space for the search results that we'll then sort from
     if (search->bufferResults != CTABLE_BUFFER_NONE) {
-	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (void *) * ctable->count);
+	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *) * ctable->count);
     }
 }
 
@@ -2628,7 +2628,7 @@ if(field == TRACKFIELD) {
 	    if (!jsw_serase (skip, row)) {
 		panic ("corrupted index detected for field %s", ctable->creator->fields[field]->name);
 	    }
-	    *row->_ll_nodes[index].head = NULL; // don't think this is needed
+	    //*row->_ll_nodes[index].head = NULL; // don't think this is needed
 	}
     }
 #ifdef SEARCHDEBUG
