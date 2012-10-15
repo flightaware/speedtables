@@ -5291,13 +5291,13 @@ variable sortCompareHeaderSource {
 
 int ${table}_sort_compare(void *clientData, const ctable_BaseRow *vRow1, const ctable_BaseRow *vRow2) $leftCurly
     CTableSort *sortControl = (CTableSort *)clientData;
-    const struct $table *row1 = (const struct $table *)vRow1;
-    const struct $table *row2 = (const struct $table *)vRow2;
+    const struct $table *row1 = *(const struct $table **)vRow1;
+    const struct $table *row2 = *(const struct $table **)vRow2;
     int              i;
     int              direction;
     int              result = 0;
 
-// printf ("sort comp he1 %lx, he2 %lx, p1 %lx, p2 %lx\n", (long unsigned int)hashEntryPtr1, (long unsigned int)hashEntryPtr2, (long unsigned int)row1, (long unsigned int)row2);
+//fprintf (stderr, "sort comp p1 %p, p2 %p\n", row1, row2);
 
     for (i = 0; i < sortControl->nFields; i++) $leftCurly
         direction = sortControl->directions[i];
