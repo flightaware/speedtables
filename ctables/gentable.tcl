@@ -1661,10 +1661,10 @@ ctable_BaseRow *${table}_find (CTable *ctable, CONST char *key) {
 
     hashEntry = ctable_FindHashEntry (ctable->keyTablePtr, key);
     if (hashEntry == (ctable_HashEntry *) NULL) {
-        return (struct $table *) NULL;
+        return (ctable_BaseRow *) NULL;
     }
-    
-    return (ctable_BaseRow *)(${table}*) hashEntry;
+
+	return (ctable_BaseRow *)((char*)hashEntry - offsetof(ctable_BaseRow, hashEntry));
 }
 
 Tcl_Obj *
