@@ -87,7 +87,9 @@ CTABLE_INTERNAL const unsigned char *
 boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, size_t hlen, int nocase) {
     unsigned hpos;
 
-    // printf("bm needle '%s' %d haystack '%s' %d\n", bm->needle, bm->nlen, haystack, hlen);
+    if ((size_t)bm->nlen > hlen) return NULL;
+
+    //fprintf(stderr, "bm needle '%s' %d haystack '%s' %d\n", bm->needle, bm->nlen, haystack, (int) hlen);
     for (hpos = 0; hpos <= hlen - bm->nlen; )
     {
         int npos = bm->nlen - 1;
@@ -95,6 +97,7 @@ boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *hay
 
         while ((!nocase && (bm->needle[npos] == haystack[npos + hpos])) || (nocase && (bm->needle[npos] == tolower(haystack[npos + hpos])))) {
             if (npos == 0) {
+		//fprintf(stderr, "matched at %s (+%d)\n", haystack + hpos, (int) hpos);
 		return haystack + hpos;
 	    }
             --npos;
@@ -103,6 +106,7 @@ boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *hay
         c = !nocase ? haystack[npos + hpos] : tolower(haystack[npos + hpos]);
         hpos += bm_max(bm->skip[npos], npos - bm->occ[c]);
     }
+    //fprintf(stderr, "no match\n");
     return NULL;
 }
 
