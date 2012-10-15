@@ -46,6 +46,9 @@
 
 #endif
 
+#define TRUE 1
+#define FALSE 0
+
 // types of quoting for tabsep fields
 #define CTABLE_QUOTE_NONE 0
 #define CTABLE_QUOTE_URI 1

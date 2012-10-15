@@ -18,9 +18,6 @@ using namespace boost::interprocess;
 #define WITH_SHMEM_SYMBOL_LIST
 
 
-#define TRUE 1
-#define FALSE 0
-
 
 // Atomic word size, "cell_t".
 #if (LONG_MAX == 4294967296L) /* 32 bit long */
