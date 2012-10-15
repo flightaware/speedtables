@@ -145,7 +145,6 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
     mapheader_t *mh;
     try {
 
-      fprintf(stderr, "map_file (%s, %d, %d)\n", file, (int)default_size, create);
         if (create != 0) {
 	    mmf = new managed_mapped_file(open_or_create, file, default_size, (void*)addr);
             //mmf = new managed_mapped_file(create_only, file, default_size, (void*)addr);
