@@ -52,7 +52,7 @@ using namespace boost::interprocess;
 #define TWILIGHT_ZONE 64
 
 // How often to check for GC (1 in every LAZY_GC write cycles)
-#define LAZY_GC 10
+#define LAZY_GC 1000
 
 // Sentinel for a reader that isn't holding any garbage
 #define LOST_HORIZON 0
