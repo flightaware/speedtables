@@ -104,8 +104,7 @@ linkup_assoc_data (Tcl_Interp *interp)
 
 
 // map_file - map a file at addr. If the file doesn't exist, create it first
-// with size default_size. Return share or NULL on failure. Errno
-// WILL be meaningful after a failure.
+// with size default_size. Return share or NULL on failure.
 //
 // If the file has already been mapped, return the share associated with the
 // file. The file check is purely by name, if multiple different names are
@@ -141,33 +140,15 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
     managed_mapped_file *mmf;
     mapheader_t *mh;
     try {
+        //fprintf(stderr, "want to %s to %s at %p\n", (create != 0 ? "create" : "attach"), file, addr);
 
         if (create != 0) {
 	    mmf = new managed_mapped_file(open_or_create, file, default_size, (void*)addr);
-            //mmf = new managed_mapped_file(create_only, file, default_size, (void*)addr);
 	} else {
             mmf = new managed_mapped_file(open_only, file, (void*)addr);
 	}
-	/*
-	  
-	//Create a file mapping
-	file_mapping m_file(FileName, read_write);
-	
-	//Map the whole file with read-write permissions in this process
-	mapped_region region(m_file, read_write);
-	mapped_region region ( shm                         //Map shared memory
-	, read_write                  //Map it as read-write
-	, 0                           //Map from offset 0
-	, 0                           //Map until the end
-	, (void*)0x3F000000           //Map it exactly there
-	);
-	
-	//Get the address of the mapped region
-	void * addr       = region.get_address();
-	std::size_t size  = region.get_size();
-	
-	*/
-	fprintf(stderr, "created managed_mapped_file\n");
+
+	//fprintf(stderr, "created managed_mapped_file\n");
 
 	mh = mmf->find_or_construct<mapheader_t>("mapheader")();
     } catch (interprocess_exception &Ex) {
@@ -182,6 +163,7 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
     // Completely initialise all fields!
     p->map = mh;
     p->managed_shm = mmf;
+    p->share_base = addr;
     p->size = default_size;
     p->flags = flags;
     p->fd = -1;
@@ -268,7 +250,6 @@ void unmap_all(void)
 
 
 // Initialize a map file for use.
-// Callable only by master.
 // Should only be called by the master.
 void shminitmap(shm_t   *shm)
 {
@@ -278,7 +259,7 @@ void shminitmap(shm_t   *shm)
     map->magic = MAP_MAGIC;
     map->headersize = sizeof(mapheader_t);
     map->mapsize = shm->size;
-    map->addr = (char *)map;
+    map->addr = shm->share_base;
     map->namelist = NULL;
     map->cycle = LOST_HORIZON;
     memset((void*)map->readers, 0, sizeof(reader_t) * MAX_SHMEM_READERS);
@@ -564,7 +545,7 @@ int add_symbol(shm_t   *shm, CONST char *name, char *value, int type)
     s->type = type;
 
     s->next = map->namelist;
-
+    //fprintf(stderr, "add_symbol(%d) is saving %s at %p\n", (int)getpid(), name, s);
     map->namelist = s;
 
     return 1;
@@ -609,6 +590,7 @@ char *get_symbol(shm_t *shm, CONST char *name, int wanted)
             if(wanted != SYM_TYPE_ANY && wanted != s->type) {
                 return NULL;
             }
+	    //fprintf(stderr, "get_symbol(%d) found %s at %p\n", (int)getpid(), name, s);
             return (char *) s->addr;
         }
         s = s->next;
@@ -775,15 +757,21 @@ int doCreateOrAttach(Tcl_Interp *interp, const char *sharename, const char *file
 
     if (creator) {
         shminitmap(share);
+	//fprintf(stderr, "successfully created new shared-memory\n");
     } else {
-        // TODO: should probably do some more validation here.
-      /*
-	if (!shmcheckmap(share->map)) {
-        Tcl_AppendResult(interp, "Not a valid share: ", filename, NULL);
-        unmap_file(share);
-        return TCL_ERROR;
+        //fprintf(stderr, "validating the provisionally attached shared-memory\n");
+        if (share->map->magic != MAP_MAGIC) {
+	    Tcl_AppendResult(interp, "Not a valid share (bad magic): ", filename, NULL);
+	    unmap_file(share);
+	    return TCL_ERROR;
 	}
-      */
+	if (share->map->addr != share->share_base) {
+            Tcl_AppendResult(interp, "Did not attach to expected memory base (%p): ", share->map->addr, filename, NULL);
+	    unmap_file(share);
+	    return TCL_ERROR;
+	}
+
+	//fprintf(stderr, "successfully attached to shared-memory\n");
     }
 
     // assocData->share_base = (char *)share + size;

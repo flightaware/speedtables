@@ -94,7 +94,7 @@ struct reader_t {
 // shm_t->map points to this structure, at the front of the mapped file.
 struct mapheader_t {
     cell_t           magic;		// Magic number, "initialised" (MAP_MAGIC)
-    cell_t           headersize;	// Size of this heade
+    cell_t           headersize;	// Size of this header
     cell_t           mapsize;		// Size of this map (not really used anymore)
     char	    *addr;		// Address mapped to (not really used anymore)
     volatile symbol_t *namelist;		// Internal symbol table
@@ -116,7 +116,8 @@ struct shm_t {
     shm_t	*next;
 
     managed_mapped_file *managed_shm;
-    volatile mapheader_t	*map;          // points to front of shmem.
+    volatile mapheader_t *map;                 // points within shmem.
+    char                 *share_base;           // points to front of shmem.
     size_t		 size;
     int			 flags;
     int			 fd;
