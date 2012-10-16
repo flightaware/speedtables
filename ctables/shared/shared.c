@@ -771,6 +771,9 @@ int doCreateOrAttach(Tcl_Interp *interp, const char *sharename, const char *file
 	    return TCL_ERROR;
 	}
 
+	// TODO: this is ugly, but we didn't find out the actual size until after we attached.  This needs to be consolidated with the share_base discovery when attaching.
+	share->size = share->map->mapsize;
+
 	//fprintf(stderr, "successfully attached to shared-memory\n");
     }
 
