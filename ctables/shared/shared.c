@@ -36,8 +36,6 @@ struct speedtablesAssocData {
     int      autoshare;
     char    *share_base;
     shm_t   *share_list;
-
-    managed_mapped_file *share_manager;
 };
 
 static struct speedtablesAssocData *assocData = NULL;
@@ -98,7 +96,6 @@ linkup_assoc_data (Tcl_Interp *interp)
     assocData->autoshare = 0;
     assocData->share_base = NULL;
     assocData->share_list = NULL;
-    assocData->share_manager = NULL;
 
     //IFDEBUG(fprintf(SHM_DEBUG_FP, "on interp %lX, constructed assocData at %lX\n", (long unsigned int) interp, (long unsigned int)assocData);)
     Tcl_SetAssocData (interp, ASSOC_DATA_KEY, NULL, (ClientData)assocData);
