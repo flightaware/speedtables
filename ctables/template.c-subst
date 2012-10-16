@@ -148,6 +148,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 		share_type = share_types[typeIndex];
 
+#ifdef SHARE_BASE
+		if(SHARE_BASE != NULL && set_share_base == NULL) {
+		    set_share_base = SHARE_BASE;
+		    setShareBase(interp, SHARE_BASE);
+		}
+#endif
+
 		if(share_type == CTABLE_SHARED_MASTER) {
 
 		    if(raw_size) {
@@ -171,13 +178,6 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			else if(share_min_free > MAX_MIN_FREE)
 			    share_min_free = MAX_MIN_FREE;
 		    }
-
-#ifdef SHARE_BASE
-		    if(SHARE_BASE != NULL && set_share_base == NULL) {
-		        set_share_base = SHARE_BASE;
-			setShareBase(interp, SHARE_BASE);
-		    }
-#endif
 
 		    if(doCreateOrAttach(interp, share_name, share_file, share_size, share_flags, &share) != TCL_OK)
 			goto createError;
