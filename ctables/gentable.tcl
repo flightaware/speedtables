@@ -3870,11 +3870,12 @@ proc gen_set_function {table} {
     emit [string range [subst -nobackslashes -nocommands $fieldSetSwitchSource] 1 end-1]
     gen_sets
 
+    emit "    $rightCurly"
+
     if {$withDirty} {
 	emit "    row->_dirty = 1;"
     }
 
-    emit "    $rightCurly"
     emit "    return TCL_OK;"
     emit "$rightCurly"
 
