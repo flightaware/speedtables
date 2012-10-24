@@ -226,6 +226,10 @@ int unmap_file(shm_t   *share)
         r->cycle = LOST_HORIZON;
     }
 
+
+    if (share->garbage != NULL) {
+      delete share->garbage;
+    }
     ckfree(share->filename);
     delete share->managed_shm;
 
@@ -265,7 +269,7 @@ void shminitmap(shm_t   *shm)
     memset((void*)map->readers, 0, sizeof(reader_t) * MAX_SHMEM_READERS);
 
     // freshly mapped, so this stuff is void
-    shm->garbage = NULL;
+    shm->garbage = new deque<garbage_t>();
     shm->horizon = LOST_HORIZON;
 
     // Remember that we own this.
@@ -302,15 +306,15 @@ void *shmalloc_raw(shm_t   *shm, size_t nbytes)
 // Callable only by master.
 void shmfree_raw(shm_t *shm, void *memory)
 {
-    garbage_t *entry;
+    garbage_t entry;
 
-    entry = (garbage_t *)ckalloc(sizeof(garbage_t));
+    entry.cycle = shm->map->cycle;
+    entry.memory = (char*)memory;
 
-    entry->cycle = shm->map->cycle;
-    entry->memory = (char*)memory;
-    entry->next = shm->garbage;
+    assert(shm->garbage != NULL && "master is missing garbage queue");
 
-    shm->garbage = entry;
+    // newer deletions are always added to the end, so that the oldest are at the front.
+    shm->garbage->push_back(entry);
 }
 
 
@@ -435,11 +439,8 @@ void read_unlock(shm_t   *shm)
 // Callable only by master.
 void garbage_collect(shm_t   *shm)
 {
-    garbage_t   *garbp = shm->garbage;
-    garbage_t   *garbo = NULL;
     cell_t       horizon = shm->horizon;
     int          collected = 0;
-    int          skipped = 0;
 
     if(horizon != LOST_HORIZON) {
         horizon -= TWILIGHT_ZONE;
@@ -447,29 +448,23 @@ void garbage_collect(shm_t   *shm)
             horizon--;
     }
 
-    while(garbp) {
+    assert(shm->garbage != NULL && "master is missing garbage queue");
 
-        int delta = horizon - garbp->cycle;
-        if(horizon == LOST_HORIZON || garbp->cycle == LOST_HORIZON || delta > 0) {
-            garbage_t *next = garbp->next;
-            shmdealloc_raw(shm, garbp->memory);
-            ckfree((char *)garbp);
-            garbp = next;
+    while(!shm->garbage->empty()) {
+	garbage_t &garbp = shm->garbage->front();
 
-            if(garbo)
-                garbo->next = garbp;
-            else
-                shm->garbage = garbp;
-
+        int delta = horizon - garbp.cycle;
+        if(horizon == LOST_HORIZON || garbp.cycle == LOST_HORIZON || delta > 0) {
+            shmdealloc_raw(shm, garbp.memory);
+	    shm->garbage->pop_front();
             collected++;
         } else {
-            garbo = garbp;
-            garbp = garbp->next;
-            skipped++;
+            // stop when we find one that is still pending, since it is ordered by cycle.
+	    break;
         }
     }
 
-//IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm): cycle 0x%08lx, horizon 0x%08lx, collected %d, skipped %d\n", (long)shm->map->cycle, (long)shm->horizon, collected, skipped);)
+//IFDEBUG(fprintf(SHM_DEBUG_FP, "garbage_collect(shm): cycle 0x%08lx, horizon 0x%08lx, collected %d, skipped %d\n", (long)shm->map->cycle, (long)shm->horizon, collected, shm->garbage->size());)
 }
 
 // Find the cycle number for the oldest reader.

@@ -12,7 +12,9 @@
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/container/deque.hpp>
 using namespace boost::interprocess;
+using namespace boost::container;
 
 
 #define WITH_SHMEM_SYMBOL_LIST
@@ -65,7 +67,6 @@ using namespace boost::interprocess;
 // shared memory that is no longer needed but can't be freed until the
 // last reader that was "live" when it was in use has released it
 struct garbage_t {
-    garbage_t		*next;
     cell_t	         cycle;		// read cycle it's waiting on
     char		*memory;	// address of block in shared mem
 					// (free memory pointer, not raw block pointer)
@@ -128,7 +129,7 @@ struct shm_t {
     object_t		*objects;
 
 // (master) server-only fields:
-    garbage_t		*garbage;          // TODO: make this a dequeue container
+    deque<garbage_t>	*garbage;
     cell_t		 horizon;
 
 // (reader) client-only fields:
@@ -136,22 +137,12 @@ struct shm_t {
 };
 
 
-//int open_new(const char *file, size_t size);
 shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, int create);
 int unmap_file(shm_t *shm);
 void shminitmap(shm_t *shm);
-//int shmcheckmap(volatile mapheader_t *map);
-//poolhead_t *makepool(size_t blocksize, int nblocks, int maxchunks, shm_t *share);
-//int shmaddpool(shm_t *shm, size_t blocksize, int nblocks, int maxchunks);
-//void *palloc(poolhead_t *head, size_t size);
-//void freepools(poolhead_t *head, int also_free_shared);
-//void remove_from_freelist(shm_t *shm, volatile freeblock *block);
-//void insert_in_freelist(shm_t *shm, volatile freeblock *block);
 void *_shmalloc(shm_t *map, size_t size);
 void *shmalloc_raw(shm_t *map, size_t size);
 void shmfree_raw(shm_t *map, void *block);
-//int shmdepool(poolhead_t *head, void *block);
-//void setfree(volatile freeblock *block, size_t size, int is_free);
 int shmdealloc_raw(shm_t *shm, void *data);
 int write_lock(shm_t *shm);
 void write_unlock(shm_t *shm);
