@@ -7259,7 +7259,8 @@ set sysconfig(pqprefix) $prefix"
   fi
 
   # there may be multiple installed versions of pgtcl so sort with the highest version first.
-  pg_libdirs=`find $prefix/lib -maxdepth 1 -name "pgtcl*.*" -type d | sort -rn`
+  pg_libdirs=`find $prefix/lib -maxdepth 1 -name "pgtcl*" -type d | sort -rn`
+
   if test -z "$pg_libdirs"; then
      continue
   fi
@@ -7269,7 +7270,8 @@ set sysconfig(pqprefix) $prefix"
   for dir in $pg_libdirs
   do
     if test -f $dir/pkgIndex.tcl; then
-      pgtclver=`basename $dir | sed s/^pgtcl//`
+      #pgtclver=`basename $dir | sed s/^pgtcl//`
+      pgtclver=`grep "package ifneeded Pgtcl" $dir/pkgIndex.tcl| cut -d' ' -f4`
       sysconfig_tcl_content="$sysconfig_tcl_content
       set sysconfig(pgtclver) $pgtclver
       set sysconfig(pgtclprefix) $prefix"
