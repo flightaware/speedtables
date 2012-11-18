@@ -39,7 +39,7 @@ package require Filtertest
 track create t
 
 for {set i 0} {$i < 100} {incr i} {
-  t set $i id CO$i latitude $i longitude [expr 100 - $i]
+  t set $i id CO$i latitude $i longitude [expr {100 - $i}]
 }
 
 set found [t search -filter {{distance {40 30 40}}} -countOnly 1]

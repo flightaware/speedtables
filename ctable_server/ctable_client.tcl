@@ -132,7 +132,7 @@ proc remote_ctable_cache_connect {cttpUrl} {
 proc remote_sock_send {sock cttpUrl command} {
     set line [list $cttpUrl $command]
     if [string match "*\n*" $line] {
-	puts $sock [list # [expr [string length $line] + 1]]
+	puts $sock [list # [expr {[string length $line] + 1}]]
     }
     puts $sock [list $cttpUrl $command]
     flush $sock

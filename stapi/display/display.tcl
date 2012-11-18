@@ -547,7 +547,7 @@ catch { ::itcl::delete class STDisplay }
 		set row 0
 		foreach field $fields {
 			$field showview [lindex {"" "Alt"} $row]
-			set row [expr 1 - $row]
+			set row [expr {1 - $row}]
 		}
 		puts "</TABLE>"
 	}
@@ -676,15 +676,15 @@ catch { ::itcl::delete class STDisplay }
 			set count [perform request]
 		}
 
-		set pages [expr ($count + $pagesize - 1) / $pagesize]
+		set pages [expr {($count + $pagesize - 1) / $pagesize}]
 
 		if {$pages <= 1} {
 			return
 		}
 
-		set first [expr $response(page) - 3]
+		set first [expr {$response(page) - 3}]
 		if {$first > $pages - 5} {
-			set first [expr $pages - 5]
+			set first [expr {$pages - 5}]
 		}
 
 		if {$first > 1} {
@@ -692,21 +692,21 @@ catch { ::itcl::delete class STDisplay }
 
 			if {$first > 10} {
 				lappend pagelist ".." 0
-				set mid [expr $first / 2]
+				set mid [expr {$first / 2}]
 				if {$mid > 20 && $response(page) > $pages - 20} {
-					set quarter [expr $mid / 2]
+					set quarter [expr {$mid / 2}]
 					lappend pagelist $quarter $quarter
 					lappend pagelist ".." 0
 				}
 
 				if {$first < $pages - 4} {
-					set first [expr $response(page) - 1]
+					set first [expr {$response(page) - 1}]
 				}
 
 				lappend pagelist $mid $mid
 				if {$first - $mid > 10 && $response(page) > $pages - 20} {
 					lappend pagelist ".." 0
-					set quarter [expr ( $first + $mid ) / 2]
+					set quarter [expr {( $first + $mid ) / 2}]
 					lappend pagelist $quarter $quarter
 				}
 			}
@@ -720,9 +720,9 @@ catch { ::itcl::delete class STDisplay }
 			set first 1
 		}
 
-		set last [expr $response(page) + 3]
+		set last [expr {$response(page) + 3}]
 		if {$last < $pages - 10 && $last > 3} {
-			set last [expr $response(page) + 1]
+			set last [expr {$response(page) + 1}]
 		}
 
 		if {$last < 5} {
@@ -746,9 +746,9 @@ catch { ::itcl::delete class STDisplay }
 			}
 
 			if {$last < $pages - 10} {
-				set mid [expr ( $pages + $last ) / 2]
+				set mid [expr {( $pages + $last ) / 2}]
 				if {$last < $mid - 10 && $response(page) < 20} {
-					set quarter [expr ( $mid + $last ) / 2]
+					set quarter [expr {( $mid + $last ) / 2}]
 					lappend pagelist $quarter $quarter
 					lappend pagelist ".." 0
 				}
@@ -756,7 +756,7 @@ catch { ::itcl::delete class STDisplay }
 				lappend pagelist $mid $mid
 				lappend pagelist ".." 0
 				if {$mid < $pages - 20 && $response(page) < 20} {
-					set quarter [expr ( $mid + $pages ) / 2]
+					set quarter [expr {( $mid + $pages ) / 2}]
 					lappend pagelist $quarter $quarter
 					lappend pagelist ".." 0
 				}
@@ -880,7 +880,7 @@ catch { ::itcl::delete class STDisplay }
 				if {[info exists response(sort)] && "$response(sort)" == "$name"} {
 					set rev 1
 					if {[info exists response(rev)]} {
-						set rev [expr 1 - $response(rev)]
+						set rev [expr {1 - $response(rev)}]
 					}
 
 					lappend list rev $rev
@@ -890,7 +890,7 @@ catch { ::itcl::delete class STDisplay }
 					if [info exists order($name)] {
 						switch -glob -- [string tolower $order($name)] {
 							desc* {
-								set desc [expr 1 - $desc]
+								set desc [expr {1 - $desc}]
 							}
 						}
 					}
@@ -1581,7 +1581,7 @@ catch { ::itcl::delete class STDisplay }
 		#	}
 
 		if {$reverse} {
-			set descending [expr 1 - $descending]
+			set descending [expr {1 - $descending}]
 		}
 		if $descending {
 			set name -$name
@@ -1626,7 +1626,7 @@ catch { ::itcl::delete class STDisplay }
 	method get_offset {} {
 		if {$pagesize <= 0} { return 0 }
 		if {![info exists response(page)]} { return 0 }
-		return [expr ($response(page) - 1) * $pagesize]
+		return [expr {($response(page) - 1) * $pagesize}]
 	}
 
 	protected method display_selection {precells postcells} {
