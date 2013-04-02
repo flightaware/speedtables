@@ -27,7 +27,7 @@ proc re {list} {
 puts -nonewline "populating tables..."; flush stdout
 
 for {set i 0} {$i < 100} {incr i} {
-  if [expr {int(rand() * 2)}] {
+  if {int(rand() * 2)} {
     $t set $i id [re $foods]$i color [re $colors]
   } else {
     $t set $i id [re $foods]$i flavor [re $flavors]
@@ -36,7 +36,7 @@ for {set i 0} {$i < 100} {incr i} {
 
 for {set i 0} {$i < 100} {incr i} {
   set j [expr {int(rand() * 100)}]
-  if [expr {int(rand() * 2)}] {
+  if {int(rand() * 2)} {
     if {$spicy_brains} {
       $t set $j spiciness [expr {int(rand() * 100) * 0.1}]
     } else {

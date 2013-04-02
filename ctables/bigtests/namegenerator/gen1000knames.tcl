@@ -45,7 +45,7 @@ proc gen_fake_userid {firstName lastName} {
     set firstName [fake_id_cleanup [string tolower $firstName]]
     set lastName [fake_id_cleanup [string tolower $lastName]]
     while 1 {
-	set odds [expr rand()]
+	set odds [expr {rand()}]
 
 	if {$odds < 0.1} {
 	    if {[try_fake_userid $firstName]} return
@@ -60,10 +60,10 @@ proc gen_fake_userid {firstName lastName} {
 	}
 
 	if {$odds < 0.6} {
-	    if {[try_fake_userid $firstName[expr int(rand()*1000)]]} return
+	    if {[try_fake_userid $firstName[expr {int(rand()*1000)}]]} return
 	}
 
-	if {[try_fake_userid $lastName[expr int(rand()*1000)]]} return
+	if {[try_fake_userid $lastName[expr {int(rand()*1000)}]]} return
     }
 }
 
@@ -98,7 +98,7 @@ proc doit {} {
     set sizeLast [llength $lastnames]
     set sizeFirst [llength $firstnames]
 
-    expr srand(568238)
+    expr {srand(568238)}
 
     for {set i 0} {$i < $nNamesToGenerate} {incr i} {
         if {$i % 50000 == 0} {

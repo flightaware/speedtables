@@ -2558,7 +2558,7 @@ proc gen_filters {} {
         	    emit "        if (Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)"
           	    emit "             return TCL_ERROR;\n"
 		    set argNames ""
-		    set nArguments [expr [llength $filter(args)] / 2]
+		    set nArguments [expr {[llength $filter(args)] / 2}]
 		    foreach {type name} $filter(args) {
 		        append argNames "$name, "
 		    }
@@ -2781,7 +2781,7 @@ proc tclobj {fieldName args} {
 proc key {name args} {
     # Sanitize arguments
     if {[set i [lsearch -exact  $args key]] % 2 == 0} {
-	set args [lreplace $args $i [expr $i + 1]]
+	set args [lreplace $args $i [expr {$i + 1}]]
     }
 
     # Only allow one key field

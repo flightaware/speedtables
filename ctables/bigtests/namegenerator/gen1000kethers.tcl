@@ -5,7 +5,7 @@
 #
 
 proc random_byte {} {
-    return [expr int(rand() * 256)]
+    return [expr {int(rand() * 256)}]
 }
 
 proc gen_ip {} {
@@ -26,8 +26,8 @@ proc gen_mac {} {
 # we expect, they did not get good test data where by good we mean data that
 # will match the results expected by the test software.
 #
-proc doit {} {
-    expr srand(71077345)
+proc main {} {
+    expr {srand(71077345)}
 
     set fp [open ../test-data.txt]
     while {[gets $fp line] >= 0} {
@@ -38,4 +38,4 @@ proc doit {} {
     exit 0
 }
 
-if !$tcl_interactive doit
+if !$tcl_interactive main

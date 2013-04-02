@@ -109,7 +109,7 @@ puts "private inserts: [time {random_inserts t 100000}]"
 
 t destroy
 
-top_brands_nokey_m create m master file sharefile.dat size [expr 64 * 1024 * 1024]
+top_brands_nokey_m create m master file sharefile.dat size [expr {64 * 1024 * 1024}]
 
 m index create id
 m index create rank

@@ -213,7 +213,7 @@ proc handle_eof {sock {eof EOF}} {
 
     set i [lsearch $clientList $sock]
     if {$i >= 0} {
-	set j [expr $i + 2]
+	set j [expr {$i + 2}]
 	set clientList [lreplace $clientList $i $j]
     }
     serverlog "$eof on $sock, closing"
@@ -222,7 +222,7 @@ proc handle_eof {sock {eof EOF}} {
 	if {[llength $clientList] == 0} {
 	    serverdie "All client sockets closed, shutting down"
 	} else {
-	    serverlog "Waiting on [expr [llength $clientList] / 3] clients."
+	    serverlog "Waiting on [expr {[llength $clientList] / 3}] clients."
 	}
     }
 }
@@ -336,7 +336,7 @@ proc remote_receive {sock myPort} {
 proc remote_send {sock line {multi 1}} {
     if {$multi} {
 	if {[string length $line] > 8192 || [string match "*\n*" $line]} {
-	    puts $sock "# [expr [string length $line] + 1]"
+	    puts $sock "# [expr {[string length $line] + 1}]"
 	}
     }
     puts $sock $line
@@ -527,7 +527,7 @@ proc remote_invoke {sock table line port} {
 	if {$index == -1} {
 	    set simpleCommand 0
 	} else {
-	    set remoteArgs [lreplace $remoteArgs $index [expr $index + 1]]
+	    set remoteArgs [lreplace $remoteArgs $index [expr {$index + 1}]]
 	}
     }
 

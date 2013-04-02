@@ -106,7 +106,7 @@ proc estimate {} {
     incr size [string length $a(_key)]
     incr size [string length $a(id)]
     incr size [string length $a(name)]
-    incr size [expr 26*4]
+    incr size [expr {26*4}]
   }
   return $size
 }
@@ -115,12 +115,12 @@ proc status {delay} {
   set rows [m count]
   set free [m share free]
   set f2 [m share free quick]
-  set used [expr 4*1024*1024 - $free]
+  set used [expr {4*1024*1024 - $free}]
   set payload [estimate]
-  set overhead [expr $used - $payload]
-  set ratio [expr $overhead / $rows]
+  set overhead [expr {$used - $payload}]
+  set ratio [expr {$overhead / $rows}]
   puts "[clock format [clock seconds]] [pid]: created $::lastKey rows=$rows free=$free ($f2) used=$used payload=$payload overhead=$overhead ratio=$ratio"
-  after [expr $delay * 100] status $delay
+  after [expr {$delay * 100}] status $delay
 }
 puts "running, delay = $delay, count=$count, max=$max, waiting for connections"
 after $delay random_changes $delay $count $max

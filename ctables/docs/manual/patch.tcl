@@ -9,9 +9,9 @@ proc filename {chapter} {
 for {set chapter 1} {$chapter <= 15} {incr chapter} {
   unset -nocomplain next
   unset -nocomplain prev
-  if {$chapter > 1} {set prev [filename [expr $chapter - 1]]}
+  if {$chapter > 1} {set prev [filename [expr {$chapter - 1}]]}
   set file [filename $chapter]
-  if {$chapter < 15} {set next [filename [expr $chapter + 1]]}
+  if {$chapter < 15} {set next [filename [expr {$chapter + 1}]]}
 
   set links "<!-- %BEGIN LINKS% -->\n<div class=links>"
   if [info exists prev] {
