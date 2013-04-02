@@ -330,7 +330,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	        ckfree (commandName);
 	    }
 
-	    LIST_INSERT_HEAD (&ctable->creator->instances, ctable, instance);
+	    CT_LIST_INSERT_HEAD (&ctable->creator->instances, ctable, instance);
 
 	    return TCL_OK;
 
@@ -419,12 +419,12 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    CTable *instanceP;
 	    Tcl_Obj *resultObj;
 
-	    if (LIST_EMPTY(&creator->instances)) {
+	    if (CT_LIST_EMPTY(&creator->instances)) {
 	        return TCL_OK;
 	    }
 	 
 	    resultObj = Tcl_GetObjResult (interp);
-	    LIST_FOREACH (instanceP, &creator->instances, instance) {
+	    CT_LIST_FOREACH (instanceP, &creator->instances, instance) {
 	        Tcl_Obj *cmdStringObj = Tcl_NewObj();
 
 		Tcl_GetCommandFullName (interp, instanceP->commandInfo, cmdStringObj);

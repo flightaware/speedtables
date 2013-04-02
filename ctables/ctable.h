@@ -58,7 +58,7 @@
 
 /*-
  *
- * LIST_* - link list routines from Berkeley
+ * CT_LIST_* - link list routines from Berkeley
  *
  * Copyright (c) 1991, 1993
  *      The Regents of the University of California.  All rights reserved.
@@ -94,15 +94,15 @@
 /*
  * bidirectionally linked list declarations, from BSD
  */
-#define	LIST_HEAD(name, type)						\
+#define	CT_LIST_HEAD(name, type)						\
 struct name {								\
 	struct type *lh_first;	/* first element */			\
 }
 
-#define	LIST_HEAD_INITIALIZER(head)					\
+#define	CT_LIST_HEAD_INITIALIZER(head)					\
 	{ NULL }
 
-#define	LIST_ENTRY(type)						\
+#define	CT_LIST_ENTRY(type)						\
 struct {								\
 	struct type *le_next;	/* next element */			\
 	struct type **le_prev;	/* address of previous next element */	\
@@ -112,38 +112,38 @@ struct {								\
  * bidirectionally linked list functions, from BSD
  */
 
-#define	LIST_EMPTY(head)	((head)->lh_first == NULL)
+#define	CT_LIST_EMPTY(head)	((head)->lh_first == NULL)
 
-#define	LIST_FIRST(head)	((head)->lh_first)
+#define	CT_LIST_FIRST(head)	((head)->lh_first)
 
-#define	LIST_FOREACH(var, head, field)					\
-	for ((var) = LIST_FIRST((head));				\
+#define	CT_LIST_FOREACH(var, head, field)					\
+	for ((var) = CT_LIST_FIRST((head));				\
 	    (var);							\
-	    (var) = LIST_NEXT((var), field))
+	    (var) = CT_LIST_NEXT((var), field))
 
-#define	LIST_FOREACH_SAFE(var, head, field, tvar)			\
-	for ((var) = LIST_FIRST((head));				\
-	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+#define	CT_LIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = CT_LIST_FIRST((head));				\
+	    (var) && ((tvar) = CT_LIST_NEXT((var), field), 1);		\
 	    (var) = (tvar))
 
-#define	LIST_INIT(head) do {						\
-	LIST_FIRST((head)) = NULL;					\
+#define	CT_LIST_INIT(head) do {						\
+	CT_LIST_FIRST((head)) = NULL;					\
 } while (0)
 
-#define	LIST_INSERT_HEAD(head, elm, field) do {				\
-	if ((LIST_NEXT((elm), field) = LIST_FIRST((head))) != NULL)	\
-		LIST_FIRST((head))->field.le_prev = &LIST_NEXT((elm), field);\
-	LIST_FIRST((head)) = (elm);					\
-	(elm)->field.le_prev = &LIST_FIRST((head));			\
+#define	CT_LIST_INSERT_HEAD(head, elm, field) do {				\
+	if ((CT_LIST_NEXT((elm), field) = CT_LIST_FIRST((head))) != NULL)	\
+		CT_LIST_FIRST((head))->field.le_prev = &CT_LIST_NEXT((elm), field);\
+	CT_LIST_FIRST((head)) = (elm);					\
+	(elm)->field.le_prev = &CT_LIST_FIRST((head));			\
 } while (0)
 
-#define	LIST_NEXT(elm, field)	((elm)->field.le_next)
+#define	CT_LIST_NEXT(elm, field)	((elm)->field.le_next)
 
-#define	LIST_REMOVE(elm, field) do {					\
-	if (LIST_NEXT((elm), field) != NULL)				\
-		LIST_NEXT((elm), field)->field.le_prev = 		\
+#define	CT_LIST_REMOVE(elm, field) do {					\
+	if (CT_LIST_NEXT((elm), field) != NULL)				\
+		CT_LIST_NEXT((elm), field)->field.le_prev = 		\
 		    (elm)->field.le_prev;				\
-	*(elm)->field.le_prev = LIST_NEXT((elm), field);		\
+	*(elm)->field.le_prev = CT_LIST_NEXT((elm), field);		\
 } while (0)
 
 
@@ -463,7 +463,7 @@ struct ctable_CreatorTable {
 #ifdef SANITY_CHECKS
     void (*sanity_check_pointer)(struct CTable *ctable, void *ptr, int indexCtl, CONST char *where);
 #endif
-    LIST_HEAD(instances, CTable) instances;
+    CT_LIST_HEAD(instances, CTable) instances;
 };
 
 struct CTable {
@@ -494,7 +494,7 @@ struct CTable {
 #endif
     Tcl_Command                          commandInfo;
     long                                 count;
-    LIST_ENTRY(CTable)                   instance;
+    CT_LIST_ENTRY(CTable)                   instance;
 };
 
 CTABLE_INTERNAL int ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth);
