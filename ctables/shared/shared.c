@@ -103,6 +103,14 @@ char *shared_errmsg[] = {
         NULL
 };
 
+// shared_perror - emit an error message to sderr
+//
+// if shared_errno is negative, makes it positive and uses it as an index
+// into shared_errmsg above for the message
+//
+// if shared_errno is positive, uses the shared_errmsg above and also
+// includes the posix error string.
+//
 void shared_perror(char *text) {
         static char bigbuf [1024];
         if(shared_errno < 0) {
@@ -261,7 +269,7 @@ IFDEBUG(init_debug();)
     if(fd == -1) {
         // No file, and not creator, can't recover
         if(!create) {
-            shared_errno = -SH_NO_MAP;
+            shared_errno = SH_NO_MAP;
             return 0;
         }
 
