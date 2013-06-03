@@ -821,6 +821,7 @@ catch { ::itcl::delete class STDisplay }
 			puts "</FONT>"
 			puts "</TD>"
 			$f end
+			$f destroy
 		}
 		puts "</TR>"
 		puts "</TABLE>"
@@ -976,7 +977,7 @@ catch { ::itcl::delete class STDisplay }
 			}
 			puts "</TD>"
 			$f end
-			::itcl::delete object $f
+			$f destroy
 		}
 
 		puts "</TR>"
@@ -1472,6 +1473,7 @@ catch { ::itcl::delete class STDisplay }
 					-class DIORowFunctionButton
 				puts "<DIV STYLE='display:none'>"
 				$listform end
+				$listform destroy
 				puts "</DIV>"
 			}
 		}
@@ -1672,6 +1674,7 @@ catch { ::itcl::delete class STDisplay }
 			}
 			puts "<DIV STYLE='display:none'>"
 			$f end
+			$f destroy
 			puts "</DIV>"
 			puts "</TR>"
 		}
@@ -1931,6 +1934,7 @@ catch { ::itcl::delete class STDisplay }
 		hide_selection $f
 		$f submit submit -value No -class "DIODeleteConfirmNoButton"
 		$f end
+		$f destroy
 		puts "</TD>"
 		puts "</TR>"
 		puts "</TABLE>"
