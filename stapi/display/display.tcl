@@ -976,6 +976,7 @@ catch { ::itcl::delete class STDisplay }
 			}
 			puts "</TD>"
 			$f end
+			::itcl::delete object $f
 		}
 
 		puts "</TR>"
