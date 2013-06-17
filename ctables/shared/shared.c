@@ -58,28 +58,6 @@ void set_last_shmem_error(const char *message) {
     strncpy(last_shmem_error, message, sizeof(last_shmem_error));
 }
 
-// shared_perror - emit an error message to sderr
-//
-// if shared_errno is negative, makes it positive and uses it as an index
-// into shared_errmsg above for the message
-//
-// if shared_errno is positive, uses the shared_errmsg above and also
-// includes the posix error string.
-//
-void shared_perror(char *text) {
-        static char bigbuf [1024];
-        if(shared_errno < 0) {
-                fprintf(stderr, "%s: %s\n", text, shared_errmsg[-shared_errno]);
-        } else if(shared_errno > 0) {
-                strcpy(bigbuf, text);
-                strcat(bigbuf, ": ");
-                strcat(bigbuf, shared_errmsg[shared_errno]);
-                perror(bigbuf);
-        } else {
-                perror(text);
-        }
-}
-
 const char *get_last_shmem_error() {
     return last_shmem_error;
 }
@@ -158,65 +136,10 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
         p = p->next;
     }
 
-<<<<<<< HEAD
     managed_mapped_file *mmf;
     mapheader_t *mh;
     try {
         //fprintf(stderr, "want to %s to %s at %p\n", (create != 0 ? "create" : "attach"), file, addr);
-=======
-IFDEBUG(init_debug();)
-    // look for an already mapped file
-    fd = open(file, O_RDWR, 0);
-
-    if(fd == -1) {
-        // No file, and not creator, can't recover
-        if(!create) {
-            shared_errno = SH_NO_MAP;
-            return 0;
-        }
-
-        fd = open_new(file, default_size);
-
-        if(fd == -1)
-            return 0;
-
-        size = default_size;
-    } else {
-        struct stat sb;
-
-        if(fstat(fd, &sb) < 0) {
-            shared_errno = SH_OPEN_FILE;
-            return NULL;
-        }
-
-        if(addr == 0) {
-            mapheader tmp;
-            if(read(fd, &tmp, sizeof (mapheader)) == sizeof (mapheader)) {
-                if(shmcheckmap(&tmp))
-                    addr = tmp.addr;
-            }
-            lseek(fd, 0L, SEEK_SET);
-        }
-
-        if(default_size > (size_t) sb.st_size) {
-            close(fd);
-
-            fd = open_new(file, default_size);
-
-            if(fd == -1) {
-                shared_errno = SH_TOO_SMALL;
-                return 0;
-            }
-
-            size = default_size;
-        } else {
-            if(default_size)
-                size = default_size;
-            else
-                size = (size_t) sb.st_size;
-        }
-    }
->>>>>>> master
 
         if (create != 0) {
 	    mmf = new managed_mapped_file(open_or_create, file, default_size, (void*)addr);
