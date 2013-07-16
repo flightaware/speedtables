@@ -9,6 +9,7 @@ millions of rows. Currently oriented towards Tcl.  Licensed under BSD Copyright.
 
 * [Source Code](http://github.com/flightaware/speedtables)
 * [Project Page](http://flightaware.github.io/speedtables)
+* [Documentation and Manual](http://flightaware.github.io/speedtables/manual/)
 
 For more details about Speed tables, see ctables/docs/doc.txt
 
