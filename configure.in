@@ -59,6 +59,7 @@ TEA_PREFIX
 #-----------------------------------------------------------------------
 
 TEA_SETUP_COMPILER
+AC_PROG_CXX
 
 #-----------------------------------------------------------------------
 # __CHANGE__
@@ -113,7 +114,10 @@ TEA_SETUP_COMPILER
 #TEA_PRIVATE_TK_HEADERS
 #TEA_PATH_X
 
-
+# Check for Boost.
+# If you are missing Boost, try installing the devel/boost-libs or boost-devel package, or downloading from http://www.boost.org/
+BOOST_REQUIRE([1.48])
+BOOST_ARRAY
 
 #--------------------------------------------------------------------
 # Check whether --enable-threads or --disable-threads was given.
