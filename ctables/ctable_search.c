@@ -2739,7 +2739,7 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
     // make sure the field has an index set up for it
     // in the linked list nodes of the row.
     if (ctable->creator->fields[field]->indexNumber < 0) {
-	Tcl_AppendResult (interp, "can't create an index on a field that hasn't been defined as allowing an index", (char *)NULL);
+	Tcl_AppendResult (interp, "can't create an index on field '", ctable->creator->fields[field]->name, "' that hasn't been defined as having an index", (char *)NULL);
 	return TCL_ERROR;
     }
 
