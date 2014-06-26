@@ -45,7 +45,7 @@ using namespace boost::container;
 // TUNING
 
 // Maximum number of readers
-#define MAX_SHMEM_READERS 256
+#define MAX_SHMEM_READERS 1024
 
 
 // How long to leave garbage uncollected after it falls below the horizon
