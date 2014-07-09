@@ -401,7 +401,7 @@ install-bin-binaries:
 	@list='$(bin_BINARIES)'; for p in $$list; do \
 	  if test -f $$p; then \
 	    echo " $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/$$p"; \
-	    $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/$$p; \
+	    $(INSTALL_SCRIPT) $$p $(DESTDIR)$(bindir)/$$p; \
 	  fi; \
 	done
 
