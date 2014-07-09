@@ -5894,6 +5894,7 @@ proc extension_already_built {name version code} {
     # If not, rebuild not built.
     if {$controlLine != [control_line]} {
         #puts "control line does not match, build required"
+        close $fp
 	return 0
     }
 
