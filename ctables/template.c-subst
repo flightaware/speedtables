@@ -82,6 +82,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    volatile reader	*share_reader = NULL;
 #endif
 
+	    if (objc < 3) {
+		Tcl_WrongNumArgs (interp, 2, objv, "name ?type arglist?");
+		return TCL_ERROR;
+	    }
 	    commandName = Tcl_GetString(objv[2]);
 
 	    if (strcmp (commandName, "#auto") == 0) {
