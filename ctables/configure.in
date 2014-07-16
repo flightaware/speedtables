@@ -140,7 +140,7 @@ AC_CHECK_HEADER(netinet/ether.h,[CTABLES_CFLAGS="$CTABLES_CFLAGS -DHAVE_NETINET_
 
 # Check for Boost.
 # If you are missing Boost, try installing the devel/boost-libs or boost-devel package, or downloading from http://www.boost.org/
-BOOST_REQUIRE([1.48])
+BOOST_REQUIRE([1.54])
 BOOST_ARRAY
 
 

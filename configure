@@ -1343,7 +1343,7 @@ Optional Packages:
   --with-pgsql=PATH       Build with pgsql/pgtcl library support
   --with-tcl              directory containing tcl configuration
                           (tclConfig.sh)
-  --with-boost=DIR        prefix of Boost 1.48 [guess]
+  --with-boost=DIR        prefix of Boost 1.54 [guess]
 
 Some influential environment variables:
   CC          C compiler command
@@ -5316,7 +5316,7 @@ $as_echo "$ac_cv_path_SED" >&6; }
 
 echo "$as_me: this is boost.m4 serial 18" >&5
 boost_save_IFS=$IFS
-boost_version_req=1.48
+boost_version_req=1.54
 IFS=.
 set x $boost_version_req 0 0 0
 IFS=$boost_save_IFS
