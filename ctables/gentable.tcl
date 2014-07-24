@@ -2668,7 +2668,7 @@ proc fixedstring {fieldName length args} {
 # If "key 1" is in the argument list, make it a "key" instead
 #
 proc varstring {fieldName args} {
-    if {[set i [lsearch -exact "key" $args]] % 2 == 0} {
+    if {[set i [lsearch -exact $args "key"]] % 2 == 0} {
 	incr i
 	if {[lindex $args $i]} {
 	    return [eval [list key $fieldName] $args]
@@ -5894,6 +5894,7 @@ proc extension_already_built {name version code} {
     # If not, rebuild not built.
     if {$controlLine != [control_line]} {
         #puts "control line does not match, build required"
+        close $fp
 	return 0
     }
 

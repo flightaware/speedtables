@@ -174,19 +174,19 @@ CONFIG_CLEAN_FILES = Makefile autom4te.cache
 #========================================================================
 
 all:
-	cd ctables && $(MAKE) all
-	cd ctable_server && $(MAKE) all
-	cd stapi && $(MAKE) all
+	$(MAKE) -C ctables all
+	$(MAKE) -C ctable_server all
+	$(MAKE) -C stapi all
 
 install: 
-	cd ctables && $(MAKE) install
-	cd ctable_server && $(MAKE) install
-	cd stapi && $(MAKE) install
+	$(MAKE) -C ctables install
+	$(MAKE) -C ctable_server install
+	$(MAKE) -C stapi install
 
 test:
-	cd ctables && $(MAKE) test
-	cd ctable_server && $(MAKE) test
-	cd stapi && $(MAKE) test
+	$(MAKE) -C ctables test
+	$(MAKE) -C ctable_server test
+	$(MAKE) -C stapi test
 
 
 #========================================================================
@@ -199,9 +199,9 @@ test:
 #========================================================================
 
 clean:  
-	cd ctables && $(MAKE) clean
-	cd ctable_server && $(MAKE) clean
-	cd stapi && $(MAKE) clean
+	$(MAKE) -C ctables clean
+	$(MAKE) -C ctable_server clean
+	$(MAKE) -C stapi clean
 
 
 distclean: clean
