@@ -203,12 +203,21 @@ proc field_to_var {table fieldName varName} {
     }
     return "${table}_${fieldName}_$varName"
 }
+
 #
 # field_to_nameObj - return a field mapped to the Tcl name object we'll
 # use to expose the name to Tcl
 #
 proc field_to_nameObj {table fieldName} {
     return [field_to_var $table $fieldName nameObj]
+}
+
+#
+# field_to_perInterpNameObj - return a field mapped to the Tcl name object we'll
+# use to expose the name to Tcl
+#
+proc field_to_perInterpNameObj {table fieldName} {
+    return "${fieldName}_nameObj"
 }
 
 #
@@ -4591,6 +4600,13 @@ proc gen_field_names {} {
         emit "Tcl_Obj *[field_to_nameObj $table $fieldName];"
     }
     emit ""
+
+    emit "// define per-interp object for this table"
+    emit "struct InFlightPerInterp $leftCurly"
+    foreach fieldName $fieldList {
+        emit "    Tcl_Obj *[field_to_perInterpNameObj $table $fieldName];"
+    }
+    emit "$rightCurly;\n"
 
     emit "// define field property list keys and values to allow introspection"
 
