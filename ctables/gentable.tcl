@@ -3214,7 +3214,7 @@ proc determine_how_many_linked_lists_and_gen_field_index_table {} {
 
         # if the "indexed" field doesn't exist or is 0, skip it
         if {![info exists field(indexed)] || !$field(indexed)} {
-	    append result "\n    -1,"
+	    append result " -1,"
             continue
         }
   
@@ -3222,7 +3222,7 @@ proc determine_how_many_linked_lists_and_gen_field_index_table {} {
 if 0 {
         # if the "unique" field doesn't exist or isn't set to 0
         if {![info exists field(unique)] || $field(unique)} {
-	    append result "\n    -1,"
+	    append result " -1,"
             continue
         }
 }
@@ -3231,7 +3231,7 @@ if 0 {
         # i.e. field args include "indexed 1 unique 0"
         # generate them a list entry
 
-	append result "\n[format "%6d" $nLinkedLists],"
+	append result [format " %d," $nLinkedLists]
   
         incr nLinkedLists
     }
@@ -4568,7 +4568,7 @@ proc gen_field_names {} {
 	} else {
 	    set quoting 0
 	}
-	append needsQuoting "\n    $quoting,"
+	append needsQuoting " $quoting,"
     }
     emit "[string range $needsQuoting 0 end-1]\n$rightCurly;\n"
 
@@ -4582,7 +4582,7 @@ proc gen_field_names {} {
 	} else {
 	    set uniqueVal 0
 	}
-	append unique "\n    $uniqueVal,"
+	append unique " $uniqueVal,"
     }
     emit "[string range $unique 0 end-1]\n$rightCurly;\n"
 
