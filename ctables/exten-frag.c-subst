@@ -22,6 +22,9 @@
     // setup all the field name objects
     ${table}_setup ();
 
+    // new style will supplant the prior call
+    ${table}_interp_setup (interp);
+
     t->registeredProcTablePtr = hashTablePtr;
     t->nextAutoCounter = 0;
     t->fieldNames = ${table}_fields;

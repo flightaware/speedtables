@@ -4000,6 +4000,76 @@ proc gen_setup_routine {table} {
     emit ""
 }
 
+#
+# gen_interp_setup_routine - emit code to be run for each interpreter
+#   that wants to use this
+#
+proc gen_interp_setup_routine {table} {
+    variable fieldList
+    variable fields
+    variable leftCurly
+    variable rightCurly
+
+    set struct ${table}PerInterp
+
+    emit "void ${table}_interp_setup (Tcl_Interp *interp) $leftCurly"
+
+    emit "    struct $struct *ip = ($struct *)[gen_allocate_private $table "sizeof(struct ${table}PerInterp)"];"
+    emit ""
+
+    # create and initialize all of the NameObj objects containing field
+    # names as Tcl objects and increment their reference counts so 
+    # (hopefully, heh) they'll never be deleted.
+    #
+    # also populate the *_NameObjList table
+    #
+    set position 0
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
+
+	set nameObj [field_to_perInterpNameObj $table $fieldName]
+        emit "    ip->nameObjList\[$position\] = ip->$nameObj = Tcl_NewStringObj (\"$fieldName\", -1);"
+	emit "    Tcl_IncrRefCount (ip->$nameObj);"
+	emit ""
+	incr position
+    }
+    emit "        ip->nameObjList\[$position\] = (Tcl_Obj *) NULL;"
+    emit ""
+
+    set emptyObj "ip->defaultEmptyStringObj"
+    emit "    $emptyObj = Tcl_NewObj ();"
+    emit "    Tcl_IncrRefCount ($emptyObj);"
+    emit ""
+
+    #
+    # create and initialize string objects for varstring defaults
+    #
+    emit "    // defaults for varstring objects, if any"
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
+
+	if {$field(type) != "varstring"} continue
+	if {![info exists field(default)]} continue
+
+	set defObj "ip->${fieldName}DefaultStringObj"
+
+	if {$field(default) != ""} {
+	    emit "    $defObj = Tcl_NewStringObj (\"[cquote $field(default)]\", -1);"
+	    emit "    Tcl_IncrRefCount ($defObj);"
+	    emit ""
+	}
+    }
+
+    emit "    // initialize the null string object to the default (empty) value"
+    emit "    ip->nullValueObj = Tcl_NewObj ();"
+    emit "    Tcl_IncrRefCount (ip->nullValueObj);"
+
+    emit "\n  Tcl_SetAssocData (interp, \"${table}_speedtable\", NULL, (char *)ip);"
+
+    emit "$rightCurly"
+    emit ""
+}
+
 # Generate allocator for shared ctables
 proc gen_shared_string_allocator {} {
     variable withSharedTables
@@ -4602,10 +4672,25 @@ proc gen_field_names {} {
     emit ""
 
     emit "// define per-interp object for this table"
-    emit "struct InFlightPerInterp $leftCurly"
+    emit "struct ${table}PerInterp $leftCurly"
     foreach fieldName $fieldList {
         emit "    Tcl_Obj *[field_to_perInterpNameObj $table $fieldName];"
     }
+
+    foreach myField $fieldList {
+	upvar ::ctable::fields::$myField field
+
+	if {$field(type) == "varstring" && [info exists field(default)]} {
+	    if {$field(default) != ""} {
+		emit "    Tcl_Obj *${myField}DefaultStringObj;"
+	    }
+	}
+    }
+
+    emit ""
+    emit "    Tcl_Obj *nameObjList\[[string toupper $table]_NFIELDS + 1\];"
+    emit "    Tcl_Obj *defaultEmptyStringObj;"
+    emit "    Tcl_Obj *nullValueObj;"
     emit "$rightCurly;\n"
 
     emit "// define field property list keys and values to allow introspection"
@@ -6187,6 +6272,8 @@ proc table {name data} {
     ::ctable::gen_filters
 
     ::ctable::gen_setup_routine $name
+
+    ::ctable::gen_interp_setup_routine $name
 
     ::ctable::gen_defaults_subr $name
 
