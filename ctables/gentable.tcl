@@ -36,6 +36,8 @@ namespace eval ctable {
     variable sanityChecks
     variable keyCompileVariables
 
+    variable ipPointer
+
     # If loaded directly, rather than as a package
     if {![info exists srcDir]} {
 	set srcDir .
@@ -1837,6 +1839,7 @@ variable fieldGetSource {
 Tcl_Obj *
 ${table}_get (Tcl_Interp *interp, ctable_BaseRow *vPointer, int field) $leftCurly
     struct $table *row = (struct $table*) vPointer;
+    $ipPointer
 
     switch ((enum ${table}_fields) field) $leftCurly
 }
@@ -2387,8 +2390,11 @@ proc new_table {name} {
     variable keyFieldName
     variable filters
     variable rawCode
+    variable ipPointer
 
     set table $name
+
+    set ipPointer "    struct ${table}PerInterp *ip = (struct ${table}PerInterp *) Tcl_GetAssocData (interp, \"${table}_speedtable\", NULL);"
 
     set booleans ""
     set nonBooleans ""
@@ -3913,6 +3919,7 @@ proc gen_get_function {table} {
     variable fieldGetStringSource
     variable leftCurly
     variable rightCurly
+    variable ipPointer
 
     emit [string range [subst -nobackslashes -nocommands $fieldGetSource] 1 end-1]
     gen_gets_cases
@@ -4225,7 +4232,7 @@ proc gen_new_obj {type fieldName} {
 
 	short {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewIntObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewIntObj (row->$fieldName)"
 	    }
@@ -4233,7 +4240,7 @@ proc gen_new_obj {type fieldName} {
 
 	int {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewIntObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewIntObj (row->$fieldName)"
 	    }
@@ -4241,7 +4248,7 @@ proc gen_new_obj {type fieldName} {
 
 	long {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewLongObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewLongObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewLongObj (row->$fieldName)"
 	    }
@@ -4249,7 +4256,7 @@ proc gen_new_obj {type fieldName} {
 
 	wide {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewWideIntObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewWideIntObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewWideIntObj (row->$fieldName)"
 	    }
@@ -4257,7 +4264,7 @@ proc gen_new_obj {type fieldName} {
 
 	double {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewDoubleObj (row->$fieldName)"
 	    }
@@ -4265,7 +4272,7 @@ proc gen_new_obj {type fieldName} {
 
 	float {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewDoubleObj (row->$fieldName)"
 	    }
@@ -4273,7 +4280,7 @@ proc gen_new_obj {type fieldName} {
 
 	boolean {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewBooleanObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewBooleanObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewBooleanObj (row->$fieldName)"
 	    }
@@ -4283,17 +4290,17 @@ proc gen_new_obj {type fieldName} {
 	    # if there's no default for the var string, the null pointer 
 	    # response is the null
 	    if {![info exists field(default)]} {
-	        set defObj ${table}_NullValueObj
+	        set defObj ip->nullValueObj
 	    } else {
 		if {$field(default) == ""} {
-		    set defObj ${table}_DefaultEmptyStringObj
+		    set defObj ip->defaultEmptyStringObj
 		} else {
-		    set defObj ${table}_${fieldName}DefaultStringObj
+		    set defObj ip->${fieldName}DefaultStringObj
 		}
 	    }
 
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : ((row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length))"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : ((row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length))"
 	    } else {
 		return "(row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length)"
 	    }
@@ -4301,7 +4308,7 @@ proc gen_new_obj {type fieldName} {
 
 	char {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (&row->$fieldName, 1)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewStringObj (&row->$fieldName, 1)"
 	    } else {
 		return "Tcl_NewStringObj (&row->$fieldName, 1)"
 	    }
@@ -4309,7 +4316,7 @@ proc gen_new_obj {type fieldName} {
 
 	fixedstring {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (row->$fieldName, $field(length))"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewStringObj (row->$fieldName, $field(length))"
 	    } else {
 		return "Tcl_NewStringObj (row->$fieldName, $field(length))"
 	    }
@@ -4317,7 +4324,7 @@ proc gen_new_obj {type fieldName} {
 
 	inet {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (inet_ntoa (row->$fieldName), -1)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewStringObj (inet_ntoa (row->$fieldName), -1)"
 	    } else {
 		return "Tcl_NewStringObj (inet_ntoa (row->$fieldName), -1)"
 	    }
@@ -4325,7 +4332,7 @@ proc gen_new_obj {type fieldName} {
 
 	mac {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (ether_ntoa (&row->$fieldName), -1)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : Tcl_NewStringObj (ether_ntoa (&row->$fieldName), -1)"
 	    } else {
 		return "Tcl_NewStringObj (ether_ntoa (&row->$fieldName), -1)"
 	    }
@@ -4333,7 +4340,7 @@ proc gen_new_obj {type fieldName} {
 
 	tclobj {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : ((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ip->nullValueObj : ((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
 	    } else {
 		return "((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
 	    }
@@ -4447,11 +4454,13 @@ proc gen_list {} {
     variable fieldList
     variable leftCurly
     variable rightCurly
+    variable ipPointer
 
     set lengthDef [string toupper $table]_NFIELDS
 
     emit "Tcl_Obj *${table}_genlist (Tcl_Interp *interp, ctable_BaseRow *vRow) $leftCurly"
     emit "    struct $table *row = (struct $table *)vRow;"
+    emit $ipPointer
 
     emit "    Tcl_Obj *listObjv\[$lengthDef];"
     emit ""
@@ -4485,11 +4494,13 @@ proc gen_keyvalue_list {} {
     variable fieldList
     variable leftCurly
     variable rightCurly
+    variable ipPointer
 
     set lengthDef [string toupper $table]_NFIELDS
 
     emit "Tcl_Obj *${table}_gen_keyvalue_list (Tcl_Interp *interp, ctable_BaseRow *vRow) $leftCurly"
     emit "    struct $table *row = (struct $table *)vRow;"
+    emit $ipPointer
 
     emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
     emit ""
@@ -4527,11 +4538,13 @@ proc gen_nonnull_keyvalue_list {} {
     variable fieldList
     variable leftCurly
     variable rightCurly
+    variable ipPointer
 
     set lengthDef [string toupper $table]_NFIELDS
 
     emit "Tcl_Obj *${table}_gen_nonnull_keyvalue_list (Tcl_Interp *interp, struct $table *row) $leftCurly"
 
+    emit $ipPointer
     emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
     emit "    int position = 0;"
     emit "    Tcl_Obj *obj;"
