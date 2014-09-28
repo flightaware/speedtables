@@ -4513,7 +4513,7 @@ proc gen_keyvalue_list {} {
 
 	upvar ::ctable::fields::$fieldName field
 
-	emit "    listObjv\[$position] = [field_to_nameObj $table $fieldName];"
+	emit "    listObjv\[$position] = ip->[field_to_perInterpNameObj $table $fieldName];"
 	incr position
 
 	set_list_obj $position $field(type) $fieldName
@@ -4558,12 +4558,12 @@ proc gen_nonnull_keyvalue_list {} {
 	upvar ::ctable::fields::$fieldName field
 
 	if {[is_key $fieldName]} {
-	    emit "    listObjv\[position++] = [field_to_nameObj $table $fieldName];"
+	    emit "    listObjv\[position++] = ip->[field_to_perInterpNameObj $table $fieldName];"
 	    emit "    listObjv\[position++] = [gen_new_obj $field(type) $fieldName];"
 	} else {
 	    emit "    obj = [gen_new_obj $field(type) $fieldName];"
-	    emit "    if (obj != ${table}_NullValueObj) $leftCurly"
-	    emit "        listObjv\[position++] = [field_to_nameObj $table $fieldName];"
+	    emit "    if (obj != ip->nullValueObj) $leftCurly"
+	    emit "        listObjv\[position++] = ip->[field_to_perInterpNameObj $table $fieldName];"
 	    emit "        listObjv\[position++] = obj;"
 	    emit "    $rightCurly"
 	}
