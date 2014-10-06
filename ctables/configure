@@ -7274,7 +7274,7 @@ set sysconfig(pqprefix) $prefix"
       pgtclver=`grep "package ifneeded Pgtcl" $dir/pkgIndex.tcl| cut -d' ' -f4`
       sysconfig_tcl_content="$sysconfig_tcl_content
       set sysconfig(pgtclver) $pgtclver
-      set sysconfig(pgtclprefix) $prefix"
+      set sysconfig(pgtclprefix) $dir"
       break
     fi
   done
