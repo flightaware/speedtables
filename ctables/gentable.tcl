@@ -2695,7 +2695,7 @@ proc fixedstring {fieldName length args} {
 # If "key 1" is in the argument list, make it a "key" instead
 #
 proc varstring {fieldName args} {
-    if {[set i [lsearch -exact "key" $args]] % 2 == 0} {
+    if {[set i [lsearch -exact $args "key"]] % 2 == 0} {
 	incr i
 	if {[lindex $args $i]} {
 	    return [eval [list key $fieldName] $args]
@@ -5825,25 +5825,13 @@ proc compile {fileFragName version} {
     set ld_cmd "$sysconfig(cxxld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
 
     if {$withPgtcl} {
-	set pgtcl_lib $sysconfig(pgtclprefix)/lib
+	set pgtcl_libdir $sysconfig(pgtclprefix)
 	set pgtcl_ver $sysconfig(pgtclver)
+	set pgtcl_lib pgtcl$pgtcl_ver
 
-        lappend pgpath $pgtcl_lib/pgtcl$pgtcl_ver
-
-	if [info exists sysconfig(pqprefix)] {
-	    if {"$sysconfig(pqprefix)" != "$sysconfig(pgtclprefix)"} {
-		lappend pgpath $sysconfig(pqprefix)/lib
-	    }
-	}
-
-	foreach dir $pgpath {
-	    append ld_cmd " -R$dir"
-	}
-	foreach dir $pgpath {
-	    append ld_cmd " -L$dir"
-	}
-
-	append ld_cmd " -lpgtcl$pgtcl_ver -L/usr/local/lib -lpq"
+	append ld_cmd " -Wl,-rpath,$pgtcl_libdir"
+	append ld_cmd " -L$pgtcl_libdir"
+	append ld_cmd " -l$pgtcl_lib -L/usr/local/lib -lpq"
     }
 
     append ld_cmd " $sysconfig(ldflags) $stub"
@@ -5914,6 +5902,7 @@ proc extension_already_built {name version code} {
     # If not, rebuild not built.
     if {$controlLine != [control_line]} {
         #puts "control line does not match, build required"
+        close $fp
 	return 0
     }
 
