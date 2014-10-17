@@ -1763,7 +1763,7 @@ ${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListOb
     Tcl_Obj   *obj;
 
     obj = ${table}_get (interp, row, field);
-    if (obj == ${table}_NullValueObj) {
+    if (obj == ip->nullValueObj) {
         return TCL_OK;
     }
 
@@ -1800,7 +1800,7 @@ ${table}_array_set (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *v
     Tcl_Obj   *obj;
 
     obj = ${table}_get (interp, row, field);
-    if (obj == ${table}_NullValueObj) {
+    if (obj == ip->nullValueObj) {
         // it's null?  unset it from the array, might not be there, ignore error
         Tcl_UnsetVar2 (interp, Tcl_GetString (arrayNameObj), ${table}_fields[field], 0);
         return TCL_OK;
@@ -1887,6 +1887,7 @@ ${table}_dstring_append_get_tabsep (CONST char *key, ctable_BaseRow *vPointer, i
     int              nChars;
     Tcl_Obj         *utilityObj = Tcl_NewObj();
     struct $table *row = (struct $table *) vPointer;
+    $ipPointer
 
     if (!noKeys) {
 	int copy = 0;
@@ -2269,7 +2270,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     if(withNulls && !nullString) {
 	int nullLen;
 
-	nullString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullLen);
+	nullString = Tcl_GetStringFromObj (ip->nullValueObj, &nullLen);
     }
 
     while (1) {
@@ -3161,7 +3162,7 @@ int ${table}_obj_is_null(Tcl_Obj *obj) {
     char     *objString;
     int       objStringLength;
 
-     nullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullValueLength);
+     nullValueString = Tcl_GetStringFromObj (ip->nullValueObj, &nullValueLength);
      objString = Tcl_GetStringFromObj (obj, &objStringLength);
 
     if (nullValueLength != objStringLength) {
@@ -4750,6 +4751,7 @@ proc gen_field_names {} {
     emit ""
     # end of values
 
+if 0 {
     emit "static Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
     emit ""
 
@@ -4774,7 +4776,18 @@ proc gen_field_names {} {
 	}
     }
     emit ""
+} else {
+    set defaultStrings [list]
+    foreach myField $fieldList {
+	upvar ::ctable::fields::$myField field
 
+	if {$field(type) == "varstring" && [info exists field(default)]} {
+	    lappend defaultStrings [cquote $field(default)]
+	} else {
+	    lappend defaultStrings ""
+	}
+    }
+}
     set nullableList {}
 
     foreach myField $fieldList {
@@ -4845,7 +4858,7 @@ proc gen_gets_string_cases {} {
 
 	if {![info exists field(notnull)] || !$field(notnull)} {
 	    emit "        if (row->_${myField}IsNull) $leftCurly"
-	    emit "            return Tcl_GetStringFromObj (${table}_NullValueObj, lengthPtr);"
+	    emit "            return Tcl_GetStringFromObj (ip->nullValueObj, lengthPtr);"
 	    emit "        $rightCurly"
 	}
 
@@ -6284,8 +6297,7 @@ proc table {name data} {
 
     ::ctable::gen_filters
 
-    ::ctable::gen_setup_routine $name
-
+    #::ctable::gen_setup_routine $name
     ::ctable::gen_interp_setup_routine $name
 
     ::ctable::gen_defaults_subr $name

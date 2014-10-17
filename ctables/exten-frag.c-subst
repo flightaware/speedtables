@@ -20,7 +20,7 @@
     Tcl_InitCustomHashTable (hashTablePtr, TCL_STRING_KEYS, NULL);
 
     // setup all the field name objects
-    ${table}_setup ();
+    // ${table}_setup ();
 
     // new style will supplant the prior call
     ${table}_interp_setup (interp);
