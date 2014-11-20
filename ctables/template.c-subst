@@ -93,7 +93,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	        objName = Tcl_GetStringFromObj (objv[0], &baseNameLength);
 		baseNameLength += 42;
-		commandName = ckalloc (baseNameLength);
+		commandName = (char *) ckalloc (baseNameLength);
 		snprintf (commandName, baseNameLength, "%s%lu", objName, creator->nextAutoCounter++);
 	    }
 
@@ -253,13 +253,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->share_panic = share_panic;
 
 	    if(share_name) {
-	        ctable->share_name = ckalloc(strlen(share_name) + 1);
+	        ctable->share_name = (char *) ckalloc(strlen(share_name) + 1);
 	        strcpy(ctable->share_name, share_name);
 	    } else
 		ctable->share_name = NULL;
 
 	    if(share_file) {
-	        ctable->share_file = ckalloc(strlen(share_file)+1);
+	        ctable->share_file = (char *) ckalloc(strlen(share_file)+1);
 		strcpy(ctable->share_file, share_file);
 	    } else
 		ctable->share_file = NULL;

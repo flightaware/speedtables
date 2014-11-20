@@ -1,3 +1,5 @@
+11/20/2014 zero
+    * Add explicit (char *) cast to ckalloc calls as tcl86 defines the macro as returning void*
 10/19/2012 peter
     * Move dirty set outside break statement.
 

@@ -156,7 +156,7 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
     }
 
     p = (shm_t*)ckalloc(sizeof(shm_t));
-    p->filename = ckalloc(strlen(file)+1);
+    p->filename = (char *) ckalloc(strlen(file)+1);
     strcpy(p->filename, file);
 
     // Completely initialise all fields!
@@ -780,7 +780,7 @@ int doCreateOrAttach(Tcl_Interp *interp, const char *sharename, const char *file
 #endif
 
     if (new_share) {
-        share->name = ckalloc(strlen(sharename)+1);
+        share->name = (char *) ckalloc(strlen(sharename)+1);
         strcpy(share->name, sharename);
     }
 

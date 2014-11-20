@@ -432,7 +432,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		} else if(sm->type == CTABLE_STRING_MATCH_ANCHORED && term == CTABLE_COMP_MATCH_CASE) {
 		    int len;
 		    char *needle = Tcl_GetStringFromObj (termList[2], &len);
-		    char *prefix = ckalloc(len+1);
+		    char *prefix = (char *) ckalloc(len+1);
 		    int i;
 
 		    /* stash the prefix of the match into row2 */
