@@ -205,7 +205,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    Tcl_AppendResult (interp, ", or one of the registered methods:", (char *)NULL);
 
 	    for (registeredProcHashEntry = Tcl_FirstHashEntry (ctable->creator->registeredProcTablePtr, &hashSearch); registeredProcHashEntry != (Tcl_HashEntry *) NULL; registeredProcHashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	        char *key = Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry);
+	        char *key = (char *) Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry);
 		Tcl_AppendResult (interp, " ", key, (char *)NULL);
 	    }
 	    return TCL_ERROR;
@@ -350,7 +350,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 
 	  for (registeredProcHashEntry = Tcl_FirstHashEntry (ctable->creator->registeredProcTablePtr, &hashSearch); registeredProcHashEntry != (Tcl_HashEntry *) NULL; registeredProcHashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry), -1)) == TCL_ERROR) {
+	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj ((char *) Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry), -1)) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
 	  }

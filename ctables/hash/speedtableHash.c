@@ -178,7 +178,7 @@ ctable_InitOrStoreHashEntry(
 
     /* Allocate a new key if needed */
     if(newEntry && (flags & KEY_MASK) == KEY_VOLATILE) {
-        hPtr->key = ckalloc (strlen (key) + 1);
+        hPtr->key = (char *) ckalloc (strlen (key) + 1);
         strcpy (hPtr->key, key);
     } else {
 	hPtr->key = (char *)key;

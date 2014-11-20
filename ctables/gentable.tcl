@@ -215,7 +215,7 @@ proc field_to_nameObj {table fieldName} {
 # gen_allocate - return the code to allocate memory
 #
 proc gen_allocate_private {ctable size} {
-    return "ckalloc($size)"
+    return "(char *) ckalloc($size)"
 }
 
 proc gen_allocate {ctable size {private 0} {may_fail 0}} {
@@ -2105,7 +2105,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *string
 			} else {
 				keyLength = strlen(key);
 			}
-			keyCopy = ckalloc(keyLength+1);
+			keyCopy = (char *) ckalloc(keyLength+1);
 			if(quoteType) {
 			    ctable_copyDequoted(keyCopy, key, keyLength, quoteType);
 			} else {
