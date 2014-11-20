@@ -1,1 +1,1 @@
-./configure --prefix=/usr/local --with-tcl=/usr/local/lib/tcl8.5 --with-pgsql
+./configure --prefix=/usr/local --with-tcl=/usr/local/lib/tcl8.6 --with-pgsql
