@@ -969,4 +969,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_client_postgres 1.8.2
+package provide st_client_postgres 1.8.3

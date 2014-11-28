@@ -1,1 +1,2 @@
+autoreconf
 ./configure --prefix=/usr/local --with-tcl=/usr/local/lib/tcl8.6 --with-pgsql
