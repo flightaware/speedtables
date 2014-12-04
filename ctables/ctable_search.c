@@ -2378,12 +2378,13 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 }
 
 //
-// elapsed_time - calculate the time interval between two timespecs and store in a new timespec
+// ctable_elapsed_time - calculate the time interval between two timespecs and store in a new
+// timespec
 //
 void
-ctable_elapsed_time (struct timespec old, struct timespec new, struct timespec elapsed) {
-    elapsed->tv_sec = new->tv_sec - old->tv_sec;
-    elapsed->tv_nsec = new->tv_nsec - old->tv_nsec;
+ctable_elapsed_time (struct timespec *oldtime, struct timespec *newtime, struct timespec *elapsed) {
+    elapsed->tv_sec = newtime->tv_sec - oldtime->tv_sec;
+    elapsed->tv_nsec = newtime->tv_nsec - oldtime->tv_nsec;
 
     if (elapsed->tv_nsec < 0) {
 	elapsed->tv_nsec += 1000000000;
@@ -2394,8 +2395,8 @@ ctable_elapsed_time (struct timespec old, struct timespec new, struct timespec e
 //
 // ctable_performance_callback - callback routine for performance of search calls
 //
-int
-ctable_performance_callback (TCL_Obj *CONST objv[], int objc, struct timespec startTimeSpec, int loggingMatchCount) {
+void
+ctable_performance_callback (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct timespec *startTimeSpec, int loggingMatchCount) {
     struct timespec endTimeSpec;
     struct timespec elapsedTimeSpec;
     Tcl_Obj *cmdObjv[4];
@@ -2403,12 +2404,12 @@ ctable_performance_callback (TCL_Obj *CONST objv[], int objc, struct timespec st
     // calculate elapsed cpu
 
     clock_gettime (CLOCK_VIRTUAL, &endTimeSpec);
-    ctable_elapsed_time (startTimeSpec, endTimeSpec, elapsedTimeSpec);
+    ctable_elapsed_time (startTimeSpec, &endTimeSpec, &elapsedTimeSpec);
 
-    cmdObjv[0] = Tcl_NewString ("speedtable_performance_callback");
+    cmdObjv[0] = Tcl_NewStringObj ("speedtable_performance_callback", -1);
     cmdObjv[1] = Tcl_NewListObj (objc, objv);
-    cmdObjv[2] = Tcl_NewObj (loggingMatchCount);
-    cmdObjv[3] = Tcl_NewDoubleObj (elapsedTimeSpec->tv_sec + (elapsedTimeSpec->tv_nsc / 1000000000.0));
+    cmdObjv[2] = Tcl_NewIntObj (loggingMatchCount);
+    cmdObjv[3] = Tcl_NewDoubleObj (elapsedTimeSpec.tv_sec + (elapsedTimeSpec.tv_nsec / 1000000000.0));
 
     Tcl_EvalObjv (interp, 4, cmdObjv, 0);
 }
@@ -2486,10 +2487,10 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
     CTableSearch    search;
     int result;
     struct timespec startTimeSpec;
-    int loggingMatchCount;
+    int loggingMatchCount = 0;
 
 
-    if (ctable->logPerformance) {
+    if (ctable->performanceCallback) {
 	clock_gettime (CLOCK_VIRTUAL, &startTimeSpec);
     }
 
@@ -2509,16 +2510,16 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
         result = ctable_PerformSearch (interp, ctable, &search);
     }
 
-    if (ctable->logPerformance) {
-	loggingMatchCount = search->matchCount;
+    if (ctable->performanceCallback) {
+	loggingMatchCount = search.matchCount;
     }
 
     ctable_TeardownSearch (&search);
 
     ctable->searching = 0;
 
-    if (ctable->logPerformance) {
-	ctable_performance_callback (objv, objc, startTimeSpec, loggingMatchCount);
+    if (ctable->performanceCallback) {
+	ctable_performance_callback (interp, objv, objc, &startTimeSpec, loggingMatchCount);
     }
 
     return result;
