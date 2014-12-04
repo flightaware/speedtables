@@ -245,6 +245,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->destroying = 0;
 	    ctable->searching = 0;
 	    ctable->nullKeyValue = NULL;
+	    ctable->performanceCallback = 1;
 
 // The logic of this code here has become excessively convoluted
 // TODO - CLEAN IT THE HELL UP - peter

@@ -21,6 +21,8 @@
 
 #include "speedtableHash.c"
 
+#include <time.h>
+
 //#define INDEXDEBUG
 // #define MEGADEBUG
 // #define SEARCHDEBUG
@@ -2376,6 +2378,42 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 }
 
 //
+// elapsed_time - calculate the time interval between two timespecs and store in a new timespec
+//
+void
+ctable_elapsed_time (struct timespec old, struct timespec new, struct timespec elapsed) {
+    elapsed->tv_sec = new->tv_sec - old->tv_sec;
+    elapsed->tv_nsec = new->tv_nsec - old->tv_nsec;
+
+    if (elapsed->tv_nsec < 0) {
+	elapsed->tv_nsec += 1000000000;
+	elapsed->tv_sec--;
+    }
+}
+
+//
+// ctable_performance_callback - callback routine for performance of search calls
+//
+int
+ctable_performance_callback (TCL_Obj *CONST objv[], int objc, struct timespec startTimeSpec, int loggingMatchCount) {
+    struct timespec endTimeSpec;
+    struct timespec elapsedTimeSpec;
+    Tcl_Obj *cmdObjv[4];
+
+    // calculate elapsed cpu
+
+    clock_gettime (CLOCK_VIRTUAL, &endTimeSpec);
+    ctable_elapsed_time (startTimeSpec, endTimeSpec, elapsedTimeSpec);
+
+    cmdObjv[0] = Tcl_NewString ("speedtable_performance_callback");
+    cmdObjv[1] = Tcl_NewListObj (objc, objv);
+    cmdObjv[2] = Tcl_NewObj (loggingMatchCount);
+    cmdObjv[3] = Tcl_NewDoubleObj (elapsedTimeSpec->tv_sec + (elapsedTimeSpec->tv_nsc / 1000000000.0));
+
+    Tcl_EvalObjv (interp, 4, cmdObjv, 0);
+}
+
+//
 // ctable_TeardownSearch - tear down (free) a search structure and the
 //  stuff within it.
 //
@@ -2447,6 +2485,13 @@ CTABLE_INTERNAL int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable, int indexField) {
     CTableSearch    search;
     int result;
+    struct timespec startTimeSpec;
+    int loggingMatchCount;
+
+
+    if (ctable->logPerformance) {
+	clock_gettime (CLOCK_VIRTUAL, &startTimeSpec);
+    }
 
     // flag this search in progress
     ctable->searching = 1;
@@ -2464,12 +2509,20 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
         result = ctable_PerformSearch (interp, ctable, &search);
     }
 
+    if (ctable->logPerformance) {
+	loggingMatchCount = search->matchCount;
+    }
+
     ctable_TeardownSearch (&search);
 
     ctable->searching = 0;
+
+    if (ctable->logPerformance) {
+	ctable_performance_callback (objv, objc, startTimeSpec, loggingMatchCount);
+    }
+
     return result;
 }
-
 
 //
 // ctable_DropIndex - delete all the rows in a row's index, free the

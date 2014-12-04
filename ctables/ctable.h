@@ -492,6 +492,7 @@ struct CTable {
     volatile struct CTable		*share_ctable;
     volatile reader_t			*my_reader;
 #endif
+    int performanceCallback:1;
     Tcl_Command                          commandInfo;
     long                                 count;
     CT_LIST_ENTRY(CTable)                   instance;
