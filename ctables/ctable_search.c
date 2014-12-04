@@ -2396,20 +2396,26 @@ ctable_elapsed_time (struct timespec *oldtime, struct timespec *newtime, struct 
 // ctable_performance_callback - callback routine for performance of search calls
 //
 void
-ctable_performance_callback (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, struct timespec *startTimeSpec, int loggingMatchCount) {
+ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, struct timespec *startTimeSpec, int loggingMatchCount) {
     struct timespec endTimeSpec;
     struct timespec elapsedTimeSpec;
     Tcl_Obj *cmdObjv[4];
+    double cpu;
 
     // calculate elapsed cpu
 
     clock_gettime (CLOCK_VIRTUAL, &endTimeSpec);
     ctable_elapsed_time (startTimeSpec, &endTimeSpec, &elapsedTimeSpec);
+    cpu = (elapsedTimeSpec.tv_sec + (elapsedTimeSpec.tv_nsec / 1000000000.0));
 
-    cmdObjv[0] = Tcl_NewStringObj ("speedtable_performance_callback", -1);
+    if (cpu < ctable->performanceCallbackThreshold) {
+	return;
+    }
+
+    cmdObjv[0] = Tcl_NewStringObj (ctable->performanceCallback, -1);
     cmdObjv[1] = Tcl_NewListObj (objc, objv);
     cmdObjv[2] = Tcl_NewIntObj (loggingMatchCount);
-    cmdObjv[3] = Tcl_NewDoubleObj (elapsedTimeSpec.tv_sec + (elapsedTimeSpec.tv_nsec / 1000000000.0));
+    cmdObjv[3] = Tcl_NewDoubleObj (cpu);
 
     Tcl_EvalObjv (interp, 4, cmdObjv, 0);
 }
@@ -2490,7 +2496,7 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
     int loggingMatchCount = 0;
 
 
-    if (ctable->performanceCallback) {
+    if (ctable->performanceCallbackEnable) {
 	clock_gettime (CLOCK_VIRTUAL, &startTimeSpec);
     }
 
@@ -2510,7 +2516,7 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
         result = ctable_PerformSearch (interp, ctable, &search);
     }
 
-    if (ctable->performanceCallback) {
+    if (ctable->performanceCallbackEnable) {
 	loggingMatchCount = search.matchCount;
     }
 
@@ -2518,8 +2524,8 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 
     ctable->searching = 0;
 
-    if (ctable->performanceCallback) {
-	ctable_performance_callback (interp, objv, objc, &startTimeSpec, loggingMatchCount);
+    if (ctable->performanceCallbackEnable) {
+	ctable_performance_callback (interp, ctable, objv, objc, &startTimeSpec, loggingMatchCount);
     }
 
     return result;
