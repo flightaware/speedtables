@@ -6181,13 +6181,18 @@ proc table {name data} {
 #
 # CTableBuildPath - set the path for where we're building CTable stuff
 #
-proc CTableBuildPath {dir} {
-    global auto_path
+proc CTableBuildPath {{dir ""}} {
+    if {$dir == ""} {
+	if {![info exists ::ctable::buildPath]} {
+	    CTableBuildPath stobj
+	}
+	return $::ctable::buildPath
+    }
 
     set ::ctable::buildPath $dir
 
-    if {[lsearch -exact $auto_path $dir] < 0} {
-        lappend auto_path $dir
+    if {[lsearch -exact $::auto_path $dir] < 0} {
+        lappend ::auto_path $dir
     }
 }
 
