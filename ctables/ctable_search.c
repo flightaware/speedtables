@@ -2417,7 +2417,9 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
     cmdObjv[2] = Tcl_NewIntObj (loggingMatchCount);
     cmdObjv[3] = Tcl_NewDoubleObj (cpu);
 
-    Tcl_EvalObjv (interp, 4, cmdObjv, 0);
+    if (Tcl_EvalObjv (interp, 4, cmdObjv, 0) == TCL_ERROR) {
+	Tcl_BackgroundError (interp);
+    }
 }
 
 //
@@ -2525,7 +2527,11 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
     ctable->searching = 0;
 
     if (ctable->performanceCallbackEnable) {
+	Tcl_Obj *saveResultObj = Tcl_GetObjResult (interp);
+	Tcl_IncrRefCount (saveResultObj);
 	ctable_performance_callback (interp, ctable, objv, objc, &startTimeSpec, loggingMatchCount);
+	Tcl_SetObjResult (interp, saveResultObj);
+	Tcl_DecrRefCount (saveResultObj);
     }
 
     return result;
