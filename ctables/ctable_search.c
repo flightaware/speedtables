@@ -2531,7 +2531,6 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 	Tcl_IncrRefCount (saveResultObj);
 	ctable_performance_callback (interp, ctable, objv, objc, &startTimeSpec, loggingMatchCount);
 	Tcl_SetObjResult (interp, saveResultObj);
-	Tcl_DecrRefCount (saveResultObj);
     }
 
     return result;
