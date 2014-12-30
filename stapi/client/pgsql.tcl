@@ -274,8 +274,8 @@ namespace eval ::stapi {
   array set ctable_commands {
     get				sql_ctable_get
     set				sql_ctable_set
-    array_get			sql_ctable_unimplemented
-    array_get_with_nulls	sql_ctable_agwn
+    array_get			sql_ctable_array_get
+    array_get_with_nulls	sql_ctable_array_get_with_nulls
     exists			sql_ctable_exists
     delete			sql_ctable_delete
     count			sql_ctable_count
@@ -322,6 +322,7 @@ namespace eval ::stapi {
     }
 
     return [eval [list $proc $level $ns $cmd] $args]
+    #return [$proc $level $ns $cmd {*}$args]
   }
 
   #
@@ -447,24 +448,34 @@ namespace eval ::stapi {
   }
 
   #
-  # sql_ctable_agwn
+  # sql_ctable_array_get
   #
   # Get name-value list - return empty list for no data, SQL error is error
   #
-  proc sql_ctable_agwn {level ns cmd val args} {
+  proc sql_ctable_array_get {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
-    set result {}
 
-    switch -- [sql_get_one_tuple $sql vals] {
-      1 {
-        foreach arg $args val $vals {
-          lappend result $arg $val
-        }
-      }
-      0 { error $vals }
+    pg_select -withoutnulls [conn] $sql row {
+	return [array get row]
     }
 
-    return $result
+    error "no row matching '$sql'"
+  }
+
+
+  #
+  # sql_ctable_array_get_with_nulls
+  #
+  # Get name-value list - return empty list for no data, SQL error is error
+  #
+  proc sql_ctable_array_get_with_nulls {level ns cmd val args} {
+    set sql [sql_create_sql $ns $val $args]
+
+    pg_select [conn] $sql row {
+	return [array get row]
+    }
+
+    error "no row matching '$sql'"
   }
 
   #
@@ -964,9 +975,11 @@ namespace eval ::stapi {
   #
   proc connect_sql {table keys args} {
     lappend make make_sql_uri $table -keys $keys
-    set uri [eval $make $args]
+    set uri [$make {*}$args]
     return [connect $uri -keys $keys]
   }
 }
 
 package provide st_client_postgres 1.8.3
+
+# vim: set ts=8 sw=4 sts=4 noet :
