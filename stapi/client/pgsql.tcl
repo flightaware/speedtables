@@ -459,7 +459,7 @@ namespace eval ::stapi {
 	return [array get row]
     }
 
-    error "no row matching '$sql'"
+    return [list]
   }
 
 
@@ -475,7 +475,7 @@ namespace eval ::stapi {
 	return [array get row]
     }
 
-    error "no row matching '$sql'"
+    return [list]
   }
 
   #
