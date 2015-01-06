@@ -100,5 +100,5 @@ namespace eval ::stapi {
   register package connect_package
 }
 
-package provide st_client 1.8.2
+package provide st_client 1.9.0
 

@@ -149,9 +149,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     int indexCtl;
     int commandStatus = TCL_OK;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, NUM_OPTIONS
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
@@ -205,7 +205,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    Tcl_AppendResult (interp, ", or one of the registered methods:", (char *)NULL);
 
 	    for (registeredProcHashEntry = Tcl_FirstHashEntry (ctable->creator->registeredProcTablePtr, &hashSearch); registeredProcHashEntry != (Tcl_HashEntry *) NULL; registeredProcHashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	        char *key = Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry);
+	        char *key = (char *) Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry);
 		Tcl_AppendResult (interp, " ", key, (char *)NULL);
 	    }
 	    return TCL_ERROR;
@@ -350,7 +350,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  }
 
 	  for (registeredProcHashEntry = Tcl_FirstHashEntry (ctable->creator->registeredProcTablePtr, &hashSearch); registeredProcHashEntry != (Tcl_HashEntry *) NULL; registeredProcHashEntry = Tcl_NextHashEntry (&hashSearch)) {
-	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry), -1)) == TCL_ERROR) {
+	      if (Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj ((char *) Tcl_GetHashKey (ctable->creator->registeredProcTablePtr, registeredProcHashEntry), -1)) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
 	  }
@@ -1667,6 +1667,43 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
         ctable_verify(interp, ctable, verbose);
 	return TCL_OK;
+      }
+
+      case OPT_PERFORMANCE_CALLBACK: {
+	char *callback;
+
+	if ((objc == 3) || (objc > 4)) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "?cpu_seconds callback?");
+	    return TCL_ERROR;
+	}
+
+	if (objc == 2) {
+	    Tcl_Obj *resultObj = Tcl_GetObjResult(interp);
+
+	    Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewDoubleObj (ctable->performanceCallbackThreshold));
+	    Tcl_ListObjAppendElement (interp, resultObj, Tcl_NewStringObj (ctable->performanceCallback, -1));
+	} else {
+	      if (Tcl_GetDoubleFromObj (interp, objv[2], &ctable->performanceCallbackThreshold) == TCL_ERROR) {
+		  Tcl_AppendResult(interp, " parsing cpu_seconds", NULL);
+		  return TCL_ERROR;
+	      }
+
+	      callback = Tcl_GetString (objv[3]);
+	      if (*callback == '\0') {
+		ctable->performanceCallbackEnable = 0;
+		if (ctable->performanceCallback != NULL) {
+		    ckfree(ctable->performanceCallback);
+		    ctable->performanceCallback = NULL;
+		}
+	      } else {
+		if (ctable->performanceCallback != NULL) {
+		    ckfree(ctable->performanceCallback);
+		}
+		ctable->performanceCallback = (char *)ckalloc(strlen(callback) + 1);
+		strcpy (ctable->performanceCallback, callback);
+		ctable->performanceCallbackEnable = 1;
+	      }
+	}
       }
     }
 

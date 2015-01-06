@@ -228,6 +228,20 @@ proc handle_eof {sock {eof EOF}} {
 }
 
 #
+# handle_socket_error - after catching a puts or flush or something like that,
+#   handle_eof can shut the connection down for us.  this will use the posix
+#   E-style error code if it can be determined else the specified message,
+#   which will probably be a catch result
+#
+proc handle_socket_error {sock message} {
+    if {[lindex $::errorCode 0] == "POSIX"} {
+	set message [lindex $::errorCode 1]
+    }
+
+    handle_eof $sock $message
+}
+
+#
 # remote_receive - receive data from the remote side
 #
 proc remote_receive {sock myPort} {
@@ -339,8 +353,12 @@ proc remote_send {sock line {multi 1}} {
 	    puts $sock "# [expr {[string length $line] + 1}]"
 	}
     }
+
     puts $sock $line
-    flush $sock
+
+    if {[catch {flush $sock} catchResult] == 1} {
+	handle_socket_error $sock  $catchResult
+    }
 }
 
 #
@@ -627,6 +645,6 @@ proc serverdie {{message ""}} {
 
 }
 
-package provide ctable_server 1.8.2
+package provide ctable_server 1.9.0
 
 #get, set, array_get, array_get_with_nulls, exists, delete, count, foreach, sort, type, import, import_postgres_result, export, fields, fieldtype, needs_quoting, names, reset, destroy, statistics, write_tabsep, or read_tabsep

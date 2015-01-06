@@ -50,7 +50,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 	if(c == quoteChar || strchr(quotedChars, c)
 	|| c < 0x20 || (strict && (c & 0x80)) ) {
 	    if(!newptr) {
-	        newptr = ckalloc(maxExpansion * length + 1);
+	        newptr = (char *) ckalloc(maxExpansion * length + 1);
 	        for(j = 0; j < i; j++)
 		     newptr[j] = string[j];
 	    }

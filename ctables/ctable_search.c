@@ -21,6 +21,8 @@
 
 #include "speedtableHash.c"
 
+#include <time.h>
+
 //#define INDEXDEBUG
 // #define MEGADEBUG
 // #define SEARCHDEBUG
@@ -432,7 +434,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		} else if(sm->type == CTABLE_STRING_MATCH_ANCHORED && term == CTABLE_COMP_MATCH_CASE) {
 		    int len;
 		    char *needle = Tcl_GetStringFromObj (termList[2], &len);
-		    char *prefix = ckalloc(len+1);
+		    char *prefix = (char *) ckalloc(len+1);
 		    int i;
 
 		    /* stash the prefix of the match into row2 */
@@ -2376,6 +2378,51 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 }
 
 //
+// ctable_elapsed_time - calculate the time interval between two timespecs and store in a new
+// timespec
+//
+void
+ctable_elapsed_time (struct timespec *oldtime, struct timespec *newtime, struct timespec *elapsed) {
+    elapsed->tv_sec = newtime->tv_sec - oldtime->tv_sec;
+    elapsed->tv_nsec = newtime->tv_nsec - oldtime->tv_nsec;
+
+    if (elapsed->tv_nsec < 0) {
+	elapsed->tv_nsec += 1000000000;
+	elapsed->tv_sec--;
+    }
+}
+
+//
+// ctable_performance_callback - callback routine for performance of search calls
+//
+void
+ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, struct timespec *startTimeSpec, int loggingMatchCount) {
+    struct timespec endTimeSpec;
+    struct timespec elapsedTimeSpec;
+    Tcl_Obj *cmdObjv[4];
+    double cpu;
+
+    // calculate elapsed cpu
+
+    clock_gettime (CLOCK_VIRTUAL, &endTimeSpec);
+    ctable_elapsed_time (startTimeSpec, &endTimeSpec, &elapsedTimeSpec);
+    cpu = (elapsedTimeSpec.tv_sec + (elapsedTimeSpec.tv_nsec / 1000000000.0));
+
+    if (cpu < ctable->performanceCallbackThreshold) {
+	return;
+    }
+
+    cmdObjv[0] = Tcl_NewStringObj (ctable->performanceCallback, -1);
+    cmdObjv[1] = Tcl_NewListObj (objc, objv);
+    cmdObjv[2] = Tcl_NewIntObj (loggingMatchCount);
+    cmdObjv[3] = Tcl_NewDoubleObj (cpu);
+
+    if (Tcl_EvalObjv (interp, 4, cmdObjv, 0) == TCL_ERROR) {
+	Tcl_BackgroundError (interp);
+    }
+}
+
+//
 // ctable_TeardownSearch - tear down (free) a search structure and the
 //  stuff within it.
 //
@@ -2447,6 +2494,13 @@ CTABLE_INTERNAL int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable, int indexField) {
     CTableSearch    search;
     int result;
+    struct timespec startTimeSpec;
+    int loggingMatchCount = 0;
+
+
+    if (ctable->performanceCallbackEnable) {
+	clock_gettime (CLOCK_VIRTUAL, &startTimeSpec);
+    }
 
     // flag this search in progress
     ctable->searching = 1;
@@ -2464,12 +2518,23 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
         result = ctable_PerformSearch (interp, ctable, &search);
     }
 
+    if (ctable->performanceCallbackEnable) {
+	loggingMatchCount = search.matchCount;
+    }
+
     ctable_TeardownSearch (&search);
 
     ctable->searching = 0;
+
+    if (ctable->performanceCallbackEnable) {
+	Tcl_Obj *saveResultObj = Tcl_GetObjResult (interp);
+	Tcl_IncrRefCount (saveResultObj);
+	ctable_performance_callback (interp, ctable, objv, objc, &startTimeSpec, loggingMatchCount);
+	Tcl_SetObjResult (interp, saveResultObj);
+    }
+
     return result;
 }
-
 
 //
 // ctable_DropIndex - delete all the rows in a row's index, free the
