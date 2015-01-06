@@ -2,7 +2,7 @@
 
 # This script simplifies the process of incrementing all version numbers for a new release.
 
-NEWVER="1.8.3"
+NEWVER="1.8.4"
 
 perl -p -i -e "s/^(AC_INIT\\(\\[[a-z_]+\\],) \\[[0-9.]+\\]/\\1 \\[$NEWVER\\]/" configure.in ctables/configure.in stapi/configure.in ctable_server/configure.in
 
