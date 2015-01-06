@@ -36,8 +36,8 @@ static int boyermoore_needlematch
 static int bm_max(int a, int b) { return a > b ? a : b; }
 
 static void
-boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *needle, int nlen, int nocase) {
-    int a;
+boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *needle, size_t nlen, int nocase) {
+    unsigned a;
 
     bm->skip = (int *)ckalloc ((nlen + 1) * sizeof (int));
     bm->needle = (unsigned char *)ckalloc (nlen * sizeof (unsigned char));
@@ -68,7 +68,7 @@ boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *need
 
     // preprocess step 2, init skip[]
     for (a = 0; a < nlen; ++a) {
-	int value = 0;
+	unsigned value = 0;
 
 	while (value < nlen && !boyermoore_needlematch (bm->needle, nlen, a, value)) {
 	    ++value;
@@ -79,15 +79,17 @@ boyer_moore_setup (struct ctableSearchMatchStruct *bm, const unsigned char *need
 
 CTABLE_INTERNAL void
 boyer_moore_teardown (struct ctableSearchMatchStruct *bm) {
-    ckfree ((void *)bm->skip);
-    ckfree ((void *)bm->needle);
+    ckfree ((char *)bm->skip);
+    ckfree ((char *)bm->needle);
 }
 
 CTABLE_INTERNAL const unsigned char *
-boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, int hlen, int nocase) {
-    int hpos;
+boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *haystack, size_t hlen, int nocase) {
+    unsigned hpos;
 
-    // printf("bm needle '%s' %d haystack '%s' %d\n", bm->needle, bm->nlen, haystack, hlen);
+    if ((size_t)bm->nlen > hlen) return NULL;
+
+    //fprintf(stderr, "bm needle '%s' %d haystack '%s' %d\n", bm->needle, bm->nlen, haystack, (int) hlen);
     for (hpos = 0; hpos <= hlen - bm->nlen; )
     {
         int npos = bm->nlen - 1;
@@ -95,6 +97,7 @@ boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *hay
 
         while ((!nocase && (bm->needle[npos] == haystack[npos + hpos])) || (nocase && (bm->needle[npos] == tolower(haystack[npos + hpos])))) {
             if (npos == 0) {
+		//fprintf(stderr, "matched at %s (+%d)\n", haystack + hpos, (int) hpos);
 		return haystack + hpos;
 	    }
             --npos;
@@ -103,6 +106,7 @@ boyer_moore_search (struct ctableSearchMatchStruct *bm, const unsigned char *hay
         c = !nocase ? haystack[npos + hpos] : tolower(haystack[npos + hpos]);
         hpos += bm_max(bm->skip[npos], npos - bm->occ[c]);
     }
+    //fprintf(stderr, "no match\n");
     return NULL;
 }
 

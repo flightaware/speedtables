@@ -79,7 +79,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    size_t		 share_min_free = 0;
 	    int			 share_flags = 0;
 	    CTable		*share_ctable = NULL;
-	    volatile reader	*share_reader = NULL;
+	    volatile reader_t	*share_reader = NULL;
 #endif
 
 	    if (objc < 3) {
@@ -93,12 +93,12 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	        objName = Tcl_GetStringFromObj (objv[0], &baseNameLength);
 		baseNameLength += 42;
-		commandName = ckalloc (baseNameLength);
+		commandName = (char *) ckalloc (baseNameLength);
 		snprintf (commandName, baseNameLength, "%s%lu", objName, creator->nextAutoCounter++);
 	    }
 
 #ifdef WITH_SHARED_TABLES
-	    linkup_assoc_data(interp);
+	    //linkup_assoc_data(interp);
 
 	    if(!share_name) share_name = commandName;
 
@@ -152,6 +152,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 		share_type = share_types[typeIndex];
 
+#ifdef SHARE_BASE
+		if(SHARE_BASE != NULL && set_share_base == NULL) {
+		    set_share_base = SHARE_BASE;
+		    setShareBase(interp, SHARE_BASE);
+		}
+#endif
+
 		if(share_type == CTABLE_SHARED_MASTER) {
 
 		    if(raw_size) {
@@ -176,19 +183,9 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			    share_min_free = MAX_MIN_FREE;
 		    }
 
-#ifdef SHARE_BASE
-		    if(SHARE_BASE != NULL && set_share_base == NULL)
-			setShareBase(set_share_base = SHARE_BASE);
-#endif
-
 		    if(doCreateOrAttach(interp, share_name, share_file, share_size, share_flags, &share) != TCL_OK)
 			goto createError;
 
-#ifndef SHARED_GUARD
-#if POOL_RATIO != 0
-		    shmaddpool(share, sizeof (struct ${table}), (share_size / POOL_RATIO) / sizeof (struct ${table}), 0);
-#endif
-#endif
 		} else {
 
 		    if(doCreateOrAttach(interp, share_name, share_file, ATTACH_ONLY, 0, &share) != TCL_OK)
@@ -249,6 +246,10 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->searching = 0;
 	    ctable->nullKeyValue = NULL;
 
+	    ctable->performanceCallbackEnable = 0;
+	    ctable->performanceCallback = NULL;
+	    ctable->performanceCallbackThreshold = 0.0;
+
 // The logic of this code here has become excessively convoluted
 // TODO - CLEAN IT THE HELL UP - peter
 #ifdef WITH_SHARED_TABLES
@@ -256,13 +257,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->share_panic = share_panic;
 
 	    if(share_name) {
-	        ctable->share_name = ckalloc(strlen(share_name) + 1);
+	        ctable->share_name = (char *) ckalloc(strlen(share_name) + 1);
 	        strcpy(ctable->share_name, share_name);
 	    } else
 		ctable->share_name = NULL;
 
 	    if(share_file) {
-	        ctable->share_file = ckalloc(strlen(share_file)+1);
+	        ctable->share_file = (char *) ckalloc(strlen(share_file)+1);
 		strcpy(ctable->share_file, share_file);
 	    } else
 		ctable->share_file = NULL;
@@ -337,7 +338,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	        ckfree (commandName);
 	    }
 
-	    LIST_INSERT_HEAD (&ctable->creator->instances, ctable, instance);
+	    CT_LIST_INSERT_HEAD (&ctable->creator->instances, ctable, instance);
 
 	    return TCL_OK;
 
@@ -372,7 +373,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    if(share) doDetach(interp, share);
 #endif
 	    if(ctable)
-		ckfree((void *)ctable);
+		ckfree((char *)ctable);
 
 	    return TCL_ERROR;
 	}
@@ -404,13 +405,13 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	     * when the method is invoked
 	     */
 	    Tcl_HashEntry *hashEntry;
-	    int               new;
+	    int               newVal;
 
 	    if (objc != 4) {
 		Tcl_WrongNumArgs (interp, 2, objv, "name proc");
 		return TCL_ERROR;
 	    }
-	    hashEntry = Tcl_CreateHashEntry (creator->registeredProcTablePtr, Tcl_GetString (objv[2]), &new);
+	    hashEntry = Tcl_CreateHashEntry (creator->registeredProcTablePtr, Tcl_GetString (objv[2]), &newVal);
 	    Tcl_IncrRefCount(objv[3]);
 	    Tcl_SetHashValue (hashEntry, (ClientData)objv[3]);
 	    return TCL_OK;
@@ -426,12 +427,12 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    CTable *instanceP;
 	    Tcl_Obj *resultObj;
 
-	    if (LIST_EMPTY(&creator->instances)) {
+	    if (CT_LIST_EMPTY(&creator->instances)) {
 	        return TCL_OK;
 	    }
 	 
 	    resultObj = Tcl_GetObjResult (interp);
-	    LIST_FOREACH (instanceP, &creator->instances, instance) {
+	    CT_LIST_FOREACH (instanceP, &creator->instances, instance) {
 	        Tcl_Obj *cmdStringObj = Tcl_NewObj();
 
 		Tcl_GetCommandFullName (interp, instanceP->commandInfo, cmdStringObj);

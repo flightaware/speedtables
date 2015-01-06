@@ -8,7 +8,7 @@ builtin(include,../tclconfig/tcl.m4)
 # Add here whatever m4 macros you want to define for your package
 #
 
-
+builtin(include,boost.m4)
 
 # 
 # Create sysconfig.tcl from tclConfig.sh and other things
@@ -31,6 +31,8 @@ sysconfig_ld=`ctable_get_shlib_ld dummy`
 
 sysconfig_tcl_content="set sysconfig(ctablePackageVersion) {$PACKAGE_VERSION}
 set sysconfig(cc) {$TCL_CC}
+set sysconfig(cxx) {g++}
+set sysconfig(cxxld) {g++ -shared}
 set sysconfig(ccflags) {$TCL_DEFS $TCL_EXTRA_CFLAGS $TCL_INCLUDE_SPEC $CTABLES_CFLAGS}
 set sysconfig(warn) {$TCL_CFLAGS_WARNING}
 set sysconfig(ldflags) {$TCL_SHLIB_CFLAGS}

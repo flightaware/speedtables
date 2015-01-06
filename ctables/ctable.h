@@ -12,6 +12,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -45,6 +46,9 @@
 
 #endif
 
+#define TRUE 1
+#define FALSE 0
+
 // types of quoting for tabsep fields
 #define CTABLE_QUOTE_NONE 0
 #define CTABLE_QUOTE_URI 1
@@ -54,7 +58,7 @@
 
 /*-
  *
- * LIST_* - link list routines from Berkeley
+ * CT_LIST_* - link list routines from Berkeley
  *
  * Copyright (c) 1991, 1993
  *      The Regents of the University of California.  All rights reserved.
@@ -90,15 +94,15 @@
 /*
  * bidirectionally linked list declarations, from BSD
  */
-#define	LIST_HEAD(name, type)						\
+#define	CT_LIST_HEAD(name, type)						\
 struct name {								\
 	struct type *lh_first;	/* first element */			\
 }
 
-#define	LIST_HEAD_INITIALIZER(head)					\
+#define	CT_LIST_HEAD_INITIALIZER(head)					\
 	{ NULL }
 
-#define	LIST_ENTRY(type)						\
+#define	CT_LIST_ENTRY(type)						\
 struct {								\
 	struct type *le_next;	/* next element */			\
 	struct type **le_prev;	/* address of previous next element */	\
@@ -108,38 +112,38 @@ struct {								\
  * bidirectionally linked list functions, from BSD
  */
 
-#define	LIST_EMPTY(head)	((head)->lh_first == NULL)
+#define	CT_LIST_EMPTY(head)	((head)->lh_first == NULL)
 
-#define	LIST_FIRST(head)	((head)->lh_first)
+#define	CT_LIST_FIRST(head)	((head)->lh_first)
 
-#define	LIST_FOREACH(var, head, field)					\
-	for ((var) = LIST_FIRST((head));				\
+#define	CT_LIST_FOREACH(var, head, field)					\
+	for ((var) = CT_LIST_FIRST((head));				\
 	    (var);							\
-	    (var) = LIST_NEXT((var), field))
+	    (var) = CT_LIST_NEXT((var), field))
 
-#define	LIST_FOREACH_SAFE(var, head, field, tvar)			\
-	for ((var) = LIST_FIRST((head));				\
-	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+#define	CT_LIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = CT_LIST_FIRST((head));				\
+	    (var) && ((tvar) = CT_LIST_NEXT((var), field), 1);		\
 	    (var) = (tvar))
 
-#define	LIST_INIT(head) do {						\
-	LIST_FIRST((head)) = NULL;					\
+#define	CT_LIST_INIT(head) do {						\
+	CT_LIST_FIRST((head)) = NULL;					\
 } while (0)
 
-#define	LIST_INSERT_HEAD(head, elm, field) do {				\
-	if ((LIST_NEXT((elm), field) = LIST_FIRST((head))) != NULL)	\
-		LIST_FIRST((head))->field.le_prev = &LIST_NEXT((elm), field);\
-	LIST_FIRST((head)) = (elm);					\
-	(elm)->field.le_prev = &LIST_FIRST((head));			\
+#define	CT_LIST_INSERT_HEAD(head, elm, field) do {				\
+	if ((CT_LIST_NEXT((elm), field) = CT_LIST_FIRST((head))) != NULL)	\
+		CT_LIST_FIRST((head))->field.le_prev = &CT_LIST_NEXT((elm), field);\
+	CT_LIST_FIRST((head)) = (elm);					\
+	(elm)->field.le_prev = &CT_LIST_FIRST((head));			\
 } while (0)
 
-#define	LIST_NEXT(elm, field)	((elm)->field.le_next)
+#define	CT_LIST_NEXT(elm, field)	((elm)->field.le_next)
 
-#define	LIST_REMOVE(elm, field) do {					\
-	if (LIST_NEXT((elm), field) != NULL)				\
-		LIST_NEXT((elm), field)->field.le_prev = 		\
+#define	CT_LIST_REMOVE(elm, field) do {					\
+	if (CT_LIST_NEXT((elm), field) != NULL)				\
+		CT_LIST_NEXT((elm), field)->field.le_prev = 		\
 		    (elm)->field.le_prev;				\
-	*(elm)->field.le_prev = LIST_NEXT((elm), field);		\
+	*(elm)->field.le_prev = CT_LIST_NEXT((elm), field);		\
 } while (0)
 
 
@@ -163,14 +167,14 @@ enum ctable_types {
 };
 
 // define ctable linked lists structures et al
-typedef struct {
-    struct ctable_baseRowStruct *next;
-    struct ctable_baseRowStruct **prev;
-    struct ctable_baseRowStruct **head;
-} ctable_LinkedListNode;
+struct ctable_LinkedListNode {
+    struct ctable_BaseRow *next;
+    struct ctable_BaseRow **prev;
+    struct ctable_BaseRow **head;
+};
 
 // This must start off as a copy of the start of the generated ctable
-typedef struct ctable_baseRowStruct {
+struct ctable_BaseRow {
     // hashEntry absolutely must be the first thing defined in the base row
     ctable_HashEntry     hashEntry;
 #ifdef WITH_SHARED_TABLES
@@ -178,7 +182,7 @@ typedef struct ctable_baseRowStruct {
 #endif
     // _ll_nodes absolutely must be the last thing defined in the base row
     ctable_LinkedListNode _ll_nodes[];
-} ctable_BaseRow;
+};
 
 #include "jsw_slib.h"
 
@@ -250,16 +254,16 @@ typedef struct ctable_baseRowStruct {
 #define CTABLE_INDEX_NEW 1
 
 // Forward reference to avoid a warning
-struct ctableTable;
-typedef int (*filterFunction_t)(Tcl_Interp *interp, struct ctableTable *ctable, void *vRow, Tcl_Obj *filter, int sequence);
+struct CTable;
+typedef int (*filterFunction_t)(Tcl_Interp *interp, struct CTable *ctable, ctable_BaseRow *row, Tcl_Obj *filter, int sequence);
 typedef int (*fieldCompareFunction_t) (const ctable_BaseRow *row1, const ctable_BaseRow *row2);
 
 // ctable sort struct - this controls everything about a sort
-typedef struct {
+struct CTableSort {
     int *fields;
     int *directions;
     int nFields;
-} CTableSort;
+};
 
 #define CTABLE_STRING_MATCH_ANCHORED 0
 #define CTABLE_STRING_MATCH_UNANCHORED 1
@@ -279,25 +283,25 @@ struct ctableSearchMatchStruct {
 
 // ctable search component struct - one for each "-compare" expression in a
 // ctable search
-typedef struct {
+struct CTableSearchComponent {
     void                    *clientData;
-    void                    *row1;
-    void                    *row2;
-    void		    *row3;
+    ctable_BaseRow          *row1;
+    ctable_BaseRow          *row2;
+    ctable_BaseRow          *row3;
     fieldCompareFunction_t   compareFunction;
     Tcl_Obj                **inListObj;
-    void		   **inListRows;
+    ctable_BaseRow	   **inListRows;
     int                      inCount;
     int                      fieldID;
     int                      comparisonType;
-} CTableSearchComponent;
+};
 
 // ctable search filter struct - one for each "-filter" expression in a
 // ctable search
-typedef struct {
+struct CTableSearchFilter {
     filterFunction_t  filterFunction;
     Tcl_Obj	     *filterObject;
-} CTableSearchFilter;
+};
 
 #define CTABLE_SEARCH_ACTION_NONE 0
 #define CTABLE_SEARCH_ACTION_GET 1
@@ -329,8 +333,8 @@ typedef struct {
 #define CTABLE_DEFAULT_POLL_INTERVAL 1024
 
 // ctable search struct - this controls everything about a search
-typedef struct {
-    struct ctableTable                  *ctable;
+struct CTableSearch {
+    struct CTable                       *ctable;
     CTableSearchComponent               *components;
     CTableSearchFilter			*filters;
     char                                *pattern;
@@ -365,7 +369,7 @@ typedef struct {
 
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsepIncludeFieldNames;
-    char				*sepstr;
+    CONST char				*sepstr;
 
     // count of matches during a search
     int                                  matchCount;
@@ -390,12 +394,12 @@ typedef struct {
 
     // Unique search ID for memoization
     int					 sequence;
-} CTableSearch;
+};
 
-typedef struct {
+struct ctable_FieldInfo {
     CONST char              *name;
     Tcl_Obj                 *nameObj;
-    char                   **propKeys;
+    CONST char             **propKeys;
     char                   **propValues;
     fieldCompareFunction_t   compareFunction;
     int                      number;
@@ -404,9 +408,9 @@ typedef struct {
     int                      unique;
     int			     canBeNull;
     enum ctable_types        type;
-} ctable_FieldInfo;
+};
 
-typedef struct ctableCreatorTable {
+struct ctable_CreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int     nextAutoCounter;
 
@@ -429,40 +433,40 @@ typedef struct ctableCreatorTable {
     CONST filterFunction_t  *filterFunctions;
     int			     nFilters;
 
-    void *(*make_empty_row) (struct ctableTable *ctable);
-    void *(*find_row) (struct ctableTable *ctable, char *key);
+    ctable_BaseRow *(*make_empty_row) (struct CTable *ctable);
+    ctable_BaseRow *(*find_row) (struct CTable *ctable, CONST char *key);
 
-    int (*set) (Tcl_Interp *interp, struct ctableTable *ctable, Tcl_Obj *dataObj, void *row, int field, int indexCtl);
-    int (*set_null) (Tcl_Interp *interp, struct ctableTable *ctable, void *row, int field, int indexCtl);
+    int (*set) (Tcl_Interp *interp, struct CTable *ctable, Tcl_Obj *dataObj, ctable_BaseRow *row, int field, int indexCtl);
+    int (*set_null) (Tcl_Interp *interp, struct CTable *ctable, ctable_BaseRow *row, int field, int indexCtl);
 
-    Tcl_Obj *(*get) (Tcl_Interp *interp, void *row, int field);
-    CONST char *(*get_string) (const void *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
+    Tcl_Obj *(*get) (Tcl_Interp *interp, ctable_BaseRow *row, int field);
+    CONST char *(*get_string) (const ctable_BaseRow *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
 
-    Tcl_Obj *(*gen_list) (Tcl_Interp *interp, void *pointer);
-    Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, void *pointer);
-    Tcl_Obj *(*gen_nonnull_keyvalue_list) (Tcl_Interp *interp, void *pointer);
-    int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
-    int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
-    int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, void *p, int field);
-    void (*dstring_append_get_tabsep) (CONST char *key, void *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, char *sepstr, int quoteType, char *nullString);
+    Tcl_Obj *(*gen_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
+    Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
+    Tcl_Obj *(*gen_nonnull_keyvalue_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
+    int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
+    int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
+    int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
+    void (*dstring_append_get_tabsep) (CONST char *key, ctable_BaseRow *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
 
-    int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
-    int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, void *row, int field);
+    int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
+    int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
 
-    int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, void *pointer);
-    int (*sort_compare) (void *clientData, const void *pointer1, const void *pointer2);
+    int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, ctable_BaseRow *pointer);
+    int (*sort_compare) (void *clientData, const ctable_BaseRow *pointer1, const ctable_BaseRow *pointer2);
 
-    void (*delete) (struct ctableTable *ctable, void *row, int indexCtl);
+    void (*delete_row) (struct CTable *ctable, ctable_BaseRow *row, int indexCtl);
 
     int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 #ifdef SANITY_CHECKS
-    void (*sanity_check_pointer)(struct ctableTable *ctable, void *ptr, int indexCtl, char *where);
+    void (*sanity_check_pointer)(struct CTable *ctable, void *ptr, int indexCtl, CONST char *where);
 #endif
-    LIST_HEAD(instances, ctableTable) instances;
-} ctable_CreatorTable;
+    CT_LIST_HEAD(instances, CTable) instances;
+};
 
-typedef struct ctableTable {
+struct CTable {
     ctable_CreatorTable                 *creator;
     ctable_HashTable                    *keyTablePtr;
 
@@ -475,8 +479,8 @@ typedef struct ctableTable {
     char				*nullKeyValue;
 #ifdef WITH_SHARED_TABLES
     int					 was_locked;
-    char				*emptyString;
-    char			       **defaultStrings;
+    const char				*emptyString;
+    const char			       **defaultStrings;
 
     int					 share_type;
     int					 share_panic;
@@ -485,16 +489,19 @@ typedef struct ctableTable {
     shm_t                               *share;
     size_t				 share_min_free;
 // reader-only
-    volatile struct ctableTable		*share_ctable;
-    volatile reader			*my_reader;
+    volatile struct CTable		*share_ctable;
+    volatile reader_t			*my_reader;
 #endif
+    int					 performanceCallbackEnable:1;
+    char				*performanceCallback;
+    double				 performanceCallbackThreshold;
+
     Tcl_Command                          commandInfo;
     long                                 count;
-    LIST_ENTRY(ctableTable)              instance;
-} CTable;
+    CT_LIST_ENTRY(CTable)                   instance;
+};
 
-CTABLE_INTERNAL int
-ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth);
+CTABLE_INTERNAL int ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum, int depth);
 
 // Helpers
 #define is_hidden_obj(obj) (Tcl_GetString(obj)[0] == '_')

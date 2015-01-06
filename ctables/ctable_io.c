@@ -8,18 +8,18 @@
 // string was modified and needs to be freed.
 //
 CTABLE_INTERNAL int
-ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, char *quotedChars)
+ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, CONST char *quotedChars)
 {
     int          i, j = 0;
     CONST char  *string = *stringPtr;
-    int          length = stringLengthPtr ? *stringLengthPtr : strlen(string);
-    char        *new = NULL;
+    int          length = (stringLengthPtr ? *stringLengthPtr : strlen(string));
+    char        *newptr = NULL;
     int		 quoteChar = '\0'; // no quote by default
     int		 maxExpansion = 4; // worst possible worst case
     int		 strict = 0;
 
-    static char *special = "\b\f\n\r\t\v\\";
-    static char *replace = "bfnrtv\\";
+    static CONST char *special = "\b\f\n\r\t\v\\";
+    static CONST char *replace = "bfnrtv\\";
 
     if(quoteType == CTABLE_QUOTE_STRICT_URI) {
 	quoteType = CTABLE_QUOTE_URI;
@@ -49,39 +49,39 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 	unsigned char c = string[i];
 	if(c == quoteChar || strchr(quotedChars, c)
 	|| c < 0x20 || (strict && (c & 0x80)) ) {
-	    if(!new) {
-	        new = ckalloc(maxExpansion * length + 1);
+	    if(!newptr) {
+	        newptr = (char *) ckalloc(maxExpansion * length + 1);
 	        for(j = 0; j < i; j++)
-		     new[j] = string[j];
+		     newptr[j] = string[j];
 	    }
 	    switch(quoteType) {
 		case CTABLE_QUOTE_URI:
-		    snprintf(&new[j], 4, "%%%02x", c);
+		    snprintf(&newptr[j], 4, "%%%02x", c);
 		    j += 3;
 		    break;
 		case CTABLE_QUOTE_ESCAPE: {
 		    char *off = strchr(special, c);
-		    new[j++] = '\\';
+		    newptr[j++] = '\\';
 		    if(off) {
-			new[j++] = replace[off - special];
+			newptr[j++] = replace[off - special];
 		    } else {
-			snprintf(&new[j], 4, "%03o", c);
+			snprintf(&newptr[j], 4, "%03o", c);
 			j += 3;
 		    }
 		    break;
 		}
 		case CTABLE_QUOTE_NONE: // can't happen
-		    new[j++] = c;  // but do something sane anyway
+		    newptr[j++] = c;  // but do something sane anyway
 		    break;
 	    }
-	} else if(new) {
-	    new[j++] = c;
+	} else if(newptr) {
+	    newptr[j++] = c;
 	}
     }
 
-    if(new) {
-	new[j] = '\0';
-	*stringPtr = new;
+    if(newptr) {
+	newptr[j] = '\0';
+	*stringPtr = newptr;
 	if(stringLengthPtr) *stringLengthPtr = j;
 	return 1;
     }
@@ -93,9 +93,9 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 // format error.
 //
 CTABLE_INTERNAL int
-ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
+ctable_copyDequoted(char *dst, CONST char *src, int length, int quoteType)
 {
-    int i = 0, j = 0, c;
+    int i = 0, j = 0;
     int strict = 0;
 
     if(length < 0) length = strlen(src);
@@ -120,15 +120,13 @@ ctable_copyDequoted(char *dst, char *src, int length, int quoteType)
 	    || !isxdigit((unsigned char)src[i+2])) {
 		if(strict) return -1;
 		else goto ignore;
+	    } else {
+	        char hextmp[3] = { src[i+1], src[i+2], '\0' };
+		dst[j++] = strtol(hextmp, NULL, 16);
+		i += 3;
 	    }
-
-	    c = src[i+3];
-	    src[i+3] = '\0';
-	    dst[j++] = strtol(&src[i+1], NULL, 16);
-	    src[i+3] = c;
-	    i += 3;
 	} else if(dequoteType == CTABLE_QUOTE_ESCAPE && src[i] == '\\') {
-	    c = src[++i];
+	    char c = src[++i];
 	    if(c >= '0' && c <= '7') {
 		int digit;
 		// Doing this longhand because I need to get to the end
@@ -160,8 +158,9 @@ ignore:	    dst[j++] = src[i++];
     }
 
     // Only add a null terminator to original if it's truncated.
-    if(j < i || dst != src)
+    if(j < i || dst != src) {
 	dst[j] = '\0';
+    }
 
     return j;
 }
@@ -201,8 +200,9 @@ CTABLE_INTERNAL Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp)
     if (!result) {
         int index;
 	result = Tcl_NewObj();
-        for(index = 0; ctable_quote_names[index]; index++)
+        for(index = 0; ctable_quote_names[index]; index++) {
 	    Tcl_ListObjAppendElement(interp, result, Tcl_NewStringObj(ctable_quote_names[index], -1));
+	}
 	Tcl_IncrRefCount(result);
     }
     return result;

@@ -11,7 +11,7 @@
 // ctable_ListInit - initialize a list -- zero out the row pointer from the list.
 //
 CTABLE_INTERNAL INLINE void
-ctable_ListInit (ctable_BaseRow **listPtr, char *file, int line)
+ctable_ListInit (ctable_BaseRow **listPtr, CONST char *file, int line)
 {
 #ifdef LISTDEBUG
     fprintf(stderr, "ctable_ListInit(0x%lx) at %s:%d\n", (long)listPtr, file, line);
@@ -137,7 +137,7 @@ ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 CTABLE_INTERNAL INLINE void
 ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
 {
-    volatile struct ctable_baseRowStruct **row1prev;
+    volatile ctable_BaseRow **row1prev;
 
 #ifdef LISTDEBUG
     fprintf(stderr, "ctable_ListInsertBefore(0x%lx, 0x%lx, %d)\n", (long)row1, (long)row2, i);
@@ -152,7 +152,7 @@ ctable_ListInsertBefore (ctable_BaseRow *row1, ctable_BaseRow *row2, int i)
     row2->_ll_nodes[i].next = row1;
 
     // get row1's prev before we overwrite it, because we need to link it last.
-    row1prev = (volatile struct ctable_baseRowStruct **)row1->_ll_nodes[i].prev;
+    row1prev = (volatile ctable_BaseRow **)row1->_ll_nodes[i].prev;
 
     // make row1's prev point to row2's next
     row1->_ll_nodes[i].prev = &row2->_ll_nodes[i].next;

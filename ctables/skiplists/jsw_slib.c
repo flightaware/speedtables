@@ -6,7 +6,7 @@
     > Created (Julienne Walker): April 11, 2004
     > Updated (Julienne Walker): August 19, 2005
 
-    based on code released to the public domain by Julienne Walker
+    based on code released to the publicdata domain by Julienne Walker
 */
 #include "jsw_rand.h"
 #include "jsw_slib.h"
@@ -42,7 +42,7 @@ typedef struct jsw_pub {
 // statically defined and private elements
 struct jsw_skip {
   int          id; /* 0 for owner, pid for shared reader */
-  jsw_pub_t   *public; /* shared data */
+  jsw_pub_t   *publicdata; /* shared data */
   jsw_node_t  *curl; /* Current link for traversal */
   size_t       maxh; /* Tallest possible column */
   cmp_f        cmp;  /* User defined row compare function */
@@ -109,9 +109,9 @@ static jsw_node_t *new_node ( ctable_BaseRow *row, size_t height, void *share )
 
 #ifdef WITH_SHARED_TABLES
   if(share) {
-    node  = (jsw_node_t *)shmalloc (share, sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
+    node  = (jsw_node_t *)shmalloc ((shm_t*)share, sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
     if(!node) {
-      if(DUMPER) shmdump(share);
+      //if(DUMPER) shmdump(share);
       panic("Can't allocate shared memory for skiplist");
     }
   } else
@@ -139,7 +139,7 @@ static void free_node ( jsw_node_t *node, void *share )
     shmfree((shm_t *)share, (char *)node);
   else
 #endif
-    ckfree ( (void *)node );
+    ckfree ( (char *)node );
 }
 
 //
@@ -148,12 +148,12 @@ static void free_node ( jsw_node_t *node, void *share )
 INLINE
 static jsw_node_t *locate ( jsw_skip_t *skip, ctable_BaseRow *row )
 {
-  jsw_node_t *p = skip->public->head;
+  jsw_node_t *p = skip->publicdata->head;
   cmp_f       cmp = skip->cmp;
   size_t i;
   jsw_node_t *next;
 
-  for ( i = skip->public->curh; i < (size_t)-1; i-- ) {
+  for ( i = skip->publicdata->curh; i < (size_t)-1; i-- ) {
     while ( (next = p->next[i]) != NULL ) {
       if ( cmp ( row, next->row ) <= 0 ) {
         break;
@@ -187,7 +187,7 @@ jsw_skip_t *jsw_private ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share, 
     new_skip->curl = skip->curl;
     new_skip->id = id;
     new_skip->fix = NULL;
-    new_skip->public = skip->public;
+    new_skip->publicdata = skip->publicdata;
 
     skip = new_skip;
   }
@@ -199,7 +199,11 @@ jsw_skip_t *jsw_private ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share, 
 
   // Fill in static private data
   skip->maxh = max;
+#ifdef WITH_SHARED_TABLES
+  skip->share = (shm_t*) share;
+#else
   skip->share = share;
+#endif
   skip->cmp = cmp;
   return skip;
 }
@@ -210,8 +214,8 @@ jsw_skip_t *jsw_private ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share, 
 void jsw_free_private_copy(jsw_skip_t *skip)
 {
     if(skip->fix)
-	ckfree((void *)skip->fix);
-    ckfree((void *)skip);
+	ckfree((char *)skip->fix);
+    ckfree((char *)skip);
 }
 
 //
@@ -231,19 +235,19 @@ void jsw_sinit ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share)
 {
 #ifdef WITH_SHARED_TABLES
   if(share) {
-    skip->public = (jsw_pub_t *)shmalloc ( (shm_t *)share, sizeof *skip->public );
+    skip->publicdata = (jsw_pub_t *)shmalloc ( (shm_t *)share, sizeof *skip->publicdata );
     if(!skip) {
-      if(DUMPER) shmdump(share);
+      //if(DUMPER) shmdump(share);
       panic("Can't allocate shared memory for skiplist");
     }
   } else
 #endif
-    skip->public = (jsw_pub_t *)ckalloc ( sizeof *skip->public );
+    skip->publicdata = (jsw_pub_t *)ckalloc ( sizeof *skip->publicdata );
 
-  skip->public->head = new_node ( NULL, ++max, share );
+  skip->publicdata->head = new_node ( NULL, ++max, share );
 
-  skip->public->curh = 0;
-  skip->public->size = 0;
+  skip->publicdata->curh = 0;
+  skip->publicdata->size = 0;
 
   // We're creating this skiplist, our "id" is zero
   // (now fills in skip->maxh, skip->curl)
@@ -263,7 +267,7 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, void *share)
   if(share) {
     skip = (jsw_skip_t *)shmalloc ( (shm_t *)share, sizeof *skip );
     if(!skip) {
-      if(DUMPER) shmdump(share);
+      //if(DUMPER) shmdump(share);
       panic("Can't allocate shared memory for skiplist");
     }
   } else
@@ -282,7 +286,7 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, void *share)
 //
 void jsw_sdelete_skiplist ( jsw_skip_t *skip, int final )
 {
-  jsw_node_t *it = skip->public->head->next[0];
+  jsw_node_t *it = skip->publicdata->head->next[0];
   jsw_node_t *save;
 
   while ( it != NULL ) {
@@ -294,9 +298,9 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip, int final )
     it = save;
   }
 
-  free_node ( skip->public->head, skip->share );
+  free_node ( skip->publicdata->head, skip->share );
 
-  ckfree ( (void *)skip->fix );
+  ckfree ( (char *)skip->fix );
 
 #ifdef WITH_SHARED_TABLES
   if(skip->share) {
@@ -304,7 +308,7 @@ void jsw_sdelete_skiplist ( jsw_skip_t *skip, int final )
       shmfree(skip->share, (char *)skip);
   } else
 #endif
-    ckfree ( (void *)skip );
+    ckfree ( (char *)skip );
 }
 
 //
@@ -355,11 +359,11 @@ void *jsw_sfind_equal_or_greater ( jsw_skip_t *skip, ctable_BaseRow *row )
 INLINE 
 void *jsw_findlast ( jsw_skip_t *skip)
 {
-  jsw_node_t *p = skip->public->head;
+  jsw_node_t *p = skip->publicdata->head;
   size_t i;
   jsw_node_t *next;
 
-  for ( i = skip->public->curh; i < (size_t)-1; i-- ) {
+  for ( i = skip->publicdata->curh; i < (size_t)-1; i-- ) {
     while ( (next = p->next[i]) != NULL ) {
       p = next;
     }
@@ -392,10 +396,10 @@ int jsw_sinsert ( jsw_skip_t *skip, ctable_BaseRow *row )
     it = new_node ( row, h, skip->share );
 
     /* Raise height if necessary */
-    if ( h > skip->public->curh ) {
-// printf("raising the height from %d to %d, size %d\n", (int)skip->public->curh, (int)h, (int)skip->public->size);
-      h = ++skip->public->curh;
-      skip->fix[h] = skip->public->head;
+    if ( h > skip->publicdata->curh ) {
+// printf("raising the height from %d to %d, size %d\n", (int)skip->publicdata->curh, (int)h, (int)skip->publicdata->size);
+      h = ++skip->publicdata->curh;
+      skip->fix[h] = skip->publicdata->head;
     }
 
     /* Build skip links */
@@ -405,7 +409,7 @@ int jsw_sinsert ( jsw_skip_t *skip, ctable_BaseRow *row )
     }
   }
 
-  skip->public->size++;
+  skip->publicdata->size++;
   return 1;
 }
 
@@ -446,10 +450,10 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, ctable_BaseRow *row , int nodeIdx, in
     ctable_ListInsertHead (&it->row, row, nodeIdx);
 
     /* Raise height if necessary */
-    if ( h > skip->public->curh ) {
-// printf("raising the height from %d to %d, size %d\n", (int)skip->public->curh, (int)h, (int)skip->public->size);
-      h = ++skip->public->curh;
-      skip->fix[h] = skip->public->head;
+    if ( h > skip->publicdata->curh ) {
+// printf("raising the height from %d to %d, size %d\n", (int)skip->publicdata->curh, (int)h, (int)skip->publicdata->size);
+      h = ++skip->publicdata->curh;
+      skip->fix[h] = skip->publicdata->head;
     }
 
     /* Build skip links */
@@ -459,7 +463,7 @@ int jsw_sinsert_linked ( jsw_skip_t *skip, ctable_BaseRow *row , int nodeIdx, in
     }
   }
 
-  skip->public->size++;
+  skip->publicdata->size++;
   return 1;
 }
 
@@ -481,7 +485,7 @@ int jsw_serase ( jsw_skip_t *skip, ctable_BaseRow *row )
 
     // fix skip list pointers that point directly to me by traversing
     // the fix list of stuff from the locate
-    for ( i = 0; i < skip->public->curh; i++ ) {
+    for ( i = 0; i < skip->publicdata->curh; i++ ) {
       if ( skip->fix[i]->next[i] != p )
         break;
 
@@ -490,14 +494,14 @@ int jsw_serase ( jsw_skip_t *skip, ctable_BaseRow *row )
 
     // free the node
     free_node ( p, skip->share );
-    skip->public->size--;
+    skip->publicdata->size--;
 
     /* Lower height if necessary */
-    while ( skip->public->curh > 0 ) {
-      if ( skip->public->head->next[skip->public->curh - 1] != NULL )
+    while ( skip->publicdata->curh > 0 ) {
+      if ( skip->publicdata->head->next[skip->publicdata->curh - 1] != NULL )
         break;
 
-      --skip->public->curh;
+      --skip->publicdata->curh;
     }
   }
 
@@ -544,7 +548,7 @@ jsw_dump (const char *s, jsw_skip_t *skip, int indexNumber) {
 
 void
 jsw_dump_head (jsw_skip_t *skip) {
-    jsw_node_t *p = skip->public->head;
+    jsw_node_t *p = skip->publicdata->head;
 
     jsw_dump_node ("HEAD", skip, p, -1);
 }
@@ -554,7 +558,7 @@ jsw_dump_head (jsw_skip_t *skip) {
 //
 size_t jsw_ssize ( jsw_skip_t *skip )
 {
-  return skip->public->size;
+  return skip->publicdata->size;
 }
 
 //
@@ -563,7 +567,7 @@ size_t jsw_ssize ( jsw_skip_t *skip )
 //
 void jsw_sreset ( jsw_skip_t *skip )
 {
-  skip->curl = skip->public->head->next[0];
+  skip->curl = skip->publicdata->head->next[0];
 }
 
 //
@@ -572,7 +576,7 @@ void jsw_sreset ( jsw_skip_t *skip )
 //
 void jsw_sreset_head ( jsw_skip_t *skip )
 {
-  skip->curl = skip->public->head;
+  skip->curl = skip->publicdata->head;
 }
 
 //

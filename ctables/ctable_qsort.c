@@ -42,7 +42,7 @@ typedef int		 cmp_t(void *, const void *, const void *);
 typedef int		 cmp_t(const void *, const void *);
 #endif
 static inline char	*med3(char *, char *, char *, cmp_t *, void *);
-static inline void	 swapfunc(char *, char *, int, int);
+static inline void	 swapfunc(void *, void *, int, int);
 
 #define min(a, b)	(a) < (b) ? a : b
 
@@ -64,9 +64,7 @@ static inline void	 swapfunc(char *, char *, int, int);
 	es % sizeof(long) ? 2 : es == sizeof(long)? 0 : 1;
 
 static inline void
-swapfunc(a, b, n, swaptype)
-	char *a, *b;
-	int n, swaptype;
+swapfunc(void *a, void *b, int n, int swaptype)
 {
 	if(swaptype <= 1)
 		swapcode(long, a, b, n)
@@ -128,7 +126,7 @@ loop:	SWAPINIT(a, es);
 	}
 	pm = (char *)a + (n / 2) * es;
 	if (n > 7) {
-		pl = a;
+		pl = (char *)a;
 		pn = (char *)a + (n - 1) * es;
 		if (n > 40) {
 			d = (n / 8) * es;
@@ -178,7 +176,7 @@ loop:	SWAPINIT(a, es);
 	pn = (char *)a + n * es;
 	r = min(pa - (char *)a, pb - pa);
 	vecswap(a, pb - r, r);
-	r = min(pd - pc, pn - pd - es);
+	r = min((size_t)(pd - pc), (size_t)((pn - pd) - es));
 	vecswap(pb, pn - r, r);
 	if ((r = pb - pa) > es)
 #ifdef I_AM_QSORT_R

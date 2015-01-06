@@ -178,7 +178,7 @@ ctable_InitOrStoreHashEntry(
 
     /* Allocate a new key if needed */
     if(newEntry && (flags & KEY_MASK) == KEY_VOLATILE) {
-        hPtr->key = ckalloc (strlen (key) + 1);
+        hPtr->key = (char *) ckalloc (strlen (key) + 1);
         strcpy (hPtr->key, key);
     } else {
 	hPtr->key = (char *)key;
@@ -373,7 +373,7 @@ ctable_DeleteHashTable(
      */
 
     if (tablePtr->buckets != tablePtr->staticBuckets) {
-	ckfree((char *) tablePtr->buckets);
+	ckfree((char*)tablePtr->buckets);
     }
 }
 
@@ -690,7 +690,7 @@ RebuildTable(
      */
 
     if (oldBuckets != tablePtr->staticBuckets) {
-	ckfree((char *) oldBuckets);
+	ckfree((char*)oldBuckets);
     }
 
     // printf("done\n");

@@ -59,7 +59,7 @@ mybarn search -array barnrow -limit 10 -sort alpha -code {
 }
 
 puts info=[mypasture share info]
-puts pools=[mypasture share pools]
+#puts pools=[mypasture share pools]
 puts free=[mypasture share free]
 
 #

@@ -47,14 +47,11 @@ all:
 clean:
 	rm -rf stobj
 	rm -f *.dat
+	rm -f *.core vgcore*
 
 compare:
 	rm -rf stobj
 	$(TCLSH) index-compare.tcl
-
-searchget:
-	rm -rf stobj
-	$(TCLSH) searchget.tcl
 
 null:
 	rm -rf stobj
@@ -138,8 +135,10 @@ tclobj:
 
 barnrow:
 	rm -rf stobj
+	rm -f *.dat
 	$(TCLSH) barnrow.tcl
 
 gbarnrow:
 	rm -rf stobj
+	rm -f *.dat
 	gdb $(TCLSH)

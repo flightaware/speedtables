@@ -40,11 +40,11 @@
     t->nFilters = $NFILTERS;
 
     // pointers to functions
-    t->make_empty_row = (void *)${table}_make_empty_row;
-    t->find_row = (void *)${table}_find;
+    t->make_empty_row = ${table}_make_empty_row;
+    t->find_row = ${table}_find;
 
-    t->set = (void *)${table}_set;
-    t->set_null = (void *)${table}_set_null;
+    t->set = ${table}_set;
+    t->set_null = ${table}_set_null;
 
     t->get = ${table}_get;
     t->get_string = ${table}_get_string;
@@ -62,11 +62,11 @@
     t->search_compare = ${table}_search_compare;
     t->sort_compare = ${table}_sort_compare;
 
-    t->delete = ${table}_delete;
+    t->delete_row = ${table}_delete;
 
     t->command = ${table}ObjCmd;
 
-    LIST_INIT(&t->instances);
+    CT_LIST_INIT(&t->instances);
 
 #ifdef SANITY_CHECKS
     t->sanity_check_pointer = ${table}_sanity_check_pointer;
