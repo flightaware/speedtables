@@ -177,4 +177,4 @@ proc table {cttpUrl} {
 
 }
 
-package provide sttp_buffer 1.8.4
+package provide sttp_buffer 1.9.0

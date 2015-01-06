@@ -181,4 +181,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_locks 1.8.4
+package provide st_locks 1.9.0
