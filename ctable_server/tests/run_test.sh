@@ -2,14 +2,20 @@
 
 # $Id$
 
-TCLVERSION=8.5
 
-for tclsh in /usr/bin/tclsh${TCLVERSION} /usr/local/bin/tclsh${TCLVERSION}
-do
-  if [ -f $tclsh ]
-  then TCLSH=$tclsh; break
-  fi
-done
+if [ -z "$TCLSH" ]
+then
+  TCLVERSION=8.5
+
+  for tclsh in /usr/bin/tclsh${TCLVERSION} /usr/local/bin/tclsh${TCLVERSION}
+  do
+    if [ -f $tclsh ]
+    then
+      TCLSH=$tclsh
+      break
+    fi
+  done
+fi
 
 if [ -z "$TCLSH" ]
 then

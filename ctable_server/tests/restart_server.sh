@@ -2,12 +2,26 @@
 
 # $Id$
 
-for tclsh in /usr/local/bin/tclsh8.4 /usr/bin/tclsh8.4
-do
-  if [ -f $tclsh ]
-  then TCLSH=$tclsh; break
-  fi
-done
+if [ -z "$TCLSH" ]
+then
+  TCLVERSION=8.5
+
+  for tclsh in /usr/bin/tclsh${TCLVERSION} /usr/local/bin/tclsh${TCLVERSION}
+  do
+    if [ -f $tclsh ]
+    then
+      TCLSH=$tclsh
+      break
+    fi
+  done
+fi
+
+if [ -z "$TCLSH" ]
+then
+  echo "Can't find Tcl"
+  exit 1
+fi
+
 
 URL=sttp://localhost:1984/test
 LOGFILE=${1:-server.log}
