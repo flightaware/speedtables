@@ -216,8 +216,13 @@ proc handle_eof {sock {eof EOF}} {
 	set j [expr {$i + 2}]
 	set clientList [lreplace $clientList $i $j]
     }
+
     serverlog "$eof on $sock, closing"
-    close $sock
+
+    if {[catch {close $sock} catchResult] == 1} {
+	serverlog "error closing $sock ($catchResult)"
+    }
+
     if {$shuttingDown} {
 	if {[llength $clientList] == 0} {
 	    serverdie "All client sockets closed, shutting down"
@@ -263,12 +268,18 @@ proc remote_receive {sock myPort} {
 	set bytesRead [string length $lineRead]
 	incr bytesNeeded($sock) -$bytesRead
 	append incompleteLine($sock) $lineRead
+
 	if {$bytesNeeded($sock) > 0} {
 	    return
 	}
 	set line $incompleteLine($sock)
     } else {
-        if {[gets $sock line] < 0} {
+        if {[catch {gets $sock line} catchResult] == 1} {
+	    handle_socket_error $sock $catchResult
+	    return
+	}
+
+        if {$catchResult < 0} {
 	    if {[eof $sock]} {
 		handle_eof $sock
 	    }
@@ -276,10 +287,12 @@ proc remote_receive {sock myPort} {
 	    # gotten a complete line yet... keep waiting
 	    return
         }
+
 	if {"$line" == ""} {
 	    serverlog "blank line from $sock"
 	    return
 	}
+
 	# "#NNNN" means a multi-line request NNNN bytes long
 	if {"[string index $line 0]" == "#"} {
 	    set bytesNeeded($sock) [string trim [string range $line 1 end]]
@@ -350,14 +363,20 @@ proc remote_receive {sock myPort} {
 proc remote_send {sock line {multi 1}} {
     if {$multi} {
 	if {[string length $line] > 8192 || [string match "*\n*" $line]} {
-	    puts $sock "# [expr {[string length $line] + 1}]"
+	    if {[catch {puts $sock "# [expr {[string length $line] + 1}]"} catchResult] == 1} {
+		handle_socket_error $sock $catchResult
+		return
+	    }
 	}
     }
 
-    puts $sock $line
+    if {[catch {puts $sock $line} catchResult] == 1} {
+	handle_socket_error $sock $catchResult
+	return
+    }
 
     if {[catch {flush $sock} catchResult] == 1} {
-	handle_socket_error $sock  $catchResult
+	handle_socket_error $sock $catchResult
     }
 }
 
