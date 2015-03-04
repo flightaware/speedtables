@@ -54,7 +54,7 @@ do
   else 
     echo "# server failed"
     cat server.log
-    exit -1
+    exit 255
   fi
 
   echo "`date` ${TCLSH} test_$test.tcl" >> server.log
