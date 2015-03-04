@@ -2401,6 +2401,7 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
     struct timespec elapsedTimeSpec;
     Tcl_Obj *cmdObjv[4];
     double cpu;
+    int i;
 
     // calculate elapsed cpu
 
@@ -2417,9 +2418,18 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
     cmdObjv[2] = Tcl_NewIntObj (loggingMatchCount);
     cmdObjv[3] = Tcl_NewDoubleObj (cpu);
 
+    for (i = 0; i < 4; i++) {
+	Tcl_IncrRefCount (cmdObjv[i]);
+    }
+
     if (Tcl_EvalObjv (interp, 4, cmdObjv, 0) == TCL_ERROR) {
 	Tcl_BackgroundError (interp);
     }
+
+    for (i = 0; i < 4; i++) {
+	Tcl_DecrRefCount (cmdObjv[i]);
+    }
+
 }
 
 //
