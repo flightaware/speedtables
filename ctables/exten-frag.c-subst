@@ -115,3 +115,4 @@
      */
     Tcl_CreateObjCommand(interp, "${table}", (Tcl_ObjCmdProc *) ${table}MetaObjCmd, (ClientData)t, (Tcl_CmdDeleteProc *)NULL);
 
+// vim: set ts=8 sw=4 sts=4 noet :

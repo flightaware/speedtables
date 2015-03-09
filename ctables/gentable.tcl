@@ -6198,3 +6198,5 @@ proc CTableBuildPath {{dir ""}} {
 
 package provide ctable $::ctable::ctablePackageVersion
 package provide speedtable $::ctable::ctablePackageVersion
+
+# vim: set ts=8 sw=4 sts=4 noet :

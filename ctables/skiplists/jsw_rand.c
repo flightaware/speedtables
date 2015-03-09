@@ -74,3 +74,5 @@ unsigned jsw_time_seed()
 
   return seed;
 }
+
+// vim: set ts=8 sw=4 sts=4 noet :

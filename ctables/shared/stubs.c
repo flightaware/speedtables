@@ -27,3 +27,5 @@ void panic(const char *s) {
     fprintf(stderr, "PANIC: %s\n", s);
     abort();
 }
+
+// vim: set ts=8 sw=4 sts=4 noet :

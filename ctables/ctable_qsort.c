@@ -192,3 +192,5 @@ loop:	SWAPINIT(a, es);
 	}
 /*		qsort(pn - r, r / es, es, cmp);*/
 }
+
+// vim: set ts=8 sw=4 sts=4 noet :

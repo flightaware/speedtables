@@ -191,3 +191,5 @@ ctable_ListInsertAfter (ctable_BaseRow *row1, ctable_BaseRow *row2, int i) {
     row1->_ll_nodes[i].next = row2;
 }
 #endif
+
+// vim: set ts=8 sw=4 sts=4 noet :

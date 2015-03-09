@@ -446,3 +446,4 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
     return TCL_ERROR;
 }
 
+// vim: set ts=8 sw=4 sts=4 noet :

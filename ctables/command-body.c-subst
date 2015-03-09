@@ -1729,4 +1729,4 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #endif
     return commandStatus;
 }
-
+// vim: set ts=8 sw=4 sts=4 noet :

@@ -517,3 +517,5 @@ CTABLE_INTERNAL int ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int 
 #endif
 
 #endif
+
+// vim: set ts=8 sw=4 sts=4 noet :

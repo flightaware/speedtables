@@ -208,3 +208,4 @@ CTABLE_INTERNAL Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp)
     return result;
 }
 
+// vim: set ts=8 sw=4 sts=4 noet :

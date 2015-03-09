@@ -148,3 +148,4 @@ ${extension}_Init(Tcl_Interp *interp)
      */
     Tcl_CreateObjCommand (interp, "${extension}", (Tcl_ObjCmdProc *)cExtensionObjCmd, (ClientData)NULL, (Tcl_CmdDeleteProc *)NULL);
 
+// vim: set ts=8 sw=4 sts=4 noet :

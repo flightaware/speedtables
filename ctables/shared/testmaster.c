@@ -66,3 +66,4 @@ int main(int ac, char **av)
     return 0;
 }
 
+// vim: set ts=8 sw=4 sts=4 noet :

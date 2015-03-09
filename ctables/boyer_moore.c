@@ -158,3 +158,4 @@ CTABLE_INTERNAL const unsigned char* memmem_boyermoore
     return NULL;
 }
 #endif
+// vim: set ts=8 sw=4 sts=4 noet :

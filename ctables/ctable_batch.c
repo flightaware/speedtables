@@ -98,3 +98,4 @@ ctable_RunBatch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *tableCmdObj, Tcl_O
     return TCL_OK;
 }
 
+// vim: set ts=8 sw=4 sts=4 noet :
