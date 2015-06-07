@@ -32,6 +32,11 @@
 #include <libpq-fe.h>
 #endif
 
+#ifdef WITH_CASSTCL
+#include <cassandra.h>
+#include <casstcl.h>
+#endif
+
 #include "speedtables.h"
 
 #ifdef WITH_SHARED_TABLES

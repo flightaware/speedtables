@@ -173,15 +173,15 @@ set sysconfig(casstclprefix) $dir"
     done
   fi
 
-  casstcl_prefixes=$dir
+  cass_prefixes=$dir
   break
 done
 
 if test -z "$casstclver"; then
-  AC_MSG_ERROR([cassandra and/or casstcl not found under $pg_prefixes])
+  AC_MSG_ERROR([cassandra and/or casstcl not found under $cass_prefixes])
 fi
 
-AC_MSG_RESULT([found under $pg_prefixes])
+AC_MSG_RESULT([found under $cass_prefixes])
 
 ])
 
