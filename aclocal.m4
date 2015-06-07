@@ -18,3 +18,10 @@ AC_ARG_WITH([pgsql],
 with_pgsql=$withval
 ])
 
+# Handle the --with-casstcl configure option.
+AC_ARG_WITH([casstcl],
+	[  --with-casstcl[=PATH]       Build with cassandra/casstcl library support],
+[
+with_casstcl=$withval
+])
+

@@ -80,6 +80,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    int			 share_flags = 0;
 	    CTable		*share_ctable = NULL;
 	    volatile reader_t	*share_reader = NULL;
+	    int			 pid = getpid();
 #endif
 
 	    if (objc < 3) {
@@ -147,6 +148,11 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 			    Tcl_AppendResult(interp, ", getting 'panic' flag", NULL);
 			    goto createError;
 			}
+		    } else if(strcmp(key, "pid") == 0) {
+			if (Tcl_GetIntFromObj (interp, listObjv[i+1], &pid) == TCL_ERROR) {
+			    Tcl_AppendResult(interp, ", getting 'pid' value", NULL);
+			    goto createError;
+			}
 		    }
 		}
 
@@ -197,7 +203,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		        goto createError;
 		    }
 
-		    share_reader = pid2reader(share->map, getpid());
+		    share_reader = pid2reader(share->map, pid);
 		    if(!share_reader) {
 			Tcl_AppendResult(interp, "Not registered with ", share_file, NULL);
 			goto createError;

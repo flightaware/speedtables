@@ -98,8 +98,8 @@ set sysconfig(pqprefix) $prefix"
       #pgtclver=`basename $dir | sed s/^pgtcl//`
       pgtclver=`grep "package ifneeded Pgtcl" $dir/pkgIndex.tcl| cut -d' ' -f4`
       sysconfig_tcl_content="$sysconfig_tcl_content
-      set sysconfig(pgtclver) $pgtclver
-      set sysconfig(pgtclprefix) $dir"
+set sysconfig(pgtclver) $pgtclver
+set sysconfig(pgtclprefix) $dir"
       break
     fi
   done
@@ -111,8 +111,8 @@ set sysconfig(pqprefix) $prefix"
       if test -f $dir/pgtcl.tcl; then
         pgtclver=`basename $dir | sed s/^pgtcl//`
         sysconfig_tcl_content="$sysconfig_tcl_content
-        set sysconfig(pgtclver) $pgtclver
-        set sysconfig(pgtclprefix) $prefix"
+set sysconfig(pgtclver) $pgtclver
+set sysconfig(pgtclprefix) $prefix"
 	break
       fi
     done
@@ -130,7 +130,60 @@ AC_MSG_RESULT([found under $pg_prefixes])
 
 ])
 
+# Handle the --with-casstcl configure option.
+AC_ARG_WITH([casstcl],
+	[  --with-casstcl[=PATH]       Build with cassandra/casstcl library support],
+[
+AC_MSG_CHECKING([location of cassandra and casstcl])
+if test "x$withval" = "x" -o "$withval" = "yes"; then
+  cass_prefixes="/usr/local /usr/local/cassandra /usr"
+else
+  cass_prefixes=$withval
+fi
 
+# Look for cassandra and casstcl
+for prefix in $cass_prefixes
+do
+  # look for cassandra include file
+  if test -f $prefix/include/cassandra.h; then
+sysconfig_tcl_content="$sysconfig_tcl_content
+set sysconfig(cassprefix) $prefix"
+  else
+    continue
+  fi
+
+  # there may be multiple installed versions of casstcl so sort with the highest version first.
+  cass_libdirs=`find $prefix/lib -maxdepth 1 -name "casstcl*" -type d | sort -rn`
+
+  if test -z "$cass_libdirs"; then
+     continue
+  fi
+
+  # look for casstcl
+  if test -z "$casstclver"; then
+    for dir in $cass_libdirs
+    do
+      if test -f $dir/casstcl.tcl; then
+        casstclver=`basename $dir | sed s/^casstcl//`
+        sysconfig_tcl_content="$sysconfig_tcl_content
+set sysconfig(casstclver) $casstclver
+set sysconfig(casstclprefix) $dir"
+	break
+      fi
+    done
+  fi
+
+  casstcl_prefixes=$dir
+  break
+done
+
+if test -z "$casstclver"; then
+  AC_MSG_ERROR([cassandra and/or casstcl not found under $pg_prefixes])
+fi
+
+AC_MSG_RESULT([found under $pg_prefixes])
+
+])
 
 
 AC_CONFIG_COMMANDS([sysconfig.tcl], [], [cat << _STEOF > sysconfig.tcl
