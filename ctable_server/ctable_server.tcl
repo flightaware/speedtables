@@ -210,6 +210,9 @@ proc accept_connection {sock ip port} {
 proc handle_eof {sock {eof EOF}} {
     variable clientList
     variable shuttingDown
+    variable nEmptyCallbacks
+
+    unset -nocomplain nEmptyCallbacks($sock)
 
     set i [lsearch $clientList $sock]
     if {$i >= 0} {
@@ -255,6 +258,7 @@ proc remote_receive {sock myPort} {
     variable ctableUrlCache
     variable incompleteLine
     variable bytesNeeded
+    variable nEmptyCallbacks
 
 ### puts stderr "remote_receive '$sock' '$myPort'"; flush stderr
 
@@ -282,9 +286,15 @@ proc remote_receive {sock myPort} {
         if {$catchResult < 0} {
 	    if {[eof $sock]} {
 		handle_eof $sock
+		return
 	    }
+
 	    # if gets returns < 0 and not EOF, we're nonblocking and haven't
 	    # gotten a complete line yet... keep waiting
+	    incr nEmptyCallbacks($sock)
+	    if {$nEmptyCallbacks($sock) > 1000} {
+		handle_eof $sock "too many empty receive callbacks"
+	    }
 	    return
         }
 
@@ -667,3 +677,6 @@ proc serverdie {{message ""}} {
 package provide ctable_server 1.9.0
 
 #get, set, array_get, array_get_with_nulls, exists, delete, count, foreach, sort, type, import, import_postgres_result, export, fields, fieldtype, needs_quoting, names, reset, destroy, statistics, write_tabsep, or read_tabsep
+
+# vim: set ts=8 sw=4 sts=4 noet :
+
