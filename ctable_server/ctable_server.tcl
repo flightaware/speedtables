@@ -290,7 +290,8 @@ proc remote_receive {sock myPort} {
 	    }
 
 	    # if gets returns < 0 and not EOF, we're nonblocking and haven't
-	    # gotten a complete line yet... keep waiting
+	    # gotten a complete line yet... keep waiting, but if we get
+	    # called back a ton of times with no data, give up
 	    incr nEmptyCallbacks($sock)
 	    if {$nEmptyCallbacks($sock) > 1000} {
 		handle_eof $sock "too many empty receive callbacks"
@@ -298,7 +299,10 @@ proc remote_receive {sock myPort} {
 	    return
         }
 
-	if {"$line" == ""} {
+	# reset nEmptyCallbacks for this socket if set
+	unset -nocomplain nEmptyCallbacks($sock)
+
+	if {$line == ""} {
 	    serverlog "blank line from $sock"
 	    return
 	}
