@@ -1216,7 +1216,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      Tcl_ResetResult(interp);
 		      fieldIndex = -1;
 		  } else {
-		      Tcl_AppendResult (interp, " while matching cassandra fcolumn \"", fieldName, "\" with fields from table \"${table}\"", (char *)NULL);
+		      Tcl_AppendResult (interp, " while matching cassandra column \"", fieldName, "\" with fields from table \"${table}\"", (char *)NULL);
 		      return TCL_ERROR;
 		  }
 	      }
