@@ -5838,20 +5838,15 @@ proc compile {fileFragName version} {
     }
 
     if {$withCasstcl} {
-	set pgString -I$sysconfig(casstclprefix)/include
-	if [info exists sysconfig(ctprefix)] {
-	    if {"$sysconfig(ctprefix)" != "$sysconfig(casstclprefix)"} {
-	        append pgString " -I$sysconfig(ctprefix)/include"
-	    }
-	}
+	set cassString -I$sysconfig(cassprefix)/include
     } else {
-	set pgString ""
+	set cassString ""
     }
 
     # Keep sysconfig(ccflags) from overriding optimization level
     regsub -all { -O[0-9] } " $sysconfig(ccflags) " { } sysconfig(ccflags)
 
-    myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $stubString $memDebugString -c $sourceFile -o $objFile"
+    myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $cassString $stubString $memDebugString -c $sourceFile -o $objFile"
 
     set ld_cmd "$sysconfig(cxxld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
 
