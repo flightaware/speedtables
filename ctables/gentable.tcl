@@ -5711,7 +5711,6 @@ proc myexec {command} {
     variable showCompilerCommands
 
     if {$showCompilerCommands} {
-puts [info level 0]
 	puts $command; flush stdout
     }
 
