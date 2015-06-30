@@ -1167,7 +1167,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  casstcl_futureClientData *fcd = casstcl_future_command_to_futureClientData (interp, Tcl_GetString (futureObj));
 
-	  if (fcd->cass_future_magic != CASS_FUTURE_MAGIC) {
+	  if (fcd == NULL) {
 	    Tcl_SetObjResult (interp, futureObj);
 	    Tcl_AppendResult (interp, " is not a valid casstcl future object", NULL);
 	    return TCL_ERROR;
