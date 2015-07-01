@@ -636,9 +636,17 @@ namespace eval ::stapi {
       set args [lindex $args 0]
     }
 
+    set nocomplain 0
+    if {[lindex $args 0] == "-nocomplain"} {
+    	set nocomplain 1
+    	set args [lrange $args 1 end]
+    }
+
     foreach {col value} $args {
       if {[info exists ${ns}::sql($col)]} {
 	set col [set ${ns}::sql($col)]
+      } elseif {$nocomplain} {
+      	  continue
       }
 
       lappend assigns "$col = [pg_quote $value]"
