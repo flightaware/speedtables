@@ -657,6 +657,10 @@ namespace eval ::stapi {
     if {$rows > 0} {
       return 1
     }
+
+    set cols "[set ${ns}::key] $cols"
+    set vals "[pg_quote $key] $vals"
+
     set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
     return [exec_sql $sql]
   }
