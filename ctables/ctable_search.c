@@ -1272,7 +1272,7 @@ CTABLE_INTERNAL void ctable_PrepareTransactions(CTable *ctable, CTableSearch *se
     // if we're buffering,
     // allocate a space for the search results that we'll then sort from
     if (search->bufferResults != CTABLE_BUFFER_NONE) {
-	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *) * ctable->count);
+	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *) * (ctable->count + 1));
     }
 }
 
