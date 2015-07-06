@@ -628,49 +628,60 @@ namespace eval ::stapi {
   # sql_ctable_set - implement a ctable set method for SQL tables
   #
   proc sql_ctable_set {level ns cmd key args} {
-    if {![llength $args]} {
-      return
-    }
-
-    if {[llength $args] == 1} {
-      set args [lindex $args 0]
-    }
-
-    set nocomplain 0
-    if {[lindex $args 0] == "-nocomplain"} {
-    	set nocomplain 1
-    	set args [lrange $args 1 end]
-    }
-
-    foreach {col value} $args {
-      if {[info exists ${ns}::sql($col)]} {
-	set col [set ${ns}::sql($col)]
-      } elseif {$nocomplain} {
-      	  continue
+      if {![llength $args]} {
+	  return
       }
 
-      lappend assigns "$col = [pg_quote $value]"
-      lappend cols $col
-      lappend vals [pg_quote $value]
-    }
+      set nocomplain 0
+      if {[lindex $args 0] == "-nocomplain"} {
+	  set nocomplain 1
+      }
 
-    set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
-    append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
-    set rows 0
+      if {[llength $args] == 1} {
+	  set args [lindex $args 0]
+      }
 
-    if {![exec_sql_rows $sql rows]} {
-      return 0
-    }
+      set cols [list]
+      set vals [list]
 
-    if {$rows > 0} {
-      return 1
-    }
+      foreach {col value} $args {
+	  if {[info exists ${ns}::sql($col)]} {
+	      set col [set ${ns}::sql($col)]
+	  } elseif {$nocomplain} {
+	      continue
+	  }
 
-    set cols "[set ${ns}::key] $cols"
-    set vals "[pg_quote $key] $vals"
+	  lappend assigns "$col = [pg_quote $value]"
+	  lappend cols $col
+	  lappend vals [pg_quote $value]
+      }
 
-    set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
-    return [exec_sql $sql]
+      # If no key/value pairs were provided other than the primary key, we may still want to 
+      # perform the insert in order to generate default values for the row. However, we don't 
+      # want to do this if a row with this primary key already exists.
+
+      set sql "SELECT EXISTS(SELECT 1 FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key]);"
+      set exists [flightaware_simplesqlquery [conn] $sql]
+
+      set rows 0
+      if {[info exists assigns]} {
+	  set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
+	  append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
+
+	  if {![exec_sql_rows $sql rows]} {
+	      return 0
+	  }
+      }
+
+      if {$rows > 0 || [string is true -strict $exists]} {
+	  return 1
+      }
+
+      lappend cols [set ${ns}::key]
+      lappend vals [pg_quote $key]
+
+      set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
+      return [exec_sql $sql]
   }
 
   #
