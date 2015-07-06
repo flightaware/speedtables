@@ -440,7 +440,7 @@ namespace eval ::stapi {
     set sql [sql_create_sql $ns $val $args]
     set result ""
 
-    if {![sql_get_one_tuple $sql result]} {
+    if {![sql_get_one_tuple $sql result $ns]} {
       error $result
     }
 
@@ -455,7 +455,7 @@ namespace eval ::stapi {
   proc sql_ctable_array_get {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
 
-    pg_select -withoutnulls [conn] $sql row {
+    pg_select -withoutnulls [conn [set ${ns}::table_name]] $sql row {
 	return [array get row]
     }
 
@@ -471,7 +471,7 @@ namespace eval ::stapi {
   proc sql_ctable_array_get_with_nulls {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
 
-    pg_select [conn] $sql row {
+    pg_select [conn [set ${ns}::table_name]] $sql row {
 	return [array get row]
     }
 
@@ -487,7 +487,7 @@ namespace eval ::stapi {
     append sql " LIMIT 1;"
     # debug "\[pg_exec \[conn] \"$sql\"]"
 
-    set pg_res [pg_exec [conn] $sql]
+    set pg_res [pg_exec [conn [set ${ns}::table_name]] $sql]
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
       set errinf "$err\nIn $sql"
@@ -514,7 +514,7 @@ namespace eval ::stapi {
     }
 
     append sql ";"
-    return [lindex [sql_get_one_tuple $sql] 0]
+    return [lindex [sql_get_one_tuple $sql "" $ns] 0]
   }
 
   #
@@ -558,7 +558,7 @@ namespace eval ::stapi {
 
     set sql [${ns}::search_to_sql search]
     if {[info exists search(-countOnly)]} {
-      return [lindex [sql_get_one_tuple $sql] 0]
+      return [lindex [sql_get_one_tuple $sql "" $ns] 0]
     }
 
     set code {}
@@ -588,10 +588,10 @@ namespace eval ::stapi {
     set ${ns}::select_count 0
 
     set selectCommand [list pg_select]
-    if {[info exists search(-array)] || [info exists search(-array_get)]} {
-        lappend selectCommand "-withoutnulls"
+    if {[info exists search(-array)] || [info exists earch(-array_get)]} {
+      lappend selectCommand "-withoutnulls"
     }
-    lappend selectCommand [conn] $sql $array [join $code "\n"]
+    lappend selectCommand [conn [set ${ns}::table_name]] $sql $array [join $code "\n"]
 
     #puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
 
@@ -606,7 +606,7 @@ namespace eval ::stapi {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] ILIKE [::stapi::quote_glob $val];"
     set code "set $keyvar \[lindex $__key 0]\n$code"
-    uplevel #$level [list pg_select [conn] $sql __key $code]
+    uplevel #$level [list pg_select [conn [set ${ns}::table_name]] $sql __key $code]
   }
 
   #
@@ -621,67 +621,63 @@ namespace eval ::stapi {
   #
   proc sql_ctable_delete {level ns cmd key args} {
     set sql "DELETE FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key];"
-    return [exec_sql $sql]
+    return [exec_sql $sql "" [set ${ns}::table_name]]
   }
 
   #
   # sql_ctable_set - implement a ctable set method for SQL tables
   #
   proc sql_ctable_set {level ns cmd key args} {
-      if {![llength $args]} {
-	  return
+    if {![llength $args]} {
+      return
+    }
+  
+    set nocomplain 0
+    if {[lindex $args 0] == "-nocomplain"} {
+      set nocomplain 1
+    }
+
+    if {[llength $args] == 1} {
+      set args [lindex $args 0]
+    }
+
+    set cols [list]
+    set vals [list]
+
+    foreach {col value} $args {
+      if {[info exists ${ns}::sql($col)]} {
+	set col [set ${ns}::sql($col)]
+      } elseif {$nocomplain} {
+        continue
       }
 
-      set nocomplain 0
-      if {[lindex $args 0] == "-nocomplain"} {
-	  set nocomplain 1
-      }
+      lappend assigns "$col = [pg_quote $value]"
+      lappend cols $col
+      lappend vals [pg_quote $value]
+    }
 
-      if {[llength $args] == 1} {
-	  set args [lindex $args 0]
-      }
+    set sql "SELECT EXISTS(SELECT 1 FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key]);"
+    set exists [flightaware_simplesqlquery [conn [set ${ns}::table_name]] $sql]
 
-      set cols [list]
-      set vals [list]
+    set rows 0
+    if {[info exists assigns]} {
+	    set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
+	    append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
 
-      foreach {col value} $args {
-	  if {[info exists ${ns}::sql($col)]} {
-	      set col [set ${ns}::sql($col)]
-	  } elseif {$nocomplain} {
-	      continue
-	  }
-
-	  lappend assigns "$col = [pg_quote $value]"
-	  lappend cols $col
-	  lappend vals [pg_quote $value]
-      }
-
-      # If no key/value pairs were provided other than the primary key, we may still want to 
-      # perform the insert in order to generate default values for the row. However, we don't 
-      # want to do this if a row with this primary key already exists.
-
-      set sql "SELECT EXISTS(SELECT 1 FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key]);"
-      set exists [flightaware_simplesqlquery [conn] $sql]
-
-      set rows 0
-      if {[info exists assigns]} {
-	  set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
-	  append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
-
-	  if {![exec_sql_rows $sql rows]} {
+	    if {![exec_sql_rows $sql rows "" [set ${ns}::table_name]]} {
 	      return 0
-	  }
-      }
+	    }
+    }
 
-      if {$rows > 0 || [string is true -strict $exists]} {
-	  return 1
-      }
+    if {$rows > 0 || [string is true -strict $exists]} {
+      return 1
+    }
 
-      lappend cols [set ${ns}::key]
-      lappend vals [pg_quote $key]
+    lappend cols [set ${ns}::key]
+    lappend vals [pg_quote $key]
 
-      set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
-      return [exec_sql $sql]
+    set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
+    return [exec_sql $sql "" [set ${ns}::table_name]]
   }
 
   #
@@ -939,12 +935,12 @@ namespace eval ::stapi {
   #      status == -1 - No data,  *result not modified*
   #      status ==  0 - SQL error, result is error string
   #
-  proc sql_get_one_tuple {req {_result ""}} {
+  proc sql_get_one_tuple {req {_result ""} ns} {
     if {[string length $_result]} {
       upvar 1 $_result result
     }
 
-    set pg_res [pg_exec [conn] $req]
+    set pg_res [pg_exec [conn [set ${ns}::table_name]] $req]
 
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]

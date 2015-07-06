@@ -16,6 +16,7 @@ namespace eval ::stapi {
   variable default_db
   variable dio_initted 0
   variable cache_table_columns 1
+  variable handles_by_table [dict create]
 
   #
   # set_DIO - try to create a global DIO object ::DIO with a default connection
@@ -69,8 +70,13 @@ namespace eval ::stapi {
   #  Do it by returning the connection defined in a call using set_conn
   #  or obtain it from DIO if there's a DIO object to get it from
   #
-  proc conn {} {
+  proc conn {{table ""}} {
     variable pg_conn
+    variable handles_by_table
+
+    if {$table != "" && [dict exists $handles_by_table $table]} {
+      return [dict get $handles_by_table $table]
+    }
 
     if [info exists pg_conn] {
       return $pg_conn
@@ -89,10 +95,10 @@ namespace eval ::stapi {
   #  with the error text from pg_result and the request that caused
   #  it to happen
   #
-  proc exec_sql {request {_err ""}} {
+  proc exec_sql {request {_err ""} {table ""}} {
     if [string length $_err] { upvar 1 $_err err }
 
-    set pg_res [pg_exec [conn] $request]
+    set pg_res [pg_exec [conn $table] $request]
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
       set errinf "$err\nIn $request"
@@ -111,10 +117,10 @@ namespace eval ::stapi {
   #  with either the number of tuples retrieved or the number of
   #  tuples the command altered
   #
-  proc exec_sql_rows {request _rows {_err ""}} {
+  proc exec_sql_rows {request _rows {_err ""} {table ""}} {
     if [string length $_err] { upvar 1 $_err err }
 
-    set pg_res [pg_exec [conn] $request]
+    set pg_res [pg_exec [conn $table] $request]
     set status [pg_result $pg_res -status]
     if {"$status" == "PGRES_COMMAND_OK"} {
       set ok 1
