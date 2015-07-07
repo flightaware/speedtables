@@ -966,8 +966,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  res = PgGetResultId (interp, Tcl_GetString (resultObj), NULL);
 	  if (res == NULL) {
-	      Tcl_SetStringObj (Tcl_GetObjResult (interp), Tcl_GetString (objv[2]), -1);
-	      Tcl_AppendResult (interp, " is not a valid query result", NULL);
+	      // Tcl_SetStringObj (Tcl_GetObjResult (interp), Tcl_GetString (objv[2]), -1);
+	      Tcl_AppendResult (interp, " while getting result ID from ", Tcl_GetString (resultObj), NULL);
 	      return TCL_ERROR;
 	  }
 
