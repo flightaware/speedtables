@@ -781,23 +781,10 @@ variable varstringSetSource {
 	// if the allocated length is less than what we need, get more,
 	// else reuse the previously allocated space
 	if (row->$fieldName == NULL || row->_${fieldName}AllocatedLength <= length) {
-	    int newlen = length + 1;
-// TODO - check if padding makes sense for non-shared case
-#ifdef WITH_SHARED_TABLES
-	    if (ctable->share_type != CTABLE_SHARED_NONE) {
-		// Allocate some extra space in strings for growth,
-		// then pad it to a standard chunk size
-		// Yes there's a + 1 (for the null) and a - 1 (for the chunking)
-		// because it will get optimized away and this way if the code's
-		// changed neither will get lost.
-		newlen = (length * CTABLE_STRING_SCALE + 1 + CTABLE_STRING_PAD + CTABLE_STRING_CHUNK_SIZE - 1) % CTABLE_STRING_CHUNK_SIZE;
-	    }
-#endif
-
 	    // Allocating shmem may fail, so allocate mem ahead of time
 	    char *mem = (char*)[
 	        gen_allocate_may_fail ctable \
-			"newlen" \
+			"length + 1" \
 			"indexCtl == CTABLE_INDEX_PRIVATE"
 	    ];
 	    if (!mem) {
@@ -812,7 +799,7 @@ variable varstringSetSource {
 		[gen_deallocate ctable "row->$fieldName" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    }
 	    row->$fieldName = mem;
-	    row->_${fieldName}AllocatedLength = newlen;
+	    row->_${fieldName}AllocatedLength = length + 1;
 	}
 	strncpy (row->$fieldName, stringPtr, length + 1);
 	row->_${fieldName}Length = length;

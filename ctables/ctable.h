@@ -61,13 +61,6 @@
 #define CTABLE_QUOTE_ESCAPE 3
 #define CTABLE_QUOTE_STRICT_ESCAPE 4
 
-// Tunables for (shared memory) string allocation;
-#define CTABLE_STRING_SCALE 1		// Allocate N times as mich space
-#define CTABLE_STRING_PAD 128		// Pad strings witht his much extra
-#define CTABLE_STRING_CHUNK_SIZE 128	// Allocate strings in multiples
-					// of this
-
-
 /*-
  *
  * CT_LIST_* - link list routines from Berkeley
