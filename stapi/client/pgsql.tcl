@@ -647,8 +647,10 @@ namespace eval ::stapi {
     foreach {col value} $args {
       if {[info exists ${ns}::sql($col)]} {
 	set col [set ${ns}::sql($col)]
-      } elseif {$nocomplain} {
-        continue
+      }
+
+      if {$nocomplain && $col ni [set ${ns}::fields]} {
+      	  continue
       }
 
       lappend assigns "$col = [pg_quote $value]"
@@ -661,20 +663,23 @@ namespace eval ::stapi {
 
     set rows 0
     if {[info exists assigns]} {
-	    set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
-	    append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
+      set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
+      append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
 
-	    if {![exec_sql_rows $sql rows "" [set ${ns}::table_name]]} {
-	      return 0
-	    }
+      if {![exec_sql_rows $sql rows "" [set ${ns}::table_name]]} {
+        return 0
+      }
     }
 
     if {$rows > 0 || [string is true -strict $exists]} {
       return 1
     }
 
-    lappend cols [set ${ns}::key]
-    lappend vals [pg_quote $key]
+
+    if {[set ${ns}::key] ni $cols} {
+      lappend cols [set ${ns}::key]
+      lappend vals [pg_quote $key]
+    }
 
     set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
     return [exec_sql $sql "" [set ${ns}::table_name]]
