@@ -653,6 +653,10 @@ namespace eval ::stapi {
       	  continue
       }
 
+      if {[string index $col 0] == "."} {
+      	  continue
+      }
+
       lappend assigns "$col = [pg_quote $value]"
       lappend cols $col
       lappend vals [pg_quote $value]
