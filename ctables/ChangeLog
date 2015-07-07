@@ -1,3 +1,6 @@
+7/7/2015 Peter
+    * Back out chunk allocation change - now in branch "memory-chunking"
+
 7/5/2015 peter
     * Back out duplicate deletion test
     * Replace with a duplicate test in the action handler
