@@ -142,3 +142,7 @@ gbarnrow:
 	rm -rf stobj
 	rm -f *.dat
 	gdb $(TCLSH)
+
+dupremovetest:
+	rm -rf stobj
+	$(TCLSH) dupremovetest.tcl

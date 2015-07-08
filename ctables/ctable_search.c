@@ -801,6 +801,18 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search
 }
 
 //
+// ctable_cmp_BaseRowAddress - comparison to sort array of ctable_BaseRow
+// pointers by pointer address, to eliminate duplicates.
+//
+int ctable_cmp_BaseRowAddress(const void *vRow1, const void *vRow2)
+{
+    const struct ctable_BaseRow *row1 = *(const struct ctable_BaseRow **)vRow1;
+    const struct ctable_BaseRow *row2 = *(const struct ctable_BaseRow **)vRow2;
+
+    return row1 - row2;
+}
+
+//
 // ctable_PerformTransactions - atomic actions taken at the end of a search
 //
 static int
@@ -814,10 +826,12 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
     }
 
     if(search->tranType == CTABLE_SEARCH_TRAN_DELETE) {
+      off_t startIndex = search->offset, endIndex = search->offsetLimit;
 
       // walk the result and delete the matched rows
-      for (rowIndex = search->offset; rowIndex < search->offsetLimit; rowIndex++) {
-	  (*creator->delete_row) (ctable, search->tranTable[rowIndex], CTABLE_INDEX_NORMAL);
+      for (rowIndex = startIndex; rowIndex < endIndex; rowIndex++) {
+	  ctable_BaseRow *thisRow = search->tranTable[rowIndex];
+	  (*creator->delete_row) (ctable, thisRow, CTABLE_INDEX_NORMAL);
 	  ctable->count--;
       }
 
@@ -994,6 +1008,10 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     int   compareResult;
     int   actionResult;
 
+    // Row is only matched once per search.
+    if(row->flags & CTABLE_ROW_MATCHED_FLAG)
+        return TCL_CONTINUE;
+
     // Handle polling
     if(search->pollInterval && --search->nextPoll <= 0) {
 	if(ctable_search_poll(interp, ctable, search) == TCL_ERROR)
@@ -1036,7 +1054,10 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     }
 
     // It's a Match 
-    // Are we sorting? Plop the match in the sort table and return
+    row->flags |= CTABLE_ROW_MATCHED_FLAG;
+
+    // Are we sorting or otherwise deferring? Plop the match in the
+    // transaction table and return
     // Increment count in this block to make sure it's incremented in all
     // paths.
 
@@ -1248,7 +1269,7 @@ CTABLE_INTERNAL void ctable_PrepareTransactions(CTable *ctable, CTableSearch *se
     // if we're buffering,
     // allocate a space for the search results that we'll then sort from
     if (search->bufferResults != CTABLE_BUFFER_NONE) {
-	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *) * ctable->count);
+	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *) * (ctable->count + 1));
     }
 }
 
@@ -1565,6 +1586,11 @@ restart_search:
 		search->sortControl.nFields = 0;
 	    }
 	}
+    }
+
+    // Clear search flags for table
+    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+        row->flags &= ~CTABLE_ROW_MATCHED_FLAG;
     }
 
     // Prepare transaction buffering if necessary
