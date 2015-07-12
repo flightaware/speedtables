@@ -2871,6 +2871,7 @@ proc gen_defaults_subr {struct} {
     if {$withSharedTables} {
         emit "        $baseCopy._row_cycle = LOST_HORIZON;"
     }
+    emit "        $baseCopy._flags = CTABLE_ROW_DEFAULT_FLAGS;"
 
     emit ""
     emit "        for(i = 0; i < [string toupper $table]_NLINKED_LISTS; i++) $leftCurly"

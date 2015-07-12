@@ -1,3 +1,6 @@
+7/12/2015 Peter
+    * Rename "flags" to "_flags" to prevent potential field name collision.
+
 7/7/2015 Peter
     * Back out chunk allocation change - now in branch "memory-chunking"
 
