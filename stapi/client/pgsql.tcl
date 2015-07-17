@@ -363,6 +363,10 @@ namespace eval ::stapi {
   # sql_ctable_makekey
   #
   proc sql_ctable_makekey {level ns cmd args} {
+    if {[lindex $args 0] == "-nocomplain"} {
+      set args [lindex $args 1]
+    }
+
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
@@ -377,7 +381,8 @@ namespace eval ::stapi {
     if {[info exists array(_key)]} {
       return $array(_key)
     }
-    return -code error "No key in list"
+ 
+    return "---"
   }
 
   #
@@ -628,13 +633,10 @@ namespace eval ::stapi {
   # sql_ctable_set - implement a ctable set method for SQL tables
   #
   proc sql_ctable_set {level ns cmd key args} {
-    if {![llength $args]} {
-      return
-    }
-  
     set nocomplain 0
     if {[lindex $args 0] == "-nocomplain"} {
       set nocomplain 1
+      set args [lindex $args 1]
     }
 
     if {[llength $args] == 1} {
@@ -643,6 +645,7 @@ namespace eval ::stapi {
 
     set cols [list]
     set vals [list]
+    set assigns [list]
 
     foreach {col value} $args {
       if {[info exists ${ns}::sql($col)]} {
@@ -662,27 +665,30 @@ namespace eval ::stapi {
       lappend vals [pg_quote $value]
     }
 
-    set sql "SELECT EXISTS(SELECT 1 FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key]);"
-    set exists [flightaware_simplesqlquery [conn [set ${ns}::table_name]] $sql]
+    # The key "---" indicates this is being invoked from sql_ctable_store and no primary key was provided.
+    # We will rely on Postgres generating a key for us.
+    if {$key != "---"} {
+	    set sql "SELECT EXISTS(SELECT 1 FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key]);"
+	    set exists [flightaware_simplesqlquery [conn [set ${ns}::table_name]] $sql]
 
-    set rows 0
-    if {[info exists assigns]} {
-      set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
-      append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
+	    set rows 0
+	    if {[llength $assigns] > 0} {
+	      set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
+	      append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
 
-      if {![exec_sql_rows $sql rows "" [set ${ns}::table_name]]} {
-        return 0
-      }
-    }
+	      if {![exec_sql_rows $sql rows "" [set ${ns}::table_name]]} {
+		return 0
+	      }
+	    }
 
-    if {$rows > 0 || [string is true -strict $exists]} {
-      return 1
-    }
+	    if {$rows > 0 || [string is true -strict $exists]} {
+              return 1
+            }
 
-
-    if {[set ${ns}::key] ni $cols} {
-      lappend cols [set ${ns}::key]
-      lappend vals [pg_quote $key]
+	    if {[set ${ns}::key] ni $cols} {
+	      lappend cols [set ${ns}::key]
+	      lappend vals [pg_quote $key]
+	    }
     }
 
     set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
@@ -745,16 +751,16 @@ namespace eval ::stapi {
 
       if {[info exists req(-fields)]} {
         set cols $req(-fields)
+        foreach col $cols {
+          if {[info exists sql($col)]} {
+	    lappend select "$sql($col) AS $col"
+          } else {
+	    lappend select $col
+          }
+        }
       } else {
         set cols $fields
-      }
-  
-      foreach col $cols {
-        if {[info exists sql($col)]} {
-	  lappend select "$sql($col) AS $col"
-        } else {
-	  lappend select $col
-        }
+        lappend select *
       }
     }
   
