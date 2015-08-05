@@ -1,6 +1,5 @@
 7/5/2015 peter
     * Avoid duplicate deletions of rows in search.
-    * Increase size of transTable by one to avoid an edge case (fencepost error)
 
 6/12/2015 peter
     * Add tunable parameters to control allocation chunk size.
