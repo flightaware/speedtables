@@ -1,12 +1,5 @@
-7/5/2015 peter
-    * Avoid duplicate deletions of rows in search.
-
-6/12/2015 peter
-    * Add tunable parameters to control allocation chunk size.
-
 11/20/2014 zero
     * Add explicit (char *) cast to ckalloc calls as tcl86 defines the macro as returning void*
-
 10/19/2012 peter
     * Move dirty set outside break statement.
 

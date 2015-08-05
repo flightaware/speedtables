@@ -801,18 +801,6 @@ ctable_WriteFieldNames (Tcl_Interp *interp, CTable *ctable, CTableSearch *search
 }
 
 //
-// ctable_cmp_BaseRowAddress - comparison to sort array of ctable_BaseRow
-// pointers by pointer address, to eliminate duplicates.
-//
-int ctable_cmp_BaseRowAddress(const void *vRow1, const void *vRow2)
-{
-    const struct ctable_BaseRow *row1 = *(const struct ctable_BaseRow **)vRow1;
-    const struct ctable_BaseRow *row2 = *(const struct ctable_BaseRow **)vRow2;
-
-    return row1 - row2;
-}
-
-//
 // ctable_PerformTransactions - atomic actions taken at the end of a search
 //
 static int
@@ -826,23 +814,11 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
     }
 
     if(search->tranType == CTABLE_SEARCH_TRAN_DELETE) {
-      ctable_BaseRow *lastRow = NULL;
-      off_t startIndex = search->offset, endIndex = search->offsetLimit;
 
-      // sort the relevent section of the table on row address
-      qsort(&(search->tranTable[startIndex]),
-	    endIndex - startIndex,
-	    sizeof (ctable_BaseRow *),
-	    ctable_cmp_BaseRowAddress);
-
-      // walk the result and delete the matched rows, skipping duplicates
-      for (rowIndex = startIndex; rowIndex < endIndex; rowIndex++) {
-	  ctable_BaseRow *thisRow = search->tranTable[rowIndex];
-	  if(lastRow != thisRow) {
-	      (*creator->delete_row) (ctable, thisRow, CTABLE_INDEX_NORMAL);
-	      ctable->count--;
-	      lastRow = thisRow;
-	  }
+      // walk the result and delete the matched rows
+      for (rowIndex = search->offset; rowIndex < search->offsetLimit; rowIndex++) {
+	  (*creator->delete_row) (ctable, search->tranTable[rowIndex], CTABLE_INDEX_NORMAL);
+	  ctable->count--;
       }
 
       return TCL_OK;
