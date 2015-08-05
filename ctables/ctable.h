@@ -185,15 +185,13 @@ struct ctable_BaseRow {
 #ifdef WITH_SHARED_TABLES
     cell_t		_row_cycle;
 #endif
-    int			_flags;
+    int			flags;
     // _ll_nodes absolutely must be the last thing defined in the base row
     ctable_LinkedListNode _ll_nodes[];
 };
 
 // Masks for in ctableBaseRow->flags
 #define	CTABLE_ROW_MATCHED_FLAG	0x01
-
-#define CTABLE_ROW_DEFAULT_FLAGS 0x0
 
 #include "jsw_slib.h"
 
