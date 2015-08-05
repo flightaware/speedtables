@@ -826,13 +826,23 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
     }
 
     if(search->tranType == CTABLE_SEARCH_TRAN_DELETE) {
+      ctable_BaseRow *lastRow = NULL;
       off_t startIndex = search->offset, endIndex = search->offsetLimit;
 
-      // walk the result and delete the matched rows
+      // sort the relevent section of the table on row address
+      qsort(&(search->tranTable[startIndex]),
+	    endIndex - startIndex,
+	    sizeof (ctable_BaseRow *),
+	    ctable_cmp_BaseRowAddress);
+
+      // walk the result and delete the matched rows, skipping duplicates
       for (rowIndex = startIndex; rowIndex < endIndex; rowIndex++) {
 	  ctable_BaseRow *thisRow = search->tranTable[rowIndex];
-	  (*creator->delete_row) (ctable, thisRow, CTABLE_INDEX_NORMAL);
-	  ctable->count--;
+	  if(lastRow != thisRow) {
+	      (*creator->delete_row) (ctable, thisRow, CTABLE_INDEX_NORMAL);
+	      ctable->count--;
+	      lastRow = thisRow;
+	  }
       }
 
       return TCL_OK;
@@ -1008,10 +1018,6 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     int   compareResult;
     int   actionResult;
 
-    // Row is only matched once per search.
-    if(row->flags & CTABLE_ROW_MATCHED_FLAG)
-        return TCL_CONTINUE;
-
     // Handle polling
     if(search->pollInterval && --search->nextPoll <= 0) {
 	if(ctable_search_poll(interp, ctable, search) == TCL_ERROR)
@@ -1054,10 +1060,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     }
 
     // It's a Match 
-    row->flags |= CTABLE_ROW_MATCHED_FLAG;
-
-    // Are we sorting or otherwise deferring? Plop the match in the
-    // transaction table and return
+    // Are we sorting? Plop the match in the sort table and return
     // Increment count in this block to make sure it's incremented in all
     // paths.
 
@@ -1586,11 +1589,6 @@ restart_search:
 		search->sortControl.nFields = 0;
 	    }
 	}
-    }
-
-    // Clear search flags for table
-    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
-        row->flags &= ~CTABLE_ROW_MATCHED_FLAG;
     }
 
     // Prepare transaction buffering if necessary
