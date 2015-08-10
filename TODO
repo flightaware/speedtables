@@ -1,0 +1,5 @@
+There's a performance hit either way, whether we sort after tagging
+lines for deletion, or explicitly mark lines as being tagged for
+deletion. The solution is to use the same cycle model as the garbage
+collector, either using an explicit cycle tracked in the ctable
+structure or a hash to avoid collisions.
