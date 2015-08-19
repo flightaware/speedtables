@@ -382,7 +382,7 @@ namespace eval ::stapi {
       return $array(_key)
     }
  
-    return "---"
+    return ""
   }
 
   #
@@ -665,9 +665,9 @@ namespace eval ::stapi {
       lappend vals [pg_quote $value]
     }
 
-    # The key "---" indicates this is being invoked from sql_ctable_store and no primary key was provided.
+    # The empty string key indicates this is being invoked from sql_ctable_store and no primary key was provided.
     # We will rely on Postgres generating a key for us.
-    if {$key != "---"} {
+    if {$key != ""} {
 	    set sql "SELECT EXISTS(SELECT 1 FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key]);"
 	    set exists [flightaware_simplesqlquery [conn [set ${ns}::table_name]] $sql]
 
