@@ -294,7 +294,6 @@ namespace eval ::stapi {
       # no error var passed, cause the error to be sent as a tcl traceback
       return -code error -errorinfo $errinf $err
     }
-
     return $numTuples
   }
 
