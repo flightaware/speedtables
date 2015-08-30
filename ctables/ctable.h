@@ -185,7 +185,7 @@ struct ctable_BaseRow {
 #ifdef WITH_SHARED_TABLES
     cell_t		_row_cycle;
 #endif
-    int			_flags;
+    int			_search_cycle;
     // _ll_nodes absolutely must be the last thing defined in the base row
     ctable_LinkedListNode _ll_nodes[];
 };
@@ -487,6 +487,7 @@ struct CTable {
     int                                  autoRowNumber;
     int                                  destroying;
     int					 searching;
+    int					 search_cycle;
     char				*nullKeyValue;
 #ifdef WITH_SHARED_TABLES
     int					 was_locked;

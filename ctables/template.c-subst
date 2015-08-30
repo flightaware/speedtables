@@ -250,6 +250,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->autoRowNumber = 0;
 	    ctable->destroying = 0;
 	    ctable->searching = 0;
+	    ctable->search_cycle = 0;
 	    ctable->nullKeyValue = NULL;
 
 	    ctable->performanceCallbackEnable = 0;

@@ -1009,8 +1009,9 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     int   actionResult;
 
     // Row is only matched once per search.
-    if(row->_flags & CTABLE_ROW_MATCHED_FLAG)
+    if(row->_search_cycle == ctable->search_cycle) {
         return TCL_CONTINUE;
+    }
 
     // Handle polling
     if(search->pollInterval && --search->nextPoll <= 0) {
@@ -1054,7 +1055,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     }
 
     // It's a Match 
-    row->_flags |= CTABLE_ROW_MATCHED_FLAG;
+    row->_search_cycle = ctable->search_cycle;
 
     // Are we sorting or otherwise deferring? Plop the match in the
     // transaction table and return
@@ -1588,9 +1589,14 @@ restart_search:
 	}
     }
 
-    // Clear search flags for table
-    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
-        row->_flags &= ~CTABLE_ROW_MATCHED_FLAG;
+    // Increment ctable search cycle.
+    ctable->search_cycle++;
+    if(ctable->search_cycle == 0) {
+        // Looped, reset search on all rows
+	ctable->search_cycle = 1;
+        CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+            row->_search_cycle = 0;
+        }
     }
 
     // Prepare transaction buffering if necessary
