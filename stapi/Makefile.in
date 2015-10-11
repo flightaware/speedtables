@@ -187,6 +187,10 @@ binaries: $(BINARIES)
 
 libraries: pkgIndex.tcl
 
+$(PKG_TCL_SOURCES):
+	mkdir -p $$(dirname $@); \
+	cp -f $(srcdir)/$@ $@
+
 pkgIndex.tcl: $(PKG_TCL_SOURCES)
 	echo "pkg_mkIndex . $(PKG_TCL_SOURCES)" | $(TCLSH_PROG)
 
@@ -382,6 +386,10 @@ install-lib-binaries:
 	    mkdir -p $(DESTDIR)$(pkglibdir)/`dirname $$p`; \
 	    echo " Install $$p $(DESTDIR)$(pkglibdir)/$$p"; \
 	    $(INSTALL_DATA) $(srcdir)/$$p $(DESTDIR)$(pkglibdir)/$$p; \
+	  elif test -f $$p; then \
+	    mkdir -p $(DESTDIR)$(pkglibdir)/`dirname $$p`; \
+	    echo " Install $$p $(DESTDIR)$(pkglibdir)/$$p"; \
+	    $(INSTALL_DATA) $$p $(DESTDIR)$(pkglibdir)/$$p; \
 	  fi; \
 	done
 	@if test true -o "x$(SHARED_BUILD)" = "x1"; then \

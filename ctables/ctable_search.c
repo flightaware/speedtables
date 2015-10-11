@@ -2405,7 +2405,7 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
 
     // calculate elapsed cpu
 
-    clock_gettime (CLOCK_VIRTUAL, &endTimeSpec);
+    clock_gettime (CTABLES_CLOCK, &endTimeSpec);
     ctable_elapsed_time (startTimeSpec, &endTimeSpec, &elapsedTimeSpec);
     cpu = (elapsedTimeSpec.tv_sec + (elapsedTimeSpec.tv_nsec / 1000000000.0));
 
@@ -2509,7 +2509,7 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 
 
     if (ctable->performanceCallbackEnable) {
-	clock_gettime (CLOCK_VIRTUAL, &startTimeSpec);
+	clock_gettime (CTABLES_CLOCK, &startTimeSpec);
     }
 
     // flag this search in progress

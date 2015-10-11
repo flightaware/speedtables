@@ -137,6 +137,32 @@ CTABLES_CFLAGS=""
 AC_CHECK_HEADER(sys/limits.h,[CTABLES_CFLAGS="$CTABLES_CFLAGS -DHAVE_SYS_LIMITS_H=1"])
 AC_CHECK_HEADER(netinet/ether.h,[CTABLES_CFLAGS="$CTABLES_CFLAGS -DHAVE_NETINET_ETHER_H=1"])
 
+AC_CHECK_DECL(CLOCK_VIRTUAL ,[
+	CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_VIRTUAL"
+] ,[
+
+	AC_CHECK_DECL(CLOCK_PROCESS_CPUTIME_ID ,[
+		CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_PROCESS_CPUTIME_ID"
+	] ,[
+
+		AC_CHECK_DECL(CLOCK_MONOTONIC ,[
+			CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_MONOTONIC"
+		] ,[
+
+			AC_CHECK_DECL(CLOCK_REALTIME ,[
+				CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_REALTIME"
+			] ,[
+				AC_MSG_ERROR([No clock found.  Tried CLOCK_VIRTUAL, CLOCK_PROCESS_CPUTIME_ID, CLOCK_MONOTONIC, and CLOCK_REALTIME])
+			] ,[[#include <time.h>]])
+
+		] ,[[#include <time.h>]])
+
+	] ,[[#include <time.h>]])
+
+] ,[[#include <time.h>]])
+
+
+
 
 # Check for Boost.
 # If you are missing Boost, try installing the devel/boost-libs or boost-devel package, or downloading from http://www.boost.org/
