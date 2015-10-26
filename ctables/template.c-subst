@@ -400,6 +400,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
             Tcl_DecrRefCount (${table}_NullValueObj);
 	    ${table}_NullValueObj = objv[2];
+	    ${table}_NullValueString = Tcl_GetStringFromObj (objv[2], &${table}_NullValueSize);
 	    Tcl_IncrRefCount (objv[2]);
 	    Tcl_SetObjResult (interp, objv[2]);
 	    return TCL_OK;
