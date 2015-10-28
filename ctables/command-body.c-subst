@@ -156,7 +156,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 #ifdef WITH_SHARED_TABLES
     // Options allowed in shared tables
-    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, NUM_OPTIONS };
+    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, NUM_OPTIONS };
     static int shared_ok[NUM_OPTIONS] = {-1};
 
     // Read_only options
