@@ -1933,7 +1933,6 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	      callback = Tcl_GetString (objv[3]);
 	      if (*callback == '\0') {
-		ctable->performanceCallbackEnable = 0;
 		if (ctable->performanceCallback != NULL) {
 		    ckfree(ctable->performanceCallback);
 		    ctable->performanceCallback = NULL;
@@ -1944,7 +1943,6 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		}
 		ctable->performanceCallback = (char *)ckalloc(strlen(callback) + 1);
 		strcpy (ctable->performanceCallback, callback);
-		ctable->performanceCallbackEnable = 1;
 	      }
 	}
       }

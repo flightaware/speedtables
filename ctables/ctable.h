@@ -378,6 +378,9 @@ struct CTableSearch {
 
     // count of matches during a search
     int                                  matchCount;
+    //
+    // count of rows examined during a search
+    int                                  nExamined;
 
     // field that the search was requested to be indexed on.
     int					 reqIndexField;
@@ -497,9 +500,10 @@ struct CTable {
     volatile struct CTable		*share_ctable;
     volatile reader_t			*my_reader;
 #endif
-    int					 performanceCallbackEnable:1;
     char				*performanceCallback;
     double				 performanceCallbackThreshold;
+    enum walkType_e			 performanceWalkType;
+    int					 performanceSkipField;
 
     Tcl_Command                          commandInfo;
     long                                 count;

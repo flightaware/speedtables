@@ -1001,6 +1001,8 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	search->nextPoll = search->pollInterval;
     }
 
+    search->nExamined++;
+
     // if we have a match pattern (for the key) and it doesn't match,
     // skip this row
 
@@ -1389,6 +1391,7 @@ restart_search:
 #endif
 
     search->matchCount = 0;
+    search->nExamined = 0;
     search->alreadySearched = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
@@ -1593,6 +1596,10 @@ fprintf(stderr, "    search->components[%d].fieldID == %d\n", ii, component->fie
 fprintf(stderr, "    search->components[%d].comparisonType == %d\n", ii, component->comparisonType);
 }
 #endif
+    if (ctable->performanceCallback != NULL) {
+	ctable->performanceWalkType = walkType;
+	ctable->performanceSkipField = skipField;
+    }
 
     if (walkType == WALK_DEFAULT) {
 #ifdef INDEXDEBUG
@@ -2396,10 +2403,12 @@ ctable_elapsed_time (struct timespec *oldtime, struct timespec *newtime, struct 
 // ctable_performance_callback - callback routine for performance of search calls
 //
 void
-ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, struct timespec *startTimeSpec, int loggingMatchCount) {
+ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, struct timespec *startTimeSpec, int loggingMatchCount, int examineCount) {
     struct timespec endTimeSpec;
     struct timespec elapsedTimeSpec;
-    Tcl_Obj *cmdObjv[4];
+    Tcl_Obj *cmdObjv[2];
+    Tcl_Obj *listObjv[16];
+    int listObjc = 0;
     double cpu;
     int i;
 
@@ -2414,19 +2423,52 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
     }
 
     cmdObjv[0] = Tcl_NewStringObj (ctable->performanceCallback, -1);
-    cmdObjv[1] = Tcl_NewListObj (objc, objv);
-    cmdObjv[2] = Tcl_NewIntObj (loggingMatchCount);
-    cmdObjv[3] = Tcl_NewDoubleObj (cpu);
 
-    for (i = 0; i < 4; i++) {
+    listObjv[listObjc++] = Tcl_NewStringObj ("command", -1);
+    listObjv[listObjc++] = Tcl_NewListObj (objc, objv);
+    listObjv[listObjc++] = Tcl_NewStringObj ("count", -1);
+    listObjv[listObjc++] = Tcl_NewIntObj (loggingMatchCount);
+    listObjv[listObjc++] = Tcl_NewStringObj ("examined", -1);
+    listObjv[listObjc++] = Tcl_NewIntObj (examineCount);
+    listObjv[listObjc++] = Tcl_NewStringObj ("cpu", -1);
+    listObjv[listObjc++] = Tcl_NewDoubleObj (cpu);
+    listObjv[listObjc++] = Tcl_NewStringObj ("walk", -1);
+
+    switch (ctable->performanceWalkType) {
+	case WALK_DEFAULT: {
+	    listObj[listObjc++] = Tcl_NewStringObj ("default", -1);
+	    break;
+	}
+
+	case WALK_SKIP: {
+	    listObj[listObjc++] = Tcl_NewStringObj ("skip", -1);
+	    listObj[listObjc++] = Tcl_NewStringObj ("skipfield", -1);
+	    listObj[listObjc++] = Tcl_NewStringObj (ctable->creator->fields[ctable->performanceSkipField]->name, -1);
+	    break;
+	}
+
+	case WALK_HASH_EQ: {
+	    listObj[listObjc++] = Tcl_NewStringObj ("hash_eq", -1);
+	    break;
+	}
+
+	case WALK_HASH_IN: {
+	    listObj[listObjc++] = Tcl_NewStringObj ("hash_in", -1);
+	    break;
+	}
+    }
+
+    cmdObjv[1] = Tcl_NewListObj (listObjc, listObjv);
+
+    for (i = 0; i < 2; i++) {
 	Tcl_IncrRefCount (cmdObjv[i]);
     }
 
-    if (Tcl_EvalObjv (interp, 4, cmdObjv, 0) == TCL_ERROR) {
+    if (Tcl_EvalObjv (interp, 2, cmdObjv, 0) == TCL_ERROR) {
 	Tcl_BackgroundError (interp);
     }
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 2; i++) {
 	Tcl_DecrRefCount (cmdObjv[i]);
     }
 
@@ -2506,9 +2548,10 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
     int result;
     struct timespec startTimeSpec;
     int loggingMatchCount = 0;
+    int nExamined = 0;
 
 
-    if (ctable->performanceCallbackEnable) {
+    if (ctable->performanceCallback != NULL) {
 	clock_gettime (CLOCK_VIRTUAL, &startTimeSpec);
     }
 
@@ -2528,18 +2571,19 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
         result = ctable_PerformSearch (interp, ctable, &search);
     }
 
-    if (ctable->performanceCallbackEnable) {
+    if (ctable->performanceCallback != NULL) {
 	loggingMatchCount = search.matchCount;
+	nExamined = search.nExamined;
     }
 
     ctable_TeardownSearch (&search);
 
     ctable->searching = 0;
 
-    if (ctable->performanceCallbackEnable) {
+    if (ctable->performanceCallback != NULL) {
 	Tcl_Obj *saveResultObj = Tcl_GetObjResult (interp);
 	Tcl_IncrRefCount (saveResultObj);
-	ctable_performance_callback (interp, ctable, objv, objc, &startTimeSpec, loggingMatchCount);
+	ctable_performance_callback (interp, ctable, objv, objc, &startTimeSpec, loggingMatchCount, nExamined);
 	Tcl_SetObjResult (interp, saveResultObj);
     }
 

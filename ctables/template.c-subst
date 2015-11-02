@@ -252,7 +252,6 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->searching = 0;
 	    ctable->nullKeyValue = NULL;
 
-	    ctable->performanceCallbackEnable = 0;
 	    ctable->performanceCallback = NULL;
 	    ctable->performanceCallbackThreshold = 0.0;
 
