@@ -61,6 +61,8 @@
 #define CTABLE_QUOTE_ESCAPE 3
 #define CTABLE_QUOTE_STRICT_ESCAPE 4
 
+enum walkType_e { WALK_DEFAULT, WALK_SKIP, WALK_HASH_EQ, WALK_HASH_IN };
+
 /*-
  *
  * CT_LIST_* - link list routines from Berkeley

@@ -1150,8 +1150,6 @@ static struct {
      //       if you change this, change the "not implemented"
      //       value in the table above to -1 - SORT_SCORE
 
-enum walkType_e { WALK_DEFAULT, WALK_SKIP, WALK_HASH_EQ, WALK_HASH_IN };
-
 static enum walkType_e hashTypes[] = {
   WALK_DEFAULT, WALK_DEFAULT, WALK_DEFAULT, WALK_DEFAULT, // FALSE..NOTNULL
   WALK_DEFAULT, WALK_DEFAULT, WALK_HASH_EQ, WALK_DEFAULT, // LT..NE
@@ -2436,24 +2434,24 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
 
     switch (ctable->performanceWalkType) {
 	case WALK_DEFAULT: {
-	    listObj[listObjc++] = Tcl_NewStringObj ("default", -1);
+	    listObjv[listObjc++] = Tcl_NewStringObj ("default", -1);
 	    break;
 	}
 
 	case WALK_SKIP: {
-	    listObj[listObjc++] = Tcl_NewStringObj ("skip", -1);
-	    listObj[listObjc++] = Tcl_NewStringObj ("skipfield", -1);
-	    listObj[listObjc++] = Tcl_NewStringObj (ctable->creator->fields[ctable->performanceSkipField]->name, -1);
+	    listObjv[listObjc++] = Tcl_NewStringObj ("skip", -1);
+	    listObjv[listObjc++] = Tcl_NewStringObj ("skipfield", -1);
+	    listObjv[listObjc++] = Tcl_NewStringObj (ctable->creator->fields[ctable->performanceSkipField]->name, -1);
 	    break;
 	}
 
 	case WALK_HASH_EQ: {
-	    listObj[listObjc++] = Tcl_NewStringObj ("hash_eq", -1);
+	    listObjv[listObjc++] = Tcl_NewStringObj ("hash_eq", -1);
 	    break;
 	}
 
 	case WALK_HASH_IN: {
-	    listObj[listObjc++] = Tcl_NewStringObj ("hash_in", -1);
+	    listObjv[listObjc++] = Tcl_NewStringObj ("hash_in", -1);
 	    break;
 	}
     }
