@@ -726,16 +726,17 @@ namespace eval ::stapi {
 
       if {[info exists req(-fields)]} {
         set cols $req(-fields)
+
+	  foreach col $cols {
+	    if {[info exists sql($col)]} {
+	      lappend select "$sql($col) AS $col"
+	    } else {
+	      lappend select $col
+	    }
+	  }
       } else {
-        set cols $fields
-      }
-  
-      foreach col $cols {
-        if {[info exists sql($col)]} {
-	  lappend select "$sql($col) AS $col"
-        } else {
-	  lappend select $col
-        }
+	# they want all fields
+        lappend select *
       }
     }
   
