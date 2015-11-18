@@ -3143,28 +3143,22 @@ proc gen_delete_subr {subr struct} {
 
 variable isNullSubrSource {
 int ${table}_obj_is_null(Tcl_Obj *obj) {
-    char     *nullValueString;
-    int       nullValueLength;
-
     char     *objString;
     int       objStringLength;
 
-     nullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullValueLength);
      objString = Tcl_GetStringFromObj (obj, &objStringLength);
 
-    if (nullValueLength != objStringLength) {
-        return 0;
-    }
+     if (objStringLength == ${table}_NullValueSize) {
+	if (objStringLength == 0) {
+	    // strings are both zero length, a match on empty strings
+	    return 1;
+	}
 
-    if (nullValueLength == 0) {
-        return 1;
-    }
+	return (strncmp (${table}_NullValueString, objString, ${table}_NullValueSize) == 0);
+     }
 
-    if (*nullValueString != *objString) {
-        return 0;
-    }
-
-    return (strncmp (nullValueString, objString, nullValueLength) == 0);
+    // string lengths didn't match so strings don't match
+    return 0;
 }
 
 }
@@ -3988,6 +3982,7 @@ proc gen_setup_routine {table} {
 
     emit "    // initialize the null string object to the default (empty) value"
     emit "    ${table}_NullValueObj = Tcl_NewObj ();"
+    emit "    ${table}_NullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &${table}_NullValueSize);"
     emit "    Tcl_IncrRefCount (${table}_NullValueObj);"
 
     emit "$rightCurly"
@@ -4647,6 +4642,8 @@ proc gen_field_names {} {
 
     emit "// define the null value object"
     emit "static Tcl_Obj *${table}_NullValueObj;"
+    emit "static char *${table}_NullValueString;"
+    emit "static int ${table}_NullValueSize;"
     emit ""
 
     emit "// define default objects for varstring fields, if any"
@@ -5782,7 +5779,7 @@ proc compile {fileFragName version} {
     set stubs [info exists sysconfig(stub)]
 
     if {$genCompilerDebug} {
-	set optflag "-O0"
+	set optflag "-Os"
 	set dbgflag $sysconfig(dbg)
 
 	if {$memDebug} {

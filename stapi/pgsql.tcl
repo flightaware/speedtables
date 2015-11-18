@@ -218,24 +218,39 @@ namespace eval ::stapi {
   # if successful it returns the number of tuples read, from zero on up.
   #
   proc read_ctable_from_sql {ctable sql {_err ""}} {
-    if [string length $_err] { upvar 1 $_err err }
+    if {[string length $_err] > 0} {
+	upvar 1 $_err err
+    }
 
     set pg_res [pg_exec [conn] $sql]
+
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
       set errinf "$err\nIn \"sql\""
-    } elseif {[catch {$ctable import_postgres_result $pg_res} err]} {
-      set ok 0
-      set errinf $::errorInfo
+    } else {
+	# postgres request succeeded, try to import it into the speedtable
+	if {[catch {$ctable import_postgres_result $pg_res} err] == 1} {
+	  # failed
+	  set ok 0
+	  set errinf $::errorInfo
+	} else {
+	    # succeeded
+	    set numTuples [pg_result $pg_res -numTuples]
+	}
+	# either way, if we are here we got a valid postgres result,
+	# clear it
+	pg_result $pg_res -clear
     }
-    set numTuples [pg_result $pg_res -numTuples]
-    pg_result $pg_res -clear
 
-    if !$ok {
-      if [string length $_err] { return -1 }
+    if {!$ok} {
+      # if there was an error var pased, set the error into the var
+      # and return -1
+      if {[string length $_err]} {
+	  return -1
+      }
+      # no error var passed, cause the error to be sent as a tcl traceback
       return -code error -errorinfo $errinf $err
     }
-
     return $numTuples
   }
 

@@ -253,7 +253,12 @@ namespace eval ::stapi {
       #
       proc ctable {args} {
 	set level [expr {[info level] - 1}]
-	eval [list ::stapi::sql_ctable $level [namespace current]] $args
+	set catchCode [catch {::stapi::sql_ctable $level [namespace current] {*}$args} catchResult]
+	# properly send back errors and "return"
+	if {$catchCode == 1 || $catchCode == 2} {
+	    return -code return $catchResult
+	}
+	return $catchResult
       }
 
       # copy the search proc into this namespace
@@ -600,7 +605,11 @@ namespace eval ::stapi {
 
     #puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
 
-    uplevel #$level $selectCommand
+    set catchCode [catch {uplevel #$level $selectCommand} catchResult]
+    # send back errors or "return" with the return code
+    if {$catchCode == 1 || $catchCode == 2} {
+	return -code return $catchResult
+    }
     return [set ${ns}::select_count]
   }
 

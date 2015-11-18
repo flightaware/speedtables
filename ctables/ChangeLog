@@ -1,20 +1,5 @@
-7/7/2015 Peter
-    * Back out chunk allocation change - now in branch "memory-chunking"
-
-7/5/2015 peter
-    * Back out duplicate deletion test
-    * Replace with a duplicate test in the action handler
-
-7/5/2015 peter
-    * Avoid duplicate deletions of rows in search.
-    * Increase size of transTable by one to avoid an edge case (fencepost error)
-
-6/12/2015 peter
-    * Add tunable parameters to control allocation chunk size.
-
 11/20/2014 zero
     * Add explicit (char *) cast to ckalloc calls as tcl86 defines the macro as returning void*
-
 10/19/2012 peter
     * Move dirty set outside break statement.
 
