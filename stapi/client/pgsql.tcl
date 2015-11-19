@@ -256,7 +256,7 @@ namespace eval ::stapi {
 	set catchCode [catch {::stapi::sql_ctable $level [namespace current] {*}$args} catchResult]
 	# properly send back errors and "return"
 	if {$catchCode == 1 || $catchCode == 2} {
-	    return -code return $catchResult
+	    return -code $catchCode $catchResult
 	}
 	return $catchResult
       }
@@ -608,7 +608,7 @@ namespace eval ::stapi {
     set catchCode [catch {uplevel #$level $selectCommand} catchResult]
     # send back errors or "return" with the return code
     if {$catchCode == 1 || $catchCode == 2} {
-	return -code return $catchResult
+	return -code $catchCode $catchResult
     }
     return [set ${ns}::select_count]
   }
