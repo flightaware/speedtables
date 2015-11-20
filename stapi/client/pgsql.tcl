@@ -677,27 +677,35 @@ namespace eval ::stapi {
     # The empty string key indicates this is being invoked from sql_ctable_store and no primary key was provided.
     # We will rely on Postgres generating a key for us.
     if {$key != ""} {
-	    set sql "SELECT EXISTS(SELECT 1 FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key]);"
-	    set exists [flightaware_simplesqlquery [conn [set ${ns}::table_name]] $sql]
+	set rows 0
+	if {[llength $assigns] > 0} {
+	  set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
+	  append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
 
-	    set rows 0
-	    if {[llength $assigns] > 0} {
-	      set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
-	      append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
+	  if {![exec_sql_rows $sql rows "" [set ${ns}::table_name]]} {
+	    return 0
+	  }
+	} else {
+	  set sql "SELECT EXISTS(SELECT 1 FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key]);"
+	  set exists [flightaware_simplesqlquery [conn [set ${ns}::table_name]] $sql]
+	  if {$exists} {
+	    # No values were provided to update, but the primary key already exists.
+	    # No need to do an insert or anything else at this point.
+	    return 1
+	  }
+	}
 
-	      if {![exec_sql_rows $sql rows "" [set ${ns}::table_name]]} {
-		return 0
-	      }
-	    }
+	if {$rows > 0} {
+	  return 1
+	}
 
-	    if {$rows > 0 || [string is true -strict $exists]} {
-              return 1
-            }
+	# If we made it to this point, the primary key does not exist, so we should just do an insert.
+	# Since a key was provided to us, though, we'll insert it into the value list before proceeding.
 
-	    if {[set ${ns}::key] ni $cols} {
-	      lappend cols [set ${ns}::key]
-	      lappend vals [pg_quote $key]
-	    }
+	if {[set ${ns}::key] ni $cols} {
+	  lappend cols [set ${ns}::key]
+	  lappend vals [pg_quote $key]
+	}
     }
 
     set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
