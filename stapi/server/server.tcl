@@ -732,20 +732,18 @@ namespace eval ::stapi {
   }
 
   #
-  # gen_refresh_ctable_sql ctable sql ?time_col? ?last_read? ?err?
+  # gen_refresh_ctable_sql ctable ?time_col? ?last_read? ?err?
   #
   # Generate the SQL to select new and updated rows from SQL table 'table' 
-  # using time_col, and store it in variable named by "sql" parameter.
+  # using time_col.
   #
   # if last_read is non-zero use that rather than last modify time of the cache,
   # return success or failure if err variable name is provided.
   #
-  proc gen_refresh_ctable_sql {ctable _retsql {time_col ""} {last_read 0} {_err ""}} {
+  proc gen_refresh_ctable_sql {ctable {time_col ""} {last_read 0} {_err ""}} {
     variable ctable2name
     variable time_column
     variable sql_cache
-
-    upvar 1 $_retsql retsql
 
     if {"$_err" != ""} {
       upvar 1 $_err err
@@ -801,11 +799,9 @@ namespace eval ::stapi {
       }
     }
 
-    # Patch the sql with the last read time if possible
+    # Patch the sql with the last read time if possible, then go to the db
     set sql [set_time_limit $sql $time_col $last_read]
-
-    set retsql $sql
-    return 1
+    return $sql
   }
 
   #
@@ -813,7 +809,7 @@ namespace eval ::stapi {
   #
   # Update new rows from SQL table 'table' into ctable 'ctable' using time_col,
   # if last_read is non-zero use that rather than last modify time of the cache,
-  # return number of rows read, or -1 on caught error
+  # return success or failure if err variable name is provided.
   #
   proc refresh_ctable {ctable {time_col ""} {last_read 0} {_err ""}} {
     variable ctable2name
@@ -824,9 +820,7 @@ namespace eval ::stapi {
       set _err err
     }
 
-    if {! [gen_refresh_ctable_sql $ctable sql $time_col $last_read err]} {
-      return -1
-    }
+    set sql [gen_refresh_ctable_sql $ctable $time_col $last_read err]
     return [read_ctable_from_sql $ctable $sql $_err]
   }
 
