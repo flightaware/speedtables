@@ -825,6 +825,9 @@ namespace eval ::stapi {
     }
 
     if {! [gen_refresh_ctable_sql $ctable sql $time_col $last_read err]} {
+      if {"$_err" == ""} {
+        return -code error $err
+      }
       return -1
     }
     return [read_ctable_from_sql $ctable $sql $_err]
