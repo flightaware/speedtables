@@ -1,3 +1,10 @@
+03/20/2016 peter
+    * Update test framework to work without rivet/DIO
+      Env vars PG_DB ST_PREFIX STAPI_PREFIX
+
+03/27/2016 peter
+    * Fix for missing SQL code in gen_refresh_ctable_sql
+
 07/21/2012 peter
     * Add detach option for sockets for shared memory speedtables.
 
