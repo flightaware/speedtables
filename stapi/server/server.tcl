@@ -802,7 +802,9 @@ namespace eval ::stapi {
     }
 
     # Patch the sql with the last read time if possible
-    set sql [set_time_limit $sql $time_col $last_read]
+    if {$last_read != -1} {
+      set sql [set_time_limit $sql $time_col $last_read]
+    }
 
     set retsql $sql
     return 1
@@ -816,9 +818,6 @@ namespace eval ::stapi {
   # return number of rows read, or -1 on caught error
   #
   proc refresh_ctable {ctable {time_col ""} {last_read 0} {_err ""}} {
-    variable ctable2name
-    variable time_column
-
     if {"$_err" != ""} {
       upvar 1 $_err err
       set _err err
@@ -830,6 +829,32 @@ namespace eval ::stapi {
       }
       return -1
     }
+    return [read_ctable_from_sql $ctable $sql $_err]
+  }
+
+  #
+  # reload_ctable ctable ?err?
+  #
+  # Force a complete reload of a ctable (cached or not) from SQL.
+  # return number of rows read, or -1 on caught error
+  #
+  # This function is used to synchronise a table that may have had deleted rows.
+  #
+  proc reload_ctable {ctable {_err ""}} {
+    if {"$_err" != ""} {
+      upvar 1 $_err err
+      set _err err
+    }
+
+    # pass -1 as the last modified time to force gen_refresh_ctable_sql
+    # to ignore any time column defined in the table
+    if {! [gen_refresh_ctable_sql $ctable sql "" -1 err]} {
+      if {"$_err" == ""} {
+        return -code error $err
+      }
+      return -1
+    }
+    $ctable reset
     return [read_ctable_from_sql $ctable $sql $_err]
   }
 
