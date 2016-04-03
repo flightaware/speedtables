@@ -2,7 +2,11 @@
     * Fix "return" in code bodies for stapi shared memory and postgres-backed speedtables.
 	* Version bump to 1.9.1
 
-03/20/2016 peter
+04/03/2016 peter
+    * Cache root directory associated with a name, so subsequent names get
+      matched to files in the same directory.
+
+03/30/2016 peter
     * Update test framework to work without rivet/DIO
       Env vars PG_DB ST_PREFIX STAPI_PREFIX
 
