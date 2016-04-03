@@ -37,6 +37,7 @@ namespace eval ::stapi {
 
   # Saved information about open ctables
   variable ctable2name
+  variable name2root
   variable time_column
   variable sql_cache
 
@@ -1162,11 +1163,18 @@ namespace eval ::stapi {
     }
 
     variable build_root
+    variable name2root
+    if [info exists name2root($name)] {
+      set root $name2root($name)
+    } else {
+      set root $build_root
+      set name2root($name) $build_root
+    }
 
     if {"$ext" != ""} {
       append name . $ext
     }
-    return [file join $build_root $name]
+    return [file join $root $name]
   }
 
   # Just invalidate the cache
