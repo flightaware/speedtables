@@ -1,3 +1,6 @@
+04/04/2016 peter
+    * Redo lockfile code to avoid issues with tcl's "rename".
+
 04/03/2016 peter
     * Cache root directory associated with a name, so subsequent names get
       matched to files in the same directory.
