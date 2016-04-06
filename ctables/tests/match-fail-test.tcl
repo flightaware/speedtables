@@ -12,6 +12,10 @@ source searchtest-def.tcl
 
 source dumb-data.tcl
 
+puts -nonewline stderr "Checking search -compare match success for valid type ... "
+t search -compare {{match name D*}}
+puts "OK"
+
 puts -nonewline stderr "Checking search -compare match fail for invalid type ... "
 set expected {term "age" must be a string type for match operation while processing search compare}
 
