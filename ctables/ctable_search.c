@@ -423,7 +423,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		// Check if field that supports string matches
 		int ftype = ctable->creator->fieldTypes[field];
 		if(ftype != CTABLE_TYPE_FIXEDSTRING && ftype != CTABLE_TYPE_VARSTRING) {
-		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[1]), "\" must be a string type for match operation", (char *) NULL);
+		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[1]), "\" must be a string type for \"", Tcl_GetString (termList[0]), "\" operation", (char *) NULL);
 		    goto err;
 		}
 
