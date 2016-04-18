@@ -375,7 +375,7 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
  			# TCL_RETURN/TCL_BREAK
 			if {$status == 2 || $status == 3} {
 			    remote_ctable_cache_disconnect $cttpUrl
-			    return $result
+			    return -code $status $result
 			}
 
 			# TCL_OK or TCL_CONTINUE just keep going
