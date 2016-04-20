@@ -82,9 +82,10 @@ namespace eval ::stapi {
     switch -glob -- [lindex $args 0] {
       search* {
 	#puts "\nrunning shared_handler search, '[namespace which reader] $args'"
-	set ret [catch {uplevel 1 [namespace which reader] $args} catchResult catchOptions]
+	catch {uplevel 1 [namespace which reader] $args} catchResult catchOptions
+
 	#puts "shared_handler search ran, args '$args' result '$catchResult', options $catchOptions\n"
-	if {$ret == 2} {return -code return $catchResult}
+	dict incr catchOptions -level 1
 	return -options $catchOptions $catchResult
       }
       destroy {
@@ -102,9 +103,9 @@ namespace eval ::stapi {
       default {
 	if {$attached} {
 	  #puts "\nrunning shared_handler default case, args '$args'"
-	  set ret [catch {uplevel 1 [namespace which master] $args} catchResult catchOptions]
+	  [catch {uplevel 1 [namespace which master] $args} catchResult catchOptions
 	  #puts "shared_handler default case ran, args '$args' result '$catchResult', options $catchOptions\n"
-	  if {$ret == 2} {return -code return $catchResult}
+	  dict incr catchOptions -level 1
 	  return -options $catchOptions $catchResult
 	} else {
 	  return -code error "Detached shared table can only 'search' and 'destroy'"

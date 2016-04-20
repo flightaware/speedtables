@@ -105,9 +105,9 @@ variable springboardProcCode
 set springboardProcCode {
 	proc %s {cmd args} {
 		#puts "\nrunning springboard proc $cmd ran with args '$args'"
-		set ret [catch {uplevel 1 {stapi $cmd %s $args} catchResult catchOptions]
+		catch {uplevel 1 {stapi $cmd %s $args} catchResult catchOptions
 		#puts "springboard proc $cmd ran with args '$args', ret $ret, result $catchResult, options $catchOptions\n"
-		if {$ret == 2} {return -code return $catchResult}
+		dict incr catchOptions -level 1
 		return -options $catchOptions $catchResult
 	}
 }
@@ -373,11 +373,9 @@ proc make_springboard_proc {procName handle} {
     }
 
     #puts "\nsearch proc in extend.tcl running '$cmd"
-    set ret [catch {uplevel 1 $cmd} catchResult catchOptions]
+    catch {uplevel 1 $cmd} catchResult catchOptions
     #puts "\nsearch proc in extend.tcl returning ret $ret, catch result $catchResult options $catchOptions"
-    if {$ret == 2} {
-	return -code return $catchResult
-    }
+    dict incr catchOptions -level 1
     return -options $catchOptions $catchResult
   }
 
