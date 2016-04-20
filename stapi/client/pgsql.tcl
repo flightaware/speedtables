@@ -253,12 +253,9 @@ namespace eval ::stapi {
       #
       proc ctable {args} {
 	set level [expr {[info level] - 1}]
-	set catchCode [catch {::stapi::sql_ctable $level [namespace current] {*}$args} catchResult]
-	# properly send back errors and "return"
-	if {$catchCode == 1 || $catchCode == 2} {
-	    return -code $catchCode $catchResult
-	}
-	return $catchResult
+	catch {::stapi::sql_ctable $level [namespace current] {*}$args} catchResult catchOptions
+	dict incr catchOptions -level 1
+	return -options $catchOptions $catchResult
       }
 
       # copy the search proc into this namespace
@@ -326,7 +323,11 @@ namespace eval ::stapi {
       set proc sql_ctable_unimplemented
     }
 
-    return [eval [list $proc $level $ns $cmd] $args]
+    catch {$proc $level $ns $cmd {*}$args} catchResult catchOptions
+    dict incr catchOptions -level 1
+    return -options $catchOptions $catchResult
+
+    #return [eval [list $proc $level $ns $cmd] $args]
     #return [$proc $level $ns $cmd {*}$args]
   }
 
@@ -600,10 +601,9 @@ namespace eval ::stapi {
 
     #puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
 
-    set catchCode [catch {uplevel #$level $selectCommand} catchResult]
-    # send back errors or "return" with the return code
-    if {$catchCode == 1 || $catchCode == 2} {
-	return -code $catchCode $catchResult
+    if {[catch {uplevel #$level $selectCommand} catchResult catchOptions]} {
+	dict incr catchOptions -level 1
+	return -options $catchOptions $catchResult
     }
     return [set ${ns}::select_count]
   }
