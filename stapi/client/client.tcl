@@ -102,3 +102,4 @@ namespace eval ::stapi {
 
 package provide st_client 1.9.0
 
+# vim: set ts=8 sw=4 sts=4 noet :

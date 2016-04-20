@@ -19,3 +19,4 @@ $ctable search -compare {{match isbn 1-56592-*}} -key k -array_get_with_nulls _a
     puts "$field{$k} = $a($field)"
   }
 }
+# vim: set ts=8 sw=4 sts=4 noet :
