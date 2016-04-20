@@ -104,7 +104,10 @@ namespace eval ::stapi::extend {
 variable springboardProcCode
 set springboardProcCode {
 	proc %s {cmd args} {
-		catch {uplevel 1 {stapi $cmd %s $args} catchResult catchOptions
+		#puts "\nrunning springboard proc $cmd ran with args '$args'"
+		set ret [catch {uplevel 1 {stapi $cmd %s $args} catchResult catchOptions]
+		#puts "springboard proc $cmd ran with args '$args', ret $ret, result $catchResult, options $catchOptions\n"
+		if {$ret == 2} {return -code return $catchResult}
 		return -options $catchOptions $catchResult
 	}
 }
@@ -368,7 +371,14 @@ proc make_springboard_proc {procName handle} {
     if {$debug} {
       debug [list uplevel 1 $cmd]
     }
-    return [uplevel 1 $cmd]
+
+    #puts "\nsearch proc in extend.tcl running '$cmd"
+    set ret [catch {uplevel 1 $cmd} catchResult catchOptions]
+    #puts "\nsearch proc in extend.tcl returning ret $ret, catch result $catchResult options $catchOptions"
+    if {$ret == 2} {
+	return -code return $catchResult
+    }
+    return -options $catchOptions $catchResult
   }
 
   proc count {handle} {
@@ -387,3 +397,4 @@ namespace eval ::stapi {
 
 package provide stapi_extend 1.9.0
 
+# vim: set ts=8 sw=4 sts=4 noet :
