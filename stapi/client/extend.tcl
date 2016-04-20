@@ -94,11 +94,27 @@ namespace eval ::stapi::extend {
 
     incr seq
     set stable($handle) ::stapi::extend::_table$seq
-    proc $stable($handle) {cmd args} "
-	uplevel 1 \[concat \[list stapi \$cmd $handle] \$args]
-    "
+
+    #proc $stable($handle) {cmd args} "uplevel 1 \[concat \[list stapi \$cmd $handle] \$args]"
+	make_springboard_proc $stable($handle) $handle
+
     return $stable($handle)
   }
+
+variable springboardProcCode
+set springboardProcCode {
+	proc %s {cmd args} {
+		catch {uplevel 1 {stapi $cmd %s $args} catchResult catchOptions
+		return -options $catchOptions $catchResult
+	}
+}
+
+proc make_springboard_proc {procName handle} {
+	variable springboardProcCode
+
+	set procBody [format $springboardProcCode $procName $handle]
+	eval $procBody
+}
 
   # Check if the handle supports minimal stapi extensions:
   # * If it's wrapped, yes, otherwise...

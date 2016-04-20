@@ -97,7 +97,8 @@ namespace eval ::stapi {
       }
       default {
 	if {$attached} {
-	  uplevel 1 [namespace which master] $args
+	  catch {uplevel 1 [namespace which master] $args} catchResult catchOptions
+	  return -options $catchOptions $catchResult
 	} else {
 	  return -code error "Detached shared table can only 'search' and 'destroy'"
 	}
