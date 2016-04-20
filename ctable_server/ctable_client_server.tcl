@@ -99,3 +99,5 @@ namespace export split_ctable_url join_ctable_url
 }
 
 package provide ctable_net 1.9.0
+
+# vim: set ts=8 sw=4 sts=4 noet :
