@@ -1,3 +1,8 @@
+4/24/2016 peter
+    * Fixes to tests framework for stapi.
+      The stapi tests were not using the path in TCLLIBPATH because it was
+      separated by : rather than space.
+
 11/20/2014 zero
     * Add explicit (char *) cast to ckalloc calls as tcl86 defines the macro as returning void*
 10/19/2012 peter

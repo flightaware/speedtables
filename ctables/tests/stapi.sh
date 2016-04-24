@@ -31,9 +31,12 @@ echo "Started ./master_server.tcl"
 
 echo "Running ./$script"
 ${TCLSHSTAPI} $script
+result=$?
+echo "Status=$result"
 
 echo "Shutting down master"
 ${TCLSHSTAPI} ./shutdown_master.tcl
 
 echo "Finished"
 
+exit $status

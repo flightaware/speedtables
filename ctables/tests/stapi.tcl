@@ -2,10 +2,6 @@
 # $Id$
 #
 
-# Because we need to be testing from the development version of stapi!
-set dir [exec sh -c "cd ../../stapi; pwd"]
-source $dir/pkgIndex.tcl
-
 package require st_shared
 
 puts "Making connection"
