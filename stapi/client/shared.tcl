@@ -103,7 +103,7 @@ namespace eval ::stapi {
       default {
 	if {$attached} {
 	  #puts "\nrunning shared_handler default case, args '$args'"
-	  [catch {uplevel 1 [namespace which master] $args} catchResult catchOptions
+	  catch {uplevel 1 [namespace which master] $args} catchResult catchOptions
 	  #puts "shared_handler default case ran, args '$args' result '$catchResult', options $catchOptions\n"
 	  dict incr catchOptions -level 1
 	  return -options $catchOptions $catchResult
