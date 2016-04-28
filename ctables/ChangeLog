@@ -1,3 +1,7 @@
+4/28/2016 karl
+    * Fix "return" in code bodies for shared memory speedtables.
+    * Version bump to 1.9.1
+
 4/24/2016 peter
     * Fixes to tests framework for stapi.
       The stapi tests were not using the path in TCLLIBPATH because it was

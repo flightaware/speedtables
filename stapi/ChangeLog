@@ -1,3 +1,7 @@
+4/28/2016 karl
+    * Fix "return" in code bodies for stapi shared memory and postgres-backed speedtables.
+	* Version bump to 1.9.1
+
 07/21/2012 peter
     * Add detach option for sockets for shared memory speedtables.
 

@@ -1,3 +1,7 @@
+4/28/2016 karl
+    * Fix "return" in code bodies of client/server speedtables.
+	* Version bump to 1.9.1
+
 12/08/2012 peter
     * Start cleanup for tests
 
