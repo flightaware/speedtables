@@ -389,10 +389,13 @@ proc make_springboard_proc {procName handle} {
   }
 }
 
+} ;# namespace eval ::stapi::extend
+
 namespace eval ::stapi {
   namespace import ::stapi::extend::*
 }
 
 package provide stapi_extend 1.9.0
+
 
 # vim: set ts=8 sw=4 sts=4 noet :
