@@ -619,6 +619,10 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	  case CTABLE_SEARCH_ACTION_ARRAY: {
 	    int result = TCL_OK;
 
+	    // Clear array before filling it in. Ignore failure because it's
+	    // OK for the array not to exist at this point.
+	    Tcl_UnsetVar2(interp, Tcl_GetString(search->rowVarNameObj), NULL, 0);
+
 	    if (search->nRetrieveFields < 0) {
 	       int i;
 
