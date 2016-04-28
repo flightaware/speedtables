@@ -118,6 +118,7 @@ proc make_springboard_proc {procName handle} {
 	set procBody [format $springboardProcCode $procName $handle]
 	eval $procBody
 }
+}
 
   # Check if the handle supports minimal stapi extensions:
   # * If it's wrapped, yes, otherwise...
@@ -387,7 +388,6 @@ proc make_springboard_proc {procName handle} {
     }
     return [$ctable($handle) count]
   }
-}
 
 } ;# namespace eval ::stapi::extend
 
