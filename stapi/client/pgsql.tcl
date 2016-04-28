@@ -994,6 +994,6 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_client_postgres 1.9.0
+package provide st_client_postgres 1.9.1
 
 # vim: set ts=8 sw=4 sts=4 noet :
