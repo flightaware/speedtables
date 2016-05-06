@@ -186,7 +186,7 @@ struct ctable_BaseRow {
     cell_t		_row_cycle;
 #endif
     // _ll_nodes absolutely must be the last thing defined in the base row
-    ctable_LinkedListNode _ll_nodes[];
+    ctable_LinkedListNode _ll_nodes[0];
 };
 
 #include "jsw_slib.h"
