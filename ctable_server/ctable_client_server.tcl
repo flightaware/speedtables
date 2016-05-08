@@ -98,6 +98,6 @@ namespace export split_ctable_url join_ctable_url
 
 }
 
-package provide ctable_net 1.9.1
+package provide ctable_net 1.9.2
 
 # vim: set ts=8 sw=4 sts=4 noet :

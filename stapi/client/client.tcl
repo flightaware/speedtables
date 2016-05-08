@@ -100,6 +100,6 @@ namespace eval ::stapi {
   register package connect_package
 }
 
-package provide st_client 1.9.1
+package provide st_client 1.9.2
 
 # vim: set ts=8 sw=4 sts=4 noet :
