@@ -3,8 +3,7 @@
     * Version bump to 1.9.1
 
 4/28/2016 peter
-    * unset array in search -array and -array_with_nulls at atrt of each loop.
-    * unset array in search -array and -array_with_nulls at atrt of each loop.
+    * unset array in search -array and -array_with_nulls at start of each loop.
 
 4/24/2016 peter
     * Fixes to tests framework for stapi.
