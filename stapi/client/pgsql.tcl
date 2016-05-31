@@ -461,7 +461,7 @@ namespace eval ::stapi {
   proc sql_ctable_array_get {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
 
-    pg_select -withoutnulls [conn] $sql row {
+    pg_select -withoutnulls -nodotfields [conn] $sql row {
 	return [array get row]
     }
 
@@ -477,7 +477,7 @@ namespace eval ::stapi {
   proc sql_ctable_array_get_with_nulls {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
 
-    pg_select [conn] $sql row {
+    pg_select -nodotfields [conn] $sql row {
 	return [array get row]
     }
 
@@ -597,6 +597,7 @@ namespace eval ::stapi {
     if {[info exists search(-array)] || [info exists search(-array_get)]} {
         lappend selectCommand "-withoutnulls"
     }
+    lappend selectCommand "-nodotfields"
     lappend selectCommand [conn] $sql $array [join $code "\n"]
 
     #puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
@@ -615,7 +616,7 @@ namespace eval ::stapi {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] ILIKE [::stapi::quote_glob $val];"
     set code "set $keyvar \[lindex $__key 0]\n$code"
-    uplevel #$level [list pg_select [conn] $sql __key $code]
+    uplevel #$level [list pg_select -nodotfields [conn] $sql __key $code]
   }
 
   #
