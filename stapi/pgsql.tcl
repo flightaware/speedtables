@@ -158,13 +158,18 @@ namespace eval ::stapi {
         return $tableColumnCache($table)
     }
 
-    set sql "SELECT a.attnum, a.attname AS col, t.typname AS type
-		FROM pg_class c, pg_attribute a, pg_type t
-		WHERE c.relname = '$table'
-		  and a.attnum > 0
-		  and a.attrelid = c.oid
-		  and a.atttypid = t.oid
-		ORDER BY a.attnum;"
+	set sql "SELECT column_name as col, data_type as type
+	         FROM   information_schema.columns
+	         WHERE  table_schema = current_schema()
+	         AND    table_name   = '$table';"
+
+    #set sql "SELECT a.attnum, a.attname AS col, t.typname AS type
+		#FROM pg_class c, pg_attribute a, pg_type t
+		#WHERE c.relname = '$table'
+		  #and a.attnum > 0
+		  #and a.attrelid = c.oid
+		  #and a.atttypid = t.oid
+		#ORDER BY a.attnum;"
 
     pg_select [conn] $sql row {
       lappend result $row(col) $row(type)
