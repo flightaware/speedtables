@@ -2,6 +2,7 @@
 
 #ifdef WITH_PGTCL
 extern "C" PGresult *PgGetResultId (Tcl_Interp *interp, CONST char *id, void **resultidPtr);
+extern "C" PGconn *PgGetConnectionId (Tcl_Interp *interp, CONST char *id, void **resultidPtr);
 #endif
 
 // ctable table-specific function to delete all rows
@@ -902,14 +903,14 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_IMPORT_POSTGRES_RESULT: {
 #ifdef WITH_PGTCL
-	  const PGconn	   *conn;
-          const PGresult   *res;
+	  PGconn	   *conn = NULL;
+          PGresult         *res;
 	  char             *fieldName = NULL;
 	  char             *key = NULL;
 	  char             *value;
-	  int              *fieldList;
+	  int              *fieldList = NULL;
 	  int               fieldIndex;
-	  int               nFields;
+	  int               nFields = -1;
 	  int               nTuples;
 	  int               field;
 	  int               noKeys = 0;
@@ -918,8 +919,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  Tcl_Obj          *valueObj;
 	  Tcl_Obj          *utilityObj = Tcl_NewObj();
 	  char              keyNumberString[32];
-	  int		    keyColumn;
-	  int		    firstColumn;
+	  int		    keyColumn = -1;
+	  int		    firstColumn = -1;
 	  int		    nocomplain = 0;
 	  Tcl_Obj	   *resultObj = objv[2];
 	  int		    poll_interval = 0;
@@ -928,6 +929,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int		    poll_foreground = 0;
 	  int               i = 3;
 	  int		    import_rowbyrow = 0;
+	  int		    tclStatus;
+	  ExecStatusType    pgStatus;
+	  int		    firstTime = 1;
 
           if (objc < 3) {
 	    import_arg_err:
@@ -968,79 +972,96 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      return TCL_ERROR;
 	  }
 
-	  conn = PgGetConnectionId(interp, Tcl_GetString (resultObj), NULL);
-	  if (conn == NULL) {
-	      // Tcl_SetStringObj (Tcl_GetObjResult (interp), Tcl_GetString (objv[2]), -1);
-	      Tcl_AppendResult (interp, " while getting connection from ", Tcl_GetString (resultObj), NULL);
-	      return TCL_ERROR;
-	  }
+	  // Get initial result token, one way or the other.
+	  if (import_rowbyrow) {
+	      // If importing an asynchronous result using row-by-row, the "resultObj" 
+	      // is a connection token.
+	      conn = PgGetConnectionId(interp, Tcl_GetString (resultObj), NULL);
+	      if (conn == NULL) {
+	          // Tcl_SetStringObj (Tcl_GetObjResult (interp), Tcl_GetString (objv[2]), -1);
+	          Tcl_AppendResult (interp, " while getting connection from ", Tcl_GetString (resultObj), NULL);
+	          return TCL_ERROR;
+	      }
 
-	  if(import_rowbyrow) {
-		PQsetSingleRowMode(conn);
-	  }
+	      PQsetSingleRowMode(conn);
 
-	  res = PQgetResult(conn);
-	  if(res == NULL) {
-	      Tcl_AppendResult (interp, " while getting result from ", Tcl_GetString (resultObj), NULL);
-	      return TCL_ERROR;
-	  }
-
-          nFields = PQnfields (res);
-
-	  fieldList = (int *) ckalloc ( nFields * sizeof (int));
-
-	  if (noKeys) {
-	      // if called with "-nokeys", there is no default key column
-	      keyColumn = -1;
-	      firstColumn = 0;
+	      res = PQgetResult(conn);
 	  } else {
-	      // if not called with "-nokeys", the first field in the query
-	      // result is the default key column
-	      keyColumn = 0;
-	      firstColumn = 1;
+	      // If importing a synchronous result in one gulp, the "resultObj" is a result token.
+	      res = PgGetResultId(interp, Tcl_GetString (resultObj), NULL);
 	  }
 
-	  for (field = firstColumn; field < nFields; field++) {
-	      fieldName = PQfname (res, field);
-
-	      Tcl_SetStringObj (fieldNameObj, fieldName, -1);
-
-	      if (Tcl_GetIndexFromObj (interp, fieldNameObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
-		  if (nocomplain) {
-		      Tcl_ResetResult(interp);
-		      fieldIndex = -1;
-		  } else {
-		      Tcl_AppendResult (interp, " while matching postgres field \"", fieldName, "\" with fields from table \"${table}\"", (char *)NULL);
-		      return TCL_ERROR;
-		  }
-	      }
-
-	      fieldList[field] = fieldIndex;
-
-	      // If any column matches the key, then use it. This means
-	      // ignoring the first column if noKeys wasn't set.
-	      if(${table}_keyField == fieldIndex) {
-	          keyColumn = field;
-	      }
+	  if(res == NULL) {
+	      Tcl_AppendResult (interp, "Unexpected NULL while getting result from ", Tcl_GetString (resultObj), NULL);
+	      return TCL_ERROR;
 	  }
+
+	  // At this point we have derived a result and potentially have to spin-clean it, so track Tcl status
+	  // instead of just returning
+	  tclStatus = TCL_OK;
 
 	  while (res != NULL) {
-	      int resultStatus = PQresultStatus(res);
-	      if (resultStatus != PGRES_TUPLES_OK && resultStatus != PGRES_SINGLE_TUPLE) {
+	      pgStatus = PQresultStatus(res);
+	      if (pgStatus != PGRES_TUPLES_OK && pgStatus != PGRES_SINGLE_TUPLE) {
                   /* query failed, or it wasn't SELECT */
                   /* NB FIX there isn't necessarily an error here,
                    * meaning we can get an empty string */
-                  char *errString = PQresultErrorMessage(result);
+                  char *errString = PQresultErrorMessage(res);
 
                   if (*errString == '\0')
                   {
-                          errString = PQresStatus (resultStatus);
+                          errString = PQresStatus (pgStatus);
                   }
 
                   Tcl_SetResult(interp, errString, TCL_VOLATILE);
-                  PQclear(result);
-		  return TCL_ERROR;
+		  tclStatus = TCL_ERROR;
+		  goto done;
 	      }
+
+	      if (firstTime) {
+		  firstTime = 0;
+
+                  nFields = PQnfields (res);
+
+	          fieldList = (int *) ckalloc ( nFields * sizeof (int));
+
+	          if (noKeys) {
+	              // if called with "-nokeys", there is no default key column
+	              keyColumn = -1;
+	              firstColumn = 0;
+	          } else {
+	              // if not called with "-nokeys", the first field in the query
+	              // result is the default key column
+	              keyColumn = 0;
+	              firstColumn = 1;
+	          }
+
+	          for (field = firstColumn; field < nFields; field++) {
+	              fieldName = PQfname (res, field);
+
+	              Tcl_SetStringObj (fieldNameObj, fieldName, -1);
+
+	              if (Tcl_GetIndexFromObj (interp, fieldNameObj, ${table}_fields, "field", TCL_EXACT, &fieldIndex) != TCL_OK) {
+		          if (nocomplain) {
+		              Tcl_ResetResult(interp);
+		              fieldIndex = -1;
+		          } else {
+		              Tcl_AppendResult (interp, " while matching postgres field \"", fieldName, "\" with fields from table \"${table}\"", (char *)NULL);
+		              tclStatus = TCL_ERROR;
+		              goto done;
+		          }
+	              }
+
+	              fieldList[field] = fieldIndex;
+
+	              // If any column matches the key, then use it. This means
+	              // ignoring the first column if noKeys wasn't set.
+	              if(${table}_keyField == fieldIndex) {
+	                  keyColumn = field;
+	              }
+	          }
+	      }
+
 	      nTuples = PQntuples (res);
 
 	      for (pgRow = 0; pgRow < nTuples; pgRow++) {
@@ -1055,17 +1076,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 			      Tcl_DecrRefCount (poll_code);
 
 			      if (poll_foreground) {
-			          switch (result) {
-		                      case TCL_ERROR: {
-				          Tcl_AppendResult (interp, " in -poll_code", (char *)NULL);
-				          return TCL_ERROR;
-			              }
-			              case TCL_BREAK: {
-				          return TCL_OK;
+				  tclStatus = result;
+				  if (result != TCL_OK) {
+				      switch(result) {
+		                          case TCL_ERROR: {
+				              Tcl_AppendResult (interp, " in -poll_code", (char *)NULL);
+					      break;
+			                  }
+					  case TCL_BREAK: {
+					      tclStatus = TCL_OK;
+					      break;
+					  }
 				      }
-			              case TCL_RETURN: {
-			                  return TCL_RETURN;
-			              }
+				      goto done;
 			          }
 			      } else if(result == TCL_ERROR) {
 			          Tcl_BackgroundError(interp);
@@ -1089,7 +1112,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	          row = ${table}_find_or_create (interp, ctable, key, &indexCtl);
 	          if(!row) {
 	              Tcl_AppendResult (interp, " while saving Postgres result into ${table}", (char *)NULL);
-	              return TCL_ERROR;
+	              tclStatus = TCL_ERROR;
+		      goto done;
 	          }
 
 	          for (field = firstColumn; field < nFields; field++) {
@@ -1107,7 +1131,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		          if (PQgetisnull (res, pgRow, field)) {
 			      if (${table}_set_null (interp, ctable, row, fieldList[field], indexCtl) == TCL_ERROR) {
 			          Tcl_AppendResult (interp, " while setting null value for field \"", fieldName, "\" in table \"${table}\"", (char *)NULL);
-		                  return TCL_ERROR;
+		                  tclStatus = TCL_ERROR;
+				  goto done;
 			      }
 		              continue;
 		          }
@@ -1120,12 +1145,14 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	          }
 
                   if (indexCtl == CTABLE_INDEX_NEW)
-	              if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR)
-	                  return TCL_ERROR;
+	              if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR) {
+	                  tclStatus = TCL_ERROR;
+			  goto done;
+		      }
 	      }
 
-	      PQclear(res);
 	      if(import_rowbyrow) {
+	          PQclear(res);
 		  res = PQgetResult(conn);
 	      } else {
 		  res = NULL;
@@ -1134,6 +1161,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  if (noKeys && key != NULL) {
 	      Tcl_SetObjResult (interp, Tcl_NewStringObj (key, -1));
+	  }
+      done:
+	  if (import_rowbyrow) {
+	      // spin-clean
+	      while (res) {
+		  PQclear (res);
+		  res = PQgetResult(conn);
+	      }
+	  }
+	  if (tclStatus != TCL_OK) {
+	      return tclStatus;
 	  }
 
 	  break;
