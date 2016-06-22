@@ -109,7 +109,7 @@ namespace eval ::stapi {
 	  if {[catch {set lock_time [file mtime $lockfile]} err]} {
 	    # File probably been deleted behind our back, we'll check that
 	    # next time around
-	    debug $err
+	    # debug $err
 	  } elseif {$lock_time + $sleep_time / 500 < [clock seconds]} {
 	    unset -nocomplain pid
 
@@ -117,7 +117,7 @@ namespace eval ::stapi {
             if {[gets $fp pid] <= 0} {
 	      # empty file, other process is probably still locking it
 	      unset pid
-	      debug "Empty lockfile"
+	      # debug "Empty lockfile"
 	    }
             close $fp
 	    unset fp
