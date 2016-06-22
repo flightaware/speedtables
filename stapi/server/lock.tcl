@@ -40,7 +40,7 @@ namespace eval ::stapi {
 
     set lockfile $name.lock
 
-    set sleep_time [expr {9500 + [pid] % 1000}]
+    set sleep_time [expr {4500 + [pid] % 1000}]
     set retries [expr {($timeout * 10000) / $sleep_time}]
     set final_err "Timeout creating lock file for $name"
     set lockfile_locked 0
