@@ -2403,6 +2403,7 @@ ctable_elapsed_time (struct timespec *oldtime, struct timespec *newtime, struct 
     }
 }
 
+#ifdef CLOCK_VIRTUAL
 //
 // ctable_performance_callback - callback routine for performance of search calls
 //
@@ -2442,6 +2443,7 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
     }
 
 }
+#endif
 
 //
 // ctable_TeardownSearch - tear down (free) a search structure and the
@@ -2515,13 +2517,17 @@ CTABLE_INTERNAL int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable, int indexField) {
     CTableSearch    search;
     int result;
+#ifdef CLOCK_VIRTUAL
     struct timespec startTimeSpec;
+#endif
     int loggingMatchCount = 0;
 
 
+#ifdef CLOCK_VIRTUAL
     if (ctable->performanceCallbackEnable) {
 	clock_gettime (CLOCK_VIRTUAL, &startTimeSpec);
     }
+#endif
 
     // flag this search in progress
     ctable->searching = 1;
@@ -2539,20 +2545,24 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
         result = ctable_PerformSearch (interp, ctable, &search);
     }
 
+#ifdef CLOCK_VIRTUAL
     if (ctable->performanceCallbackEnable) {
 	loggingMatchCount = search.matchCount;
     }
+#endif
 
     ctable_TeardownSearch (&search);
 
     ctable->searching = 0;
 
+#ifdef CLOCK_VIRTUAL
     if (ctable->performanceCallbackEnable) {
 	Tcl_Obj *saveResultObj = Tcl_GetObjResult (interp);
 	Tcl_IncrRefCount (saveResultObj);
 	ctable_performance_callback (interp, ctable, objv, objc, &startTimeSpec, loggingMatchCount);
 	Tcl_SetObjResult (interp, saveResultObj);
     }
+#endif
 
     return result;
 }
