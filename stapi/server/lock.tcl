@@ -7,6 +7,12 @@ namespace eval ::stapi {
   variable locking 0
   variable lock_level
 
+  if {![string length [info procs debug]]} {
+    proc debug {args} {
+      puts stderr "DEBUG: [join $args "\nDEBUG: "]"
+    }
+  }
+
   proc lockfile {name _err {timeout 120} {recursing 0}} {
     variable lock_level
 
