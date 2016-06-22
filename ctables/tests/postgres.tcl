@@ -3,10 +3,10 @@
 # Requires the following environment variables/arguments
 
 # -host $DBHOST=hostname (defaults to localhost)
-# -db / -name $DBNAME=database-name (defaults to unqualified hostname, required if localhost)
 # -port $DBPORT=tcp-port (defaults to 5432)
 # -user $DBUSER=username (defaults to login name)
-# -pass $DBPASS=password (required)
+# -db / -name $DBNAME=database-name (defaults to user name)
+# -password $DBPASS=password (required)
 
 proc pgconn {args} {
 	array set opts $args
@@ -23,20 +23,6 @@ proc pgconn {args} {
 			set opts(-host) localhost
 		}
 	}
-	if ![info exists opts(-name)] {
-		if [info exists opts(-db)] {
-			set opts(-name) $opts(-db)
-			unset opts(-db)
-		} elseif [info exists env(DBNAME)] {
-			set opts(-name) $env(DBNAME)
-		} else {
-			set l [split $opts(-host) "."]
-			set opts(-name) [lindex $l 0]
-			if {![string length $opts(-name)] || "$opts(-name)" == "localhost"} {
-				error "Need database name"
-			}
-		}
-	}
 	if ![info exists opts(-port)] {
 		if [info exists env(DBPORT)] {
 			set opts(-port) $env(DBPORT)
@@ -46,26 +32,35 @@ proc pgconn {args} {
 	}
 	if ![info exists opts(-user)] {
 		if [info exists env(DBUSER)] {
-			set opts(-port) $env(DBUSER)
+			set opts(-user) $env(DBUSER)
 		} elseif [info exists env(LOGNAME)] {
-			set opts(-port) $env(LOGNAME)
+			set opts(-user) $env(LOGNAME)
 		} else {
 			error "Need database user name"
 		}
 	}
-	if ![info exists opts(-pass)] {
+	if ![info exists opts(-password)] {
 		if [info exists env(DBPASS)] {
-			set opts(-port) $env(DBPASS)
+			set opts(-password) $env(DBPASS)
 		} else {
 			error "Need database user password"
+		}
+	}
+	if ![info exists opts(-name)] {
+		if [info exists opts(-db)] {
+			set opts(-name) $opts(-db)
+			unset opts(-db)
+		} else {
+			set opts(-name) $opts(-user)
 		}
 	}
 
 	set dbname $opts(-name)
 	unset opts(-name)
-	if {catch [list set pgconn [list $dbname] [array get opts]] err} {
-		error $err
+	puts "+ [concat pg_connect [list $dbname] [array get opts]]"
+	if [catch [concat pg_connect [list $dbname] [array get opts]] res] {
+		error $res
 	}
-	set ::test::pgconn $pgconn
-	return $pgconn
+	set ::test::pgconn $res
+	return $res
 }
