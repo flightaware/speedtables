@@ -90,5 +90,5 @@ pg_result $r -clear
 
 puts stderr "Import results"
 foreach id [$a names] {
-	puts [list $id [$a array_get_with_nulls $id]]
+	#puts [list $id [$a array_get_with_nulls $id]]
 }
