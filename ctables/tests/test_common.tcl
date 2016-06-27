@@ -19,6 +19,7 @@ set auto_path [concat $libpath $auto_path]
 source ../gentable.tcl
 
 # Common overrides for ctable config variables, commented out, usual default
+namespace eval ctable {
 
     # set to 1 to see errorInfo in normal tracebacks
     #set errorDebug 0
@@ -57,4 +58,4 @@ if {"[info commands memory]" != ""} {
 
     # approx number of ctable row pools required to fill all shared memory
     #set poolRatio 16
-
+}
