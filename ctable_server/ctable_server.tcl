@@ -678,7 +678,7 @@ proc serverdie {{message ""}} {
 
 }
 
-package provide ctable_server 1.9.3
+package provide ctable_server 1.9.4
 
 #get, set, array_get, array_get_with_nulls, exists, delete, count, foreach, sort, type, import, import_postgres_result, export, fields, fieldtype, needs_quoting, names, reset, destroy, statistics, write_tabsep, or read_tabsep
 
