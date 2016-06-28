@@ -1005,6 +1005,11 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     int   compareResult;
     int   actionResult;
 
+    // Row is only matched once per search.
+    if(row->_search_cycle == ctable->search_cycle) {
+        return TCL_CONTINUE;
+    }
+
     // Handle polling
     if(search->pollInterval && --search->nextPoll <= 0) {
 	if(ctable_search_poll(interp, ctable, search) == TCL_ERROR)
@@ -1047,7 +1052,10 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
     }
 
     // It's a Match 
-    // Are we sorting? Plop the match in the sort table and return
+    row->_search_cycle = ctable->search_cycle;
+
+    // Are we sorting or otherwise deferring? Plop the match in the
+    // transaction table and return
     // Increment count in this block to make sure it's incremented in all
     // paths.
 
@@ -1576,6 +1584,16 @@ restart_search:
 		search->sortControl.nFields = 0;
 	    }
 	}
+    }
+
+    // Increment ctable search cycle.
+    ctable->search_cycle++;
+    if(ctable->search_cycle == 0) {
+        // Looped, reset search on all rows
+	ctable->search_cycle = 1;
+        CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+            row->_search_cycle = 0;
+        }
     }
 
     // Prepare transaction buffering if necessary

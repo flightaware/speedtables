@@ -10,6 +10,14 @@
       The stapi tests were not using the path in TCLLIBPATH because it was
       separated by : rather than space.
 
+8/30/2015 Peter
+    * Create "search cycle" test to limit walking over speedtable to clear
+      search-matching flags to 1 in MAXINT searches.
+
+7/5/2015 peter
+    * Avoid duplicate deletions of rows in search.
+    * Increase size of transTable by one to avoid an edge case (fencepost error)
+
 11/20/2014 zero
     * Add explicit (char *) cast to ckalloc calls as tcl86 defines the macro as returning void*
 10/19/2012 peter
