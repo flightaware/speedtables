@@ -1,5 +1,7 @@
 package require Pgtcl
-package require ctable
+
+source test_common.tcl
+
 
 source postgres.tcl
 
@@ -12,13 +14,6 @@ proc readfile {file} {
 	set text [read $fp]
 	close $fp
 	return $text
-}
-
-proc abortif {e where} {
-	set result [uplevel 1 [list expr $e]]
-	if {$result} {
-		error "ERROR: $e $where"
-	}
 }
 
 proc do_sql {conn sql} {
@@ -65,15 +60,18 @@ array set animals {
 	4	{type dog name spot weight 37}
 	5	{type cat name puss weight 10}
 	6	{type rooster name boss weight 17}
-	7	{type pangolin name bob wight 26}
+	7	{type pangolin name bob weight 26}
 }
 
 puts stderr "Insert small animals"
+set oweight 0
 foreach id [array names animals] {
 	array set row $animals($id)
+	incr oweight $row(weight)
 	do_prepared $conn insertanimal $id $row(type) $row(name) $row(weight) }
 
 for {set i 1} {$i < 100} {incr i} {
+	incr oweight 10
 	do_prepared $conn insertanimal [expr 100 + $i] chicken "chicken #$i" 10
 }
 
@@ -85,10 +83,20 @@ set a [Animals create #auto]
 
 puts stderr "Import test"
 set r [pg_exec $conn "select id, name, type, weight from animals;"]
+puts "  results"
+    puts "    status    [pg_result $r -status]"
+    puts "    numTuples [pg_result $r -numTuples]"
+    puts "    conn      [pg_result $r -conn]"
 $a import_postgres_result $r
 pg_result $r -clear
+puts "Import complete"
 
-puts stderr "Import results"
-foreach id [$a names] {
-	#puts [list $id [$a array_get_with_nulls $id]]
+set nweight 0
+$a search -array row -code {
+	incr nweight $row(weight)
 }
+puts "original weight $oweight - new weight $nweight"
+if {$oweight != $nweight} {
+	error "Weights didn't match!"
+}
+puts "Imported results matched."

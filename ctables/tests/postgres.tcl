@@ -58,8 +58,6 @@ proc pgconn {args} {
 	if ![info exists opts(-password)] {
 		if [info exists env(DBPASS)] {
 			set opts(-password) $env(DBPASS)
-		} else {
-			error "Need database user password"
 		}
 	}
 	if ![info exists opts(-dbname)] {

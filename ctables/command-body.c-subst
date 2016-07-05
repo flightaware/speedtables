@@ -1990,6 +1990,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_PERFORMANCE_CALLBACK: {
+#ifdef CLOCK_VIRTUAL
 	char *callback;
 
 	if ((objc == 3) || (objc > 4)) {
@@ -2024,6 +2025,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		ctable->performanceCallbackEnable = 1;
 	      }
 	}
+#else
+	Tcl_AppendResult(interp, "performance callback not implemented on this OS", (char *)NULL);
+	return TCL_ERROR;
+#endif
       }
     }
 

@@ -2,5 +2,5 @@
 
 package require st_client
 
-package provide stapi 1.9.2
+package provide stapi 1.9.4
 

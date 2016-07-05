@@ -1,9 +1,9 @@
 CExtension animals 1.0 {
     CTable Animals {
         key id 
-        varstring name indexed 1
+        varstring name
         varstring type
-        int weight indexed 1
+        int weight
     }
 }
 

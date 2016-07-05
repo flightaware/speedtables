@@ -754,15 +754,6 @@ namespace eval ::stapi {
       foreach tuple $req(-compare) {
 	foreach {op col v1 v2} $tuple break
 
-	if {[info exists types($col)]} {
-	  set type $types($col)
-	} else {
-	  set type varchar
-	}
-
-	set q1 [pg_quote $v1]
-	set q2 [pg_quote $v2]
-  
 	if {[info exists sql($col)]} {
 	  set col $sql($col)
 	}
@@ -785,31 +776,31 @@ namespace eval ::stapi {
 	  }
 
 	  < {
-	      lappend where "$col < $q1"
+	      lappend where "$col < [pg_quote $v1]"
 	  }
 
 	  <= {
-	      lappend where "$col <= $q1"
+	      lappend where "$col <= [pg_quote $v1]"
 	  }
 
 	  = {
-	      lappend where "$col = $q1"
+	      lappend where "$col = [pg_quote $v1]"
 	  }
 
 	  != {
-	      lappend where "$col <> $q1"
+	      lappend where "$col <> [pg_quote $v1]"
 	  }
 
 	  <> {
-	      lappend where "$col <> $q1"
+	      lappend where "$col <> [pg_quote $v1]"
 	  }
 
 	  >= {
-	      lappend where "$col >= $q1"
+	      lappend where "$col >= [pg_quote $v1]"
 	  }
 
 	  > {
-	      lappend where "$col > $q1"
+	      lappend where "$col > [pg_quote $v1]"
 	  }
 
 	  imatch {
@@ -863,12 +854,12 @@ namespace eval ::stapi {
 	  }
 
 	  range {
-	    lappend where "$col >= $q1"
+	    lappend where "$col >= [pg_quote $v1]"
 	    lappend where "$col < [pg_quote $v2]"
 	  }
 
 	  in {
-	    foreach v [lrange $tuple 2 end] {
+	    foreach v $v1 {
 	      lappend q [pg_quote $v]
 	    }
 	    lappend where "$col IN ([join $q ","])"
@@ -995,6 +986,6 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_client_postgres 1.9.2
+package provide st_client_postgres 1.9.4
 
 # vim: set ts=8 sw=4 sts=4 noet :

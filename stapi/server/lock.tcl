@@ -7,8 +7,13 @@ namespace eval ::stapi {
   variable locking 0
   variable lock_level
 
+  if {![string length [info procs debug]]} {
+    proc debug {args} {
+      puts stderr "DEBUG: [join $args "\nDEBUG: "]"
+    }
+  }
+
   proc lockfile {name _err {timeout 120} {recursing 0}} {
-    # debug [info level 0]
     variable lock_level
 
     if {![info exists lock_level($name)]} {
@@ -33,14 +38,9 @@ namespace eval ::stapi {
       set locking 1
     }
 
-    set tempfile $name.[pid]
     set lockfile $name.lock
 
-    set fp [open $tempfile w]
-    puts $fp [pid]
-    close $fp
-
-    set sleep_time [expr {9500 + [pid] % 1000}]
+    set sleep_time [expr {4500 + [pid] % 1000}]
     set retries [expr {($timeout * 10000) / $sleep_time}]
     set final_err "Timeout creating lock file for $name"
     set lockfile_locked 0
@@ -64,14 +64,18 @@ namespace eval ::stapi {
       # If we're OK (locked or recursing)...
       if {$ok} {
 	# If we can't lock, set not OK
-        if {[catch {file rename $tempfile $lockfile} errmsg]} {
+        if {[catch {set fp [open $lockfile {CREAT EXCL RDWR}]} errmsg]} {
 	  # If we can't lock for some reason than the lockfile exists, break
           if {"[lindex $::errorCode 1]" != "EEXIST"} {
-            file delete $tempfile
 	    set final_err $errmsg
 	    break
           }
 	  set ok 0
+	} else {
+	  # Record who we are
+	  puts $fp [pid]
+	  close $fp
+	  unset fp
 	}
       }
 
@@ -81,18 +85,14 @@ namespace eval ::stapi {
 	set lockfile_locked 0
       }
 
-      # If OK, tempfile should have been removed in the rename
+      # If OK, locked file
       if {$ok} {
-        if {![file exists $tempfile]} {
-	  # debug "LOCKED $name"
-	  incr lock_level($name)
-          if {!$recursing} {
-            set locking 0
-          }
-	  return 1
-	}
-	set final_err "Temp file can't be removed"
-	break
+	# debug "LOCKED $name"
+	incr lock_level($name)
+        if {!$recursing} {
+          set locking 0
+        }
+	return 1
       }
 
       # At this point, we've been unable to lock...
@@ -114,8 +114,13 @@ namespace eval ::stapi {
 	    unset -nocomplain pid
 
             set fp [open $lockfile r]
-            gets $fp pid
+            if {[gets $fp pid] <= 0} {
+	      # empty file, other process is probably still locking it
+	      unset pid
+	      debug "Empty lockfile"
+	    }
             close $fp
+	    unset fp
 
 	    if {[info exists pid] && [dead_proc $pid]} {
 	      debug "Deleting stale lockfile $lockfile"
@@ -139,8 +144,7 @@ namespace eval ::stapi {
       set lockfile_locked 0
     }
 
-    # dump the tempfile
-    catch {file delete $tempfile}
+    # Record why we think we failed
     set err $final_err
     debug "NOT LOCKED $name $err"
 
@@ -181,4 +185,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_locks 1.9.2
+package provide st_locks 1.9.4
