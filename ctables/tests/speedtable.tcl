@@ -2,7 +2,7 @@
 # Make sure the speedtable interface works
 #
 
-package require speedtable
+source test_common.tcl
 
 speedtables Topbrands 1.0 {
 
