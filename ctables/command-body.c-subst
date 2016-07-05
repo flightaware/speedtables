@@ -922,23 +922,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int		    keyColumn = -1;
 	  int		    firstColumn = -1;
 	  int		    nocomplain = 0;
-	  Tcl_Obj	   *resultObj = objv[2];
+	  char		    *dataSource = NULL;
 	  int		    poll_interval = 0;
 	  int		    poll_counter = 0;
 	  Tcl_Obj	   *poll_code = NULL;
 	  int		    poll_foreground = 0;
-	  int               i = 3;
 	  int		    import_rowbyrow = 0;
 	  int		    tclStatus;
 	  ExecStatusType    pgStatus;
 	  int		    firstTime = 1;
 
-          if (objc < 3) {
-	    import_arg_err:
-	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate?");
-	      return TCL_ERROR;
-	  }
-
+	  int i = 2;
 	  while (i < objc) {
 	      char *option = Tcl_GetString (objv[i++]);
 	      if (strcmp (option, "-nokeys") == 0) {
@@ -962,9 +956,17 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      Tcl_AppendResult (interp, "in argument to -poll_interval", NULL);
 		      return TCL_ERROR;
 		  }
+	      } else if(dataSource == NULL) {
+		  dataSource = option;
 	      } else {
 	          goto import_arg_err;
 	      }
+	  }
+
+	  if (dataSource == NULL) {
+	    import_arg_err:
+	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate?");
+	      return TCL_ERROR;
 	  }
 
 	  if (poll_code != NULL && poll_interval == 0) {
@@ -974,12 +976,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  // Get initial result token, one way or the other.
 	  if (import_rowbyrow) {
-	      // If importing an asynchronous result using row-by-row, the "resultObj" 
+	      // If importing an asynchronous result using row-by-row, the "data source" 
 	      // is a connection token.
-	      conn = PgGetConnectionId(interp, Tcl_GetString (resultObj), NULL);
+	      conn = PgGetConnectionId(interp, dataSource, NULL);
 	      if (conn == NULL) {
 	          // Tcl_SetStringObj (Tcl_GetObjResult (interp), Tcl_GetString (objv[2]), -1);
-	          Tcl_AppendResult (interp, " while getting connection from ", Tcl_GetString (resultObj), NULL);
+	          Tcl_AppendResult (interp, " while getting connection from ", dataSource, NULL);
 	          return TCL_ERROR;
 	      }
 
@@ -987,12 +989,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	      res = PQgetResult(conn);
 	  } else {
-	      // If importing a synchronous result in one gulp, the "resultObj" is a result token.
-	      res = PgGetResultId(interp, Tcl_GetString (resultObj), NULL);
+	      // If importing a synchronous result in one gulp, the "data source" is a result token.
+	      res = PgGetResultId(interp, dataSource, NULL);
 	  }
 
 	  if(res == NULL) {
-	      Tcl_AppendResult (interp, "Unexpected NULL while getting result from ", Tcl_GetString (resultObj), NULL);
+	      Tcl_AppendResult (interp, "Unexpected NULL while getting result from ", dataSource, NULL);
 	      return TCL_ERROR;
 	  }
 

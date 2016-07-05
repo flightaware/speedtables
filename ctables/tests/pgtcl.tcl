@@ -100,3 +100,20 @@ if {$oweight != $nweight} {
 	error "Weights didn't match!"
 }
 puts "Imported results matched."
+
+$a reset
+
+puts stderr "Import row-by-row test"
+pg_sendquery $conn "select id, name, type, weight from animals;"
+$a import_postgres_result -rowbyrow $conn
+puts "Import maybe complete"
+
+set rweight 0
+$a search -array row -code {
+	incr rweight $row(weight)
+}
+puts "original weight $oweight - rowbyrow weight $rweight"
+if {$oweight != $rweight} {
+	error "Weights didn't match!"
+}
+puts "Imported results matched."
