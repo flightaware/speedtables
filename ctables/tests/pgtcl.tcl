@@ -20,13 +20,6 @@ proc readfile {file} {
 	return $text
 }
 
-proc abortif {e where} {
-	set result [uplevel 1 [list expr $e]]
-	if {$result} {
-		error "ERROR: $e $where"
-	}
-}
-
 proc do_sql {conn sql} {
 	global verbose
 	if {$verbose} {puts "+ do_sql {$sql}"}
@@ -91,6 +84,10 @@ set a [Animals create #auto]
 
 puts stderr "Import test"
 set r [pg_exec $conn "select id, name, type, weight from animals;"]
+puts "  results"
+    puts "    status    [pg_result $r -status]"
+    puts "    numTuples [pg_result $r -numTuples]"
+    puts "    conn      [pg_result $r -conn]"
 $a import_postgres_result $r
 pg_result $r -clear
 
