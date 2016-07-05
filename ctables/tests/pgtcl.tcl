@@ -68,11 +68,14 @@ array set animals {
 }
 
 puts stderr "Insert small animals"
+set oweight 0
 foreach id [array names animals] {
 	array set row $animals($id)
+	incr oweight $row(weight)
 	do_prepared $conn insertanimal $id $row(type) $row(name) $row(weight) }
 
 for {set i 1} {$i < 100} {incr i} {
+	incr oweight 10
 	do_prepared $conn insertanimal [expr 100 + $i] chicken "chicken #$i" 10
 }
 
@@ -90,8 +93,14 @@ puts "  results"
     puts "    conn      [pg_result $r -conn]"
 $a import_postgres_result $r
 pg_result $r -clear
+puts "Import complete"
 
-puts stderr "Import results"
-foreach id [$a names] {
-	#puts [list $id [$a array_get_with_nulls $id]]
+set nweight 0
+$a search -array row -code {
+	incr nweight $row(weight)
 }
+puts "original weight $oweight - new weight $nweight"
+if {$oweight != $nweight} {
+	error "Weights didn't match!"
+}
+puts "Imported results matched."
