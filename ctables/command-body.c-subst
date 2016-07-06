@@ -981,12 +981,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      return TCL_ERROR;
 	  }
 
-	  // clear the info array here to catch an error before we did a lot of work
+	  // clear the info array here, and set up names for elements
 	  if (infoArray) {
  	     numTuplesName = Tcl_NewStringObj("numTuples", -1);
-	     if (Tcl_ObjSetVar2 (interp, infoArray, numTuplesName, NULL, TCL_LEAVE_ERR_MSG) == NULL) {
-		return TCL_ERROR;
-	     }
+	     Tcl_UnsetVar2 (interp, Tcl_GetString(infoArray), NULL, 0);
 	  }
 
 	  // Get initial result token, one way or the other.

@@ -105,8 +105,11 @@ $a reset
 
 puts stderr "Import row-by-row test"
 pg_sendquery $conn "select id, name, type, weight from animals;"
-$a import_postgres_result -rowbyrow $conn
+$a import_postgres_result -rowbyrow $conn -info stat
 puts "Import maybe complete"
+if {"[array get stat]" != "numTuples 106"} {
+	error "Info array was [array get stat], expected "numTuples 106"
+}
 
 set rweight 0
 $a search -array row -code {
