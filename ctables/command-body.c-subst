@@ -931,6 +931,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int		    tclStatus;
 	  ExecStatusType    pgStatus;
 	  int		    firstTime = 1;
+	  Tcl_Obj	   *infoArray = NULL;
+	  Tcl_Obj	   *numTuplesName = NULL;
+	  int		    totalNumTuples = 0;
 
 	  int i = 2;
 	  while (i < objc) {
@@ -943,6 +946,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		  poll_foreground = 1;
 	      } else if (strcmp (option, "-rowbyrow") == 0) {
 		  import_rowbyrow = 1;
+	      } else if (strcmp (option, "-info") == 0) {
+	          if (i >= objc)
+		      goto import_arg_err;
+		  infoArray = objv[i++];
 	      } else if (strcmp (option, "-poll_code") == 0) {
 	          if (i >= objc)
 		      goto import_arg_err;
@@ -965,13 +972,21 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  if (dataSource == NULL) {
 	    import_arg_err:
-	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate?");
+	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate? ?-info arrayName?");
 	      return TCL_ERROR;
 	  }
 
 	  if (poll_code != NULL && poll_interval == 0) {
 	      Tcl_AppendResult (interp, "-poll_code specified but -poll_interval set to 0", NULL);
 	      return TCL_ERROR;
+	  }
+
+	  // clear the info array here to catch an error before we did a lot of work
+	  if (infoArray) {
+ 	     numTuplesName = Tcl_NewStringObj("numTuples", -1);
+	     if (Tcl_ObjSetVar2 (interp, infoArray, numTuplesName, NULL, TCL_LEAVE_ERR_MSG) == NULL) {
+		return TCL_ERROR;
+	     }
 	  }
 
 	  // Get initial result token, one way or the other.
@@ -1065,6 +1080,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 
 	      nTuples = PQntuples (res);
+	      totalNumTuples += nTuples;
 
 	      for (pgRow = 0; pgRow < nTuples; pgRow++) {
 
@@ -1171,6 +1187,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		  PQclear (res);
 		  res = PQgetResult(conn);
 	      }
+	  }
+	  if (infoArray) {
+	     if (Tcl_ObjSetVar2 (interp, infoArray, numTuplesName, Tcl_NewIntObj(totalNumTuples), TCL_LEAVE_ERR_MSG) == NULL) {
+		return TCL_ERROR;
+	     }
 	  }
 	  if (tclStatus != TCL_OK) {
 	      return tclStatus;
