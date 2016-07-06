@@ -249,6 +249,47 @@ namespace eval ::stapi {
   }
 
   #
+  # read_ctable_from_sql_rowbyrow - specify a ctable and a SQL select statement and
+  #  this code invokes the SQL statement and loads the results into the
+  #  specified ctable
+  #
+  # does a Tcl error if it gets an error from postgres unless error variable
+  # is specified, in which case it sets the error message into the error
+  # variable and returns -1.
+  #
+  # if successful it returns the number of tuples read, from zero on up.
+  #
+  proc read_ctable_from_sql_rowbyrow {ctable sql {_err ""}} {
+    if {[string length $_err] > 0} {
+	upvar 1 $_err err
+    }
+
+    set ok 1
+
+    pg_sendquery [conn] $sql
+    if {[catch {$ctable import_postgres_result -rowbyrow [conn] -info status} err] == 1} {
+	# failed
+	set ok 0
+	set errinf $::errorInfo
+    } else {
+	# succeeded
+	set numTuples $status(numTuples)
+    }
+
+    if {!$ok} {
+      # if there was an error var pased, set the error into the var
+      # and return -1
+      if {[string length $_err]} {
+	  return -1
+      }
+      # no error var passed, cause the error to be sent as a tcl traceback
+      return -code error -errorinfo $errinf $err
+    }
+
+    return $numTuples
+  }
+
+  #
   # read_ctable_from_sql_async - specify a ctable and a SQL select statement and
   #  this code invokes the SQL statement and loads the results into the
   #  specified ctable, asynchronously
