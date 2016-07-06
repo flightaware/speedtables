@@ -216,14 +216,14 @@ namespace eval ::stapi {
 	upvar 1 $_err err
     }
 
-    set pg_res [pg_exec [conn] $sql]
+    set pg_res [pg_sendquery [conn] $sql]
 
     if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
       set err [pg_result $pg_res -error]
       set errinf "$err\nIn \"sql\""
     } else {
 	# postgres request succeeded, try to import it into the speedtable
-	if {[catch {$ctable import_postgres_result $pg_res} err] == 1} {
+	if {[catch {$ctable import_postgres_result -rowbyrow $pg_res} err] == 1} {
 	  # failed
 	  set ok 0
 	  set errinf $::errorInfo
@@ -231,6 +231,9 @@ namespace eval ::stapi {
 	    # succeeded
 	    set numTuples [pg_result $pg_res -numTuples]
 	}
+
+	# the result handle is cleared automatically by import_postgres_result
+	# if used with row by row
 	# either way, if we are here we got a valid postgres result,
 	# clear it
 	pg_result $pg_res -clear
