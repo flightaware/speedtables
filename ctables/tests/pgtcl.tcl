@@ -117,3 +117,23 @@ if {$oweight != $rweight} {
 	error "Weights didn't match!"
 }
 puts "Imported results matched."
+
+set oldrows [$a count]
+puts stderr "Import loop test"
+for {set i 0} {$i < 10000} {incr i} {
+	if {$i % 10 == 0} {
+		puts -nonewline "."
+		if {$i % 750 == 740} {
+			puts ""
+		} 
+	}
+	$a reset
+	pg_sendquery $conn "select id, name, type, weight from animals;"
+	$a import_postgres_result -rowbyrow $conn
+	set newrows [$a count]
+	if {$newrows != $oldrows} {
+		puts "!"
+		error "Expected $oldrows rows, got $newrows rows"
+	}
+}
+puts "\nDone"
