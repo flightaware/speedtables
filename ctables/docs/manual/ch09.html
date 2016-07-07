@@ -94,6 +94,8 @@ speed table arguments for the field
 <p>Name of column in the table that contains the last_changed time of each entry, if any. This is used as an optimization to only load modified lines when the schema supports that.</p>
 <dt>-index field_name<dd>
 <p>Name of a field to create an index on. Multiple <tt>-index</tt> entries are allowed.</p>
+<dt>-rowbyrow 1<dd>
+<p>Use the "row by row" method when importng the table. See Chapter 5 for the advantages and hazards of this mechanism.</p>
 </dl>
 <dt><tt>::stapi::refresh_ctable ctable ?last_read? ?err?</tt><dd>
 <p>Update new rows from SQL for speed table <tt>ctable</tt>.</p>
