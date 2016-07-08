@@ -5843,7 +5843,7 @@ proc compile {fileFragName version} {
     # Keep sysconfig(ccflags) from overriding optimization level
     regsub -all { -O[0-9] } " $sysconfig(ccflags) " { } sysconfig(ccflags)
 
-    myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $cassString $stubString $memDebugString -c $sourceFile -o $objFile"
+    myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $cassString $stubString $memDebugString -c $sourceFile -o $objFile 2>@stderr"
 
     set ld_cmd "$sysconfig(cxxld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
 
@@ -5869,7 +5869,7 @@ proc compile {fileFragName version} {
     }
 
     append ld_cmd " $sysconfig(ldflags) $stub"
-    myexec $ld_cmd
+    myexec "$ld_cmd 2>@stderr"
 
     if {$withSubdir} {
 	set pkg_args [list $buildPath */*.tcl */*[info sharedlibextension]]
