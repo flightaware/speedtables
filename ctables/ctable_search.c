@@ -2519,8 +2519,8 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
     int result;
 #ifdef CTABLES_CLOCK
     struct timespec startTimeSpec;
-#endif
     int loggingMatchCount = 0;
+#endif
 
 
 #ifdef CTABLES_CLOCK
