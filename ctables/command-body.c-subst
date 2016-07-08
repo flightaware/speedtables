@@ -2011,7 +2011,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_PERFORMANCE_CALLBACK: {
-#ifdef CLOCK_VIRTUAL
+#ifdef CTABLES_CLOCK
+
 	char *callback;
 
 	if ((objc == 3) || (objc > 4)) {
