@@ -1,0 +1,2 @@
+autoreconf
+./configure --prefix=/opt/local --with-tcl=/opt/local/lib

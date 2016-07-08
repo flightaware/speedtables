@@ -152,9 +152,7 @@ AC_CHECK_DECL(CLOCK_VIRTUAL ,[
 
 			AC_CHECK_DECL(CLOCK_REALTIME ,[
 				CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_REALTIME"
-			] ,[
-				AC_MSG_ERROR([No clock found.  Tried CLOCK_VIRTUAL, CLOCK_PROCESS_CPUTIME_ID, CLOCK_MONOTONIC, and CLOCK_REALTIME])
-			] ,[[#include <time.h>]])
+			] , ,[[#include <time.h>]])
 
 		] ,[[#include <time.h>]])
 
