@@ -18,9 +18,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-/*
+
+#ifdef HAVE_NET_ETHERNET_H
 #include <net/ethernet.h>
-*/
+#endif
 
 #ifdef HAVE_NETINET_ETHER_H
 #include <netinet/ether.h>
