@@ -21,7 +21,9 @@ TCLSHM          = $(TCLSH)
 #TCLSH=tclsh8.4
 #TCLSHM=$(TCLSH)m
 
-all:
+all: maintests macip stapireturn
+
+maintests:
 	rm -rf stobj
 	$(TCLSH) speedtable.tcl
 	$(TCLSH) serious-tests.tcl
@@ -44,7 +46,6 @@ all:
 	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
 	$(TCLSH) match-fail-test.tcl
-	$(TCLSH) mac-ip-test.tcl
 
 clean:
 	rm -rf stobj
@@ -153,3 +154,8 @@ gbarnrow:
 matchfail:
 	rm -rf stobj
 	$(TCLSH) match-fail-test.tcl
+
+stapireturn:
+	rm -rf stobj
+	rm -f *.dat
+	sh stapi.sh -s stapireturn.tcl
