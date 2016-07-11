@@ -864,6 +864,7 @@ namespace eval ::stapi {
   # This function is used to synchronise a table that may have had deleted rows.
   #
   proc reload_ctable {ctable {_err ""}} {
+    variable rowbyrow
     if {"$_err" != ""} {
       upvar 1 $_err err
       set _err err
