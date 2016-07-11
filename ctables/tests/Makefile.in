@@ -21,7 +21,7 @@ TCLSHM          = $(TCLSH)
 #TCLSH=tclsh8.4
 #TCLSHM=$(TCLSH)m
 
-all: maintests macip stapireturn
+all: maintests macip stapi stapireturn
 
 maintests:
 	rm -rf stobj
