@@ -449,6 +449,10 @@ proc gen_reinsert_row_function {table} {
 #
 variable preambleCannedSource {
 #include "ctable.h"
+
+#ifndef HAVE_ETHERS
+#include "ethers.c"
+#endif
 }
 
 variable nullIndexDuringSetSource {
@@ -6002,6 +6006,7 @@ proc install_ch_files {includeDir} {
 	ctable.h ctable_search.c ctable_lists.c ctable_batch.c
 	boyer_moore.c jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
 	speedtables.h speedtableHash.c ctable_io.c ctable_qsort.c
+	ethers.c
     }
 
     if {$withSharedTables} {
