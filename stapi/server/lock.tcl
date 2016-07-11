@@ -13,6 +13,10 @@ namespace eval ::stapi {
     }
   }
 
+  proc lockfile_exists {name} {
+    return [file exists $name.lock]
+  }
+
   proc lockfile {name _err {timeout 120} {recursing 0}} {
     variable lock_level
 
