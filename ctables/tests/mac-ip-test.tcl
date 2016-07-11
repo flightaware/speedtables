@@ -29,12 +29,14 @@ bar 		{mac 66:55:44:33:22:11 ip 206.109.7.65}
 snap 		{mac de:ad:be:ef:00:00 ip 127.0.0.1}
 crackle 	{mac 00:de:ad:be:ef:00 ip 192.168.1.1}
 pop 		{mac fe:ed:da:be:e0:00 ip 10.0.1.1}
-doublepop 	{mac feed.dabe.e001    ip 10.9.8.7}
 }
 
-array set special_macs {
-doublepop 	fe:ed:da:be:e0:01
-}
+# Apparently not all implementations of ethers understand this format
+# doublepop 	{mac feed.dabe.e001    ip 10.9.8.7}
+# 
+# array set special_macs {
+# doublepop 	fe:ed:da:be:e0:01
+# }
 
 foreach {key val} [array get data] {
 	eval [list t set $key id $key] $val
@@ -73,13 +75,13 @@ proc check {code count} {
 }
 
 puts "checking search"
-check "" 6
+check "" 5
 
-check {{> mac 00:ff:ff:ff:ff:ff}} 5
+check {{> mac 00:ff:ff:ff:ff:ff}} 4
 
-check {{> mac 00:ff:ff:ff:ff:ff}} 5
+check {{> mac 00:ff:ff:ff:ff:ff}} 4
 
-check {{range mac 00:ff:ff:ff:ff:ff ff:ff:ff:ff:ff:ff}} 5
+check {{range mac 00:ff:ff:ff:ff:ff ff:ff:ff:ff:ff:ff}} 4
 
 check {{>= ip 128.0.0.0} {< ip 255.255.255.255}} 3
 

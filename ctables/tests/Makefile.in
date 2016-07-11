@@ -44,6 +44,7 @@ all:
 	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
 	$(TCLSH) match-fail-test.tcl
+	$(TCLSH) mac-ip-test.tcl
 
 clean:
 	rm -rf stobj
@@ -54,6 +55,10 @@ clean:
 compare:
 	rm -rf stobj
 	$(TCLSH) index-compare.tcl
+
+macip:
+        rm -rf stobj
+        $(TCLSH) mac-ip-test.tcl
 
 null:
 	rm -rf stobj
