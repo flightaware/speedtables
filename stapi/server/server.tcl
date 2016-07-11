@@ -41,6 +41,7 @@ namespace eval ::stapi {
   variable time_column
   variable sql_cache
   variable rowbyrow
+  variable sync_tsv
 
   # Mapping from sql column types to ctable field types
   variable sql2speedtable
@@ -581,6 +582,9 @@ namespace eval ::stapi {
   #   -rowbyrow 0|1
   #      Enable or disable (default) row-by-row mode
   #
+  #   -sync_tsv seconds
+  #      Resync the tsv on refresh/reload after this many seconds
+  #
   # Options that don't begin with a dash are passed to the ctable create
   # command.
   #
@@ -590,6 +594,7 @@ namespace eval ::stapi {
     variable time_column
     variable default_timeout
     variable rowbyrow
+    variable sync_tsv
 
     # default arguments
     set pattern "*"
@@ -597,6 +602,7 @@ namespace eval ::stapi {
     set time_col ""
     set indices {}
     set rowbyrow_arg 0
+    set sync_tsv_arg 0
 
     # Parse and validate
     if {[llength $args] & 1} {
@@ -613,6 +619,7 @@ namespace eval ::stapi {
 	-col* { set time_col $v }
 	-ind* { lappend indices $v }
 	-row* { set rowbyrow_arg $v }
+	-syn* { set sync_tsv_arg $v }
 	-* { return -code error "Unknown option '$n'" }
 	default {
 	   lappend open_command $n $v
@@ -626,6 +633,7 @@ namespace eval ::stapi {
 
     # Now we know the name, save metadata
     set rowbyrow($ctable) $rowbyrow_arg
+    set sync_tsv($ctable) $sync_tsv_arg
 
     # we need to know this to find the tsv file and sql file
     set ctable_name "c_$name"
@@ -748,6 +756,45 @@ namespace eval ::stapi {
   }
 
   #
+  # check_sync ctable ?force?
+  #
+  # Check if we need to resync the tsv file to the ctable
+  #
+  # force = 1|0 Create the tsv regardless of the sync status
+  #
+  proc check_sync {ctable ?force 0?} {
+    variable sync_tsv
+    variable ctable2name
+
+    set ctable_name $ctable2name($ctable)
+
+    set tsv_file [workname $ctable_name tsv]
+
+    # There could be long running writers on this lockfile. If someone
+    # else is writing it, we will let them since they're doing our
+    # job for us
+    if {[lockfile_exists $tsv_file]} {
+      return
+    }
+
+    if {![lockfile $tsv_file err 600]} {
+      return
+    }
+
+    if [info exists $tsv_file] {
+      set last_sync [file mtime $tsv_file]
+    } else {
+      set last_sync 0
+    }
+
+    if {$force || [clock seconds] > $last_sync + $sync_tsv($ctable)} {
+      save_ctable $ctable $tsv_file
+    }
+
+    unlockfile $tsv_file
+  }
+
+  #
   # gen_refresh_ctable_sql ctable sql ?time_col? ?last_read? ?err?
   #
   # Generate the SQL to select new and updated rows from SQL table 'table' 
@@ -835,6 +882,7 @@ namespace eval ::stapi {
   #
   proc refresh_ctable {ctable {time_col ""} {last_read 0} {_err ""}} {
     variable rowbyrow
+    variable sync_tsv
     if {"$_err" != ""} {
       upvar 1 $_err err
       set _err err
@@ -852,7 +900,14 @@ namespace eval ::stapi {
     } else {
       set reader read_ctable_from_sql
     }
-    return [$reader $ctable $sql $_err]
+
+    set result [$reader $ctable $sql $_err]
+
+    if {$sync_tsv($ctable) && $result != -1} {
+      check_sync $ctable
+    }
+
+    return $result
   }
 
   #
@@ -865,6 +920,7 @@ namespace eval ::stapi {
   #
   proc reload_ctable {ctable {_err ""}} {
     variable rowbyrow
+    variable sync_tsv
     if {"$_err" != ""} {
       upvar 1 $_err err
       set _err err
@@ -885,7 +941,14 @@ namespace eval ::stapi {
     } else {
       set reader read_ctable_from_sql
     }
-    return [$reader $ctable $sql $_err]
+
+    set result [$reader $ctable $sql $_err]
+
+    if {$sync_tsv($ctable) && $result != -1} {
+      check_sync $ctable
+    }
+
+    return $result
   }
 
   #
