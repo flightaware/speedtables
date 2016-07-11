@@ -4,7 +4,7 @@
 # $Id$
 #
 
-package require ctable
+source test_common.tcl
 
 #CTableBuildPath /tmp
 
@@ -79,6 +79,8 @@ check "" 5
 
 check {{> mac 00:ff:ff:ff:ff:ff}} 4
 
+puts "Add index on mac"
+t index create mac
 check {{> mac 00:ff:ff:ff:ff:ff}} 4
 
 check {{range mac 00:ff:ff:ff:ff:ff ff:ff:ff:ff:ff:ff}} 4
@@ -88,7 +90,7 @@ check {{>= ip 128.0.0.0} {< ip 255.255.255.255}} 3
 check {{range ip 128.0.0.0 255.255.255.255}} 3
 
 t index create ip
-puts "checking with index"
+puts "Add index on IP"
 
 check {{range ip 128.0.0.0 255.255.255.255}} 3
 puts "ok"
