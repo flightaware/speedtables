@@ -209,6 +209,11 @@ namespace eval ::stapi {
   # If the expression is missing or blank, it's assumed to be the same as
   #    the field name.
   # 
+  # As a special case, a column where the type is "@" will be used to generate
+  # the timestamp information. It won't go into the ctable. The exact SQL time
+  # type isn't material, it will only be used in comparisons and in generating the
+  # timestamp file via something like "SELECT MAX(sql) AS field FROM table_list;"
+  #
   proc init_ctable {name tables where_clause args} {
     variable sql2speedtable
 
@@ -282,11 +287,14 @@ namespace eval ::stapi {
       close $fp
 
       if {"$old_tcl" == "$tcl"} {
+	load_timestamp_info $ctable_name
 	unlockfile $build_dir
 	return 1
       }
       trash_old_files $ctable_name
     }
+
+    # Extract the timestamp field, if present
 
     # Generate the SQL select for this
     set sql [gen_speedtable_sql_select $name $tables $where_clause $args]
@@ -332,6 +340,11 @@ namespace eval ::stapi {
       set fp [open $sqlfile w]
       puts $fp $sql
       close $fp
+
+      # if the timestamp info exists, stash it in the .stamp.tcl file
+      if [info exists timestamp_info($ctable_name)] {
+	save_timestamp_info $ctable_name
+      }
     } err]} {
       unlockfile $build_dir
       trash_old_files $ctable_name
@@ -340,6 +353,21 @@ namespace eval ::stapi {
 
     unlockfile $build_dir
     return 1
+  }
+
+  #
+  # Helper routines for timestamps
+  #
+  proc load_timestamp_info {ctable_name} {
+  }
+
+  proc save_timestamp_info {ctable_name} {
+  }
+
+  proc load_timestamp {ctable_name} {
+  }
+
+  proc save_timestamp {ctable_name} {
   }
 
   # create_speedtable_definition name columns
@@ -649,8 +677,12 @@ namespace eval ::stapi {
       }
     }
 
+    # DEPRECATED
     # If no file, we want the last read time to be 0 (Jan 1 1970)
     set last_read 0
+
+    # if no timestamp, we want the last timestamp to be empty
+    set last_timestamp {}
 
     # Lock the tsv file.
     set tsv_file [workname $ctable_name tsv]
@@ -663,14 +695,16 @@ namespace eval ::stapi {
     # If the tsv file exists, check to see if it's stale and how to update
     # it.
     if {[file exists $tsv_file]} {
-      set file_time [file mtime $tsv_file]
       set stale_tsv_file 0; # Is the file recent enough to use?
       set update_from_db 0; # Do we need to update the file from the db
 
-      if {[string length $time_col]} {
+      if {[load_timestamp $ctable_name last_timestamp]} {
 	set stale_tsv_file 0
 	set update_from_db 1
-        set last_read $file_time
+      } elseif {[string length $time_col]} { # Deprecated
+	set stale_tsv_file 0
+	set update_from_db 1
+        set last_read [file mtime $tsv_file]
       } elseif {!$timeout || $file_time + $timeout > [clock seconds]} {
 	set stale_tsv_file 0
 	set update_from_db 0
@@ -728,7 +762,11 @@ namespace eval ::stapi {
 
     # If we're doing an update, and last_read is non-zero, this will patch the
     # SQL we read to only pull in records since the last change.
-    set sql [set_time_limit $sql $time_col $last_read]
+    if {[string length $last_timestamp]} {
+      set sql [set_timestamp_limit $last_timestamp]
+    } else { # DEPRECATED
+      set sql [set_time_limit $sql $time_col $last_read]
+    }
 
     if {$rowbyrow_arg} {
       set reader read_ctable_from_sql_rowbyrow
@@ -853,6 +891,8 @@ namespace eval ::stapi {
 	set sql_cache($ctable) $sql
     }
 
+    # TODO - do the last_timestamp stuff instead
+
     # If they didn't tell us the last-read time, guess it from the tsv file.
     if {!$last_read} {
       if {[string length $time_col]} {
@@ -957,6 +997,7 @@ namespace eval ::stapi {
   # case.
   #
   proc set_time_limit {sql time_col last_read} {
+    variable 
     if {"$time_col" == ""} {
       set last_read 0
     }
@@ -1036,14 +1077,18 @@ namespace eval ::stapi {
   #   -index column
   #      Make this column indexable
   #
-  #   -column {name type ?sql? ?args}
+  #   -column {name type ?sql? ?args?}
   #      Add an explicit derived column
   #
   #   -table name
-  #      If specified, generate implicit column-name as "table.column"
+  #      If specified, generate implicit column-name as "name.column"
   #
   #   -prefix text
   #      If specified, prefix column names with "$prefix"
+  #
+  #   -timestamp column-name
+  #      Create a timestamp column definition as an explicit column, for
+  #      optimizing caching
   #
   proc from_table {table_name keys args} {
     set with {}
