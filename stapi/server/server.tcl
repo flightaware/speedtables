@@ -913,7 +913,7 @@ namespace eval ::stapi {
     # We've read it, save it.
     save_ctable $ctable $tsv_file
 
-    save_timestamp $ctable
+    save_timestamp $ctable_name
 
     unlockfile $tsv_file
 
@@ -960,6 +960,7 @@ namespace eval ::stapi {
 
     if {$force || [clock seconds] > $last_sync + $sync_tsv($ctable)} {
       save_ctable $ctable $tsv_file
+      save_timestamp $ctable_name
     }
 
     unlockfile $tsv_file
