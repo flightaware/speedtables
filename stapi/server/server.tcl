@@ -42,6 +42,9 @@ namespace eval ::stapi {
   variable sql_cache
   variable rowbyrow
   variable sync_tsv
+  variable timestamp_column
+  variable timestamp_table
+  variable timestamp_sql
 
   # Mapping from sql column types to ctable field types
   variable sql2speedtable
@@ -216,6 +219,9 @@ namespace eval ::stapi {
   #
   proc init_ctable {name tables where_clause args} {
     variable sql2speedtable
+    variable timestamp_column
+    variable timestamp_table
+    variable timestamp_sql
 
     # Validate arguments.
     if {"$name" == ""} {
@@ -295,6 +301,29 @@ namespace eval ::stapi {
     }
 
     # Extract the timestamp field, if present
+    set new_args {}
+    set got_timestamp 0
+    foreach arg $args {
+      if {[lindex $arg 1] == "@"} { # type is "@" for timestamp
+	set l [split [lindex $arg 0] "."]
+	set table [lindex $l 0]
+	set column [lindex $l 1]
+	if {![string length $column]} {
+	  unlockfile $build_dir
+	  return -code error "No table name provided for timestamp. Required {table.column @ ?sql?}"
+	}
+	set timestamp_column($ctable) $column
+	set timestamp_table($ctable) $table
+	set timestamp_sql($ctable) [lindex $arg 2]
+        set got_timestamp 1
+      } else {
+	lappend new_args $arg
+      }
+    }
+    if {$got_timestamp} {
+      save_timestamp_info $ctable_name
+      set args $new_args
+    }
 
     # Generate the SQL select for this
     set sql [gen_speedtable_sql_select $name $tables $where_clause $args]
@@ -359,15 +388,45 @@ namespace eval ::stapi {
   # Helper routines for timestamps
   #
   proc load_timestamp_info {ctable_name} {
+    variable timestamp_column
+    variable timestamp_table
+    variable timestamp_sql
+    if [info exists timestamp_column($ctable_name)] { # Already loaded
+      return
+    }
+    set stampfile [workfile $ctable_name .stamp.tcl]
+    catch {
+      source $stampfile
+    }
   }
 
   proc save_timestamp_info {ctable_name} {
+    variable timestamp_column
+    variable timestamp_table
+    variable timestamp_sql
+    if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
+      return
+    }
+    set l {}
+    lappend l [list set timestamp_column($ctable_name) $timestamp_column($ctable_name)]
+    lappend l [list set timestamp_table($ctable_name)  $timestamp_table($ctable_name)]
+    lappend l [list set timestamp_sql($ctable_name)    $timestamp_sql($ctable_name)]
+    set stampfile [workfile $ctable_name .stamp.tcl]
+    if {![lockfile $stampfile err]} {
+      return
+    }
+    set fp [open $stampfile w]
+    puts $fp [join $l "\n"]
+    close $fp
   }
 
   proc load_timestamp {ctable_name} {
   }
 
   proc save_timestamp {ctable_name} {
+  }
+
+  proc append_timestamp_sql {sql ctable_name} {
   }
 
   # create_speedtable_definition name columns
