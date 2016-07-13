@@ -418,15 +418,91 @@ namespace eval ::stapi {
     set fp [open $stampfile w]
     puts $fp [join $l "\n"]
     close $fp
+    unlockfile $stampfile
+  }
+
+  proc query_timestamp {ctable_name} {
+    variable timestamp_column
+    variable timestamp_table
+    variable timestamp_sql
+    if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
+      return ""
+    }
+    if [string length [string trim $timestamp_sql($ctable_name)]] {
+      set selector "MAX($timestamp_sql($ctable_name)) AS timestamp"
+    } else {
+      set selector "MAX($timestamp_column($ctable_name)) AS timestamp"
+    }
+    set sql "SELECT $selector FROM $timestamp_table($ctable_name);"
+    pg_select [conn] $sql row {
+      set timestamp $row(timestamp)
+    }
+    return $timestamp
   }
 
   proc load_timestamp {ctable_name} {
+    variable timestamp_column
+    if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
+      return ""
+    }
+    set stampfile [workfile $ctable_name .stamp]
+    if {![lockfile $stampfile err]} {
+      return ""
+    }
+    set stamp ""
+    catch {
+      set fp [open $stampfile r]
+      set stamp [read $fp]
+      close $fp
+      unlockfile $stampfile
+    }
+    return $stamp
   }
 
   proc save_timestamp {ctable_name} {
+    variable timestamp_column
+    if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
+      return ""
+    }
+    set stampfile [workfile $ctable_name .stamp]
+    if {![lockfile $stampfile err]} {
+      return
+    }
+    set stamp [query_timestamp $ctable_name]
+    set fp [open $stampfile w]
+    puts $fp $stamp
+    close $fp
+    unlockfile $stampfile
   }
 
   proc append_timestamp_sql {sql ctable_name} {
+    variable timestamp_column
+    variable timestamp_table
+    variable timestamp_sql
+    if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
+      return $sql
+    }
+
+    set stamp [load_timestamp $ctable_name]
+    if {![string length [string trim $stamp]]} {
+      return $sql
+    }
+
+    # trim trailing ";"
+    set sql [regsub -all {;$} $sql {}]
+    if {[string match where [string tolower $sql]} {
+      append sql " AND "
+    } else {
+      append sql " WHERE "
+    }
+    if [string length [string trim $timestamp_sql($ctable_name)]] {
+      set column "$timestamp_sql($ctable_name)"
+    } else {
+      set column "$timestamp_table($ctable_name).$timestamp_column($ctable_name)"
+    }
+    append sql "$column < [pg_quote $stamp]"
+    append sql ";"
+    return $sql
   }
 
   # create_speedtable_definition name columns
