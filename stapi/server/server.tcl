@@ -1423,7 +1423,7 @@ namespace eval ::stapi {
 
   # Invalidate the ctable the hard way
   proc trash_old_files {ctable_name} {
-    foreach ext {ver sql tcl tsv ""} {
+    foreach ext {ver sql tcl tsv stamp stamp.tcl ""} {
       file delete -force [workname $ctable_name $ext]
     }
   }
@@ -1458,6 +1458,14 @@ namespace eval ::stapi {
     }
 
     catch {file delete -force $tsv_file}
+
+    set stampfile [workname $table_name stamp]
+
+    if {![file exists $stampfile]} {
+      set tsv_file [workname c_$table_name stamp]
+    }
+
+    catch {file delete -force $stampfile}
   }
 
   # Invalidate the whole shooting match
