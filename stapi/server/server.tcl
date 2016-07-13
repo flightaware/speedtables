@@ -1240,6 +1240,7 @@ namespace eval ::stapi {
 	-column { lappend extra_columns $value }
 	-table { set table $value }
 	-prefix { set prefix $value }
+	-timestamp { set timestamp $value }
 	default {
 	  return -code error "Unknown option '$name'"
 	}
@@ -1356,6 +1357,15 @@ namespace eval ::stapi {
       }
 
       lappend columns $column
+    }
+
+    # Don't add the timestamp until the last minute, because the same column may be included elsewhere
+    if [info exists timestamp] {
+      if [info exists table] {
+        lappend extra_columns [list $table.$value @]
+      } else {
+        lappend extra_columns [list $table_name.$value @]
+      }
     }
 
     # debug "from_table --> [concat $columns $extra_columns]"
