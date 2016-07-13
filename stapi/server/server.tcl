@@ -578,7 +578,7 @@ namespace eval ::stapi {
       # is it "something(n)"? handle those special cases
       if {[regexp {([^(]*)\([0-9]*} $t dummy baseType] == 1} {
 
-	    # is it "charater(n)?"
+	    # is it "character(n)?"
 	    if {[regexp {character\(([^)]*)} $t dummy count] == 1} {
 	      set t "fixedstring"
 	      set width " $count"
@@ -816,13 +816,10 @@ namespace eval ::stapi {
     # If no file, we want the last read time to be 0 (Jan 1 1970)
     set last_read 0
 
-    # if no timestamp, we want the last timestamp to be empty
-    set last_timestamp {}
-
     # Lock the tsv file.
     set tsv_file [workname $ctable_name tsv]
 
-   # block for up to 10 minutes
+    # block for up to 10 minutes
     if {![lockfile $tsv_file err 600]} {
       return -code error $err
     }
@@ -833,13 +830,13 @@ namespace eval ::stapi {
       set stale_tsv_file 0; # Is the file recent enough to use?
       set update_from_db 0; # Do we need to update the file from the db
 
-      if {[load_timestamp $ctable_name last_timestamp]} {
-	set stale_tsv_file 0
-	set update_from_db 1
-      } elseif {[string length $time_col]} { # Deprecated
+      if {[string length $time_col]} { # Deprecated
 	set stale_tsv_file 0
 	set update_from_db 1
         set last_read [file mtime $tsv_file]
+      } elseif {[info exists timestamp_column($ctable_name)]} {
+	set stale_tsv_file 0
+	set update_from_db 1
       } elseif {!$timeout || $file_time + $timeout > [clock seconds]} {
 	set stale_tsv_file 0
 	set update_from_db 0
@@ -897,11 +894,10 @@ namespace eval ::stapi {
 
     # If we're doing an update, and last_read is non-zero, this will patch the
     # SQL we read to only pull in records since the last change.
-    if {[string length $last_timestamp]} {
-      set sql [set_timestamp_limit $last_timestamp]
-    } else { # DEPRECATED
-      set sql [set_time_limit $sql $time_col $last_read]
-    }
+
+    # New API uses append_timestamp_sql, old API uses set_time_limit. It's safe to call both.
+    set sql [append_timestamp_sql $sql $ctable_name] ; # KEEP this line after new API is frozen
+    set sql [set_time_limit $sql $time_col $last_read] ; # DEPRECATED
 
     if {$rowbyrow_arg} {
       set reader read_ctable_from_sql_rowbyrow
@@ -916,6 +912,8 @@ namespace eval ::stapi {
 
     # We've read it, save it.
     save_ctable $ctable $tsv_file
+
+    save_timestamp $ctable
 
     unlockfile $tsv_file
 
@@ -1026,8 +1024,6 @@ namespace eval ::stapi {
 	set sql_cache($ctable) $sql
     }
 
-    # TODO - do the last_timestamp stuff instead
-
     # If they didn't tell us the last-read time, guess it from the tsv file.
     if {!$last_read} {
       if {[string length $time_col]} {
@@ -1041,6 +1037,7 @@ namespace eval ::stapi {
 
     # Patch the sql with the last read time if possible
     if {$last_read != -1} {
+      set sql [append_timestamp_sql $sql $ctable_name]
       set sql [set_time_limit $sql $time_col $last_read]
     }
 
