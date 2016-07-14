@@ -302,7 +302,7 @@ namespace eval ::stapi {
     set got_timestamp 0
     foreach arg $args {
       if {[lindex $arg 1] == "@"} { # type is "@" for timestamp
-        if {![set_timestamp_info $arg err]} {
+        if {![set_timestamp_info $ctable_name [lindex $arg 0] [lindex $arg 2] err]} {
           unlockfile $build_dir
 	  return -code error $err
         }
@@ -375,12 +375,14 @@ namespace eval ::stapi {
   #
   # Helper routines for timestamps
   #
-  proc set_timestamp_info {arg _err} {
+  #
+  # Set timestamp info from the special column with type == "@"
+  proc set_timestamp_info {ctable_name column_name sql _err} {
     variable timestamp_column
     variable timestamp_table
     variable timestamp_sql
 
-    set l [split [lindex $arg 0] "."]
+    set l [split $column_name "."]
     set table [lindex $l 0]
     set column [lindex $l 1]
     if {![string length $column]} {
@@ -390,7 +392,7 @@ namespace eval ::stapi {
     }
     set timestamp_column($ctable_name) $column
     set timestamp_table($ctable_name) $table
-    set timestamp_sql($ctable_name) [lindex $arg 2]
+    set timestamp_sql($ctable_name) $sql
     return 1
   }
 
