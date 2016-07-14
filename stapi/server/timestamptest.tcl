@@ -79,34 +79,76 @@ set columns [
 	::stapi::from_table ts_test id -timestamp timestamp
 ]
 
-puts "columns are [list $columns]"
+puts "timestamp columns are [list $columns]"
 
 # Set up the ctable
 ::stapi::init_ctable ts_test {} "" $columns
 
 # Open and read it
-set nr [::stapi::open_cached ts_test]
+set timestamp_table [::stapi::open_cached ts_test]
 
 # Check size
-puts "\[$nr count] = [$nr count]"
+puts "timestamp: \[$timestamp_table count] = [$timestamp_table count]"
 
 # Create another 20 elements
 post_n 20 moose
 
-set n [::stapi::refresh_ctable $nr]
+set n [::stapi::refresh_ctable $timestamp_table]
 
-puts "read $n total now [$nr count]"
+puts "read $n total now [$timestamp_table count]"
 
 # Create another 20 elements
 post_n 20 boris
 
-set n [::stapi::refresh_ctable $nr]
+set n [::stapi::refresh_ctable $timestamp_table]
 
-puts "read $n total now [$nr count]"
+puts "read $n total now [$timestamp_table count]"
 
 # Create another 20 elements
 post_n 20 natasha
 
-set n [::stapi::refresh_ctable $nr]
+set n [::stapi::refresh_ctable $timestamp_table]
 
-puts "read $n total now [$nr count]"
+puts "read $n total now [$timestamp_table count]"
+
+set columns [
+	::stapi::from_table ts_test id -timestamp epoch
+]
+
+puts "epoch columns are [list $columns]"
+
+# Set up the ctable
+::stapi::init_ctable epoch_test {ts_test} "" $columns
+
+# Open and read it
+set epoch_table [::stapi::open_cached epoch_test]
+
+# Check size
+puts "epoch: \[$epoch_table count] = [$epoch_table count]"
+
+# Create another 20 elements
+post_n 20 moose
+
+set n [::stapi::refresh_ctable $epoch_table]
+
+puts "read $n total now [$epoch_table count]"
+
+# Create another 20 elements
+post_n 20 boris
+
+set n [::stapi::refresh_ctable $epoch_table]
+
+puts "read $n total now [$epoch_table count]"
+
+# Create another 20 elements
+post_n 20 natasha
+
+set n [::stapi::refresh_ctable $epoch_table]
+
+puts "read $n total now [$epoch_table count]"
+
+# Update the original table
+set n [::stapi::refresh_ctable $timestamp_table]
+
+puts "read $n total now [$timestamp_table count]"
+
