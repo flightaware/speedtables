@@ -425,6 +425,7 @@ namespace eval ::stapi {
     variable timestamp_column
     variable timestamp_table
     variable timestamp_sql
+    variable last_timestamp
     if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
       return ""
     }
@@ -434,9 +435,11 @@ namespace eval ::stapi {
       set selector "MAX($timestamp_column($ctable_name)) AS timestamp"
     }
     set sql "SELECT $selector FROM $timestamp_table($ctable_name);"
+
     pg_select [conn] $sql row {
       set timestamp $row(timestamp)
     }
+    set last_timestamp($ctable_name) $timestamp
     return $timestamp
   }
 
@@ -456,21 +459,23 @@ namespace eval ::stapi {
       close $fp
       unlockfile $stampfile
     }
+    set last_timestamp($ctable_name) $stamp
     return $stamp
   }
 
   proc save_timestamp {ctable_name} {
     variable timestamp_column
-    if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
+    variable last_timestamp
+
+    if {![info exists last_timestamp($ctable_name)]} { # Nothing to save
       return ""
     }
     set stampfile [workname $ctable_name .stamp]
     if {![lockfile $stampfile err]} {
       return
     }
-    set stamp [query_timestamp $ctable_name]
     set fp [open $stampfile w]
-    puts $fp $stamp
+    puts $fp $last_timestamp($ctable_name)
     close $fp
     unlockfile $stampfile
   }
@@ -479,29 +484,33 @@ namespace eval ::stapi {
     variable timestamp_column
     variable timestamp_table
     variable timestamp_sql
+    variable last_timestamp
     if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
       return $sql
     }
 
-    set stamp [load_timestamp $ctable_name]
+    if [info exists last_timestamp($ctable_name)] {
+      set stamp $last_timestamp($ctable_name)
+    } else {
+      set stamp [load_timestamp $ctable_name]
+    }
+
     if {![string length [string trim $stamp]]} {
       return $sql
     }
 
-    # trim trailing ";"
-    set sql [regsub -all {;$} $sql {}]
-    if {[string match where [string tolower $sql]} {
-      append sql " AND "
+    if {[string match where [string tolower $sql]]} {
+      set operator AND
     } else {
-      append sql " WHERE "
+      set operator WHERE
     }
     if [string length [string trim $timestamp_sql($ctable_name)]] {
       set column "$timestamp_sql($ctable_name)"
     } else {
       set column "$timestamp_table($ctable_name).$timestamp_column($ctable_name)"
     }
-    append sql "$column < [pg_quote $stamp]"
-    append sql ";"
+    set time_sql "$column > [pg_quote $stamp]"
+    regsub "\[;\n]*$" $sql " $operator $time_sql;" sql
     return $sql
   }
 
@@ -899,6 +908,9 @@ namespace eval ::stapi {
     set sql [append_timestamp_sql $sql $ctable_name] ; # KEEP this line after new API is frozen
     set sql [set_time_limit $sql $time_col $last_read] ; # DEPRECATED
 
+    # Grab new timestamp BEFORE we read
+    query_timestamp $ctable_name
+
     if {$rowbyrow_arg} {
       set reader read_ctable_from_sql_rowbyrow
     } else {
@@ -960,6 +972,7 @@ namespace eval ::stapi {
 
     if {$force || [clock seconds] > $last_sync + $sync_tsv($ctable)} {
       save_ctable $ctable $tsv_file
+
       save_timestamp $ctable_name
     }
 
@@ -980,6 +993,8 @@ namespace eval ::stapi {
     variable time_column
     variable sql_cache
 
+    set ctable_name $ctable2name($ctable)
+
     upvar 1 $_retsql retsql
 
     if {"$_err" != ""} {
@@ -997,7 +1012,6 @@ namespace eval ::stapi {
     if {![info exists ctable2name($ctable)]} {
       set reason "$ctable: Not a cached ctable"
     } else {
-      set ctable_name $ctable2name($ctable)
       set sql_file [workname $ctable_name sql]
 
       if {![file exists $sql_file]} {
@@ -1054,6 +1068,7 @@ namespace eval ::stapi {
   # return number of rows read, or -1 on caught error
   #
   proc refresh_ctable {ctable {time_col ""} {last_read 0} {_err ""}} {
+    variable ctable2name
     variable rowbyrow
     variable sync_tsv
     if {"$_err" != ""} {
@@ -1074,6 +1089,9 @@ namespace eval ::stapi {
       set reader read_ctable_from_sql
     }
 
+    # Grab timestamp BEFORE we read
+    query_timestamp $ctable2name($ctable)
+
     set result [$reader $ctable $sql $_err]
 
     if {$sync_tsv($ctable) && $result != -1} {
@@ -1092,6 +1110,7 @@ namespace eval ::stapi {
   # This function is used to synchronise a table that may have had deleted rows.
   #
   proc reload_ctable {ctable {_err ""}} {
+    variable ctable2name
     variable rowbyrow
     variable sync_tsv
     if {"$_err" != ""} {
@@ -1114,6 +1133,9 @@ namespace eval ::stapi {
     } else {
       set reader read_ctable_from_sql
     }
+
+    # Grab timestamp BEFORE we read
+    query_timestamp $ctable2name($ctable)
 
     set result [$reader $ctable $sql $_err]
 
