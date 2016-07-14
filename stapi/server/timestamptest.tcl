@@ -59,11 +59,18 @@ proc post {epoch payload} {
 	incr id
 }
 	
+global fake_time
 set fake_time [expr {[clock seconds] - (365 * 24 * 60 * 60)}]
-for {set i 0} {$i < 1000} {incr i} {
+
+proc post_n {n p} {
+    global fake_time
+    for {set i 0} {$i < $n} {incr i} {
 	incr fake_time [expr $i + 1337]
-	post $fake_time "squirrel $i"
+	post $fake_time "$p $i"
+    }
 }
+
+post_n 1000 squirrel
 
 pg_select [::stapi::conn] "select count(*) from ts_test;" row { set count $row(count) }
 puts "select count(*) from ts_test; -> $count"
@@ -83,3 +90,23 @@ set nr [::stapi::open_cached ts_test]
 # Check size
 puts "\[$nr count] = [$nr count]"
 
+# Create another 20 elements
+post_n 20 moose
+
+set n [::stapi::refresh_ctable $nr]
+
+puts "read $n total now [$nr count]"
+
+# Create another 20 elements
+post_n 20 boris
+
+set n [::stapi::refresh_ctable $nr]
+
+puts "read $n total now [$nr count]"
+
+# Create another 20 elements
+post_n 20 natasha
+
+set n [::stapi::refresh_ctable $nr]
+
+puts "read $n total now [$nr count]"
