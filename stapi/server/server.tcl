@@ -312,9 +312,9 @@ namespace eval ::stapi {
 	  unlockfile $build_dir
 	  return -code error "No table name provided for timestamp. Required {table.column @ ?sql?}"
 	}
-	set timestamp_column($ctable) $column
-	set timestamp_table($ctable) $table
-	set timestamp_sql($ctable) [lindex $arg 2]
+	set timestamp_column($ctable_name) $column
+	set timestamp_table($ctable_name) $table
+	set timestamp_sql($ctable_name) [lindex $arg 2]
         set got_timestamp 1
       } else {
 	lappend new_args $arg
@@ -394,7 +394,7 @@ namespace eval ::stapi {
     if [info exists timestamp_column($ctable_name)] { # Already loaded
       return
     }
-    set stampfile [workfile $ctable_name .stamp.tcl]
+    set stampfile [workname $ctable_name .stamp.tcl]
     catch {
       source $stampfile
     }
@@ -411,7 +411,7 @@ namespace eval ::stapi {
     lappend l [list set timestamp_column($ctable_name) $timestamp_column($ctable_name)]
     lappend l [list set timestamp_table($ctable_name)  $timestamp_table($ctable_name)]
     lappend l [list set timestamp_sql($ctable_name)    $timestamp_sql($ctable_name)]
-    set stampfile [workfile $ctable_name .stamp.tcl]
+    set stampfile [workname $ctable_name .stamp.tcl]
     if {![lockfile $stampfile err]} {
       return
     }
@@ -445,7 +445,7 @@ namespace eval ::stapi {
     if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
       return ""
     }
-    set stampfile [workfile $ctable_name .stamp]
+    set stampfile [workname $ctable_name .stamp]
     if {![lockfile $stampfile err]} {
       return ""
     }
@@ -464,7 +464,7 @@ namespace eval ::stapi {
     if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
       return ""
     }
-    set stampfile [workfile $ctable_name .stamp]
+    set stampfile [workname $ctable_name .stamp]
     if {![lockfile $stampfile err]} {
       return
     }
