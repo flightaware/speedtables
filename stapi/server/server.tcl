@@ -219,9 +219,6 @@ namespace eval ::stapi {
   #
   proc init_ctable {name tables where_clause args} {
     variable sql2speedtable
-    variable timestamp_column
-    variable timestamp_table
-    variable timestamp_sql
 
     # Validate arguments.
     if {"$name" == ""} {
@@ -305,23 +302,16 @@ namespace eval ::stapi {
     set got_timestamp 0
     foreach arg $args {
       if {[lindex $arg 1] == "@"} { # type is "@" for timestamp
-	set l [split [lindex $arg 0] "."]
-	set table [lindex $l 0]
-	set column [lindex $l 1]
-	if {![string length $column]} {
-	  unlockfile $build_dir
-	  return -code error "No table name provided for timestamp. Required {table.column @ ?sql?}"
-	}
-	set timestamp_column($ctable_name) $column
-	set timestamp_table($ctable_name) $table
-	set timestamp_sql($ctable_name) [lindex $arg 2]
+        if {![set_timestamp_info $arg err]} {
+          unlockfile $build_dir
+	  return -code error $err
+        }
         set got_timestamp 1
       } else {
 	lappend new_args $arg
       }
     }
     if {$got_timestamp} {
-      save_timestamp_info $ctable_name
       set args $new_args
     }
 
@@ -371,9 +361,7 @@ namespace eval ::stapi {
       close $fp
 
       # if the timestamp info exists, stash it in the .stamp.tcl file
-      if [info exists timestamp_info($ctable_name)] {
-	save_timestamp_info $ctable_name
-      }
+      save_timestamp_info $ctable_name
     } err]} {
       unlockfile $build_dir
       trash_old_files $ctable_name
@@ -387,6 +375,25 @@ namespace eval ::stapi {
   #
   # Helper routines for timestamps
   #
+  proc set_timestamp_info {arg _err} {
+    variable timestamp_column
+    variable timestamp_table
+    variable timestamp_sql
+
+    set l [split [lindex $arg 0] "."]
+    set table [lindex $l 0]
+    set column [lindex $l 1]
+    if {![string length $column]} {
+      upvar 1 $_err err
+      set err "No table name provided for timestamp. Required {table.column @ ?sql?}"
+      return 0
+    }
+    set timestamp_column($ctable_name) $column
+    set timestamp_table($ctable_name) $table
+    set timestamp_sql($ctable_name) [lindex $arg 2]
+    return 1
+  }
+
   proc load_timestamp_info {ctable_name} {
     variable timestamp_column
     variable timestamp_table
