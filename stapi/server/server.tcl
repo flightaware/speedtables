@@ -394,7 +394,7 @@ namespace eval ::stapi {
     if [info exists timestamp_column($ctable_name)] { # Already loaded
       return
     }
-    set stampfile [workname $ctable_name .stamp.tcl]
+    set stampfile [workname $ctable_name stamp.tcl]
     catch {
       source $stampfile
     }
@@ -411,7 +411,7 @@ namespace eval ::stapi {
     lappend l [list set timestamp_column($ctable_name) $timestamp_column($ctable_name)]
     lappend l [list set timestamp_table($ctable_name)  $timestamp_table($ctable_name)]
     lappend l [list set timestamp_sql($ctable_name)    $timestamp_sql($ctable_name)]
-    set stampfile [workname $ctable_name .stamp.tcl]
+    set stampfile [workname $ctable_name stamp.tcl]
     if {![lockfile $stampfile err]} {
       return
     }
@@ -448,7 +448,7 @@ namespace eval ::stapi {
     if {![info exists timestamp_column($ctable_name)]} { # Nothing to save
       return ""
     }
-    set stampfile [workname $ctable_name .stamp]
+    set stampfile [workname $ctable_name stamp]
     if {![lockfile $stampfile err]} {
       return ""
     }
@@ -470,7 +470,7 @@ namespace eval ::stapi {
     if {![info exists last_timestamp($ctable_name)]} { # Nothing to save
       return ""
     }
-    set stampfile [workname $ctable_name .stamp]
+    set stampfile [workname $ctable_name stamp]
     if {![lockfile $stampfile err]} {
       return
     }
