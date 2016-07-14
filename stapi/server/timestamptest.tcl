@@ -127,21 +127,21 @@ set epoch_table [::stapi::open_cached epoch_test]
 puts "epoch: \[$epoch_table count] = [$epoch_table count]"
 
 # Create another 20 elements
-post_n 20 moose
+post_n 20 huckleberry
 
 set n [::stapi::refresh_ctable $epoch_table]
 
 puts "read $n total now [$epoch_table count]"
 
 # Create another 20 elements
-post_n 20 boris
+post_n 20 yogi
 
 set n [::stapi::refresh_ctable $epoch_table]
 
 puts "read $n total now [$epoch_table count]"
 
 # Create another 20 elements
-post_n 20 natasha
+post_n 20 scoobie
 
 set n [::stapi::refresh_ctable $epoch_table]
 
