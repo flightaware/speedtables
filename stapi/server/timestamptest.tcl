@@ -31,7 +31,7 @@ set r [pg_exec [::stapi::conn] {
 		id		varchar primary key,
 		timestamp	timestamp,
 		epoch		integer,
-		payoad		varchar
+		payload		varchar
 	);
 }]
 set ok [string match "PGRES_*_OK" [pg_result $r -status]]
@@ -40,12 +40,22 @@ if {!$ok} {
 }
 pg_result $r -clear
 
+proc dosql {args} {
+   set r [eval [concat [list pg_exec [::stapi::conn]] $args]]
+   set ok [string match "PGRES_*_OK" [pg_result $r -status]]
+   if {!$ok} {
+     error [pg_result $r -error]
+   }
+   pg_result $r -clear
+}
+   
+
 global id
 set id 1
 proc post {epoch payload} {
 	global id
 	set stamp [::stapi::clock2sqlgmt $epoch]
-	pg_exec [::stapi::conn] "INSERT INTO TS_TEST (id, timestamp, epoch, payload) VALUES ($id, '$stamp', $epoch, '$payload');"
+	dosql {INSERT INTO TS_TEST (id, timestamp, epoch, payload) VALUES ($1, $2, $3, $4);} $id $stamp $epoch $payload
 	incr id
 }
 	
@@ -55,6 +65,8 @@ for {set i 0} {$i < 1000} {incr i} {
 	post $fake_time "squirrel $i"
 }
 
+pg_select [::stapi::conn] "select count(*) from ts_test;" row { set count $row(count) }
+puts "select count(*) from ts_test; -> $count"
 
 set columns [
 	::stapi::from_table ts_test id -timestamp timestamp
@@ -66,7 +78,7 @@ puts "columns are [list $columns]"
 ::stapi::init_ctable ts_test {} "" $columns
 
 # Open and read it
-set nr [::stapi::open_cached ts_test -col isbn -index pages]
+set nr [::stapi::open_cached ts_test]
 
 # Check size
 puts "\[$nr count] = [$nr count]"
