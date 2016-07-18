@@ -200,7 +200,7 @@ proc make_springboard_proc {procName handle} {
     }
     return [lindex $keyfields($handle) 0]
   }
-  namespace export keys
+  namespace export key
 
   proc stapi {cmd handle} {
     variable stapi_cmds
