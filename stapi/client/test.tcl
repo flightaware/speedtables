@@ -1,10 +1,30 @@
 #!/usr/local/bin/tclsh8.4
 
-lappend auto_path [exec pwd]
+set d [exec pwd]
+if [file exists $d/pkgIndex.tcl] {
+  puts stderr "auto path is $d"
+  lappend auto_path $d
+}
+set d [file dirname $d]
+if [file exists $d/pkgIndex.tcl] {
+  puts stderr "auto path is $d"
+  lappend auto_path $d
+}
 
 package require st_server
 package require st_client
 package require st_client_postgres
+source pgsql.tcl
+
+if [file exists postgres.tcl] {
+  source postgres.tcl
+  pgconn
+}
+
+if [file exists ../postgres.tcl] {
+  source ../postgres.tcl
+  pgconn
+}
 
 # Open a sql ctable
 set ctable [::stapi::connect sql:///stapi_test]
