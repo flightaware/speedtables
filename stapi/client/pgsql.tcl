@@ -97,7 +97,7 @@ namespace eval ::stapi {
   }
 
   #
-  # uri_esc - escape a string i think for passing in a URI/URL
+  # uri_esc - escape a string for passing in a URI/URL
   #
   proc uri_esc {string {extra ""}} {
 	  if {[catch {escape_string $string} result] == 0} {
@@ -438,7 +438,7 @@ namespace eval ::stapi {
   }
 
   #
-  # sql_ctable_get - implement ctable set operation on a postgres table
+  # sql_ctable_get - implement ctable get operation on a postgres table
   #
   # Get list - return empty list for no data, SQL error is error
   #
