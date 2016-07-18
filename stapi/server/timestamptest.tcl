@@ -1,26 +1,36 @@
 #!/usr/local/bin/tclsh8.4
 
-# put new directories first to make sure we're testing this version of
+# add new directories to make sure we're testing this version of
 # stapi and speedtables
-set __new_path {}
 if [info exists env(ST_PREFIX)] {
-  lappend __new_path $env(ST_PREFIX)
+  lappend auto_path $env(ST_PREFIX)
 }
 if [info exists env(STAPI_PREFIX)] {
-  lappend __new_path $env(STAPI_PREFIX)
+  lappend auto_path $env(STAPI_PREFIX)
 } else {
-  lappend __new_path [exec pwd]
+  set d [exec pwd]
+  if [file exists $d/pkgIndex.tcl] {
+    lappend auto_path $d
+  }
+  set d [file dirname $d]
+  if [file exists $d/pkgIndex.tcl] {
+    lappend auto_path $d
+  } 
 }
-set auto_path [concat $__new_path $auto_path]
 
-source server.tcl
+package require st_server
 package require st_postgres
 package require ctable
 set ::ctable::genCompilerDebug 1
 set quick 1
 
-source postgres.tcl
-pgconn
+if [file exists postgres.tcl] {
+	source postgres.tcl
+	pgconn
+} elseif [file exists ../postgres.tcl] {
+	source ../postgres.tcl
+	pgconn
+}
 
 # clean up, if necessary, and don't care if we fail this
 pg_result [pg_exec [::stapi::conn] { DROP TABLE TS_TEST; }] -clear
