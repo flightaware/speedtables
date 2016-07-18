@@ -77,7 +77,7 @@ TEA_SETUP_COMPILER
 # TEA_ADD_CFLAGS([])
 # TEA_ADD_STUB_SOURCES([])
 TEA_ADD_TCL_SOURCES([
-	client/client.tcl client/pgsql.tcl client/extend.tcl client/shared.tcl
+	client/client.tcl client/pgsql.tcl client/extend.tcl client/shared.tcl client/uri.tcl
 	server/server.tcl server/lock.tcl
 	display/display.tcl display/test.tcl
 	debug.tcl pgsql.tcl stapi.tcl copy.tcl
