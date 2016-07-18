@@ -200,7 +200,7 @@ proc make_springboard_proc {procName handle} {
     }
     return [lindex $keyfields($handle) 0]
   }
-  namespace export keys
+  namespace export key
 
   proc stapi {cmd handle} {
     variable stapi_cmds
@@ -395,7 +395,7 @@ namespace eval ::stapi {
   namespace import ::stapi::extend::*
 }
 
-package provide stapi_extend 1.9.1
+package provide stapi_extend 1.10.0
 
 
 # vim: set ts=8 sw=4 sts=4 noet :

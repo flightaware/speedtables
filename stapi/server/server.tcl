@@ -37,8 +37,10 @@ namespace eval ::stapi {
 
   # Saved information about open ctables
   variable ctable2name
+  variable name2root
   variable time_column
   variable sql_cache
+  variable rowbyrow
 
   # Mapping from sql column types to ctable field types
   variable sql2speedtable
@@ -576,6 +578,9 @@ namespace eval ::stapi {
   #   -index field_name
   #      Name of a field to create an index on. Multiple -index are allowed.
   #
+  #   -rowbyrow 0|1
+  #      Enable or disable (default) row-by-row mode
+  #
   # Options that don't begin with a dash are passed to the ctable create
   # command.
   #
@@ -584,12 +589,14 @@ namespace eval ::stapi {
     variable ctable2name
     variable time_column
     variable default_timeout
+    variable rowbyrow
 
     # default arguments
     set pattern "*"
     set timeout $default_timeout
     set time_col ""
     set indices {}
+    set rowbyrow_arg 0
 
     # Parse and validate
     if {[llength $args] & 1} {
@@ -605,6 +612,7 @@ namespace eval ::stapi {
         -tim* { set timeout $v }
 	-col* { set time_col $v }
 	-ind* { lappend indices $v }
+	-row* { set rowbyrow_arg $v }
 	-* { return -code error "Unknown option '$n'" }
 	default {
 	   lappend open_command $n $v
@@ -615,6 +623,9 @@ namespace eval ::stapi {
     # open_raw_ctable (see above) does all the heavy lifting of loading the
     # extension and creating the ctable instance.
     set ctable [eval $open_command]
+
+    # Now we know the name, save metadata
+    set rowbyrow($ctable) $rowbyrow_arg
 
     # we need to know this to find the tsv file and sql file
     set ctable_name "c_$name"
@@ -711,7 +722,12 @@ namespace eval ::stapi {
     # SQL we read to only pull in records since the last change.
     set sql [set_time_limit $sql $time_col $last_read]
 
-    if {[catch {read_ctable_from_sql $ctable $sql} err]} {
+    if {$rowbyrow_arg} {
+      set reader read_ctable_from_sql_rowbyrow
+    } else {
+      set reader read_ctable_from_sql
+    }
+    if {[catch {$reader $ctable $sql} err]} {
       $ctable destroy
       unlockfile $tsv_file
       return -code error -errorinfo $::errorInfo $err
@@ -732,18 +748,20 @@ namespace eval ::stapi {
   }
 
   #
-  # gen_refresh_ctable_sql ctable ?time_col? ?last_read? ?err?
+  # gen_refresh_ctable_sql ctable sql ?time_col? ?last_read? ?err?
   #
   # Generate the SQL to select new and updated rows from SQL table 'table' 
-  # using time_col.
+  # using time_col, and store it in variable named by "sql" parameter.
   #
   # if last_read is non-zero use that rather than last modify time of the cache,
   # return success or failure if err variable name is provided.
   #
-  proc gen_refresh_ctable_sql {ctable {time_col ""} {last_read 0} {_err ""}} {
+  proc gen_refresh_ctable_sql {ctable _retsql {time_col ""} {last_read 0} {_err ""}} {
     variable ctable2name
     variable time_column
     variable sql_cache
+
+    upvar 1 $_retsql retsql
 
     if {"$_err" != ""} {
       upvar 1 $_err err
@@ -799,9 +817,13 @@ namespace eval ::stapi {
       }
     }
 
-    # Patch the sql with the last read time if possible, then go to the db
-    set sql [set_time_limit $sql $time_col $last_read]
-    return $sql
+    # Patch the sql with the last read time if possible
+    if {$last_read != -1} {
+      set sql [set_time_limit $sql $time_col $last_read]
+    }
+
+    set retsql $sql
+    return 1
   }
 
   #
@@ -809,19 +831,61 @@ namespace eval ::stapi {
   #
   # Update new rows from SQL table 'table' into ctable 'ctable' using time_col,
   # if last_read is non-zero use that rather than last modify time of the cache,
-  # return success or failure if err variable name is provided.
+  # return number of rows read, or -1 on caught error
   #
   proc refresh_ctable {ctable {time_col ""} {last_read 0} {_err ""}} {
-    variable ctable2name
-    variable time_column
-
+    variable rowbyrow
     if {"$_err" != ""} {
       upvar 1 $_err err
       set _err err
     }
 
-    set sql [gen_refresh_ctable_sql $ctable $time_col $last_read err]
-    return [read_ctable_from_sql $ctable $sql $_err]
+    if {! [gen_refresh_ctable_sql $ctable sql $time_col $last_read err]} {
+      if {"$_err" == ""} {
+        return -code error $err
+      }
+      return -1
+    }
+
+    if {$rowbyrow($ctable)} {
+      set reader read_ctable_from_sql_rowbyrow
+    } else {
+      set reader read_ctable_from_sql
+    }
+    return [$reader $ctable $sql $_err]
+  }
+
+  #
+  # reload_ctable ctable ?err?
+  #
+  # Force a complete reload of a ctable (cached or not) from SQL.
+  # return number of rows read, or -1 on caught error
+  #
+  # This function is used to synchronise a table that may have had deleted rows.
+  #
+  proc reload_ctable {ctable {_err ""}} {
+    variable rowbyrow
+    if {"$_err" != ""} {
+      upvar 1 $_err err
+      set _err err
+    }
+
+    # pass -1 as the last modified time to force gen_refresh_ctable_sql
+    # to ignore any time column defined in the table
+    if {! [gen_refresh_ctable_sql $ctable sql "" -1 err]} {
+      if {"$_err" == ""} {
+        return -code error $err
+      }
+      return -1
+    }
+    $ctable reset
+
+    if {$rowbyrow($ctable)} {
+      set reader read_ctable_from_sql_rowbyrow
+    } else {
+      set reader read_ctable_from_sql
+    }
+    return [$reader $ctable $sql $_err]
   }
 
   #
@@ -1128,11 +1192,18 @@ namespace eval ::stapi {
     }
 
     variable build_root
+    variable name2root
+    if [info exists name2root($name)] {
+      set root $name2root($name)
+    } else {
+      set root $build_root
+      set name2root($name) $build_root
+    }
 
     if {"$ext" != ""} {
       append name . $ext
     }
-    return [file join $build_root $name]
+    return [file join $root $name]
   }
 
   # Just invalidate the cache
@@ -1158,4 +1229,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_server 1.9.1
+package provide st_server 1.10.0

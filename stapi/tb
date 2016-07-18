@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Run a test using current version of STAPI/CTABLES
+
+export PG_DB=`logname`
+export STAPI_PREFIX=`pwd`
+export ST_PREFIX=`dirname $STAPI_PREFIX`
+
+"$@"

@@ -1,6 +1,6 @@
 #
 
-package require ctable
+source test_common.tcl
 
 CExtension Objecttest 1.0 {
 

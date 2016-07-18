@@ -39,4 +39,4 @@ ${TCLSHSTAPI} ./shutdown_master.tcl
 
 echo "Finished"
 
-exit $status
+exit $result

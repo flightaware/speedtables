@@ -64,3 +64,4 @@ foreach test {search} {
 puts "deleting network connection"
 
 $r destroy
+

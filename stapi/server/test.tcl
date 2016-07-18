@@ -1,12 +1,26 @@
 #!/usr/local/bin/tclsh8.4
 
-lappend auto_path [exec pwd]
+# put new directories first to make sure we're testing this version of
+# stapi and speedtables
+set __new_path {}
+if [info exists env(ST_PREFIX)] {
+  lappend __new_path $env(ST_PREFIX)
+}
+if [info exists env(STAPI_PREFIX)] {
+  lappend __new_path $env(STAPI_PREFIX)
+} else {
+  lappend __new_path [exec pwd]
+}
+set auto_path [concat $__new_path $auto_path]
 
 package require st_server
 package require st_postgres
 package require ctable
 set ::ctable::genCompilerDebug 1
 set quick 1
+if [info exists env(PG_DB)] {
+  ::stapi::set_conn [pg_connect $env(PG_DB)]
+}
 
 # Get a list of columns.
 set columns [

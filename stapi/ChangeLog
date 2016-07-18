@@ -2,6 +2,20 @@
     * Fix "return" in code bodies for stapi shared memory and postgres-backed speedtables.
 	* Version bump to 1.9.1
 
+04/04/2016 peter
+    * Redo lockfile code to avoid issues with tcl's "rename".
+
+04/03/2016 peter
+    * Cache root directory associated with a name, so subsequent names get
+      matched to files in the same directory.
+
+03/30/2016 peter
+    * Update test framework to work without rivet/DIO
+      Env vars PG_DB ST_PREFIX STAPI_PREFIX
+
+03/27/2016 peter
+    * Fix for missing SQL code in gen_refresh_ctable_sql
+
 07/21/2012 peter
     * Add detach option for sockets for shared memory speedtables.
 

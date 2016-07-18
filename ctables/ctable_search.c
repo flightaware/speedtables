@@ -422,7 +422,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 	    if ((term == CTABLE_COMP_MATCH) || (term == CTABLE_COMP_NOTMATCH) || (term == CTABLE_COMP_MATCH_CASE) || (term == CTABLE_COMP_NOTMATCH_CASE)) {
 		// Check if field that supports string matches
 		int ftype = ctable->creator->fieldTypes[field];
-		if(ftype != CTABLE_TYPE_FIXEDSTRING && ftype != CTABLE_TYPE_VARSTRING) {
+		if(ftype != CTABLE_TYPE_FIXEDSTRING && ftype != CTABLE_TYPE_VARSTRING && ftype != CTABLE_TYPE_KEY) {
 		    Tcl_AppendResult (interp, "term \"", Tcl_GetString (termList[1]), "\" must be a string type for \"", Tcl_GetString (termList[0]), "\" operation", (char *) NULL);
 		    goto err;
 		}
@@ -2403,6 +2403,7 @@ ctable_elapsed_time (struct timespec *oldtime, struct timespec *newtime, struct 
     }
 }
 
+#ifdef CTABLES_CLOCK
 //
 // ctable_performance_callback - callback routine for performance of search calls
 //
@@ -2416,7 +2417,7 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
 
     // calculate elapsed cpu
 
-    clock_gettime (CLOCK_VIRTUAL, &endTimeSpec);
+    clock_gettime (CTABLES_CLOCK, &endTimeSpec);
     ctable_elapsed_time (startTimeSpec, &endTimeSpec, &elapsedTimeSpec);
     cpu = (elapsedTimeSpec.tv_sec + (elapsedTimeSpec.tv_nsec / 1000000000.0));
 
@@ -2442,6 +2443,7 @@ ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST 
     }
 
 }
+#endif
 
 //
 // ctable_TeardownSearch - tear down (free) a search structure and the
@@ -2515,13 +2517,17 @@ CTABLE_INTERNAL int
 ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable, int indexField) {
     CTableSearch    search;
     int result;
+#ifdef CTABLES_CLOCK
     struct timespec startTimeSpec;
     int loggingMatchCount = 0;
+#endif
 
 
+#ifdef CTABLES_CLOCK
     if (ctable->performanceCallbackEnable) {
-	clock_gettime (CLOCK_VIRTUAL, &startTimeSpec);
+	clock_gettime (CTABLES_CLOCK, &startTimeSpec);
     }
+#endif
 
     // flag this search in progress
     ctable->searching = 1;
@@ -2539,20 +2545,24 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
         result = ctable_PerformSearch (interp, ctable, &search);
     }
 
+#ifdef CTABLES_CLOCK
     if (ctable->performanceCallbackEnable) {
 	loggingMatchCount = search.matchCount;
     }
+#endif
 
     ctable_TeardownSearch (&search);
 
     ctable->searching = 0;
 
+#ifdef CTABLES_CLOCK
     if (ctable->performanceCallbackEnable) {
 	Tcl_Obj *saveResultObj = Tcl_GetObjResult (interp);
 	Tcl_IncrRefCount (saveResultObj);
 	ctable_performance_callback (interp, ctable, objv, objc, &startTimeSpec, loggingMatchCount);
 	Tcl_SetObjResult (interp, saveResultObj);
     }
+#endif
 
     return result;
 }

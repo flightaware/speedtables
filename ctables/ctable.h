@@ -18,10 +18,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#ifdef HAVE_NET_ETHERNET_H
 #include <net/ethernet.h>
+#define HAVE_ETHERS
+#endif
 
 #ifdef HAVE_NETINET_ETHER_H
 #include <netinet/ether.h>
+#define HAVE_ETHERS
 #endif
 
 #ifdef HAVE_SYS_LIMITS_H

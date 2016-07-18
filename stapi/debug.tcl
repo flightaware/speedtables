@@ -54,4 +54,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_debug 1.9.1
+package provide st_debug 1.10.0

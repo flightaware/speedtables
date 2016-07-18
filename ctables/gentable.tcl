@@ -449,6 +449,10 @@ proc gen_reinsert_row_function {table} {
 #
 variable preambleCannedSource {
 #include "ctable.h"
+
+#ifndef HAVE_ETHERS
+#include "ethers.c"
+#endif
 }
 
 variable nullIndexDuringSetSource {
@@ -5856,7 +5860,7 @@ proc compile {fileFragName version} {
     # Keep sysconfig(ccflags) from overriding optimization level
     regsub -all { -O[0-9] } " $sysconfig(ccflags) " { } sysconfig(ccflags)
 
-    myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $cassString $stubString $memDebugString -c $sourceFile -o $objFile"
+    myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $cassString $stubString $memDebugString -c $sourceFile -o $objFile 2>@stderr"
 
     set ld_cmd "$sysconfig(cxxld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
 
@@ -5882,7 +5886,7 @@ proc compile {fileFragName version} {
     }
 
     append ld_cmd " $sysconfig(ldflags) $stub"
-    myexec $ld_cmd
+    myexec "$ld_cmd 2>@stderr"
 
     if {$withSubdir} {
 	set pkg_args [list $buildPath */*.tcl */*[info sharedlibextension]]
@@ -6015,6 +6019,7 @@ proc install_ch_files {includeDir} {
 	ctable.h ctable_search.c ctable_lists.c ctable_batch.c
 	boyer_moore.c jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
 	speedtables.h speedtableHash.c ctable_io.c ctable_qsort.c
+	ethers.c
     }
 
     if {$withSharedTables} {
