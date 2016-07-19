@@ -264,7 +264,7 @@ namespace eval ::stapi {
         variable cassconn
       }
 
-      connect_cass ${ns}::cassconn [parse_cass_address $address]
+      connect_cass ${ns}::cassconn $conninfo
     }
 
     set params ""
@@ -762,6 +762,13 @@ namespace eval ::stapi {
   # cass_ctable_destroy - implement a ctable destroy method for SQL tables
   #
   proc cass_ctable_destroy {level ns cmd args} {
+    if [info exists ${ns}::cassconn] {
+      set nsconn [set ${ns}::cassconn]
+      variable cassconn
+      if {![info exists cassconn] || "$cassconn" != "$nsconn"} {
+	$nsconn delete
+      }
+    }
     namespace delete $ns
   }
 
