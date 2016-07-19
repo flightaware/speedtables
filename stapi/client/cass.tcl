@@ -549,11 +549,7 @@ namespace eval ::stapi {
 
     array set row $result
 
-    foreach f [set ${ns}::fields] {
-      if ![info exists row($f)] {
-	set row($f) {}
-      }
-    }
+    cass_fill_nulls row [set ${ns}::fields]
 
     return [array get row]
   }
@@ -608,11 +604,10 @@ namespace eval ::stapi {
     return [set ${ns}::types($field)]
   }
 
-# WORKING
   #
-  # sql_ctable_search - implement a ctable search method for SQL tables
+  # cass_ctable_search - implement a ctable search method for SQL tables
   #
-  proc sql_ctable_search {level ns cmd args} {
+  proc cass_ctable_search {level ns cmd args} {
     array set search $args
 
     if {![info exists search(-code)] &&
@@ -624,9 +619,9 @@ namespace eval ::stapi {
 	set search(-countOnly) 1
     }
 
-    set sql [${ns}::search_to_sql search]
+    set cql [${ns}::search_to_sql search]
     if {[info exists search(-countOnly)]} {
-      return [lindex [sql_get_one_tuple $sql] 0]
+      return [lindex [cass_array_get_row $sql] 0]
     }
 
     set code {}
@@ -655,20 +650,33 @@ namespace eval ::stapi {
     lappend code "incr ${ns}::select_count"
     set ${ns}::select_count 0
 
-    set selectCommand [list pg_select]
-    if {[info exists search(-array)] || [info exists search(-array_get)]} {
-        lappend selectCommand "-withoutnulls"
+    if {[info exists search(-array_with_nulls)] || [info exists search(-array_get_with_nulls)]} {
+        lappend code [list ::stapi::cass_fill_nulls $array [set ${ns}::fields]]
     }
-    lappend selectCommand "-nodotfields"
-    lappend selectCommand [conn] $sql $array [join $code "\n"]
 
-    #puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
+    set selectCommand [list [cass] select]
+    lappend selectCommand $cql $array [join $code "\n"]
 
     if {[catch {uplevel #$level $selectCommand} catchResult catchOptions]} {
 	dict incr catchOptions -level 1
 	return -options $catchOptions $catchResult
     }
     return [set ${ns}::select_count]
+  }
+
+  #
+  # cass_fill_nulls array fields...
+  #
+  proc cass_fill_nulls {_array args} {
+    uplevel 1 $_array array
+    if {[llength $args] == 1} {
+      set args [lindex $args 0]
+    }
+    foreach field $args {
+      if {![info exists array($field)]} {
+	set array($field) {}
+      }
+    }
   }
 
   #
