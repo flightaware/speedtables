@@ -12,7 +12,7 @@ namespace eval ::stapi {
   variable cassconn
 
   #
-  # set_cass_conn connect-info
+  # connect_cass connect-info
   #
   # connection info is either a list of name value pairs or multiple name-value pairs. Missing
   # values will be provided from the environment.
@@ -20,9 +20,12 @@ namespace eval ::stapi {
   # -user username	($CASSTCL_USERNAME)
   # -host hostname	($CASSTCL_CONTACT_POINTS)
   # -pass password	($CASSTCL_PASSWORD)
+  # -port port		# TODO IMPLEMENT
   #
-  proc connect_cass {args} {
-    variable cassconn
+  # Connection is set in the variable specified
+  #
+  proc connect_cass {_conn args} {
+    upvar 1 $_conn conn
     global env
 
     if {[llength $args] == 1} {
@@ -36,6 +39,8 @@ namespace eval ::stapi {
 	host {set host $val}
         user {set user $val}
         pass {set pass $val}
+	port {set port $val}
+        
       }
     }
     if {![info exists host]} {
@@ -60,15 +65,26 @@ namespace eval ::stapi {
       }
     }
 
-    set cassconn [::casstcl::connect -host $host -user $user -password $pass]
+    set conn [::casstcl::connect -host $host -user $user -password $pass]
   }
 
-  proc cass {
+  #
+  # Return cass connection for the specified namespace, fallback to shared
+  #
+  proc cass {{ns ""}} {
+    # Return namespace connection if set
+    if [string length ns] {
+      if [info exists ${ns}::cassconn] {
+	return [set ${ns}::cassconn]
+      }
+    }
+
+    # Pull in shared connection
     variable cassconn
 
     if {![info exists casscon]} {
       # Hope the environment variables are all there!
-      connect_cass
+      connect_cass cassconn
     }
 
     return $cassconn
@@ -166,6 +182,32 @@ namespace eval ::stapi {
     return $uri
   }
 
+  #
+  # parse_cass_address address
+  #
+  # converts "user:pass@host1,host2:port" to {-host host1 -host host2 -user user -pass pass -port port}
+  #
+  proc parse_cass_address {address} {
+    set connection {}
+
+    if [regexp {^\(.*\)@\(.*\)$} $address _ user address] {
+      if [regexp {^\(.*\):\(.*\)$} $user _ user pass] {
+	lappend connection -pass $pass
+      }
+      lappend connection -user $user
+    }
+
+    if [regexp {\(.*\):\(.*\)$} $address _ address port] {
+      lappend connection -port $port
+    }
+
+    foreach host [split $address ","] {
+      lappend connection -host $host
+    }
+
+    return $connection
+  }
+
   variable casstable_seq 0
 
   #
@@ -177,7 +219,7 @@ namespace eval ::stapi {
   #
   # Type is CQL type
   #
-  proc cass_get_columns {table_name {keyspace_name ""}} {
+  proc cass_get_columns {ns table_name {keyspace_name ""}} {
     if ![string length $keyspace_name] {
       set l [split $table_name "."]
       if {[llength $l] != 2} {
@@ -191,7 +233,7 @@ namespace eval ::stapi {
                  WHERE keyspace_name = '$keyspace_name' and table_name = '$table_name';"
 
     set result {}
-    [cass] select $query row {
+    [cass $ns] select $query row {
 	lappend result [list $row(column_name) $row(kind) $row(type)]
     }
 
@@ -203,6 +245,19 @@ namespace eval ::stapi {
   #
   proc connect_cassandra {table {address "-"} args} {
     variable casstable_seq
+    set ns ::stapi::casstable[incr casstable_seq]
+
+    set conninfo [parse_cass_address $address]
+    if {![llength $conninfo]} {
+      variable cassconn
+      connect_cass cassconn
+    } else {
+      namespace eval $ns {
+        variable cassconn
+      }
+
+      connect_cass ${ns}::cassconn [parse_cass_address $address]
+    }
 
     set params ""
     regexp {^([^?]*)[?](.*)} $table _ table params
@@ -220,12 +275,12 @@ namespace eval ::stapi {
     }
 
     set raw_fields {}
-    set columns [cass_get_columns $table]
+    set columns [cass_get_columns $ns $table]
     if {![llength $columns]} {
       error "Failed to describe cassandra table $table"
     }
 
-    foreach {name kind type} [cass_get_columns $table] {
+    foreach {name kind type} $columns {
       lappend raw_fields $name
       set field2type($name) $type
       switch -- $kind {
@@ -265,8 +320,6 @@ namespace eval ::stapi {
 	unset params($field)
       }
     }
-
-    set ns ::stapi::casstable[incr casstable_seq]
 
     namespace eval $ns {
       #
@@ -485,7 +538,7 @@ namespace eval ::stapi {
     set cql [cass_create_cql $ns $val $args]
     set result ""
 
-    set status [cass_array_get_row $cql result]
+    set status [cass_array_get_row $ns $cql result]
     if {!$status} {
       error $result
     }
@@ -518,7 +571,7 @@ namespace eval ::stapi {
     set cql [cass_create_cql $ns $val $args]
 
     set result {}
-    set status [cass_array_get_row $cql result]
+    set status [cass_array_get_row $ns $cql result]
 
     if {!$status} {
       error $result
@@ -537,7 +590,7 @@ namespace eval ::stapi {
     set cql [cass_create_cql $ns $val $args]
 
     set result {}
-    set status [cass_array_get_row $cql result]
+    set status [cass_array_get_row $ns $cql result]
 
     if {!$status} {
       error $result
@@ -561,7 +614,7 @@ namespace eval ::stapi {
   proc cass_ctable_exists {level ns cmd val} {
     set cql [cass_create_cql $ns $val -key]
 
-    set status [cass_array_get_row $cql result]
+    set status [cass_array_get_row $ns $cql result]
 
 
     if {!$status} {
@@ -621,7 +674,7 @@ namespace eval ::stapi {
 
     set cql [${ns}::search_to_sql search]
     if {[info exists search(-countOnly)]} {
-      return [lindex [cass_array_get_row $sql] 0]
+      return [lindex [cass_array_get_row $ns $sql] 0]
     }
 
     set code {}
@@ -654,7 +707,7 @@ namespace eval ::stapi {
         lappend code [list ::stapi::cass_fill_nulls $array [set ${ns}::fields]]
     }
 
-    set selectCommand [list [cass] select]
+    set selectCommand [list [cass $ns] select]
     lappend selectCommand $cql $array [join $code "\n"]
 
     if {[catch {uplevel #$level $selectCommand} catchResult catchOptions]} {
@@ -977,12 +1030,12 @@ namespace eval ::stapi {
   #      status == -1 - No data,  *result not modified*
   #      status ==  0 - CQL error, result is error string
   #
-  proc cass_array_get_row {req {_result ""}} {
+  proc cass_array_get_row {ns req {_result ""}} {
     if {[string length $_result]} {
       upvar 1 $_result result
     }
 
-    set future [[cass] async $req]
+    set future [[cass $ns] async $req]
     $future wait
 
     if {[$future status] != "CASS_OK"} {
