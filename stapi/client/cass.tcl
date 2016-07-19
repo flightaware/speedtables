@@ -782,7 +782,7 @@ namespace eval ::stapi {
   }
     
   #
-  # cass_ctable_delete - implement a ctable delete method for SQL tables
+  # cass_ctable_delete - implement a ctable delete method for Cassandra tables
   #
   proc cass_ctable_delete {level ns cmd key args} {
     set l [cass_ctable_extract_key $ns $key]
@@ -1013,8 +1013,7 @@ namespace eval ::stapi {
       }
     }
   
-    # NB include a space for load balancing - total kludge, please remove asap
-    set cql " SELECT [join $select ","] FROM $table_name"
+    set cql "SELECT [join $select ","] FROM $table_name"
 
     if {[llength $pwhere]} {
       append cql " WHERE [join $pwhere " AND "]"
