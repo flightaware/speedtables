@@ -1017,37 +1017,6 @@ namespace eval ::stapi {
 
     return $result
   }
-
-  #
-  # quote_glob - 
-  #
-  proc quote_glob {pattern} {
-    regsub -all {[%_]} $pattern {\\&} pattern
-    regsub -all {@} $pattern {@%} pattern
-    regsub -all {\\[*]} $pattern @_ pattern
-    regsub -all {[*]} $pattern "%" pattern
-    regsub -all {@_} $pattern {*} pattern
-    regsub -all {\\[?]} $pattern @_ pattern
-    regsub -all {[?]} $pattern "_" pattern
-    regsub -all {@_} $pattern {?} pattern
-    regsub -all {@%} $pattern {@} pattern
-    return [pg_quote $pattern]
-  }
-
-  #
-  # connect_sql
-  #
-  # Helper routine to shortcut the business of creating a URI and connecting
-  # with the same keys. Using this implicitly pulls in stapi::extend inside connect
-  # if it hasn't already been pulled in.
-  #
-  # Eg: ::stapi::connect_sql my_table {index} -cols {index name value}
-  #
-  proc connect_sql {table keys args} {
-    lappend make make_sql_uri $table -keys $keys
-    set uri [$make {*}$args]
-    return [connect $uri -keys $keys]
-  }
 }
 
 package provide st_client_cassandra 1.0.0
