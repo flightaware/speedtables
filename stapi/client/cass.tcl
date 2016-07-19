@@ -20,7 +20,7 @@ namespace eval ::stapi {
   # -user username	($CASSTCL_USERNAME)
   # -host hostname	($CASSTCL_CONTACT_POINTS)
   # -pass password	($CASSTCL_PASSWORD)
-  # -port port		# TODO IMPLEMENT
+  # -port port
   #
   # Connection is set in the variable specified
   #
@@ -32,20 +32,23 @@ namespace eval ::stapi {
       set args [lindex $args 0]
     }
 
+    set hosts {}
     for {opt val} $args {
       regexp {^-(.*)} $opt _ opt
       switch -- $opt {
         contact_points {set host $val}
-	host {set host $val}
+	host {lappend hosts $val}
         user {set user $val}
         pass {set pass $val}
 	port {set port $val}
         
       }
     }
-    if {![info exists host]} {
+    if {![llength $hosts]} {
       if [info exists env(CASSTCL_CONTACT_POINTS}] {
-	set host $env(CASSTCL_CONTACT_POINTS)
+	foreach host [split $env(CASSTCL_CONTACT_POINTS) ":"] {
+	  lappend hosts $host
+	}
       } else {
 	error "No host provided for cassandra connection"
       }
@@ -59,13 +62,18 @@ namespace eval ::stapi {
     }
     if {![info exists pass]} {
       if [info exists env(CASSTCL_PASSWORD)] {
-	set user $env(CASSTCL_PASSWORD)
-      } else {
-	error "No password provided for cassandra connection"
+	set pass $env(CASSTCL_PASSWORD)
       }
     }
 
-    set conn [::casstcl::connect -host $host -user $user -password $pass]
+    lappend cmd ::casstcl::connect
+    lappend cmd -user $user
+    if [info exists port] { lappend cmd -port $port }
+    if [info exists pass] { lappend cmd -password $pass }
+    foreach host $hosts {
+      lappend cmd -host $host
+    }
+    set conn [eval $cmd]
   }
 
   #
@@ -399,7 +407,7 @@ namespace eval ::stapi {
     } elseif {[info exists ctable_extended_commands($cmd)]} {
       set proc $ctable_extended_commands($cmd)
     } else {
-      set proc sql_ctable_unimplemented
+      set proc cass_ctable_unimplemented
     }
 
     catch {$proc $level $ns $cmd {*}$args} catchResult catchOptions
@@ -448,23 +456,34 @@ namespace eval ::stapi {
   # sql_ctable_makekey
   #
   proc cass_ctable_makekey {level ns cmd args} {
-    if {[info exists ${ns}::cluster_keys]} {
-      set key _key
-    } else {
-      set key [set ${ns}::partition_key]
-    }
-
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
 
     array set array $args
 
-    if {[info exists array($key)]} {
-      return $array($key)
+    set klist {}
+
+    lappend klist [set ${ns}::partition_key]
+
+    if {[info exists ${ns}::cluster_keys]} {
+      foreach key [set ${ns}::cluster_keys] {
+	lappend klist $key
+      }
     }
 
-    return -code error "No key in list"
+    set rlist {}
+
+    foreach key $klist {
+      if {[info exists array($key)]} {
+        lappend $rlist $array($key)
+      } else {
+        return -code error "No value for $key in list"
+      }
+    }
+
+    return $rlist
+
   }
 
   #
@@ -621,7 +640,7 @@ namespace eval ::stapi {
       error $result
     }
 
-    return [eval {$status > 0}]
+    return [expr {$status > 0}]
   }
 
   #
@@ -672,7 +691,7 @@ namespace eval ::stapi {
 	set search(-countOnly) 1
     }
 
-    set cql [${ns}::search_to_sql search]
+    set cql [${ns}::search_to_cql search]
     if {[info exists search(-countOnly)]} {
       return [lindex [cass_array_get_row $ns $sql] 0]
     }
@@ -733,19 +752,16 @@ namespace eval ::stapi {
   }
 
   #
-  # sql_ctable_foreach - implement a ctable foreach method for SQL tables
+  # cass_ctable_foreach - implement a ctable foreach method for SQL tables
   #
-  proc sql_ctable_foreach {level ns cmd keyvar value code} {
-    set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
-    append sql " WHERE [set ${ns}::key] ILIKE [::stapi::quote_glob $val];"
-    set code "set $keyvar \[lindex $__key 0]\n$code"
-    uplevel #$level [list pg_select -nodotfields [conn] $sql __key $code]
+  proc cass_ctable_foreach {level ns cmd keyvar value code} {
+    error "Match operations not implemented in CQL"
   }
 
   #
-  # sql_ctable_destroy - implement a ctable destroy method for SQL tables
+  # cass_ctable_destroy - implement a ctable destroy method for SQL tables
   #
-  proc sql_ctable_destroy {level ns cmd args} {
+  proc cass_ctable_destroy {level ns cmd args} {
     namespace delete $ns
   }
 
@@ -753,14 +769,16 @@ namespace eval ::stapi {
   # sql_ctable_delete - implement a ctable delete method for SQL tables
   #
   proc sql_ctable_delete {level ns cmd key args} {
-    set sql "DELETE FROM [set ${ns}::table_name] WHERE [set ${ns}::key] = [pg_quote $key];"
-    return [exec_sql $sql]
+    set pkey [set ${ns}::primary_key]
+    set type [set ${ns)::types($pkey)]
+    set cql "DELETE FROM [set ${ns}::table_name] WHERE $pkey = [::casstcl::quote $key $type];"
+    return [[cass $ns] exec $cql]
   }
 
   #
-  # sql_ctable_set - implement a ctable set method for SQL tables
+  # cass_ctable_set - implement a ctable set method for SQL tables
   #
-  proc sql_ctable_set {level ns cmd key args} {
+  proc cass_ctable_set {level ns cmd key args} {
     if {![llength $args]} {
       return
     }
@@ -769,45 +787,37 @@ namespace eval ::stapi {
       set args [lindex $args 0]
     }
 
+    lappend upserts [set ${ns}::primary_key] [lindex $key 0]
+
+    if [info exists ${ns}::cluster_keys] {
+      foreach kname [set ${ns}::cluster_keys] kval [lrange $key 1 end] {
+        lappend upserts $kname $kval
+      }
+    }
+
     foreach {col value} $args {
-      if {[info exists ${ns}::sql($col)]} {
-	set col [set ${ns}::sql($col)]
+      if {[info exists ${ns}::alias($col)]} {
+	set col_cql [set ${ns}::alias($col)]
+      } else {
+        set col_cql $col
       }
 
-      lappend assigns "$col = [pg_quote $value]"
-      lappend cols $col
-      lappend vals [pg_quote $value]
+      lappend upserts $col_cql $value
     }
 
-    set sql "UPDATE [set ${ns}::table_name] SET [join $assigns ", "]"
-    append sql " WHERE [set ${ns}::key] = [pg_quote $key];"
-    set rows 0
-
-    if {![exec_sql_rows $sql rows]} {
-      return 0
-    }
-
-    if {$rows > 0} {
-      return 1
-    }
-
-    lappend cols [set ${ns}::key]
-    lappend vals [pg_quote $key]
-
-    set sql "INSERT INTO [set ${ns}::table_name] ([join $cols ","]) VALUES ([join $vals ","]);"
-    return [exec_sql $sql]
+    [cass $ns] exec -upsert $upserts
   }
 
   #
   # sql_ctable_store - implement a ctable store method for SQL tables
   #
-  proc sql_ctable_store {level ns cmd args} {
+  proc cass_ctable_store {level ns cmd args} {
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }
     return [
       eval [list sql_ctable_set $level $ns $cmd [
-	sql_ctable_makekey $level $ns $cmd $args
+	cass_ctable_makekey $level $ns $cmd $args
       ]] $args
     ]
   }
@@ -844,13 +854,13 @@ namespace eval ::stapi {
 
     set select {}
     if {[info exists req(-countOnly)]} {
-      lappend select "COUNT($key) AS count"
+      lappend select "COUNT($primary_key) AS count"
     } else {
       if {[info exists req(-key)]} {
-	if {[info exists alias($key)]} {
-	  lappend select "$alias($key) AS __key"
+	if {[info exists alias($primary_key)]} {
+	  lappend select "$alias($primary_key) AS __key"
 	} else {
-          lappend select "$key AS __key"
+          lappend select "$primary_key AS __key"
 	}
       }
 
@@ -872,9 +882,7 @@ namespace eval ::stapi {
   
     set where {}
     set pwhere {}
-    if {[info exists req(-glob)]} {
-      lappend pwhere "$key LIKE [quote_glob $req(-glob)]"
-    }
+    if {[info exists req(-glob)]} { error "Match operations not implemented in CQL" }
   
     if {[info exists req(-compare)]} {
       foreach tuple $req(-compare) {
@@ -910,7 +918,7 @@ namespace eval ::stapi {
 	  }
 
 	  < {
-	      lappend $w "$col_cql < [::casstcl::quote $v1 $types($col)"
+	      lappend $w "$col_cql < [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  <= {
