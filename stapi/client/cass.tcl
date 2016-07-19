@@ -458,7 +458,11 @@ namespace eval ::stapi {
     }
 
     foreach arg $slist {
-      if {[info exists ${ns}::alias($arg)]} {
+      if {"$arg" == "_key" || "$arg" == "-key"} {
+	lappend select $key
+      } elseif {"$arg" == "-count"} {
+	lappend select "COUNT($key) AS count"
+      } elseif {[info exists ${ns}::alias($arg)]} {
 	lappend select [set ${ns}::alias($arg)]
       } else {
 	lappend select $arg
@@ -475,115 +479,136 @@ namespace eval ::stapi {
   #
   # cass_ctable_get - implement ctable get operation on a postgres table
   #
-  # Get list - return empty list for no data, SQL error is error
+  # Get list - return empty list for no data, CQL error is error
   #
   proc cass_ctable_get {level ns cmd val args} {
     set cql [cass_create_cql $ns $val $args]
     set result ""
 
-    if {![cass_get_one_tuple $cql result]} {
+    set status [cass_array_get_row $cql result]
+    if {!$status} {
+      error $result
+    }
+
+    if {$status == -1} {
+      return {}
+    }
+
+    array set row $result
+
+    set result {}
+
+    foreach f [set ${ns}::fields] {
+      if [info exists row($f)] {
+        lappend result $row($f)
+      } else {
+	lappend result {}
+      }
+    }
+
+    return $result
+  }
+
+  #
+  # cass_ctable_array_get
+  #
+  # Get name-value list - return empty list for no data, CQL error is error
+  #
+  proc cass_ctable_array_get {level ns cmd val args} {
+    set cql [cass_create_cql $ns $val $args]
+
+    set result {}
+    set status [cass_array_get_row $cql result]
+
+    if {!$status} {
       error $result
     }
 
     return $result
   }
 
-# WORKING
 
   #
-  # sql_ctable_array_get
+  # cass_ctable_array_get_with_nulls
   #
-  # Get name-value list - return empty list for no data, SQL error is error
+  # Get name-value list - return empty list for no data, CQL error is error
   #
-  proc sql_ctable_array_get {level ns cmd val args} {
-    set sql [sql_create_sql $ns $val $args]
+  proc cass_ctable_array_get_with_nulls {level ns cmd val args} {
+    set cql [cass_create_cql $ns $val $args]
 
-    pg_select -withoutnulls -nodotfields [conn] $sql row {
-	return [array get row]
+    set result {}
+    set status [cass_array_get_row $cql result]
+
+    if {!$status} {
+      error $result
     }
 
-    return [list]
+    if {$status == -1} {
+      return {}
+    }
+
+    array set row $result
+
+    foreach f [set ${ns}::fields] {
+      if ![info exists row($f)] {
+	set row($f) {}
+      }
+    }
+
+    return [array get row]
   }
 
 
   #
-  # sql_ctable_array_get_with_nulls
+  # cass_ctable_exists - implement a ctable exists method for Cassandra tables
   #
-  # Get name-value list - return empty list for no data, SQL error is error
-  #
-  proc sql_ctable_array_get_with_nulls {level ns cmd val args} {
-    set sql [sql_create_sql $ns $val $args]
+  proc cass_ctable_exists {level ns cmd val} {
+    set cql [cass_create_cql $ns $val -key]
 
-    pg_select -nodotfields [conn] $sql row {
-	return [array get row]
+    set status [cass_array_get_row $cql result]
+
+
+    if {!$status} {
+      error $result
     }
 
-    return [list]
+    return [eval {$status > 0}]
   }
 
   #
-  # sql_ctable_exists - implement a ctable exists method for SQL tables
+  # cass_ctable_count - implement a ctable count method for Cassandra tables
   #
-  proc sql_ctable_exists {level ns cmd val} {
-    set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
-    append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
-    append sql " LIMIT 1;"
-    # debug "\[pg_exec \[conn] \"$sql\"]"
+  proc cass_ctable_count {level ns cmd args} {
+    set cql [cass_create_cql $ns $val -count]
 
-    set pg_res [pg_exec [conn] $sql]
-    if {![set ok [string match "PGRES_*_OK" [pg_result $pg_res -status]]]} {
-      set err [pg_result $pg_res -error]
-      set errinf "$err\nIn $sql"
-    } else {
-      set result [pg_result $pg_res -numTuples]
-    }
-
-    pg_result $pg_res -clear
-
-    if {!$ok} {
-      return -code error -errorinfo $errinf $err
-    }
-    return $result
-  }
-
-  #
-  # sql_ctable_count - implement a ctable count method for SQL tables
-  #
-  proc sql_ctable_count {level ns cmd args} {
-    set sql "SELECT COUNT([set ${ns}::key]) FROM [set ${ns}::table_name]"
-
-    if {[llength $args] == 1} {
-      append sql " WHERE [set ${ns}::key] = [pg_quote $val]"
-    }
-
-    append sql ";"
     return [lindex [cql_get_one_tuple $sql] 0]
   }
 
   #
-  # sql_ctable_fields - implement a ctables fields method for SQL tables
+  # cass_ctable_fields - implement a ctables fields method for Cassandra tables
   #
-  proc sql_ctable_fields {level ns cmd args} {
+  proc cass_ctable_fields {level ns cmd args} {
     return [set ${ns}::fields]
   }
 
   #
-  # sql_ctable_type - implement a ctables "type" method for SQL tables
+  # cass_ctable_type - implement a ctables "type" method for Cassandra tables
   #
-  proc sql_ctable_type {level ns cmd args} {
-    return sql:///[set ${ns}::table_name]
+  proc cass_ctable_type {level ns cmd args} {
+    return cass:///[set ${ns}::table_name]
   }
 
   #
-  # sql_ctable_fieldtype - implement a ctables "fieldtype" method for SQL tables
+  # cass_ctable_fieldtype - implement a ctables "fieldtype" method for Cassandra tables
   #
-  proc sql_ctable_fieldtype {level ns cmd field} {
+  proc cass_ctable_fieldtype {level ns cmd field} {
     if {![info exists ${ns}::types($field)]} {
       return -code error "No such field: $field"
     }
     return [set ${ns}::types($field)]
   }
 
+# WORKING
   #
   # sql_ctable_search - implement a ctable search method for SQL tables
   #
@@ -948,18 +973,18 @@ namespace eval ::stapi {
   }
 
   #
-  # cass_get_one_tuple
+  # cass_array_get_row
   #
   # Get one tuple from request in array-get form
   # Two calling sequences:
-  #   set result [cass_get_one_tuple $cql]
+  #   set result [cass_array_get_row $cql]
   #      No data is an error (No Match)
   #   set status [cass_set_one_tuple $cql result]
   #      status ==  1 - success
   #      status == -1 - No data,  *result not modified*
-  #      status ==  0 - SQL error, result is error string
+  #      status ==  0 - CQL error, result is error string
   #
-  proc cass_get_one_tuple {req {_result ""}} {
+  proc cass_array_get_row {req {_result ""}} {
     if {[string length $_result]} {
       upvar 1 $_result result
     }
