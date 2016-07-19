@@ -280,7 +280,7 @@ namespace eval ::stapi {
       }
 
       # copy the search proc into this namespace
-      proc search_to_cass [info args ::stapi::search_to_cass] [info body ::stapi::search_to_cass]
+      proc search_to_cql [info args ::stapi::search_to_cql] [info body ::stapi::search_to_cql]
     }
 
     set ${ns}::table_name $table
@@ -767,25 +767,27 @@ namespace eval ::stapi {
   proc sql_ctable_read_tabsep {level ns cmd args} { sql_ctable_unimplemented }
 
   #
-  # search_to_sql
+  # search_to_cql
   #
   # This is never evaluated directly, it's only copied into a namespace
   # with [info body], so variables are from $ns and anything in ::stapi
   # needs direct quoting
   #
-  proc search_to_sql {_req} {
+  proc search_to_cql {_req} {
     upvar 1 $_req req
-    variable key
+    variable primary_key
+    variable cluster_keys
     variable table_name
     variable fields
+    variable types
 
     set select {}
     if {[info exists req(-countOnly)]} {
       lappend select "COUNT($key) AS count"
     } else {
       if {[info exists req(-key)]} {
-	if {[info exists sql($key)]} {
-	  lappend select "$sql($key) AS __key"
+	if {[info exists alias($key)]} {
+	  lappend select "$alias($key) AS __key"
 	} else {
           lappend select "$key AS __key"
 	}
@@ -795,8 +797,8 @@ namespace eval ::stapi {
         set cols $req(-fields)
 
 	  foreach col $cols {
-	    if {[info exists sql($col)]} {
-	      lappend select "$sql($col) AS $col"
+	    if {[info exists alias($col)]} {
+	      lappend select "$alias($col) AS $col"
 	    } else {
 	      lappend select $col
 	    }
@@ -808,126 +810,102 @@ namespace eval ::stapi {
     }
   
     set where {}
+    set pwhere {}
     if {[info exists req(-glob)]} {
-      lappend where "$key LIKE [quote_glob $req(-glob)]"
+      lappend pwhere "$key LIKE [quote_glob $req(-glob)]"
     }
   
     if {[info exists req(-compare)]} {
       foreach tuple $req(-compare) {
 	foreach {op col v1 v2} $tuple break
 
-	if {[info exists sql($col)]} {
-	  set col $sql($col)
+	if {[info exists alias($col)]} {
+	  set col_cql $alias($col)
+	} else {
+	  set col_cql $col
+        }
+
+	if {"$col" == "$primary_key" || [lsearch -exact $cluster_keys $col] >= 0} {
+	  set w $pwhere
+	} else {
+	  set w $where
 	}
 
 	switch -exact -- [string tolower $op] {
 	  false {
-	      lappend where "$col = FALSE"
+	      lappend $w "$col_cql = FALSE"
 	  }
 
 	  true {
-	      lappend where "$col = TRUE"
+	      lappend $w "$col_cql = TRUE"
 	  }
 
 	  null {
-	      lappend where "$col IS NULL"
+	      lappend $w "$col_cql IS NULL"
 	  }
 
 	  notnull {
-	      lappend where "$col IS NOT NULL"
+	      lappend $w "$col_cql IS NOT NULL"
 	  }
 
 	  < {
-	      lappend where "$col < [pg_quote $v1]"
+	      lappend $w "$col_cql < [::casstcl::quote $v1 $types($col)"
 	  }
 
 	  <= {
-	      lappend where "$col <= [pg_quote $v1]"
+	      lappend $w "$col_cql <= [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  = {
-	      lappend where "$col = [pg_quote $v1]"
+	      lappend $w "$col_cql = [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  != {
-	      lappend where "$col <> [pg_quote $v1]"
+	      lappend $w "$col_cql <> [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  <> {
-	      lappend where "$col <> [pg_quote $v1]"
+	      lappend $w "$col_cql <> [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  >= {
-	      lappend where "$col >= [pg_quote $v1]"
+	      lappend $w "$col_cql >= [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  > {
-	      lappend where "$col > [pg_quote $v1]"
-	  }
-
-	  imatch {
-	      lappend where "$col ILIKE [::stapi::quote_glob $v1]"
-	  }
-
-	  -imatch {
-	      lappend where "NOT $col ILIKE [::stapi::quote_glob $v1]"
-	  }
-
-	  match {
-	      lappend where "$col ILIKE [::stapi::quote_glob $v1]"
-	  }
-
-	  notmatch {
-	      lappend where "NOT $col ILIKE [::stapi::quote_glob $v1]"
-	  }
-
-	  xmatch {
-	      lappend where "$col LIKE [::stapi::quote_glob $v1]"
-	  }
-
-	  -xmatch {
-	      lappend where "NOT $col LIKE [::stapi::quote_glob $v1]"
-	  }
-
-	  match_case {
-	      lappend where "$col LIKE [::stapi::quote_glob $v1]"
-	  }
-
-	  notmatch_case {
-	    lappend where "NOT $col LIKE [::stapi::quote_glob $v1]"
-	  }
-
-	  umatch {
-	    lappend where "$col LIKE [::stapi::quote_glob [string toupper $v1]]"
-	  }
-
-	  -umatch {
-	    lappend where "NOT $col LIKE [
-				::stapi::quote_glob [string toupper $v1]]"
-	  }
-
-	  lmatch {
-	    lappend where "$col LIKE [::stapi::quote_glob [string tolower $v1]]"
-	  }
-
-	  -lmatch {
-	    lappend where "NOT $col LIKE [
-				::stapi::quote_glob [string tolower $v1]]"
+	      lappend $w "$col_cql > [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  range {
-	    lappend where "$col >= [pg_quote $v1]"
-	    lappend where "$col < [pg_quote $v2]"
+	    lappend $w "$col_cql >= [::casstcl::quote $v1 $types($col)]"
+	    lappend $w "$col_cql < [::casstcl::quote $v2 $types($col)]"
 	  }
 
 	  in {
 	    foreach v $v1 {
-	      lappend q [pg_quote $v]
+	      lappend q [::casstcl::quote $v $types($col)]
 	    }
-	    lappend where "$col IN ([join $q ","])"
+	    lappend $w "$col_cql IN ([join $q ","])"
 	  }
+
+          imatch { error "Match operations not implemented in CQL" }
+          -imatch { error "Match operations not implemented in CQL" }
+          match { error "Match operations not implemented in CQL" }
+          notmatch { error "Match operations not implemented in CQL" }
+          xmatch { error "Match operations not implemented in CQL" }
+          -xmatch { error "Match operations not implemented in CQL" }
+          match_case { error "Match operations not implemented in CQL" }
+          notmatch_case { error "Match operations not implemented in CQL" }
+          umatch { error "Match operations not implemented in CQL" }
+          -umatch { error "Match operations not implemented in CQL" }
+          lmatch { error "Match operations not implemented in CQL" }
+          -lmatch { error "Match operations not implemented in CQL" }
 	}
       }
+    }
+
+    if {[llength $where] && ![llength $pwhere]} {
+      error "Must include primary or cluster key in WHERE clause"
     }
   
     set order {}
@@ -939,8 +917,12 @@ namespace eval ::stapi {
 	  set desc " DESC"
 	}
 
-	if {[info exists sql(field)]} {
-	  lappend order "$sql($field)$desc"
+	if {"$field" != "$primary_key" && [lsearch -exact $cluster_keys $col] < 0} {
+	  error "Can only sort on primary or cluster key"
+	}
+
+	if {[info exists alias(field)]} {
+	  lappend order "$alias($field)$desc"
 	} else {
 	  lappend order "$field$desc"
 	}
@@ -948,28 +930,31 @@ namespace eval ::stapi {
     }
   
     # NB include a space for load balancing - total kludge, please remove asap
-    set sql " SELECT [join $select ","] FROM $table_name"
+    set cql " SELECT [join $select ","] FROM $table_name"
 
-    if {[llength $where]} {
-      append sql " WHERE [join $where " AND "]"
+    if {[llength $pwhere]} {
+      append cql " WHERE [join $pwhere " AND "]"
+      if {[llength $where]} {
+	append cql "AND [join $where " AND "]"
+      }
     }
 
     if {[llength $order]} {
-      append sql " ORDER BY [join $order ","]"
+      append cql " ORDER BY [join $order ","]"
     }
 
     if {[info exists req(-limit)]} {
-      append sql " LIMIT $req(-limit)"
+      append cql " LIMIT $req(-limit)"
     }
 
     if {[info exists req(-offset)]} {
-      append sql " OFFSET $req(-offset)"
+      error "OFFSET not supported in CQL"
     }
 
-    append sql ";"
+    append cql ";"
 
   
-    return $sql
+    return $cql
   }
 
   #
