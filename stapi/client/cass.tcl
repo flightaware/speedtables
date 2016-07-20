@@ -916,20 +916,9 @@ namespace eval ::stapi {
     if {[info exists req(-countOnly)]} {
       lappend select "COUNT($primary_key) AS count"
     } else {
-      if {[info exists req(-key)]} {
-	set l [list $primary_key]
-	if [info exists cluster_keys]
-	  set l [concat $l $cluster_keys]
-	}
-	foreach k $l {
-	  lappend select $k
-        }
-      }
-
       if {[info exists req(-fields)]} {
-        set cols $req(-fields)
-
-	foreach col $cols {
+	# Populate select with requested fields
+	foreach col $req(-fields) {
 	  if {[lsearch $select $col] == -1] {
 	    if {[info exists alias($col)]} {
 	      lappend select "$alias($col) AS $col"
@@ -938,8 +927,21 @@ namespace eval ::stapi {
 	    }
 	  }
 	}
+
+	# And if a key variable was requested, make sure the keys are in the selection.
+        if {[info exists req(-key)]} {
+	  set l [list $primary_key]
+	  if [info exists cluster_keys]
+	    set l [concat $l $cluster_keys]
+	  }
+	  foreach k $l {
+	    if {[lsearch $select $k == -1]} {
+	      lappend select $k
+	    }
+          }
+        }
       } else {
-	# they want all fields
+	# they want all fields, which include the keys, so do it simply...
         lappend select *
       }
     }
