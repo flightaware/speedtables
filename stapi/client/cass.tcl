@@ -150,6 +150,10 @@ namespace eval ::stapi {
 	      lappend params [uri_esc _key=$val &]
 	  }
 
+	  keyspace {
+	      set keyspace $val
+	  }
+
 	  -* {
 	    regexp {^-(.*)} $opt _ opt
 	    lappend params [uri_esc $opt &=]=[uri_esc $val &]
@@ -160,6 +164,15 @@ namespace eval ::stapi {
 	  }
 	}
       }
+    }
+
+    if [info exists keyspace] {
+      regexp {^[^.]*[.]\(.*\)$} $table _ table
+      set table "$keyspace.$table"
+    }
+
+    if {![string match "*.*" $table]} {
+      error "No keyspace provided for cassandra table."
     }
 
     set uri cass://
