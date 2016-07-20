@@ -538,17 +538,19 @@ namespace eval ::stapi {
       set slist [set ${ns}::fields]
     }
 
-    set key [set ${ns}::partition_key]
-    if [info exists ${ns}::types($key)] {
-      set type [set ${ns}::types($key)]
-    } else {
-      set type text; # PUNT
+    foreach {k v} [cass_ctable_extract_key $ns $val] {
+      lappend keys $k
+      set type [set ${ns}::types($k)]
+      lappend where $k [::casstcl::quote $v $type]
     }
 
     foreach arg $slist {
       if {"$arg" == "_key" || "$arg" == "-key"} {
-	lappend select $key
+	foreach key $keys {
+	  lappend select $key
+	}
       } elseif {"$arg" == "-count"} {
+	set key [set ${ns}::primary_key]
 	lappend select "COUNT($key) AS count"
       } elseif {[info exists ${ns}::alias($arg)]} {
 	lappend select [set ${ns}::alias($arg)]
@@ -558,7 +560,7 @@ namespace eval ::stapi {
     }
 
     set cql "SELECT [join $select ,] FROM [set ${ns}::table_name]"
-    append cql " WHERE $key = [::casstcl::quote $val $type]"
+    append cql " WHERE [join $where " AND "]"
     append cql " LIMIT 1;"
 
     return $sql
@@ -650,7 +652,6 @@ namespace eval ::stapi {
     set cql [cass_create_cql $ns $val -key]
 
     set status [cass_array_get_row $ns $cql result]
-
 
     if {!$status} {
       error $result
@@ -904,6 +905,7 @@ namespace eval ::stapi {
     if {[info exists req(-countOnly)]} {
       lappend select "COUNT($primary_key) AS count"
     } else {
+      # TODO - this needs to be something we can use to generate a key list.
       if {[info exists req(-key)]} {
 	if {[info exists alias($primary_key)]} {
 	  lappend select "$alias($primary_key) AS __key"
