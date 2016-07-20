@@ -12,7 +12,7 @@ namespace eval ::stapi {
   variable cassconn
 
   #
-  # connect_cass connect-info
+  # set_cassandra_connection connect-info
   #
   # connection info is either a list of name value pairs or multiple name-value pairs. Missing
   # values will be provided from the environment.
@@ -24,7 +24,7 @@ namespace eval ::stapi {
   #
   # Connection is set in the variable specified
   #
-  proc connect_cass {_conn args} {
+  proc set_cassandra_connection {_conn args} {
     upvar 1 $_conn conn
     global env
 
@@ -92,7 +92,7 @@ namespace eval ::stapi {
 
     if {![info exists casscon]} {
       # Hope the environment variables are all there!
-      connect_cass cassconn
+      set_cassandra_connection cassconn
     }
 
     return $cassconn
@@ -268,18 +268,7 @@ namespace eval ::stapi {
     variable casstable_seq
     set ns ::stapi::casstable[incr casstable_seq]
 
-    set conninfo [parse_cass_address $address]
-    if {![llength $conninfo]} {
-      variable cassconn
-      connect_cass cassconn
-    } else {
-      namespace eval $ns {
-        variable cassconn
-      }
-
-      connect_cass ${ns}::cassconn $conninfo
-    }
-
+    # Parse local part into table, path (list of columns), and parameters
     set params ""
     regexp {^([^?]*)[?](.*)} $table _ table params
     set path ""
@@ -291,11 +280,24 @@ namespace eval ::stapi {
       error "No keyspace provided for cassandra table $table."
     }
 
+    # parse address part into user/host/password etc and make Cassandra connection
+    set conninfo [parse_cass_address $address]
+    if {![llength $conninfo]} {
+      variable cassconn
+      set_cassandra_connection cassconn
+    } else {
+      namespace eval $ns {
+        variable cassconn
+      }
+
+      set_cassandra_connection ${ns}::cassconn $conninfo
+    }
+
     foreach param [split $params "&"] {
       if {[regexp {^([^=]*)=(.*)} $param _ name val]} {
-	set vars([uri_unesc $name]) [uri_unesc $val]
+	set aliases([uri_unesc $name]) [uri_unesc $val]
       } else {
-	set vars([uri_unesc $name]) ""
+	set aliases([uri_unesc $name]) ""
       }
     }
 
@@ -333,9 +335,9 @@ namespace eval ::stapi {
     foreach field $raw_fields {
       lappend fields $field
 
-      if {[info exists params($field)]} {
-        set field2alias($field) $params($field)
-	unset params($field)
+      if {[info exists aliases($field)]} {
+        set field2alias($field) $aliases($field)
+	unset aliases($field)
       }
     }
 
