@@ -172,7 +172,7 @@ namespace eval ::stapi {
     }
 
     if {![string match "*.*" $table]} {
-      error "No keyspace provided for cassandra table."
+      error "No keyspace provided for cassandra table $table."
     }
 
     set uri cass://
@@ -286,6 +286,10 @@ namespace eval ::stapi {
     regexp {^/*([^/]*)/(.*)} $table _ table path
     set path [split $path "/"]
     set table [uri_unesc $table]
+
+    if {![string match "*.*" $table]} {
+      error "No keyspace provided for cassandra table $table."
+    }
 
     foreach param [split $params "&"] {
       if {[regexp {^([^=]*)=(.*)} $param _ name val]} {
