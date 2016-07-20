@@ -478,6 +478,17 @@ namespace eval ::stapi {
 
     array set array $args
 
+    return cass_makekey_array $ns array
+  }
+
+  #
+  # cass_makekey_array
+  #
+  # Common helper for cass_ctable_makekey, extracting the key from an array
+  #
+  proc cass_makekey_array {ns _array} {
+    upvar 1 $_array array
+
     set klist {}
 
     lappend klist [set ${ns}::partition_key]
@@ -494,12 +505,12 @@ namespace eval ::stapi {
       if {[info exists array($key)]} {
         lappend $rlist $array($key)
       } else {
+	# REEVALUATE - should we allow incomplete keys?
         return -code error "No value for $key in list"
       }
     }
 
     return $rlist
-
   }
 
   #
@@ -732,7 +743,7 @@ namespace eval ::stapi {
     }
 
     if {[info exists search(-key)]} {
-      lappend code "set $search(-key) \$${array}(__key)"
+      lappend code "set $search(-key) \[cass_makekey_array $ns $array]"
     }
 
     lappend code $search(-code)
@@ -905,13 +916,14 @@ namespace eval ::stapi {
     if {[info exists req(-countOnly)]} {
       lappend select "COUNT($primary_key) AS count"
     } else {
-      # TODO - this needs to be something we can use to generate a key list.
       if {[info exists req(-key)]} {
-	if {[info exists alias($primary_key)]} {
-	  lappend select "$alias($primary_key) AS __key"
-	} else {
-          lappend select "$primary_key AS __key"
+	set l [list $primary_key]
+	if [info exists cluster_keys]
+	  set l [concat $l $cluster_keys]
 	}
+	foreach k $l {
+	  lappend select $k
+        }
       }
 
       if {[info exists req(-fields)]} {
