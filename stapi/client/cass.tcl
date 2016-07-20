@@ -304,6 +304,8 @@ namespace eval ::stapi {
     set raw_fields {}
     set columns [cass_get_columns $ns $table]
     if {![llength $columns]} {
+      cleanup_connection $ns
+      namespace delete $ns
       error "Failed to describe cassandra table $table"
     }
 
@@ -317,6 +319,8 @@ namespace eval ::stapi {
     }
 
     if {![info exists partition_key]} {
+      cleanup_connection $ns
+      namespace delete $ns
       error "Can't happen! Cassandra table has no partition key!"
     }
 
@@ -764,24 +768,34 @@ namespace eval ::stapi {
   }
 
   #
-  # cass_ctable_foreach - implement a ctable foreach method for SQL tables
+  # cass_ctable_foreach - implement a ctable foreach method for Cassandra tables
   #
   proc cass_ctable_foreach {level ns cmd keyvar value code} {
     error "Match operations not implemented in CQL"
   }
 
   #
-  # cass_ctable_destroy - implement a ctable destroy method for SQL tables
+  # cass_ctable_destroy - implement a ctable destroy method for Cassandra tables
   #
   proc cass_ctable_destroy {level ns cmd args} {
+    cleanup_connection $ns
+    namespace delete $ns
+  }
+
+  #
+  # cleanup_connection ns
+  #
+  # Helper routine to clean up anything that might leak in a Cassandra connection namespace
+  #
+  proc cleanup_connection {ns} {
     if [info exists ${ns}::cassconn] {
       set nsconn [set ${ns}::cassconn]
       variable cassconn
       if {![info exists cassconn] || "$cassconn" != "$nsconn"} {
 	$nsconn delete
+	unset ${ns}::cassconn
       }
     }
-    namespace delete $ns
   }
 
   #
