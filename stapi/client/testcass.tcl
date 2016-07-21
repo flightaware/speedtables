@@ -14,12 +14,22 @@ if [file exists $d/pkgIndex.tcl] {
 package require st_client_cassandra
 
 if ![info exists env(CASSTCL_CONTACT_POINTS)] {
-  error "Please set environment variables CASSTCL_USERNAME, CASSTCL_CONTACT_POINTS, CASSTCL_PASSWORD"
+	error "Please set environment variables CASSTCL_USERNAME, CASSTCL_CONTACT_POINTS, CASSTCL_PASSWORD"
 }
 
-set c [::stapi::connect cass:///test.school/]
+set school [::stapi::connect cass:///test.school/]
 
-$c search -compare {{> age 20}} -array row -code {
-  puts [array get row]
+$school set A000000 name Hobo age 101
+$school search -array row -code {
+	lappend students $row(student_id) $row(name)
+	set rows($row(student_id)) [array get row]
+}
+
+foreach {id name} $students {
+	puts "$school get $id --> [$school get $id]"
+	if {"$name" == "Hobo"} {
+	     puts "Deleting Hobo!"
+	     $school delete $id
+        }
 }
 
