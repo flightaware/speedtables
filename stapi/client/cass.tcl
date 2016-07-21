@@ -200,6 +200,7 @@ namespace eval ::stapi {
     if {[info exists params]} {
       append uri ? [join $params &]
     }
+
     return $uri
   }
 
@@ -267,6 +268,7 @@ namespace eval ::stapi {
   proc connect_cassandra {table {address "-"} args} {
     variable casstable_seq
     set ns ::stapi::casstable[incr casstable_seq]
+    set keysep ":"
 
     # Parse local part into table, path (list of columns), and parameters
     set params ""
@@ -295,9 +297,12 @@ namespace eval ::stapi {
 
     foreach param [split $params "&"] {
       if {[regexp {^([^=]*)=(.*)} $param _ name val]} {
-	set aliases([uri_unesc $name]) [uri_unesc $val]
-      } else {
-	set aliases([uri_unesc $name]) ""
+	set name [uri_unesc $name]
+	if {"$name" == "keysep"} {
+	  set keysep [uri_unesc $val]
+	} else {
+	  set aliases($name) [uri_unesc $val]
+	}
       }
     }
 
@@ -366,6 +371,7 @@ namespace eval ::stapi {
     set ${ns}::fields $fields
     array set ${ns}::types [array get field2type]
     set ${ns}::partition_key $partition_key
+    set ${ns}::keysep $keysep
 
     if [info exists $cluster_keys] {
       set ${ns}::cluster_keys $cluster_keys
@@ -510,7 +516,7 @@ namespace eval ::stapi {
       }
     }
 
-    return $rlist
+    return [join $rlist [set ${ns}::keysep]]
   }
 
   #
@@ -817,6 +823,8 @@ namespace eval ::stapi {
   # of {primary_key value [cluster_key value]...}
   #
   proc cass_extract_key {ns key} {
+    set key [split $key [set ${ns}::keysep]]
+
     lappend result [set ${ns}::primary_key] [lindex $key 0]
     if {[info exists ${ns}::cluster_keys]} {
       foreach ckey [set ${ns}::cluster_keys] cval [lrange $key 1 end] {
@@ -831,13 +839,11 @@ namespace eval ::stapi {
   #
   proc cass_ctable_delete {level ns cmd key args} {
     set l [cass_extract_key $ns $key]
-    set cql "DELETE FROM [set ${ns}::table_name]"
-    set word WHERE
+    set where {}
     foreach {k v} $l {
-      append cql " $word $k = [::casstcl::quote $v [set ${ns}::types($k)]]"
-      set word AND
+      lappend where "$k = [::casstcl::quote $v [set ${ns}::types($k)]]"
     }
-    append cql ";"
+    set cql "DELETE FROM [set ${ns}::table_name] WHERE [join $where " AND "];"
     return [[cass $ns] exec $cql]
   }
 
