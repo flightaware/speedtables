@@ -329,6 +329,11 @@ namespace eval ::stapi {
       error "Can't happen! Cassandra table has no partition key!"
     }
 
+    lappend keyfields $partition_key
+    if [info exists cluster_keys] {
+      set keyfields [concat $keyfields $cluster_keys]
+    }
+
     if {[llength $path]} {
       set raw_fields {}
       foreach field $path {
@@ -369,6 +374,7 @@ namespace eval ::stapi {
     array set ${ns}::aliases [array get field2alias]
     set ${ns}::key $key
     set ${ns}::fields $fields
+    set ${ns}::keyfields $keyfields
     array set ${ns}::types [array get field2type]
     set ${ns}::partition_key $partition_key
     set ${ns}::keysep $keysep
@@ -466,12 +472,7 @@ namespace eval ::stapi {
   # cass_ctable_keys -
   #
   proc cass_ctable_keys {level ns cmd args} {
-    set keys {}
-    lappend keys [set ${ns}::partition_key]
-    if [info exists ${ns}::cluster_keys] {
-      set keys [concat $keys [set ${ns}::cluster_keys]]
-    }
-    return $keys
+    return [set ${ns}::keyfields]
   }
 
   #
@@ -495,19 +496,9 @@ namespace eval ::stapi {
   proc cass_makekey_array {ns _array} {
     upvar 1 $_array array
 
-    set klist {}
-
-    lappend klist [set ${ns}::partition_key]
-
-    if {[info exists ${ns}::cluster_keys]} {
-      foreach key [set ${ns}::cluster_keys] {
-	lappend klist $key
-      }
-    }
-
     set rlist {}
 
-    foreach key $klist {
+    foreach key [set ${ns}::keyfields] {
       if {[info exists array($key)]} {
         lappend $rlist $array($key)
       } else {
@@ -916,6 +907,7 @@ namespace eval ::stapi {
     variable cluster_keys
     variable table_name
     variable fields
+    variable keyfields
     variable types
 
     set select {}
@@ -925,7 +917,7 @@ namespace eval ::stapi {
       if {[info exists req(-fields)]} {
 	# Populate select with requested fields
 	foreach col $req(-fields) {
-	  if {[lsearch $select $col] == -1] {
+	  if {[lsearch $select $col] == -1]} {
 	    if {[info exists alias($col)]} {
 	      lappend select "$alias($col) AS $col"
 	    } else {
@@ -936,11 +928,7 @@ namespace eval ::stapi {
 
 	# And if a key variable was requested, make sure the keys are in the selection.
         if {[info exists req(-key)]} {
-	  set l [list $primary_key]
-	  if [info exists cluster_keys]
-	    set l [concat $l $cluster_keys]
-	  }
-	  foreach k $l {
+	  foreach k $keyfields {
 	    if {[lsearch $select $k == -1]} {
 	      lappend select $k
 	    }
@@ -966,7 +954,7 @@ namespace eval ::stapi {
 	  set col_cql $col
         }
 
-	if {"$col" == "$primary_key" || [lsearch -exact $cluster_keys $col] >= 0} {
+	if {[lsearch -exact $keyfields $col] >= 0} {
 	  set w $pwhere
 	} else {
 	  set w $where
@@ -1058,7 +1046,7 @@ namespace eval ::stapi {
 	  set desc " DESC"
 	}
 
-	if {"$field" != "$primary_key" && [lsearch -exact $cluster_keys $col] < 0} {
+	if {[lsearch -exact $keyfields $col] < 0} {
 	  error "Can only sort on primary or cluster key"
 	}
 
@@ -1093,7 +1081,6 @@ namespace eval ::stapi {
 
     append cql ";"
 
-  
     return $cql
   }
 
