@@ -45,7 +45,7 @@ namespace eval ::stapi {
       }
     }
     if {![llength $hosts]} {
-      if [info exists env(CASSTCL_CONTACT_POINTS}] {
+      if [info exists env(CASSTCL_CONTACT_POINTS)] {
 	foreach host [split $env(CASSTCL_CONTACT_POINTS) ":"] {
 	  lappend hosts $host
 	}
