@@ -771,7 +771,7 @@ namespace eval ::stapi {
   # cass_fill_nulls array fields...
   #
   proc cass_fill_nulls {_array args} {
-    uplevel 1 $_array array
+    upvar 1 $_array array
     if {[llength $args] == 1} {
       set args [lindex $args 0]
     }

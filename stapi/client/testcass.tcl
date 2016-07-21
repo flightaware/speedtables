@@ -20,6 +20,10 @@ if ![info exists env(CASSTCL_CONTACT_POINTS)] {
 set school [::stapi::connect cass:///test.school/]
 
 $school set A000000 name Hobo age 101
+$school set A000001 name Hungry age 51
+$school set A000002 name Happy age 52
+$school set A000003 name Dopey age 53
+
 $school search -array row -code {
 	lappend students $row(student_id) $row(name)
 	set rows($row(student_id)) [array get row]
@@ -32,4 +36,11 @@ foreach {id name} $students {
 	     $school delete $id
         }
 }
+
+puts "$school array_get A000001 -> [$school array_get A000001]"
+puts "$school array_get_with_nulls A000001 -> [$school array_get_with_nulls A000001]"
+
+puts "Changing Dopey to Grumpy"
+$school set A000003 name Grumpy
+puts "$school array_get A000003 -> [$school array_get A000003]"
 
