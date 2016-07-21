@@ -5,6 +5,7 @@
 # Cassandra tables as if they are ctables
 #
 
+package require casstcl
 package require st_client
 package require st_client_uri
 
@@ -33,7 +34,7 @@ namespace eval ::stapi {
     }
 
     set hosts {}
-    for {opt val} $args {
+    foreach {opt val} $args {
       regexp {^-(.*)} $opt _ opt
       switch -- $opt {
         contact_points {lappend hosts $val}
@@ -309,23 +310,29 @@ namespace eval ::stapi {
     set raw_fields {}
     set columns [cass_get_columns $ns $table]
     if {![llength $columns]} {
-      cleanup_connection $ns
-      namespace delete $ns
+      catch {
+        cleanup_connection $ns
+        namespace delete $ns
+      }
       error "Failed to describe cassandra table $table"
     }
 
-    foreach {name kind type} $columns {
-      lappend raw_fields $name
-      set field2type($name) $type
-      switch -- $kind {
-	partition_key { set partition_key $name }
-	clustering { lappend cluster_keys $name }
+    foreach tuple $columns {
+      foreach {name kind type} $tuple {
+        lappend raw_fields $name
+        set field2type($name) $type
+        switch -exact -- $kind {
+	  partition_key { set partition_key $name }
+	  clustering { lappend cluster_keys $name }
+        }
       }
     }
 
     if {![info exists partition_key]} {
-      cleanup_connection $ns
-      namespace delete $ns
+      catch {
+        cleanup_connection $ns
+        namespace delete $ns
+      }
       error "Can't happen! Cassandra table has no partition key!"
     }
 
@@ -372,14 +379,13 @@ namespace eval ::stapi {
 
     set ${ns}::table_name $table
     array set ${ns}::aliases [array get field2alias]
-    set ${ns}::key $key
     set ${ns}::fields $fields
     set ${ns}::keyfields $keyfields
     array set ${ns}::types [array get field2type]
     set ${ns}::partition_key $partition_key
     set ${ns}::keysep $keysep
 
-    if [info exists $cluster_keys] {
+    if [info exists cluster_keys] {
       set ${ns}::cluster_keys $cluster_keys
     }
 
