@@ -1043,9 +1043,10 @@ namespace eval ::stapi {
       }
     }
 
-    if {[llength $where] && ![llength $pwhere]} {
-      error "Must include primary or cluster key in WHERE clause"
-    }
+# Need to take this test out until we can identify indexed fields, let Cassandra track this stuff.
+#    if {[llength $where] && ![llength $pwhere]} {
+#      error "Must include primary or cluster key in WHERE clause"
+#    }
   
     set order {}
     if {[info exists req(-sort)]} {
