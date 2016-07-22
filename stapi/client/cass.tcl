@@ -491,7 +491,7 @@ namespace eval ::stapi {
 
     array set array $args
 
-    return cass_makekey_array $ns array
+    return [cass_makekey_array $ns array]
   }
 
   #
@@ -506,7 +506,7 @@ namespace eval ::stapi {
 
     foreach key [set ${ns}::keyfields] {
       if {[info exists array($key)]} {
-        lappend $rlist $array($key)
+        lappend rlist $array($key)
       } else {
 	# REEVALUATE - should we allow incomplete keys?
         return -code error "No value for $key in list"

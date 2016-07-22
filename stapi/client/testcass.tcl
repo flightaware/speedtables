@@ -44,3 +44,25 @@ puts "Changing Dopey to Grumpy"
 $school set A000003 name Grumpy
 puts "$school array_get A000003 -> [$school array_get A000003]"
 
+puts "Checking routines"
+puts "methods [$school methods]"
+puts "key     [$school key]"
+puts "keys    [$school keys]"
+set a [$school array_get A000003]
+puts "makekey [$school makekey $a] (from $a)"
+puts "exists  [$school exists A000003]"
+
+exit
+  proc cass_ctable_count {level ns cmd args} {
+  proc cass_ctable_fields {level ns cmd args} {
+  proc cass_ctable_type {level ns cmd args} {
+  proc cass_ctable_fieldtype {level ns cmd field} {
+  proc cass_ctable_search {level ns cmd args} {
+  proc cass_ctable_foreach {level ns cmd keyvar value code} {
+  proc cass_ctable_destroy {level ns cmd args} {
+  proc cass_ctable_delete {level ns cmd key args} {
+  proc cass_ctable_set {level ns cmd key args} {
+  proc cass_ctable_store {level ns cmd args} {
+  proc cass_ctable_needs_quoting {level ns cmd args} { cass_ctable_unimplemented }
+  proc cass_ctable_names {level ns cmd args} { cass_ctable_unimplemented }
+  proc cass_ctable_read_tabsep {level ns cmd args} { cass_ctable_unimplemented }
