@@ -45,18 +45,17 @@ $school set A000003 name Grumpy
 puts "$school array_get A000003 -> [$school array_get A000003]"
 
 puts "Checking routines"
-puts "methods [$school methods]"
-puts "key     [$school key]"
-puts "keys    [$school keys]"
+puts "methods   [$school methods]"
+puts "key       [$school key]"
+puts "keys      [$school keys]"
 set a [$school array_get A000003]
-puts "makekey [$school makekey $a] (from $a)"
-puts "exists  [$school exists A000003]"
+puts "makekey   [$school makekey $a] (from $a)"
+puts "exists    [$school exists A000003]"
+puts "fields    [$school fields]"
+puts "type      [$school type]"
+puts "fieldtype [$school fieldtype student_id]"
 
 exit
-  proc cass_ctable_count {level ns cmd args} {
-  proc cass_ctable_fields {level ns cmd args} {
-  proc cass_ctable_type {level ns cmd args} {
-  proc cass_ctable_fieldtype {level ns cmd field} {
   proc cass_ctable_search {level ns cmd args} {
   proc cass_ctable_foreach {level ns cmd keyvar value code} {
   proc cass_ctable_destroy {level ns cmd args} {

@@ -563,9 +563,11 @@ namespace eval ::stapi {
 	foreach key $keys {
 	  lappend select $key
 	}
+      } elseif {"$arg" == "-all"} {
+	set where {}
       } elseif {"$arg" == "-count"} {
 	set key [set ${ns}::partition_key]
-	lappend select "COUNT($key) AS count"
+	lappend select "COUNT($key)"
       } elseif {[info exists ${ns}::alias($arg)]} {
 	lappend select [set ${ns}::alias($arg)]
       } else {
@@ -574,7 +576,9 @@ namespace eval ::stapi {
     }
 
     set cql "SELECT [join $select ,] FROM [set ${ns}::table_name]"
-    append cql " WHERE [join $where " AND "]"
+    if [llength $where] {
+      append cql " WHERE [join $where " AND "]"
+    }
     append cql " LIMIT 1;"
 
     return $cql
@@ -678,9 +682,7 @@ namespace eval ::stapi {
   # cass_ctable_count - implement a ctable count method for Cassandra tables
   #
   proc cass_ctable_count {level ns cmd args} {
-    set cql [cass_create_cql $ns $val -count]
-
-    return [lindex [cql_get_one_tuple $sql] 0]
+    error "Count is not implemented because it is too expensive an operation in Cassandra"
   }
 
   #
@@ -724,7 +726,7 @@ namespace eval ::stapi {
 
     set cql [${ns}::search_to_cql search]
     if {[info exists search(-countOnly)]} {
-      return [lindex [cass_array_get_row $ns $sql] 0]
+      return [lindex [cass_array_get_row $ns $cql] 0]
     }
 
     set code {}
