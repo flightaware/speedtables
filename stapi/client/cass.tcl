@@ -947,7 +947,7 @@ namespace eval ::stapi {
       }
     }
   
-    set where {}
+    set iwhere {}
     set pwhere {}
     if {[info exists req(-glob)]} { error "Match operations not implemented in CQL" }
   
@@ -964,7 +964,7 @@ namespace eval ::stapi {
 	if {[lsearch -exact $keyfields $col] >= 0} {
 	  set w pwhere
 	} else {
-	  set w where
+	  set w iwhere
 	}
 
 	switch -exact -- [string tolower $op] {
@@ -1044,7 +1044,7 @@ namespace eval ::stapi {
     }
 
 # Need to take this test out until we can identify indexed fields, let Cassandra track this stuff.
-#    if {[llength $where] && ![llength $pwhere]} {
+#    if {[llength $iwhere] && ![llength $pwhere]} {
 #      error "Must include primary or cluster key in WHERE clause"
 #    }
   
@@ -1071,11 +1071,9 @@ namespace eval ::stapi {
   
     set cql "SELECT [join $select ","] FROM $table_name"
 
-    if {[llength $pwhere]} {
-      append cql " WHERE [join $pwhere " AND "]"
-      if {[llength $where]} {
-	append cql " AND [join $where " AND "]"
-      }
+    set where [concat $pwhere $iwhere]
+    if {[llength $where]} {
+      append cql " WHERE [join $where " AND "]"
     }
 
     if {[llength $order]} {

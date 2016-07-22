@@ -19,3 +19,5 @@ insert into test.school ( student_id, age, name, major ) values('A542492', 29, '
 insert into test.school ( student_id, age, name, major ) values('A368556', 20, 'Douglas', 'Writhing');
 insert into test.school ( student_id, age, name, major ) values('A102655', 28, 'Cassandra', 'Fainting in Coils');
 
+create index school_name_index on test.school(name);
+

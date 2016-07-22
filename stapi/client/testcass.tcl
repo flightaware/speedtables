@@ -65,5 +65,11 @@ $school search -compare {{in student_id {A000001 A000002 A000003 A000004}}} -arr
 	puts [array get row]
 }
 
+puts "search index tests"
+
+$school search -compare {{= name "Hungry"}} -array row -code {
+	puts [array get row]
+}
+
 $school destroy
 
