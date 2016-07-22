@@ -59,5 +59,11 @@ set tmp(name) "Doozer"
 $school store [array get tmp]
 puts "store ->  [$school array_get A000003]"
 
+puts "search tests"
+
+$school search -compare {{in student_id {A000001 A000002 A000003 A000004}}} -array row -code {
+	puts [array get row]
+}
+
 $school destroy
 
