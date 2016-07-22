@@ -54,14 +54,10 @@ puts "exists    [$school exists A000003]"
 puts "fields    [$school fields]"
 puts "type      [$school type]"
 puts "fieldtype [$school fieldtype student_id]"
+array set tmp $a
+set tmp(name) "Doozer"
+$school store [array get tmp]
+puts "store ->  [$school array_get A000003]"
 
-exit
-  proc cass_ctable_search {level ns cmd args} {
-  proc cass_ctable_foreach {level ns cmd keyvar value code} {
-  proc cass_ctable_destroy {level ns cmd args} {
-  proc cass_ctable_delete {level ns cmd key args} {
-  proc cass_ctable_set {level ns cmd key args} {
-  proc cass_ctable_store {level ns cmd args} {
-  proc cass_ctable_needs_quoting {level ns cmd args} { cass_ctable_unimplemented }
-  proc cass_ctable_names {level ns cmd args} { cass_ctable_unimplemented }
-  proc cass_ctable_read_tabsep {level ns cmd args} { cass_ctable_unimplemented }
+$school destroy
+

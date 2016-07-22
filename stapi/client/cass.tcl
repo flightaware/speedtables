@@ -855,15 +855,18 @@ namespace eval ::stapi {
     }
 
     set upserts [cass_extract_key $ns $key]
+    set keyfields [set ${ns}::keyfields]
 
     foreach {col value} $args {
-      if {[info exists ${ns}::alias($col)]} {
-	set col_cql [set ${ns}::alias($col)]
-      } else {
-        set col_cql $col
+      if {[lsearch $col $keyfields] == -1} {
+        if {[info exists ${ns}::alias($col)]} {
+	  set col_cql [set ${ns}::alias($col)]
+        } else {
+          set col_cql $col
+        }
+  
+        lappend upserts $col_cql $value
       }
-
-      lappend upserts $col_cql $value
     }
 
     [cass $ns] exec -upsert [set ${ns}::table_name] $upserts
