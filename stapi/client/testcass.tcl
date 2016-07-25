@@ -85,4 +85,9 @@ $class search -compare {{>= hour 12}} -array row -allow_filtering 1 -code {
 	puts [array get row]
 }
 
+puts "Complex key test - room in 1301, 1302 and hour between 9 and 1 "
+$class search -compare {{in room {1301 1302}} {range hour 9 13}} -array row -code {
+	puts [array get row]
+}
+
 $class destroy
