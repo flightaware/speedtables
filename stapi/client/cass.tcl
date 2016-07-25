@@ -950,7 +950,7 @@ namespace eval ::stapi {
     set iwhere {}
     set pwhere {}
     if {[info exists req(-glob)]} { error "Match operations not implemented in CQL" }
-  
+
     if {[info exists req(-compare)]} {
       foreach tuple $req(-compare) {
 	foreach {op col v1 v2} $tuple break
@@ -967,6 +967,7 @@ namespace eval ::stapi {
 	  set w iwhere
 	}
 
+
 	switch -exact -- [string tolower $op] {
 	  false {
 	      lappend $w "$col_cql = FALSE"
@@ -981,12 +982,10 @@ namespace eval ::stapi {
 	  notnull { error "NULL operations not implemented in CQL" }
 
 	  < {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
 	      lappend $w "$col_cql < [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  <= {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
 	      lappend $w "$col_cql <= [::casstcl::quote $v1 $types($col)]"
 	  }
 
@@ -995,27 +994,22 @@ namespace eval ::stapi {
 	  }
 
 	  != {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
 	      lappend $w "$col_cql <> [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  <> {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
 	      lappend $w "$col_cql <> [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  >= {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
 	      lappend $w "$col_cql >= [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  > {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
 	      lappend $w "$col_cql > [::casstcl::quote $v1 $types($col)]"
 	  }
 
 	  range {
-	    if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
 	    lappend $w "$col_cql >= [::casstcl::quote $v1 $types($col)]"
 	    lappend $w "$col_cql < [::casstcl::quote $v2 $types($col)]"
 	  }
@@ -1088,6 +1082,10 @@ namespace eval ::stapi {
       error "OFFSET not supported in CQL"
     }
 
+    if {[info exists req(-allow_filtering)] && $req(-allow_filtering) != 0} {
+      append cql " ALLOW FILTERING"
+    }
+  
     append cql ";"
 
     return $cql

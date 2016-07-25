@@ -67,9 +67,22 @@ $school search -compare {{in student_id {A000001 A000002 A000003 A000004}}} -arr
 
 puts "search index tests"
 
+puts "== Hungry"
 $school search -compare {{= name "Hungry"}} -array row -code {
 	puts [array get row]
 }
-
 $school destroy
 
+set class [::stapi::connect cass:///test.class/]
+
+puts "Cluster key test - room = 1301 and hour > 12"
+$class search -compare {{= room 1301} {>= hour 12}} -array row -code {
+	puts [array get row]
+}
+
+puts "Expensive cluster key test - hour > 12"
+$class search -compare {{>= hour 12}} -array row -allow_filtering 1 -code {
+	puts [array get row]
+}
+
+$class destroy
