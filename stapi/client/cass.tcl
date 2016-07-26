@@ -953,7 +953,10 @@ namespace eval ::stapi {
     if {[info exists req(-glob)]} { error "Match operations not implemented in CQL" }
 
     if {[info exists req(-compare)]} {
-      foreach tuple $req(-compare) {
+      set tuples $req(-compare)
+      while {[llength $tuples]} {
+	set tuple [lindex $tuples 0]
+	set tuples [lrange $tuples 1 end]
 	foreach {op col v1 v2} $tuple break
 
 	if {[info exists alias($col)]} {
@@ -986,7 +989,11 @@ namespace eval ::stapi {
 	    set q1 [::casstcl::quote $v1 $types($col_cql)]
 	    set q2 [::casstcl::quote $v2 $types($col_cql)]
 	  } else {
-	    return -code error "TODO: Implement primary key token in general search"
+	    # push the disassembled values back on the list
+	    foreach e1 [split $v1 $keysep] e2 [split $v2 $keysep] k $partition_keys {
+	      lappend tuples [list $op $k $e1 $e2]
+	    }
+	    continue
 	  }
 	} elseif {"$col" == "_key"} {
 	  if {[llength $keyfields] == 1} {
@@ -994,7 +1001,11 @@ namespace eval ::stapi {
 	    set q1 [::casstcl::quote $v1 $types($col_cql)]
 	    set q2 [::casstcl::quote $v2 $types($col_cql)]
 	  } else {
-	    return -code error "TODO: Implement primary key token in general search"
+	    # push the disassembled values back on the list
+	    foreach e1 [split $v1 $keysep] e2 [split $v2 $keysep] k $keyfields {
+	      lappend tuples [list $op $k $e1 $e2]
+	    }
+	    continue
 	  }
 	} else {
 	  set q1 [::casstcl::quote $v1 $types($col)]

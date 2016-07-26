@@ -90,9 +90,9 @@ $class search -compare {{in room {1301 1302}} {range hour 9 13}} -array row -cod
 	puts [array get row]
 }
 
-# puts "Complex key test - _key syntax"
-# $class search -compare {{= _key 1301:13}} -array row -code {
-# 	puts [array get row]
-# }
+puts "Complex key test - _key syntax"
+$class search -compare {{= _key 1301:13}} -array row -code {
+	puts [array get row]
+}
 
 $class destroy
