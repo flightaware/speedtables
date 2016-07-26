@@ -962,7 +962,7 @@ namespace eval ::stapi {
 	  set col_cql $col
         }
 
-	if {"$col" == "_key"} {
+	if {"$col" == "_ckey"} {
 	  if {[llength $keyfields] == 1} {
 	    set col_cql [lindex $keyfields 0]
 	    set q1 [::casstcl::quote $v1 $types($col_cql)]
@@ -970,15 +970,31 @@ namespace eval ::stapi {
 	  } else {
 	    set col_cql "([join $keyfields ","])"
 	    set list {}
-    	    foreach {v k} [split $v1 $keysep] $keyfields {
+    	    foreach v [split $v1 $keysep] k $keyfields {
       	      lappend list [::casstcl::quote $v $types($k)]
     	    }
 	    set q1 "([join $list ","])"
 	    set list {}
-    	    foreach {v k} [split $v2 $keysep] $keyfields {
+    	    foreach v [split $v2 $keysep] k $keyfields {
       	      lappend list [::casstcl::quote $v $types($k)]
     	    }
 	    set q2 "([join $list ","])"
+	  }
+	} elseif {"$col" == "_pkey"} {
+	  if {[llength $keyfields] == 1} {
+	    set col_cql [lindex $keyfields 0]
+	    set q1 [::casstcl::quote $v1 $types($col_cql)]
+	    set q2 [::casstcl::quote $v2 $types($col_cql)]
+	  } else {
+	    return -code error "TODO: Implement primary key token in general search"
+	  }
+	} elseif {"$col" == "_key"} {
+	  if {[llength $keyfields] == 1} {
+	    set col_cql [lindex $keyfields 0]
+	    set q1 [::casstcl::quote $v1 $types($col_cql)]
+	    set q2 [::casstcl::quote $v2 $types($col_cql)]
+	  } else {
+	    return -code error "TODO: Implement primary key token in general search"
 	  }
 	} else {
 	  set q1 [::casstcl::quote $v1 $types($col)]
