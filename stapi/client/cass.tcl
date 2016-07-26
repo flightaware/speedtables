@@ -322,13 +322,13 @@ namespace eval ::stapi {
         lappend raw_fields $name
         set field2type($name) $type
         switch -exact -- $kind {
-	  partition_key { set partition_key $name }
+	  partition_key { lappend partition_keys $name }
 	  clustering { lappend cluster_keys $name }
         }
       }
     }
 
-    if {![info exists partition_key]} {
+    if {![info exists partition_keys]} {
       catch {
         cleanup_connection $ns
         namespace delete $ns
@@ -336,7 +336,7 @@ namespace eval ::stapi {
       error "Can't happen! Cassandra table has no partition key!"
     }
 
-    lappend keyfields $partition_key
+    set keyfields $partition_keys
     if [info exists cluster_keys] {
       set keyfields [concat $keyfields $cluster_keys]
     }
@@ -382,7 +382,7 @@ namespace eval ::stapi {
     set ${ns}::fields $fields
     set ${ns}::keyfields $keyfields
     array set ${ns}::types [array get field2type]
-    set ${ns}::partition_key $partition_key
+    set ${ns}::partition_keys $partition_keys
     set ${ns}::keysep $keysep
 
     if [info exists cluster_keys] {
@@ -468,10 +468,10 @@ namespace eval ::stapi {
   # cass_ctable_key - 
   #
   proc cass_ctable_key {level ns cmd args} {
-    if [info exists ${ns}::cluster_keys] {
+    if {[info exists ${ns}::cluster_keys] || [llength [set ${ns}::partition_keys]] > 1}  {
       return _key
     }
-    return [set ${ns}::partition_key]
+    return [lindex [set ${ns}::partition_keys] 0]
   }
 
   #
@@ -566,8 +566,8 @@ namespace eval ::stapi {
       } elseif {"$arg" == "-all"} {
 	set where {}
       } elseif {"$arg" == "-count"} {
-	set key [set ${ns}::partition_key]
-	lappend select "COUNT($key)"
+	set keys [set ${ns}::partition_keys]
+	lappend select "COUNT([join $keys ","])"
       } elseif {[info exists ${ns}::alias($arg)]} {
 	lappend select [set ${ns}::alias($arg)]
       } else {
@@ -910,16 +910,17 @@ namespace eval ::stapi {
   #
   proc search_to_cql {_req} {
     upvar 1 $_req req
-    variable partition_key
+    variable partition_keys
     variable cluster_keys
     variable table_name
     variable fields
     variable keyfields
+    variable keysep
     variable types
 
     set select {}
     if {[info exists req(-countOnly)]} {
-      lappend select "COUNT($partition_key) AS count"
+      lappend select "COUNT([join $partition_keys ","]) AS count"
     } else {
       if {[info exists req(-fields)]} {
 	# Populate select with requested fields
@@ -961,12 +962,34 @@ namespace eval ::stapi {
 	  set col_cql $col
         }
 
+	if {"$col" == "_key"} {
+	  if {[llength $keyfields] == 1} {
+	    set col_cql [lindex $keyfields 0]
+	    set q1 [::casstcl::quote $v1 $types($col_cql)]
+	    set q2 [::casstcl::quote $v2 $types($col_cql)]
+	  } else {
+	    set col_cql "([join $keyfields ","])"
+	    set list {}
+    	    foreach {v k} [split $v1 $keysep] $keyfields {
+      	      lappend list [::casstcl::quote $v $types($k)]
+    	    }
+	    set q1 "([join $list ","])"
+	    set list {}
+    	    foreach {v k} [split $v2 $keysep] $keyfields {
+      	      lappend list [::casstcl::quote $v $types($k)]
+    	    }
+	    set q2 "([join $list ","])"
+	  }
+	} else {
+	  set q1 [::casstcl::quote $v1 $types($col)]
+	  set q2 [::casstcl::quote $v2 $types($col)]
+	}
+
 	if {[lsearch -exact $keyfields $col] >= 0} {
 	  set w pwhere
 	} else {
 	  set w iwhere
 	}
-
 
 	switch -exact -- [string tolower $op] {
 	  false {
@@ -982,43 +1005,44 @@ namespace eval ::stapi {
 	  notnull { error "NULL operations not implemented in CQL" }
 
 	  < {
-	      lappend $w "$col_cql < [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql < $q1"
 	  }
 
 	  <= {
-	      lappend $w "$col_cql <= [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql <= $q1"
 	  }
 
 	  = {
-	      lappend $w "$col_cql = [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql = $q1"
 	  }
 
 	  != {
-	      lappend $w "$col_cql <> [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql <> $q1"
 	  }
 
 	  <> {
-	      lappend $w "$col_cql <> [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql <> $q1"
 	  }
 
 	  >= {
-	      lappend $w "$col_cql >= [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql >= $q1"
 	  }
 
 	  > {
-	      lappend $w "$col_cql > [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql > $q1"
 	  }
 
 	  range {
-	    lappend $w "$col_cql >= [::casstcl::quote $v1 $types($col)]"
-	    lappend $w "$col_cql < [::casstcl::quote $v2 $types($col)]"
+	    lappend $w "$col_cql >= $q1"
+	    lappend $w "$col_cql < $q2"
 	  }
 
 	  in {
+	    set list {}
 	    foreach v $v1 {
-	      lappend q [::casstcl::quote $v $types($col)]
+	      lappend list [::casstcl::quote $v $types($col)]
 	    }
-	    lappend $w "$col_cql IN ([join $q ","])"
+	    lappend $w "$col_cql IN ([join $list ","])"
 	  }
 
           imatch { error "Match operations not implemented in CQL" }
@@ -1037,11 +1061,6 @@ namespace eval ::stapi {
       }
     }
 
-# Need to take this test out until we can identify indexed fields, let Cassandra track this stuff.
-#    if {[llength $iwhere] && ![llength $pwhere]} {
-#      error "Must include primary or cluster key in WHERE clause"
-#    }
-  
     set order {}
     if {[info exists req(-sort)]} {
       foreach field $req(-sort) {
@@ -1090,7 +1109,7 @@ namespace eval ::stapi {
 
     return $cql
   }
-
+  
   #
   # cass_array_get_row
   #
