@@ -24,6 +24,9 @@ $school set A000001 name Hungry age 51
 $school set A000002 name Happy age 52
 $school set A000003 name Dopey age 53
 
+# This will generate a warning from cassandra.
+puts "Number of fields is [$school count]"
+
 $school search -array row -code {
 	lappend students $row(student_id) $row(name)
 	set rows($row(student_id)) [array get row]

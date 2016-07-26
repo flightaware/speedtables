@@ -552,10 +552,14 @@ namespace eval ::stapi {
       set slist [set ${ns}::fields]
     }
 
-    foreach {k v} [cass_extract_key $ns $val] {
-      lappend keys $k
-      set type [set ${ns}::types($k)]
-      lappend where "$k = [::casstcl::quote $v $type]"
+    set where {}
+
+    if [string length $val] {
+      foreach {k v} [cass_extract_key $ns $val] {
+        lappend keys $k
+        set type [set ${ns}::types($k)]
+        lappend where "$k = [::casstcl::quote $v $type]"
+      }
     }
 
     foreach arg $slist {
@@ -566,8 +570,7 @@ namespace eval ::stapi {
       } elseif {"$arg" == "-all"} {
 	set where {}
       } elseif {"$arg" == "-count"} {
-	set keys [set ${ns}::partition_keys]
-	lappend select "COUNT([join $keys ","])"
+	lappend select "COUNT(1)"
       } elseif {[info exists ${ns}::alias($arg)]} {
 	lappend select [set ${ns}::alias($arg)]
       } else {
@@ -682,7 +685,21 @@ namespace eval ::stapi {
   # cass_ctable_count - implement a ctable count method for Cassandra tables
   #
   proc cass_ctable_count {level ns cmd args} {
-    error "Count is not implemented because it is too expensive an operation in Cassandra"
+    set cql [cass_create_cql $ns {} -count]
+
+    set status [cass_array_get_row $ns $cql result]
+
+    if {!$status} {
+      error $result
+    }
+
+    if {$status == -1} {
+      return 0
+    }
+
+    array set row $result
+
+    return $row(count)
   }
 
   #
@@ -920,7 +937,7 @@ namespace eval ::stapi {
 
     set select {}
     if {[info exists req(-countOnly)]} {
-      lappend select "COUNT([join $partition_keys ","]) AS count"
+      lappend select "COUNT(1)"
     } else {
       if {[info exists req(-fields)]} {
 	# Populate select with requested fields
