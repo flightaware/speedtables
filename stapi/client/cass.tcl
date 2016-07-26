@@ -739,6 +739,10 @@ namespace eval ::stapi {
       set array $search(-array_with_nulls)
     }
 
+    if {[info exists search(-array_with_nulls)] || [info exists search(-array_get_with_nulls)]} {
+        lappend code [list ::stapi::cass_fill_nulls $array [set ${ns}::fields]]
+    }
+
     if {[info exists search(-array_get_with_nulls)]} {
       lappend code "set $search(-array_get_with_nulls) \[array get $array]"
     }
@@ -754,10 +758,6 @@ namespace eval ::stapi {
     lappend code $search(-code)
     lappend code "incr ${ns}::select_count"
     set ${ns}::select_count 0
-
-    if {[info exists search(-array_with_nulls)] || [info exists search(-array_get_with_nulls)]} {
-        lappend code [list ::stapi::cass_fill_nulls $array [set ${ns}::fields]]
-    }
 
     set selectCommand [list [cass $ns] select]
     lappend selectCommand $cql $array [join $code "\n"]
