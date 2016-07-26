@@ -1049,11 +1049,19 @@ namespace eval ::stapi {
 	  notnull { error "NULL operations not implemented in CQL" }
 
 	  < {
-	      lappend $w "$col_cql < $q1"
+	      if {[lsearch -exact $partition_keys $col] != -1} {
+		lappend $w "TOKEN($col_cql) < TOKEN($q1)"
+	      } else {
+	        lappend $w "$col_cql < $q1"
+	      }
 	  }
 
 	  <= {
-	      lappend $w "$col_cql <= $q1"
+	      if {[lsearch -exact $partition_keys $col] != -1} {
+	        lappend $w "TOKEN(col_cql) <= TOKEN($q1)"
+	      } else {
+	        lappend $w "$col_cql <= $q1"
+	      }
 	  }
 
 	  = {
@@ -1069,16 +1077,29 @@ namespace eval ::stapi {
 	  }
 
 	  >= {
-	      lappend $w "$col_cql >= $q1"
+	      if {[lsearch -exact $partition_keys $col] != -1} {
+	        lappend $w "TOKEN($col_cql) >= TOKEN($q1)"
+	      } else {
+	        lappend $w "$col_cql >= $q1"
+	      }
 	  }
 
 	  > {
-	      lappend $w "$col_cql > $q1"
+	      if {[lsearch -exact $partition_keys $col] != -1} {
+	        lappend $w "TOKEN($col_cql) > TOKEN($q1)"
+	      } else {
+	        lappend $w "$col_cql > $q1"
+	      }
 	  }
 
 	  range {
-	    lappend $w "$col_cql >= $q1"
-	    lappend $w "$col_cql < $q2"
+	      if {[lsearch -exact $partition_keys $col] != -1} {
+	        lappend $w "TOKEN($col_cql) >= TOKEN($q1)"
+	        lappend $w "TOKEN($col_cql) < TOKEN($q2)"
+	      } else {
+	        lappend $w "$col_cql >= $q1"
+	        lappend $w "$col_cql < $q2"
+	      }
 	  }
 
 	  in {
@@ -1087,6 +1108,14 @@ namespace eval ::stapi {
 	      lappend list [::casstcl::quote $v $types($col)]
 	    }
 	    lappend $w "$col_cql IN ([join $list ","])"
+	  }
+
+	  contains {
+	    lappend $w "$col_cql CONTAINS $q1"
+	  }
+
+	  containskey {
+	    lappend $w "$col_cql CONTAINS KEY $q1"
 	  }
 
           imatch { error "Match operations not implemented in CQL" }
