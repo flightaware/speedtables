@@ -971,6 +971,21 @@ namespace eval ::stapi {
 
     if {[info exists req(-compare)]} {
       set tuples $req(-compare)
+
+      set tokenize 0
+      # check to see if we need to tokenize any partition keys
+      foreach tuple $tuples {
+	foreach {op col v1 v2} $tuple break
+
+	# If it's no a relational operator, no
+	if {"$op" != "<" && "$op" != "<=" && $op != ">" && "$op" != ">="} continue
+
+	# If it doesn't include the partition key, no
+	if {"$col" != "_pkey" && "$col" != "_key" && [lsearch $partition_keys $col] == -1} continue
+
+	set tokenize 1
+      }
+
       while {[llength $tuples]} {
 	set tuple [lindex $tuples 0]
 	set tuples [lrange $tuples 1 end]
@@ -1029,6 +1044,12 @@ namespace eval ::stapi {
 	  set q2 [::casstcl::quote $v2 $types($col)]
 	}
 
+	if {$tokenize && [lsearch $col $partition_keys] != -1} {
+	  set col_cql "TOKEN($col_cql)"
+	  set q1 "TOKEN($q1)"
+	  set q2 "TOKEN($q2)"
+	}
+
 	if {[lsearch -exact $keyfields $col] >= 0} {
 	  set w pwhere
 	} else {
@@ -1049,19 +1070,11 @@ namespace eval ::stapi {
 	  notnull { error "NULL operations not implemented in CQL" }
 
 	  < {
-	      if {[lsearch -exact $partition_keys $col] != -1} {
-		lappend $w "TOKEN($col_cql) < TOKEN($q1)"
-	      } else {
-	        lappend $w "$col_cql < $q1"
-	      }
+	      lappend $w "$col_cql < $q1"
 	  }
 
 	  <= {
-	      if {[lsearch -exact $partition_keys $col] != -1} {
-	        lappend $w "TOKEN(col_cql) <= TOKEN($q1)"
-	      } else {
-	        lappend $w "$col_cql <= $q1"
-	      }
+	      lappend $w "$col_cql <= $q1"
 	  }
 
 	  = {
@@ -1077,29 +1090,16 @@ namespace eval ::stapi {
 	  }
 
 	  >= {
-	      if {[lsearch -exact $partition_keys $col] != -1} {
-	        lappend $w "TOKEN($col_cql) >= TOKEN($q1)"
-	      } else {
-	        lappend $w "$col_cql >= $q1"
-	      }
+	      lappend $w "$col_cql >= $q1"
 	  }
 
 	  > {
-	      if {[lsearch -exact $partition_keys $col] != -1} {
-	        lappend $w "TOKEN($col_cql) > TOKEN($q1)"
-	      } else {
-	        lappend $w "$col_cql > $q1"
-	      }
+	      lappend $w "$col_cql > $q1"
 	  }
 
 	  range {
-	      if {[lsearch -exact $partition_keys $col] != -1} {
-	        lappend $w "TOKEN($col_cql) >= TOKEN($q1)"
-	        lappend $w "TOKEN($col_cql) < TOKEN($q2)"
-	      } else {
-	        lappend $w "$col_cql >= $q1"
-	        lappend $w "$col_cql < $q2"
-	      }
+	      lappend $w "$col_cql >= $q1"
+	      lappend $w "$col_cql < $q2"
 	  }
 
 	  in {
