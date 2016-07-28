@@ -174,6 +174,26 @@ Define the key in terms of a list of columns.
 <p class="code"><b>sql:///users/login/password</b></p>
 <p>Pull in login and password from "users", using login as the key.</p>
 </dl>
+<H3>Using a Cassandra table directly</H3>
+<dl>
+<dt><tt>package require st_client_cassandra
+    <br><i>(optional)</i> ::stapi::set_cassandra_connection ?-user <i>username</i>? ?-host <i>hostname</i>?... ?-pass <i>password</i>? ?-port <i>port</i>?
+    <p>If the connection info is not provided here or in the URL, it will be pulled in from the environment
+       variables <tt>$CASSTCL_USERNAME</tt>, <tt>$CASSTCL_CONTACT_POINTS</TT>, and <tt>$CASSTCL_PASSWORD</tt>.
+<br><b>cass://connection/keyspace.table/col[:type/...][?param&amp;param...]</b></tt><dd>
+<p>Create a STAPI connection to a cassandra table.</p>
+<dl>
+<dt>connection:<dd><tt>[user[:password]]@[host,host...[:port]]</tt>
+<p>If this is provided, it is created and torn down on a per-table basis, so it is possible to connect to multiple Cassandra clusters from the same program.</p>
+<dt>cols, params:<dd><p>Columns and key info are pulled in from the Cassandra connection, these fields are primarily used to override the name and type of tables if absolutely necessary.
+</dl>
+</dl>
+<p>Most of the commands available for a ctable are implemented, except for those not supported by Cassandra. In particular, none of the "match" operations in search are implemented, and there are other limitations on what fields can be included in the search constraints.</p>
+<p>There is an additional pair of search operators, "contains" and "containskey", to allow searching on the contents of collections.</p>
+<p>There is an additional search option, "-allow_filtering", which can be used if absolutely necessary to perform inefficient searches. This is not recommended</p>
+<p>It is also not receommended to use the "$table count" option, because getting a complete row count for a Cassandra table is expensive.</p>
+
+
 <H3>Using an already opened speed table</H3>
 <dl>
 <dt><tt>package require st_client</tt>
