@@ -21,3 +21,22 @@ insert into test.school ( student_id, age, name, major ) values('A102655', 28, '
 
 create index school_name_index on test.school(name);
 
+CREATE TABLE test.class (
+	room text,
+	hour int,
+	subject text,
+	PRIMARY KEY (room, hour)
+);
+
+insert into test.class ( room, hour, subject ) values( '1301', 8, 'Uglification' );
+insert into test.class ( room, hour, subject ) values( '1302', 8, 'Derision' );
+insert into test.class ( room, hour, subject ) values( '1303', 8, 'Fainting' );
+insert into test.class ( room, hour, subject ) values( '1301', 10, 'Reeling' );
+insert into test.class ( room, hour, subject ) values( '1302', 10, 'Writhing' );
+insert into test.class ( room, hour, subject ) values( '1303', 10, 'Fainting' );
+insert into test.class ( room, hour, subject ) values( '1301', 13, 'Uglification II' );
+insert into test.class ( room, hour, subject ) values( '1302', 13, 'Confusion' );
+insert into test.class ( room, hour, subject ) values( '1303', 13, 'Derision II' );
+insert into test.class ( room, hour, subject ) values( '1301', 15, 'Band' );
+insert into test.class ( room, hour, subject ) values( '1302', 15, 'Shop' );
+insert into test.class ( room, hour, subject ) values( '1303', 15, 'Uglification III' );

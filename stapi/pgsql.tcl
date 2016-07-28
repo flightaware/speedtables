@@ -69,7 +69,11 @@ namespace eval ::stapi {
   #  Do it by returning the connection defined in a call using set_conn
   #  or obtain it from DIO if there's a DIO object to get it from
   #
-  proc conn {} {
+  proc conn {{ns ""}} {
+    if {"$ns" != "" && [info exists ${ns}::pg_conn]} {
+      return [set ${ns}::pg_conn]
+    }
+
     variable pg_conn
 
     if [info exists pg_conn] {

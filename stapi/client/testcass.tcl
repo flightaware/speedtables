@@ -24,6 +24,9 @@ $school set A000001 name Hungry age 51
 $school set A000002 name Happy age 52
 $school set A000003 name Dopey age 53
 
+# This will generate a warning from cassandra.
+puts "Number of fields is [$school count]"
+
 $school search -array row -code {
 	lappend students $row(student_id) $row(name)
 	set rows($row(student_id)) [array get row]
@@ -67,9 +70,32 @@ $school search -compare {{in student_id {A000001 A000002 A000003 A000004}}} -arr
 
 puts "search index tests"
 
+puts "== Hungry"
 $school search -compare {{= name "Hungry"}} -array row -code {
 	puts [array get row]
 }
-
 $school destroy
 
+set class [::stapi::connect cass:///test.class/]
+
+puts "Cluster key test - room = 1301 and hour > 12"
+$class search -compare {{= room 1301} {>= hour 12}} -array row -code {
+	puts [array get row]
+}
+
+puts "Expensive cluster key test - hour > 12"
+$class search -compare {{>= hour 12}} -array row -allow_filtering 1 -code {
+	puts [array get row]
+}
+
+puts "Complex key test - room in 1301, 1302 and hour between 9 and 1 "
+$class search -compare {{in room {1301 1302}} {range hour 9 13}} -array row -code {
+	puts [array get row]
+}
+
+puts "Complex key test - _key syntax"
+$class search -compare {{= _key 1301:13}} -array row -code {
+	puts [array get row]
+}
+
+$class destroy

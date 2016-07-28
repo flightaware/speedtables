@@ -322,13 +322,13 @@ namespace eval ::stapi {
         lappend raw_fields $name
         set field2type($name) $type
         switch -exact -- $kind {
-	  partition_key { set partition_key $name }
+	  partition_key { lappend partition_keys $name }
 	  clustering { lappend cluster_keys $name }
         }
       }
     }
 
-    if {![info exists partition_key]} {
+    if {![info exists partition_keys]} {
       catch {
         cleanup_connection $ns
         namespace delete $ns
@@ -336,7 +336,7 @@ namespace eval ::stapi {
       error "Can't happen! Cassandra table has no partition key!"
     }
 
-    lappend keyfields $partition_key
+    set keyfields $partition_keys
     if [info exists cluster_keys] {
       set keyfields [concat $keyfields $cluster_keys]
     }
@@ -382,7 +382,7 @@ namespace eval ::stapi {
     set ${ns}::fields $fields
     set ${ns}::keyfields $keyfields
     array set ${ns}::types [array get field2type]
-    set ${ns}::partition_key $partition_key
+    set ${ns}::partition_keys $partition_keys
     set ${ns}::keysep $keysep
 
     if [info exists cluster_keys] {
@@ -468,10 +468,10 @@ namespace eval ::stapi {
   # cass_ctable_key - 
   #
   proc cass_ctable_key {level ns cmd args} {
-    if [info exists ${ns}::cluster_keys] {
+    if {[info exists ${ns}::cluster_keys] || [llength [set ${ns}::partition_keys]] > 1}  {
       return _key
     }
-    return [set ${ns}::partition_key]
+    return [lindex [set ${ns}::partition_keys] 0]
   }
 
   #
@@ -552,10 +552,14 @@ namespace eval ::stapi {
       set slist [set ${ns}::fields]
     }
 
-    foreach {k v} [cass_extract_key $ns $val] {
-      lappend keys $k
-      set type [set ${ns}::types($k)]
-      lappend where "$k = [::casstcl::quote $v $type]"
+    set where {}
+
+    if [string length $val] {
+      foreach {k v} [cass_extract_key $ns $val] {
+        lappend keys $k
+        set type [set ${ns}::types($k)]
+        lappend where "$k = [::casstcl::quote $v $type]"
+      }
     }
 
     foreach arg $slist {
@@ -566,8 +570,7 @@ namespace eval ::stapi {
       } elseif {"$arg" == "-all"} {
 	set where {}
       } elseif {"$arg" == "-count"} {
-	set key [set ${ns}::partition_key]
-	lappend select "COUNT($key)"
+	lappend select "COUNT(1)"
       } elseif {[info exists ${ns}::alias($arg)]} {
 	lappend select [set ${ns}::alias($arg)]
       } else {
@@ -682,7 +685,21 @@ namespace eval ::stapi {
   # cass_ctable_count - implement a ctable count method for Cassandra tables
   #
   proc cass_ctable_count {level ns cmd args} {
-    error "Count is not implemented because it is too expensive an operation in Cassandra"
+    set cql [cass_create_cql $ns {} -count]
+
+    set status [cass_array_get_row $ns $cql result]
+
+    if {!$status} {
+      error $result
+    }
+
+    if {$status == -1} {
+      return 0
+    }
+
+    array set row $result
+
+    return $row(count)
   }
 
   #
@@ -739,6 +756,10 @@ namespace eval ::stapi {
       set array $search(-array_with_nulls)
     }
 
+    if {[info exists search(-array_with_nulls)] || [info exists search(-array_get_with_nulls)]} {
+        lappend code [list ::stapi::cass_fill_nulls $array [set ${ns}::fields]]
+    }
+
     if {[info exists search(-array_get_with_nulls)]} {
       lappend code "set $search(-array_get_with_nulls) \[array get $array]"
     }
@@ -754,10 +775,6 @@ namespace eval ::stapi {
     lappend code $search(-code)
     lappend code "incr ${ns}::select_count"
     set ${ns}::select_count 0
-
-    if {[info exists search(-array_with_nulls)] || [info exists search(-array_get_with_nulls)]} {
-        lappend code [list ::stapi::cass_fill_nulls $array [set ${ns}::fields]]
-    }
 
     set selectCommand [list [cass $ns] select]
     lappend selectCommand $cql $array [join $code "\n"]
@@ -910,16 +927,17 @@ namespace eval ::stapi {
   #
   proc search_to_cql {_req} {
     upvar 1 $_req req
-    variable partition_key
+    variable partition_keys
     variable cluster_keys
     variable table_name
     variable fields
     variable keyfields
+    variable keysep
     variable types
 
     set select {}
     if {[info exists req(-countOnly)]} {
-      lappend select "COUNT($partition_key) AS count"
+      lappend select "COUNT(1)"
     } else {
       if {[info exists req(-fields)]} {
 	# Populate select with requested fields
@@ -950,9 +968,27 @@ namespace eval ::stapi {
     set iwhere {}
     set pwhere {}
     if {[info exists req(-glob)]} { error "Match operations not implemented in CQL" }
-  
+
     if {[info exists req(-compare)]} {
-      foreach tuple $req(-compare) {
+      set tuples $req(-compare)
+
+      set tokenize 0
+      # check to see if we need to tokenize any partition keys
+      foreach tuple $tuples {
+	foreach {op col v1 v2} $tuple break
+
+	# If it's no a relational operator, no
+	if {"$op" != "<" && "$op" != "<=" && $op != ">" && "$op" != ">="} continue
+
+	# If it doesn't include the partition key, no
+	if {"$col" != "_pkey" && "$col" != "_key" && [lsearch $partition_keys $col] == -1} continue
+
+	set tokenize 1
+      }
+
+      while {[llength $tuples]} {
+	set tuple [lindex $tuples 0]
+	set tuples [lrange $tuples 1 end]
 	foreach {op col v1 v2} $tuple break
 
 	if {[info exists alias($col)]} {
@@ -960,6 +996,59 @@ namespace eval ::stapi {
 	} else {
 	  set col_cql $col
         }
+
+	if {"$col" == "_ckey"} {
+	  if {[llength $keyfields] == 1} {
+	    set col_cql [lindex $keyfields 0]
+	    set q1 [::casstcl::quote $v1 $types($col_cql)]
+	    set q2 [::casstcl::quote $v2 $types($col_cql)]
+	  } else {
+	    set col_cql "([join $keyfields ","])"
+	    set list {}
+    	    foreach v [split $v1 $keysep] k $keyfields {
+      	      lappend list [::casstcl::quote $v $types($k)]
+    	    }
+	    set q1 "([join $list ","])"
+	    set list {}
+    	    foreach v [split $v2 $keysep] k $keyfields {
+      	      lappend list [::casstcl::quote $v $types($k)]
+    	    }
+	    set q2 "([join $list ","])"
+	  }
+	} elseif {"$col" == "_pkey"} {
+	  if {[llength $keyfields] == 1} {
+	    set col_cql [lindex $keyfields 0]
+	    set q1 [::casstcl::quote $v1 $types($col_cql)]
+	    set q2 [::casstcl::quote $v2 $types($col_cql)]
+	  } else {
+	    # push the disassembled values back on the list
+	    foreach e1 [split $v1 $keysep] e2 [split $v2 $keysep] k $partition_keys {
+	      lappend tuples [list $op $k $e1 $e2]
+	    }
+	    continue
+	  }
+	} elseif {"$col" == "_key"} {
+	  if {[llength $keyfields] == 1} {
+	    set col_cql [lindex $keyfields 0]
+	    set q1 [::casstcl::quote $v1 $types($col_cql)]
+	    set q2 [::casstcl::quote $v2 $types($col_cql)]
+	  } else {
+	    # push the disassembled values back on the list
+	    foreach e1 [split $v1 $keysep] e2 [split $v2 $keysep] k $keyfields {
+	      lappend tuples [list $op $k $e1 $e2]
+	    }
+	    continue
+	  }
+	} else {
+	  set q1 [::casstcl::quote $v1 $types($col)]
+	  set q2 [::casstcl::quote $v2 $types($col)]
+	}
+
+	if {$tokenize && [lsearch $col $partition_keys] != -1} {
+	  set col_cql "TOKEN($col_cql)"
+	  set q1 "TOKEN($q1)"
+	  set q2 "TOKEN($q2)"
+	}
 
 	if {[lsearch -exact $keyfields $col] >= 0} {
 	  set w pwhere
@@ -981,50 +1070,52 @@ namespace eval ::stapi {
 	  notnull { error "NULL operations not implemented in CQL" }
 
 	  < {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
-	      lappend $w "$col_cql < [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql < $q1"
 	  }
 
 	  <= {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
-	      lappend $w "$col_cql <= [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql <= $q1"
 	  }
 
 	  = {
-	      lappend $w "$col_cql = [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql = $q1"
 	  }
 
 	  != {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
-	      lappend $w "$col_cql <> [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql <> $q1"
 	  }
 
 	  <> {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
-	      lappend $w "$col_cql <> [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql <> $q1"
 	  }
 
 	  >= {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
-	      lappend $w "$col_cql >= [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql >= $q1"
 	  }
 
 	  > {
-	      if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
-	      lappend $w "$col_cql > [::casstcl::quote $v1 $types($col)]"
+	      lappend $w "$col_cql > $q1"
 	  }
 
 	  range {
-	    if {"$w" == "pwhere"} { error "Only = or IN are supported on partition key" }
-	    lappend $w "$col_cql >= [::casstcl::quote $v1 $types($col)]"
-	    lappend $w "$col_cql < [::casstcl::quote $v2 $types($col)]"
+	      lappend $w "$col_cql >= $q1"
+	      lappend $w "$col_cql < $q2"
 	  }
 
 	  in {
+	    set list {}
 	    foreach v $v1 {
-	      lappend q [::casstcl::quote $v $types($col)]
+	      lappend list [::casstcl::quote $v $types($col)]
 	    }
-	    lappend $w "$col_cql IN ([join $q ","])"
+	    lappend $w "$col_cql IN ([join $list ","])"
+	  }
+
+	  contains {
+	    lappend $w "$col_cql CONTAINS $q1"
+	  }
+
+	  containskey {
+	    lappend $w "$col_cql CONTAINS KEY $q1"
 	  }
 
           imatch { error "Match operations not implemented in CQL" }
@@ -1043,11 +1134,6 @@ namespace eval ::stapi {
       }
     }
 
-# Need to take this test out until we can identify indexed fields, let Cassandra track this stuff.
-#    if {[llength $iwhere] && ![llength $pwhere]} {
-#      error "Must include primary or cluster key in WHERE clause"
-#    }
-  
     set order {}
     if {[info exists req(-sort)]} {
       foreach field $req(-sort) {
@@ -1088,11 +1174,15 @@ namespace eval ::stapi {
       error "OFFSET not supported in CQL"
     }
 
+    if {[info exists req(-allow_filtering)] && $req(-allow_filtering) != 0} {
+      append cql " ALLOW FILTERING"
+    }
+  
     append cql ";"
 
     return $cql
   }
-
+  
   #
   # cass_array_get_row
   #
