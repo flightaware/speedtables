@@ -70,8 +70,13 @@ namespace eval ::stapi {
   #  or obtain it from DIO if there's a DIO object to get it from
   #
   proc conn {{ns ""}} {
-    if {"$ns" != "" && [info exists ${ns}::pg_conn]} {
-      return [set ${ns}::pg_conn]
+    if {"$ns" != ""} {
+      if {[info exists ${ns}::pg_conn_var]} {
+	# Double-indirection when the DB connection might need to be refreshed.
+        return [set [set ${ns}::pg_conn_var]]
+      } elseif {[info exists ${ns}::pg_conn]} {
+        return [set ${ns}::pg_conn]
+      }
     }
 
     variable pg_conn
