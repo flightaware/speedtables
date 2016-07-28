@@ -140,7 +140,7 @@ you may need to keep serving requests while initializing the new table.
 <p>To open a table using the STAPI you need to <tt>package require </tt>any packages needed for the STAPI connection method you need, then call</p> <p class="code">::stapi::connect method://server_spec/table_spec</p>
 <p>For the speedtable server, the method is <tt>sttp:</tt> (speed tables transfer protocol), and the URI syntax is exactly the same as in <tt>remote_speedtable</tt></p>
 <p>As a special case, when the URI is not in URI format it is assumed to be the name of an already opened ctable.</p>
-<p>STAPI connection methods already defined also include sql, which provides direct access to PostgreSQL tables through pgsql as if they were ctables.</p>
+<p>STAPI connection methods already defined also include sql, which provides direct access to PostgreSQL tables through pgsql as if they were ctables, and Cassandra, which provides access to Cassandra tables as if they were ctables.</p>
 <p>STAPI is described in more detail in section 9.</p>
 <a name=1><p class="foot">[1] Fairly analogous to stored procedures in a SQL database, Tcl code running on the server's interpreter could perform multiple speed table actions in one invocation, reducing client/server communications overhead and any delays associated with it.</p>
 <!-- INSERT LOGO -->
