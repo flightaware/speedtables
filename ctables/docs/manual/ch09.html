@@ -197,8 +197,6 @@ Define the key in terms of a list of columns.
 <dl>
 <dt><tt>package require st_client_cassandra
     <br><i>(optional)</i> ::stapi::set_cassandra_connection ?-user <i>username</i>? ?-host <i>hostname</i>?... ?-pass <i>password</i>? ?-port <i>port</i>?</tt>
-    <p>If the connection info is not provided here or in the URL, it will be pulled in from the environment
-       variables <tt>$CASSTCL_USERNAME</tt>, <tt>$CASSTCL_CONTACT_POINTS</TT>, and <tt>$CASSTCL_PASSWORD</tt>.
 <br><tt><b>cass://connection/keyspace.table/col[:type/...][?param&amp;param...]</b></tt><dd>
 <p>Create a STAPI connection to a cassandra table.</p>
 <dl>
@@ -206,6 +204,8 @@ Define the key in terms of a list of columns.
 <p>If this is provided, it is created and torn down on a per-table basis, so it is possible to connect to multiple Cassandra clusters from the same program.</p>
 <dt>cols, params:<dd><p>Columns and key info are pulled in from the Cassandra connection, these fields are primarily used to override the name and type of tables if absolutely necessary.
 </dl>
+    <p>If the connection info is not provided via <tt>set_cassandra_connection</tt> or in the URL, it will be pulled in from the environment
+       variables <tt>$CASSTCL_USERNAME</tt>, <tt>$CASSTCL_CONTACT_POINTS</TT>, and <tt>$CASSTCL_PASSWORD</tt>.
 <p>Most of the commands available for a ctable are implemented, except for those not supported by Cassandra. In particular, none of the "match" operations in search are implemented, and there are other limitations on what fields can be included in the search constraints.</p>
 <p>There is an additional pair of search operators, "contains" and "containskey", to allow searching on the contents of collections.</p>
 <p>There is an additional search option, "-allow_filtering", which can be used if absolutely necessary to perform inefficient searches. This is not recommended</p>
