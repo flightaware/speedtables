@@ -134,14 +134,14 @@ speed table arguments for the field
 <H3>Using a local ctable directly</H3>
 <dl>
 <dt><tt>package require st_client
-<br><b>local:///ctable_name</b>
+<br><b>local:///ctable_name</b></tt>
 </dl>
 <p>This is a dummy method that just passes the ctable through. It can be useful during development or debugging, or to share a consistent API between C speedtables and STAPI speedtables.</p>
 
 <H3>Loading a precompiled ctable package and using an instance of that ctable.</H3>
 <dl>
 <dt><tt>package require st_client
-<br><b>package:///table[/path]</b>
+<br><b>package:///table[/path]</b></tt>
 </dl>
 <p>This loads the package "Table" (from the path if provided), creates an instance of the table named "table",
 and returns that.</p>
@@ -149,12 +149,12 @@ and returns that.</p>
 <H3>Using a ctable server via sttp (client/server)</H3>
 <dl>
 <dt><tt>package require st_client
-<br><b>sttp://[host:port]/[dir/]table[/stuff][?stuff]</b></p>
+<br><b>sttp://[host:port]/[dir/]table[/stuff][?stuff]</b></p></tt>
 </dl>
 <H3>Using a ctable server via sttp (shared memory)</H3>
 <dl>
 <dt><tt>package require st_shared
-<br><b>shared://port/[dir/]table[/stuff][?stuff]</b></tt><dd>
+<br><b>shared://port/[dir/]table[/stuff][?stuff]</b></tt><dd></tt>
 <p>Access a speed table server on localhost, using shared memory for the "search" method and sttp: for other methods.</p>
 <p>The speed table must reside on the same machine for shared memory table access to be used. Concurrent access and update of shared memory speed tables is supported and provides a mechanism to use multiple processors to access a table concurrently. Like, really concurrently, whereas pure client/server table access is inherently single threaded.</p>
 <p>The ctable built by the server must be in auto_path, or in the directory defined by the "-build" option.</p>
