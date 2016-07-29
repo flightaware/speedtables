@@ -196,10 +196,10 @@ Define the key in terms of a list of columns.
 <H3>Using a Cassandra table directly</H3>
 <dl>
 <dt><tt>package require st_client_cassandra
-    <br><i>(optional)</i> ::stapi::set_cassandra_connection ?-user <i>username</i>? ?-host <i>hostname</i>?... ?-pass <i>password</i>? ?-port <i>port</i>?
+    <br><i>(optional)</i> ::stapi::set_cassandra_connection ?-user <i>username</i>? ?-host <i>hostname</i>?... ?-pass <i>password</i>? ?-port <i>port</i>?</tt>
     <p>If the connection info is not provided here or in the URL, it will be pulled in from the environment
        variables <tt>$CASSTCL_USERNAME</tt>, <tt>$CASSTCL_CONTACT_POINTS</TT>, and <tt>$CASSTCL_PASSWORD</tt>.
-<br><b>cass://connection/keyspace.table/col[:type/...][?param&amp;param...]</b></tt><dd>
+<br><tt><b>cass://connection/keyspace.table/col[:type/...][?param&amp;param...]</b></tt><dd>
 <p>Create a STAPI connection to a cassandra table.</p>
 <dl>
 <dt>connection:<dd><tt>[user[:password]]@[host,host...[:port]]</tt>
