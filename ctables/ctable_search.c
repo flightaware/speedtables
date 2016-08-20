@@ -2502,6 +2502,11 @@ ctable_TeardownSearch (CTableSearch *search) {
         ckfree ((char *)search->sortControl.directions);
 	search->sortControl.directions = NULL;
     }
+
+    if (search->retrieveFields != NULL) {
+	ckfree ((char *)search->retrieveFields);
+	search->retrieveFields = NULL;
+    }
 }
 
 //
