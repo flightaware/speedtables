@@ -1401,7 +1401,10 @@ restart_search:
 
     search->matchCount = 0;
     search->alreadySearched = -1;
-    search->tranTable = NULL;
+    if (search->tranTable != NULL) {
+	ckfree ((char *)search->tranTable);
+	search->tranTable = NULL;
+    }
     search->offsetLimit = search->offset + search->limit;
 
     if (ctable->count == 0) {
@@ -1924,6 +1927,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
   clean_and_return:
     if (search->tranTable != NULL) {
 	ckfree ((char *)search->tranTable);
+	search->tranTable = NULL;
     }
 
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
@@ -2506,6 +2510,11 @@ ctable_TeardownSearch (CTableSearch *search) {
     if (search->retrieveFields != NULL) {
 	ckfree ((char *)search->retrieveFields);
 	search->retrieveFields = NULL;
+    }
+
+    if (search->tranTable != NULL) {
+        ckfree ((char *)search->tranTable);
+        search->tranTable = NULL;
     }
 }
 
