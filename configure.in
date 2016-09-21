@@ -18,7 +18,7 @@ dnl	to configure the system for the local environment.
 # so you can encode the package version directly into the source files.
 #-----------------------------------------------------------------------
 
-AC_INIT([speedtables], [1.9.0])
+AC_INIT([speedtables], [1.10.1])
 
 #--------------------------------------------------------------------
 # Call TEA_INIT as the first TEA_ macro to set up initial vars.
@@ -116,7 +116,7 @@ AC_PROG_CXX
 
 # Check for Boost.
 # If you are missing Boost, try installing the devel/boost-libs or boost-devel package, or downloading from http://www.boost.org/
-BOOST_REQUIRE([1.48])
+BOOST_REQUIRE([1.54])
 BOOST_ARRAY
 
 #--------------------------------------------------------------------

@@ -18,7 +18,7 @@ dnl	to configure the system for the local environment.
 # so you can encode the package version directly into the source files.
 #-----------------------------------------------------------------------
 
-AC_INIT([ctable], [1.9.0])
+AC_INIT([ctable], [1.10.1])
 
 #--------------------------------------------------------------------
 # Call TEA_INIT as the first TEA_ macro to set up initial vars.
@@ -79,7 +79,7 @@ TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
 TEA_ADD_TCL_SOURCES([config.tcl gentable.tcl
      command-body.c-subst exten-frag.c-subst init-exten.c-subst template.c-subst 
-     ctable.h boyer_moore.c ctable_batch.c ctable_io.c ctable_lists.c ctable_qsort.c ctable_search.c
+     ctable.h boyer_moore.c ctable_batch.c ctable_io.c ctable_lists.c ctable_qsort.c ctable_search.c ethers.c
      skiplists/jsw_rand.h skiplists/jsw_slib.h skiplists/jsw_rand.c skiplists/jsw_slib.c
      hash/speedtables.h hash/speedtableHash.c shared/shared.c shared/shared.h])
 
@@ -134,13 +134,38 @@ AC_SUBST(CLEANFILES)
 
 # the following header detections could probably be done using $CONF or config.h
 CTABLES_CFLAGS=""
+AC_CHECK_HEADER(net/ethernet.h,[CTABLES_CFLAGS="$CTABLES_CFLAGS -DHAVE_NET_ETHERNET_H=1"])
 AC_CHECK_HEADER(sys/limits.h,[CTABLES_CFLAGS="$CTABLES_CFLAGS -DHAVE_SYS_LIMITS_H=1"])
 AC_CHECK_HEADER(netinet/ether.h,[CTABLES_CFLAGS="$CTABLES_CFLAGS -DHAVE_NETINET_ETHER_H=1"])
+
+AC_CHECK_DECL(CLOCK_VIRTUAL ,[
+	CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_VIRTUAL"
+] ,[
+
+	AC_CHECK_DECL(CLOCK_PROCESS_CPUTIME_ID ,[
+		CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_PROCESS_CPUTIME_ID"
+	] ,[
+
+		AC_CHECK_DECL(CLOCK_MONOTONIC ,[
+			CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_MONOTONIC"
+		] ,[
+
+			AC_CHECK_DECL(CLOCK_REALTIME ,[
+				CTABLES_CFLAGS="$CTABLES_CFLAGS -DCTABLES_CLOCK=CLOCK_REALTIME"
+			] , ,[[#include <time.h>]])
+
+		] ,[[#include <time.h>]])
+
+	] ,[[#include <time.h>]])
+
+] ,[[#include <time.h>]])
+
+
 
 
 # Check for Boost.
 # If you are missing Boost, try installing the devel/boost-libs or boost-devel package, or downloading from http://www.boost.org/
-BOOST_REQUIRE([1.48])
+BOOST_REQUIRE([1.54])
 BOOST_ARRAY
 
 

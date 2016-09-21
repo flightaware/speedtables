@@ -81,7 +81,12 @@ namespace eval ::stapi {
     variable attached
     switch -glob -- [lindex $args 0] {
       search* {
-	uplevel 1 [namespace which reader] $args
+	#puts "\nrunning shared_handler search, '[namespace which reader] $args'"
+	catch {uplevel 1 [namespace which reader] $args} catchResult catchOptions
+
+	#puts "shared_handler search ran, args '$args' result '$catchResult', options $catchOptions\n"
+	dict incr catchOptions -level 1
+	return -options $catchOptions $catchResult
       }
       destroy {
 	if {$attached} {
@@ -97,7 +102,11 @@ namespace eval ::stapi {
       }
       default {
 	if {$attached} {
-	  uplevel 1 [namespace which master] $args
+	  #puts "\nrunning shared_handler default case, args '$args'"
+	  catch {uplevel 1 [namespace which master] $args} catchResult catchOptions
+	  #puts "shared_handler default case ran, args '$args' result '$catchResult', options $catchOptions\n"
+	  dict incr catchOptions -level 1
+	  return -options $catchOptions $catchResult
 	} else {
 	  return -code error "Detached shared table can only 'search' and 'destroy'"
 	}
@@ -106,5 +115,6 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_shared 1.9.0
+package provide st_shared 1.10.1
 
+# vim: set ts=8 sw=4 sts=4 noet :

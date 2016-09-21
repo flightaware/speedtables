@@ -1,3 +1,16 @@
+#
+# This makes sure that TEA knows about all the necessary bits and stuffs them into configure from configure.in
+#
 autoreconf
+
+#
+# Note:
+#
+# If you have an old version of gcc hanging around, there's a conflict with recent boost libs. You need to do
+# this:
+# 
+# CC=clang CXX=clang++ ./configure --prefix=/usr/local --with-tcl=/usr/local/lib/tcl8.6 --with-pgsql --with-boost=/usr/local --with-casstcl
+
 ./configure --prefix=/usr/local --with-tcl=/usr/local/lib/tcl8.6 --with-pgsql --with-boost=/usr/local --with-casstcl
 
+# Then "make clean" and "make"

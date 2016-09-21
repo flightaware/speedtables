@@ -4,8 +4,11 @@
 #
 
 . ../sysconfig.sh
-TCLSH="env TCLLIBPATH=.. tclsh$TCLVER"
-TCLSHSTAPI="env TCLLIBPATH=..:../../stapi tclsh$TCLVER"
+P=`cd ../..; pwd`
+export TCLLIBPATH="$P/ctables $P/ctable_server $P/stapi"
+
+TCLSH="tclsh$TCLVER"
+TCLSHSTAPI="tclsh$TCLVER"
 
 # With FlightAware
 #TCLSH=/usr/fa/bin/tclsh8.4

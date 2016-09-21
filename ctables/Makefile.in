@@ -183,6 +183,9 @@ all: binaries libraries doc
 # of the Makefile, in the "BINARIES" variable.
 #========================================================================
 
+$(PKG_TCL_SOURCES):
+	cp -f $(srcdir)/$@ $@$
+
 binaries: $(BINARIES)
 
 libraries:
@@ -383,6 +386,10 @@ install-lib-binaries:
 	    destp=`basename $$p`; \
 	    echo " Install $$destp $(DESTDIR)$(pkglibdir)/$$destp"; \
 	    $(INSTALL_DATA) $(srcdir)/$$p $(DESTDIR)$(pkglibdir)/$$destp; \
+	  elif test -f $$p; then \
+	    destp=`basename $$p`; \
+	    echo " Install $$destp $(DESTDIR)$(pkglibdir)/$$destp"; \
+	    $(INSTALL_DATA) $$p $(DESTDIR)$(pkglibdir)/$$destp; \
 	  fi; \
 	done
 	@if test "x$(SHARED_BUILD)" = "x1"; then \

@@ -70,13 +70,17 @@ namespace eval ::stapi {
   #  Do it by returning the connection defined in a call using set_conn
   #  or obtain it from DIO if there's a DIO object to get it from
   #
-  proc conn {{table ""}} {
-    variable pg_conn
-    variable handles_by_table
-
-    if {$table != "" && [dict exists $handles_by_table $table]} {
-      return [dict get $handles_by_table $table]
+  proc conn {{ns ""}} {
+    if {"$ns" != ""} {
+      if {[info exists ${ns}::pg_conn_var]} {
+	# Double-indirection when the DB connection might need to be refreshed.
+        return [set [set ${ns}::pg_conn_var]]
+      } elseif {[info exists ${ns}::pg_conn]} {
+        return [set ${ns}::pg_conn]
+      }
     }
+
+    variable pg_conn
 
     if [info exists pg_conn] {
       return $pg_conn
@@ -260,6 +264,47 @@ namespace eval ::stapi {
   }
 
   #
+  # read_ctable_from_sql_rowbyrow - specify a ctable and a SQL select statement and
+  #  this code invokes the SQL statement and loads the results into the
+  #  specified ctable
+  #
+  # does a Tcl error if it gets an error from postgres unless error variable
+  # is specified, in which case it sets the error message into the error
+  # variable and returns -1.
+  #
+  # if successful it returns the number of tuples read, from zero on up.
+  #
+  proc read_ctable_from_sql_rowbyrow {ctable sql {_err ""}} {
+    if {[string length $_err] > 0} {
+	upvar 1 $_err err
+    }
+
+    set ok 1
+
+    pg_sendquery [conn] $sql
+    if {[catch {$ctable import_postgres_result -rowbyrow [conn] -info status} err] == 1} {
+	# failed
+	set ok 0
+	set errinf $::errorInfo
+    } else {
+	# succeeded
+	set numTuples $status(numTuples)
+    }
+
+    if {!$ok} {
+      # if there was an error var pased, set the error into the var
+      # and return -1
+      if {[string length $_err]} {
+	  return -1
+      }
+      # no error var passed, cause the error to be sent as a tcl traceback
+      return -code error -errorinfo $errinf $err
+    }
+
+    return $numTuples
+  }
+
+  #
   # read_ctable_from_sql_async - specify a ctable and a SQL select statement and
   #  this code invokes the SQL statement and loads the results into the
   #  specified ctable, asynchronously
@@ -327,4 +372,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_postgres 1.9.0
+package provide st_postgres 1.10.1

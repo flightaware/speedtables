@@ -1,4 +1,4 @@
-package require ctable
+source test_common.tcl
 
 CExtension Filtertest 1.0 {
   CTable track {

@@ -6,6 +6,7 @@
 #
 
 package require st_client
+package require st_client_uri
 package require st_postgres
 
 namespace eval ::stapi {
@@ -94,41 +95,6 @@ namespace eval ::stapi {
       append uri ? [join $params &]
     }
     return $uri
-  }
-
-  #
-  # uri_esc - escape a string i think for passing in a URI/URL
-  #
-  proc uri_esc {string {extra ""}} {
-	  if {[catch {escape_string $string} result] == 0} {
-		  # we were running under Apache Rivet and could use its existing command.
-		  return $result
-	  } else {
-		  # TODO: this is not very good and is probably missing some cases.
-		  foreach c [split "%\"'<> $extra" ""] {
-			  scan $c "%c" i
-			  regsub -all "\[$c]" $string [format "%%%02X" $i] string
-		  }
-		  return $string
-	  }
-  }
-
-  #
-  # uri_unesc - unescape a string after passing it through a URI/URL
-  #
-  proc uri_unesc {string} {
-	  if {[catch {unescape_string $string} result] == 0} {
-		  # we were running under Apache Rivet and could use its existing command.
-		  return $result
-	  } else {
-		  # TODO: this is not very good and is probably missing some cases.
-		  foreach c [split {\\$[} ""] {
-			  scan $c "%c" i
-			  regsub -all "\\$c" $string [format "%%%02X" $i] string
-		  }
-		  regsub -all {%([0-9A-Fa-f][0-9A-Fa-f])} $string {[format %c 0x\1]} string
-		  return [subst $string]
-	  }
   }
 
   variable sqltable_seq 0
@@ -253,12 +219,9 @@ namespace eval ::stapi {
       #
       proc ctable {args} {
 	set level [expr {[info level] - 1}]
-	set catchCode [catch {::stapi::sql_ctable $level [namespace current] {*}$args} catchResult]
-	# properly send back errors and "return"
-	if {$catchCode == 1 || $catchCode == 2} {
-	    return -code $catchCode $catchResult
-	}
-	return $catchResult
+	catch {::stapi::sql_ctable $level [namespace current] {*}$args} catchResult catchOptions
+	dict incr catchOptions -level 1
+	return -options $catchOptions $catchResult
       }
 
       # copy the search proc into this namespace
@@ -326,7 +289,11 @@ namespace eval ::stapi {
       set proc sql_ctable_unimplemented
     }
 
-    return [eval [list $proc $level $ns $cmd] $args]
+    catch {$proc $level $ns $cmd {*}$args} catchResult catchOptions
+    dict incr catchOptions -level 1
+    return -options $catchOptions $catchResult
+
+    #return [eval [list $proc $level $ns $cmd] $args]
     #return [$proc $level $ns $cmd {*}$args]
   }
 
@@ -442,7 +409,7 @@ namespace eval ::stapi {
   }
 
   #
-  # sql_ctable_get - implement ctable set operation on a postgres table
+  # sql_ctable_get - implement ctable get operation on a postgres table
   #
   # Get list - return empty list for no data, SQL error is error
   #
@@ -465,7 +432,7 @@ namespace eval ::stapi {
   proc sql_ctable_array_get {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
 
-    pg_select -withoutnulls [conn [set ${ns}::table_name]] $sql row {
+    pg_select -withoutnulls -nodotfields [conn $ns] $sql row {
 	return [array get row]
     }
 
@@ -481,7 +448,7 @@ namespace eval ::stapi {
   proc sql_ctable_array_get_with_nulls {level ns cmd val args} {
     set sql [sql_create_sql $ns $val $args]
 
-    pg_select [conn [set ${ns}::table_name]] $sql row {
+    pg_select -nodotfields [conn $ns] $sql row {
 	return [array get row]
     }
 
@@ -601,14 +568,14 @@ namespace eval ::stapi {
     if {[info exists search(-array)] || [info exists earch(-array_get)]} {
       lappend selectCommand "-withoutnulls"
     }
-    lappend selectCommand [conn [set ${ns}::table_name]] $sql $array [join $code "\n"]
+    lappend selectCommand "-nodotfields"
+    lappend selectCommand [conn $ns] $sql $array [join $code "\n"]
 
     #puts stderr "sql_ctable_search level $level ns $ns cmd $cmd args $args: selectCommand is $selectCommand"
 
-    set catchCode [catch {uplevel #$level $selectCommand} catchResult]
-    # send back errors or "return" with the return code
-    if {$catchCode == 1 || $catchCode == 2} {
-	return -code $catchCode $catchResult
+    if {[catch {uplevel #$level $selectCommand} catchResult catchOptions]} {
+	dict incr catchOptions -level 1
+	return -options $catchOptions $catchResult
     }
     return [set ${ns}::select_count]
   }
@@ -620,7 +587,7 @@ namespace eval ::stapi {
     set sql "SELECT [set ${ns}::key] FROM [set ${ns}::table_name]"
     append sql " WHERE [set ${ns}::key] ILIKE [::stapi::quote_glob $val];"
     set code "set $keyvar \[lindex $__key 0]\n$code"
-    uplevel #$level [list pg_select [conn [set ${ns}::table_name]] $sql __key $code]
+    uplevel #$level [list pg_select -nodotfields [conn $ns] $sql __key $code]
   }
 
   #
@@ -790,15 +757,6 @@ namespace eval ::stapi {
       foreach tuple $req(-compare) {
 	foreach {op col v1 v2} $tuple break
 
-	if {[info exists types($col)]} {
-	  set type $types($col)
-	} else {
-	  set type varchar
-	}
-
-	set q1 [pg_quote $v1]
-	set q2 [pg_quote $v2]
-  
 	if {[info exists sql($col)]} {
 	  set col $sql($col)
 	}
@@ -821,31 +779,31 @@ namespace eval ::stapi {
 	  }
 
 	  < {
-	      lappend where "$col < $q1"
+	      lappend where "$col < [pg_quote $v1]"
 	  }
 
 	  <= {
-	      lappend where "$col <= $q1"
+	      lappend where "$col <= [pg_quote $v1]"
 	  }
 
 	  = {
-	      lappend where "$col = $q1"
+	      lappend where "$col = [pg_quote $v1]"
 	  }
 
 	  != {
-	      lappend where "$col <> $q1"
+	      lappend where "$col <> [pg_quote $v1]"
 	  }
 
 	  <> {
-	      lappend where "$col <> $q1"
+	      lappend where "$col <> [pg_quote $v1]"
 	  }
 
 	  >= {
-	      lappend where "$col >= $q1"
+	      lappend where "$col >= [pg_quote $v1]"
 	  }
 
 	  > {
-	      lappend where "$col > $q1"
+	      lappend where "$col > [pg_quote $v1]"
 	  }
 
 	  imatch {
@@ -899,12 +857,12 @@ namespace eval ::stapi {
 	  }
 
 	  range {
-	    lappend where "$col >= $q1"
+	    lappend where "$col >= [pg_quote $v1]"
 	    lappend where "$col < [pg_quote $v2]"
 	  }
 
 	  in {
-	    foreach v [lrange $tuple 2 end] {
+	    foreach v $v1 {
 	      lappend q [pg_quote $v]
 	    }
 	    lappend where "$col IN ([join $q ","])"
@@ -1031,6 +989,6 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_client_postgres 1.9.0
+package provide st_client_postgres 1.10.1
 
 # vim: set ts=8 sw=4 sts=4 noet :

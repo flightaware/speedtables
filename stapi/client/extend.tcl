@@ -94,11 +94,31 @@ namespace eval ::stapi::extend {
 
     incr seq
     set stable($handle) ::stapi::extend::_table$seq
-    proc $stable($handle) {cmd args} "
-	uplevel 1 \[concat \[list stapi \$cmd $handle] \$args]
-    "
+
+    #proc $stable($handle) {cmd args} "uplevel 1 \[concat \[list stapi \$cmd $handle] \$args]"
+	make_springboard_proc $stable($handle) $handle
+
     return $stable($handle)
   }
+
+variable springboardProcCode
+set springboardProcCode {
+	proc %s {cmd args} {
+		#puts "\nrunning springboard proc $cmd ran with args '$args'"
+		catch {uplevel 1 {stapi $cmd %s $args} catchResult catchOptions
+		#puts "springboard proc $cmd ran with args '$args', ret $ret, result $catchResult, options $catchOptions\n"
+		dict incr catchOptions -level 1
+		return -options $catchOptions $catchResult
+	}
+}
+
+proc make_springboard_proc {procName handle} {
+	variable springboardProcCode
+
+	set procBody [format $springboardProcCode $procName $handle]
+	eval $procBody
+}
+}
 
   # Check if the handle supports minimal stapi extensions:
   # * If it's wrapped, yes, otherwise...
@@ -180,7 +200,7 @@ namespace eval ::stapi::extend {
     }
     return [lindex $keyfields($handle) 0]
   }
-  namespace export keys
+  namespace export key
 
   proc stapi {cmd handle} {
     variable stapi_cmds
@@ -352,7 +372,12 @@ namespace eval ::stapi::extend {
     if {$debug} {
       debug [list uplevel 1 $cmd]
     }
-    return [uplevel 1 $cmd]
+
+    #puts "\nsearch proc in extend.tcl running '$cmd"
+    catch {uplevel 1 $cmd} catchResult catchOptions
+    #puts "\nsearch proc in extend.tcl returning ret $ret, catch result $catchResult options $catchOptions"
+    dict incr catchOptions -level 1
+    return -options $catchOptions $catchResult
   }
 
   proc count {handle} {
@@ -363,11 +388,14 @@ namespace eval ::stapi::extend {
     }
     return [$ctable($handle) count]
   }
-}
+
+} ;# namespace eval ::stapi::extend
 
 namespace eval ::stapi {
   namespace import ::stapi::extend::*
 }
 
-package provide stapi_extend 1.9.0
+package provide stapi_extend 1.10.1
 
+
+# vim: set ts=8 sw=4 sts=4 noet :

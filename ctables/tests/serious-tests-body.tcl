@@ -388,10 +388,15 @@ puts "ok"
 
 puts -nonewline "testing 'search with -array'..."
 unset -nocomplain foo
+set foo(probe2) dummy
 t search -compare {{= name {Brock Sampson}}} -array foo -fields {id dad} -code {
+    if [info exists foo(probe)] {
+	error "test array not cleared"
+    }
     if {[array names foo] != [list id]} {
         error "expected only 'id' element in test array"
     }
+    set foo(probe) dummy
 }
 puts "ok"
 

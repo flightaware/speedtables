@@ -11,6 +11,16 @@ package require ctable_net
 package require Tclx
 package require ncgi
 
+
+set localProcSource {
+    proc %s {args} {
+	set level [expr {[info level] - 1}]
+	catch {remote_ctable_invoke %s $level $args} catchResult catchOptions
+	dict incr catchOptions -level 1
+	return -options $catchOptions $catchResult
+    }
+}
+
 #
 # remote_ctable - declare a ctable as going to a remote host
 #
@@ -23,6 +33,7 @@ proc remote_ctable {cttpUrl localTableName args} {
     variable ctableUrls
     variable ctableLocalTableUrls
     variable ctableOptions
+    variable localProcSource
 
 #puts stderr "define remote ctable: $localTableName -> $cttpUrl"
 
@@ -30,10 +41,9 @@ proc remote_ctable {cttpUrl localTableName args} {
     set ctableLocalTableUrls($cttpUrl) $localTableName
     set ctableOptions($cttpUrl) $args
 
-    proc $localTableName {args} "
-	set level \[info level]; incr level -1
-	remote_ctable_invoke $localTableName \$level \$args
-    "
+    set proc [format $localProcSource $localTableName $localTableName]
+    #puts "defining proc... $proc"
+    eval $proc
 }
 
 #
@@ -247,9 +257,10 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 		    }
 		    lappend localCommand -with_field_names
 		    lappend localCommand -term {\\.}
-		    set status [catch $localCommand result]
+		    set status [catch $localCommand result catchOptions]
 		    if {$status} {
-			return -code $status $result
+			dict incr catchOptions -level 1
+			return -options $catchOptions $result
 		    }
 
 		    # handle composite actions for buffering
@@ -271,14 +282,14 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			namespace eval ::ctable_client [
 			    list set code $localCommand
 			]
-			uplevel #$callerLevel "
-			    set ::ctable_client::status \[
-				catch \$::ctable_client::code ::ctable_client::result
-			    ]
-			"
-		        if {$::ctable_client::status} {
-			    return -code $::ctable_client::status $::ctable_client::result
-		        }
+
+			set ::ctable_client::status [
+			    catch {uplevel #$callerLevel $::ctable_client::code} ::ctable_client::result catchOptions
+			]
+			if {$::ctable_client::status} {
+				dict incr catchOptions -level 1
+				return -options $catchOptions $::ctable_client::result
+			}
 		    }
 
 		    # get result from next response
@@ -356,26 +367,34 @@ proc remote_ctable_send {cttpUrl command {actionData ""} {callerLevel ""} {no_re
 			    variable result {}
 			    variable code [list [join $codeList "\n"]]
 			"
+if 0 {
 			uplevel #$callerLevel "
 			    set ::ctable_client::status \[
 				catch \$::ctable_client::code ::ctable_client::result
 			    ]
 			"
-			set status $::ctable_client::status
-			set result $::ctable_client::result
-
+} else {
+			set status [catch {uplevel #$callerLevel $::ctable_client::code} catchResult catchOptions]
+}
 			# TCL_ERROR
 			if {$status == 1} {
 			    set savedInfo $::errorInfo
 			    set savedCode $::errorCode
 			    remote_ctable_cache_disconnect $cttpUrl
-			    error $result $savedInfo $savedCode
+			    error $catchResult $savedInfo $savedCode
 			}
 
- 			# TCL_RETURN/TCL_BREAK
-			if {$status == 2 || $status == 3} {
+			# TCL_RETURN
+			if {$status == 2} {
+			    dict incr catchOptions -level 1
 			    remote_ctable_cache_disconnect $cttpUrl
-			    return $result
+			    return -options $catchOptions $catchResult
+			}
+
+			# TCL_BREAK
+			if {$status == 3} {
+			    remote_ctable_cache_disconnect $cttpUrl
+			    return $catchResult
 			}
 
 			# TCL_OK or TCL_CONTINUE just keep going
@@ -502,7 +521,9 @@ proc remote_ctable_invoke {localTableName level command} {
 #puts "new actions is [array get actions]"
     }
 
-    return [remote_ctable_send $cttpUrl [linsert $body 0 $cmd] [array get actions] $level $no_redirect]
+    catch {remote_ctable_send $cttpUrl [linsert $body 0 $cmd] [array get actions] $level $no_redirect} catchResult catchOptions
+    dict incr catchOptions -level 1
+    return -options $catchOptions $catchResult
 }
 
 #
@@ -600,5 +621,6 @@ proc maketable {cttpUrl sock} {
   return [::sttp_buffer::table $cttpUrl]
 }
 
-package provide ctable_client 1.9.0
+package provide ctable_client 1.10.1
 
+# vim: set ts=8 sw=4 sts=4 noet :

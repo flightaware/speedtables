@@ -31,6 +31,8 @@ package require st_server<br>
 <dt>-cache minutes<dd>
 <p>How long to treat a cached tsv file as "good"</p>
 </dl>
+<dt><tt>::stapi::set_conn connection</tt><dd>
+<p>Set or reset the pgsql connection used by stapi in st_server and st_client_pgtcl.</p>
 <dt><tt>::stapi::init_ctable name table_list where_clause ?columns|column...?</tt><dd>
 <p>Initialize a cached speed table based on one or more SQL tables. If necessary, this builds a ctable based on the columns, and generates new SQL to read the table.</p>
 <p>Parameters:</p>
@@ -94,6 +96,8 @@ speed table arguments for the field
 <p>Name of column in the table that contains the last_changed time of each entry, if any. This is used as an optimization to only load modified lines when the schema supports that.</p>
 <dt>-index field_name<dd>
 <p>Name of a field to create an index on. Multiple <tt>-index</tt> entries are allowed.</p>
+<dt>-rowbyrow 1<dd>
+<p>Use the "row by row" method when importng the table. See Chapter 5 for the advantages and hazards of this mechanism.</p>
 </dl>
 <dt><tt>::stapi::refresh_ctable ctable ?last_read? ?err?</tt><dd>
 <p>Update new rows from SQL for speed table <tt>ctable</tt>.</p>
@@ -122,26 +126,43 @@ speed table arguments for the field
 <dt>-keysep "string"<dd>
 <p>Define the separator used to build the key.</p>
 </dl>
-<p>One of -key or -keys/-keysep should be provided. Depending on the underlying object, -keys may not be compatible and STAPI will need to create a wrapper function.</p>
+<p>For underlying services where key column information is not readily exposed, one of -key or -keys/-keysep should be provided. Depending on the underlying object, -keys may not be compatible and STAPI will need to create a wrapper function.</p>
 <p>If neither is provided, some STAPI capabilities may not be available.</p>
 
 <dt><tt>::stapi::register method transport_handler</tt><dd>
 <p> register a transport method for ::stapi::connect.</p>
 </dl>
+
+<H3>Using a local ctable directly</H3>
+<dl>
+<dt><tt>package require st_client
+<br><b>local:///ctable_name</b></tt>
+</dl>
+<p>This is a dummy method that just passes the ctable through. It can be useful during development or debugging, or to share a consistent API between C speedtables and STAPI speedtables.</p>
+
+<H3>Loading a precompiled ctable package and using an instance of that ctable.</H3>
+<dl>
+<dt><tt>package require st_client
+<br><b>package:///table[/path]</b></tt>
+</dl>
+<p>This loads the package "Table" (from the path if provided), creates an instance of the table named "table",
+and returns that.</p>
+
 <H3>Using a ctable server via sttp (client/server)</H3>
 <dl>
 <dt><tt>package require st_client
-<br><b>sttp://[host:port]/[dir/]table[/stuff][?stuff]</b></p>
+<br><b>sttp://[host:port]/[dir/]table[/stuff][?stuff]</b></p></tt>
 </dl>
 <H3>Using a ctable server via sttp (shared memory)</H3>
 <dl>
 <dt><tt>package require st_shared
-<br><b>shared://port/[dir/]table[/stuff][?stuff]</b></tt><dd>
+<br><b>shared://port/[dir/]table[/stuff][?stuff]</b></tt><dd></tt>
 <p>Access a speed table server on localhost, using shared memory for the "search" method and sttp: for other methods.</p>
 <p>The speed table must reside on the same machine for shared memory table access to be used. Concurrent access and update of shared memory speed tables is supported and provides a mechanism to use multiple processors to access a table concurrently. Like, really concurrently, whereas pure client/server table access is inherently single threaded.</p>
 <p>The ctable built by the server must be in auto_path, or in the directory defined by the "-build" option.</p>
 <p>An additional method "detach" is available for this transport. The "detach" method closes the reader side of the socket, so only the shared memory table is retained. After this operation, only the "search" method will be available.</p>
 </dl>
+
 <H3>Using a PostgreSQL database directly</H3>
 <dl>
 <dt><tt>package require st_client_pgtcl
@@ -151,7 +172,7 @@ speed table arguments for the field
 <p>Create a stapi interface to a PostgreSQL table</p>
 <dl>
 <dt>connection:<dd>
-<p>Not implemented yet, will be:
+<p>Not implemented yet, will be something on the order of:
 <tt>[user[:password]]@[host:]database</tt></p>
 <dt>cols:<dd>
 <p>If no keys defined, first column is assumed to be the key.</p>
@@ -171,7 +192,30 @@ Define the key in terms of a list of columns.
 <p>Pull in all the columns from "users", using login as the key.</p>
 <p class="code"><b>sql:///users/login/password</b></p>
 <p>Pull in login and password from "users", using login as the key.</p>
+<dt>Unimplemented methods:<dd>import, import_postgres_result, export, statistics, reset, write_tabsep, needs_quoting, names, read_tabsep.
 </dl>
+
+<H3>Using a Cassandra table directly</H3>
+<dl>
+<dt><tt>package require st_client_cassandra
+    <br><i>(optional)</i> ::stapi::set_cassandra_connection ?-user <i>username</i>? ?-host <i>hostname</i>?... ?-pass <i>password</i>? ?-port <i>port</i>?</tt>
+<br><tt><b>cass://connection/keyspace.table/col[:type/...][?param&amp;param...]</b></tt><dd>
+<p>Create a STAPI connection to a cassandra table.</p>
+<dl>
+<dt>connection:<dd><tt>[user[:password]]@[host,host...[:port]]</tt>
+<p>If this is provided, it is created and torn down on a per-table basis, so it is possible to connect to multiple Cassandra clusters from the same program.</p>
+<dt>cols, params:<dd><p>Columns and key info are pulled in from the Cassandra connection, these fields are primarily used to override the name and type of tables if absolutely necessary.
+</dl>
+    <p>If the connection info is not provided via <tt>set_cassandra_connection</tt> or in the URL, it will be pulled in from the environment
+       variables <tt>$CASSTCL_USERNAME</tt>, <tt>$CASSTCL_CONTACT_POINTS</TT>, and <tt>$CASSTCL_PASSWORD</tt>.
+<p>Most of the commands available for a ctable are implemented, except for those not supported by Cassandra. In particular, none of the "match" operations in search are implemented, and there are other limitations on what fields can be included in the search constraints.</p>
+<p>There is an additional pair of search operators, "contains" and "containskey", to allow searching on the contents of collections.</p>
+<p>There is an additional search option, "-allow_filtering", which can be used if absolutely necessary to perform inefficient searches. This is not recommended</p>
+<p>It is also not receommended to use the "$table count" option, because getting a complete row count for a Cassandra table is expensive.</p>
+<dt>Unimplemented methods:<dd>import, import_postgres_result, export, statistics, reset, write_tabsep, foreach, needs_quoting, names, read_tabsep.
+<dt>Unimplemented search operations:<dd>null, notnull, imatch, match, notmatch, xmatch, match_case, notmatch_case, umatch, lmatch.
+</dl>
+
 <H3>Using an already opened speed table</H3>
 <dl>
 <dt><tt>package require st_client</tt>
@@ -183,6 +227,7 @@ Define the key in terms of a list of columns.
 <li>makekey
 </ul>
 </dl>
+
 <H3>stapi::extend - the sttp API extensions to ctables</H3>
 <p>These extensions may be required for packages like STdisplay, which may need methods that are not be provided by all speedtable-compatible packages, so ::stapi::extend creates a wrapper object when needed.</p>
 <dl>

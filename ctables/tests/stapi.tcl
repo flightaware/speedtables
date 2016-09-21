@@ -2,10 +2,6 @@
 # $Id$
 #
 
-# Because we need to be testing from the development version of stapi!
-set dir [exec sh -c "cd ../../stapi; pwd"]
-source $dir/pkgIndex.tcl
-
 package require st_shared
 
 puts "Making connection"
@@ -50,8 +46,7 @@ for {set i 0} {$i < 1000} {incr i} {
     after 15
 }
 
-puts "1000 passes [llength [array names changed]] modified"
-puts "Missed $missing"
+puts "1000 passes [llength [array names changed]] modified $missing deleted"
 
 puts "Faster scanning 10000 samples"
 
@@ -84,11 +79,17 @@ for {set i 0} {$i < 10000} {incr i} {
 
 puts "done"
 
+set got 0
+set missed 0
 foreach id [array names idwant] {
     if {$idwant($id) != $idfound($id)} {
-	puts "$id: wanted $idwant($id) found $idfound($id)"
+	incr missed [expr {$idwant($id) - $idfound($id)}]
+    } else {
+	incr got $idwant($id)
     }
 }
+
+puts "Summary got $got deleted $missed"
 
 puts "Testing detach"
 
