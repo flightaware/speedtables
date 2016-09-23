@@ -17,8 +17,10 @@ if [info exists env(STAPI_PREFIX)] {
     lappend auto_path $d
   } 
 }
+puts "Using auto_path $auto_path"
 
-package require st_server
+source server.tcl
+#package require st_server
 package require st_postgres
 package require ctable
 set ::ctable::genCompilerDebug 1
