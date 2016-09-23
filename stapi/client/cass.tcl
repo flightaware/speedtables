@@ -46,7 +46,7 @@ namespace eval ::stapi {
       }
     }
     if {![llength $hosts]} {
-      if [info exists env(CASSTCL_CONTACT_POINTS)] {
+      if {[info exists env(CASSTCL_CONTACT_POINTS)]} {
 	foreach host [split $env(CASSTCL_CONTACT_POINTS) ":"] {
 	  lappend hosts $host
 	}
@@ -55,22 +55,22 @@ namespace eval ::stapi {
       }
     }
     if {![info exists user]} {
-      if [info exists env(CASSTCL_USERNAME)] {
+      if {[info exists env(CASSTCL_USERNAME)]} {
 	set user $env(CASSTCL_USERNAME)
       } else {
 	error "No user-name provided for cassandra connection"
       }
     }
     if {![info exists pass]} {
-      if [info exists env(CASSTCL_PASSWORD)] {
+      if {[info exists env(CASSTCL_PASSWORD)]} {
 	set pass $env(CASSTCL_PASSWORD)
       }
     }
 
     lappend cmd ::casstcl::connect
     lappend cmd -user $user
-    if [info exists port] { lappend cmd -port $port }
-    if [info exists pass] { lappend cmd -password $pass }
+    if {[info exists port]} { lappend cmd -port $port }
+    if {[info exists pass]} { lappend cmd -password $pass }
     foreach host $hosts {
       lappend cmd -host $host
     }
@@ -82,8 +82,8 @@ namespace eval ::stapi {
   #
   proc cass {{ns ""}} {
     # Return namespace connection if set
-    if [string length ns] {
-      if [info exists ${ns}::cassconn] {
+    if {[string length $ns]} {
+      if {[info exists ${ns}::cassconn]} {
 	return [set ${ns}::cassconn]
       }
     }
@@ -122,8 +122,7 @@ namespace eval ::stapi {
 	    }
 	  }
 
-	  # Cassandra contact points can have multiple values. host is an alias for contact point
-	  host {
+	  host { # Cassandra contact points can have multiple values. host is an alias for contact point
 	      lappend contact_points [uri_esc $val @/:]
 	  }
 
@@ -167,7 +166,7 @@ namespace eval ::stapi {
       }
     }
 
-    if [info exists keyspace] {
+    if {[info exists keyspace]} {
       regexp {^[^.]*[.]\(.*\)$} $table _ table
       set table "$keyspace.$table"
     }
@@ -213,14 +212,14 @@ namespace eval ::stapi {
   proc parse_cass_address {address} {
     set connection {}
 
-    if [regexp {^\(.*\)@\(.*\)$} $address _ user address] {
-      if [regexp {^\(.*\):\(.*\)$} $user _ user pass] {
+    if {[regexp {^\(.*\)@\(.*\)$} $address _ user address]} {
+      if {[regexp {^\(.*\):\(.*\)$} $user _ user pass]} {
 	lappend connection -pass $pass
       }
       lappend connection -user $user
     }
 
-    if [regexp {\(.*\):\(.*\)$} $address _ address port] {
+    if {[regexp {\(.*\):\(.*\)$} $address _ address port]} {
       lappend connection -port $port
     }
 
@@ -243,7 +242,7 @@ namespace eval ::stapi {
   # Type is CQL type
   #
   proc cass_get_columns {ns table_name {keyspace_name ""}} {
-    if ![string length $keyspace_name] {
+    if {![string length $keyspace_name]} {
       set l [split $table_name "."]
       if {[llength $l] != 2} {
 	error "Keyspace not provided for $table_name"
@@ -337,7 +336,7 @@ namespace eval ::stapi {
     }
 
     set keyfields $partition_keys
-    if [info exists cluster_keys] {
+    if {[info exists cluster_keys]} {
       set keyfields [concat $keyfields $cluster_keys]
     }
 
@@ -385,7 +384,7 @@ namespace eval ::stapi {
     set ${ns}::partition_keys $partition_keys
     set ${ns}::keysep $keysep
 
-    if [info exists cluster_keys] {
+    if {[info exists cluster_keys]} {
       set ${ns}::cluster_keys $cluster_keys
     }
 
@@ -554,7 +553,7 @@ namespace eval ::stapi {
 
     set where {}
 
-    if [string length $val] {
+    if {[string length $val]} {
       foreach {k v} [cass_extract_key $ns $val] {
         lappend keys $k
         set type [set ${ns}::types($k)]
@@ -579,7 +578,7 @@ namespace eval ::stapi {
     }
 
     set cql "SELECT [join $select ,] FROM [set ${ns}::table_name]"
-    if [llength $where] {
+    if {[llength $where]} {
       append cql " WHERE [join $where " AND "]"
     }
     append cql " LIMIT 1;"
@@ -610,7 +609,7 @@ namespace eval ::stapi {
     set result {}
 
     foreach f [set ${ns}::fields] {
-      if [info exists row($f)] {
+      if {[info exists row($f)]} {
         lappend result $row($f)
       } else {
 	lappend result {}
@@ -1237,6 +1236,6 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_client_cassandra 1.0.0
+package provide st_client_cassandra 1.10.1
 
 # vim: set ts=8 sw=4 sts=4 noet :
