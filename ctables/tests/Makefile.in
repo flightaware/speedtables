@@ -58,8 +58,8 @@ compare:
 	$(TCLSH) index-compare.tcl
 
 macip:
-        rm -rf stobj
-        $(TCLSH) mac-ip-test.tcl
+	rm -rf stobj
+	$(TCLSH) mac-ip-test.tcl
 
 null:
 	rm -rf stobj

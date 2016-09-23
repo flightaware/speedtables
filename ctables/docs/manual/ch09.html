@@ -31,6 +31,8 @@ package require st_server<br>
 <dt>-cache minutes<dd>
 <p>How long to treat a cached tsv file as "good"</p>
 </dl>
+<dt><tt>::stapi::set_conn connection</tt><dd>
+<p>Set or reset the pgsql connection used by stapi in st_server and st_client_pgtcl.</p>
 <dt><tt>::stapi::init_ctable name table_list where_clause ?columns|column...?</tt><dd>
 <p>Initialize a cached speed table based on one or more SQL tables. If necessary, this builds a ctable based on the columns, and generates new SQL to read the table.</p>
 <p>Parameters:</p>
