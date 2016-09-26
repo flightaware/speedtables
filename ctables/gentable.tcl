@@ -791,10 +791,8 @@ variable varstringSetSource {
 	    if (ctable->share_type != CTABLE_SHARED_NONE) {
 		// Allocate some extra space in strings for growth,
 		// then pad it to a standard chunk size
-		// Yes there's a + 1 (for the null) and a - 1 (for the chunking)
-		// because it will get optimized away and this way if the code's
-		// changed neither will get lost.
-		newlen = (length * CTABLE_STRING_SCALE + 1 + CTABLE_STRING_PAD + CTABLE_STRING_CHUNK_SIZE - 1) % CTABLE_STRING_CHUNK_SIZE;
+		newlen = length * CTABLE_STRING_SCALE + 1 + CTABLE_STRING_PAD;
+		newlen += CTABLE_STRING_CHUNK_SIZE - (newlen % CTABLE_STRING_CHUNK_SIZE);
 	    }
 #endif
 
