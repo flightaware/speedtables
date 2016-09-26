@@ -240,10 +240,8 @@ namespace eval ::stapi {
 	    # succeeded
 	    set numTuples [pg_result $pg_res -numTuples]
 	}
-	# either way, if we are here we got a valid postgres result,
-	# clear it
-	pg_result $pg_res -clear
     }
+    pg_result $pg_res -clear
 
     if {!$ok} {
       # if there was an error var pased, set the error into the var
