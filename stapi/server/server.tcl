@@ -1501,7 +1501,7 @@ namespace eval ::stapi {
     set stampfile [workname $table_name stamp]
 
     if {![file exists $stampfile]} {
-      set tsv_file [workname c_$table_name stamp]
+      set stampfile [workname c_$table_name stamp]
     }
 
     catch {file delete -force $stampfile}
