@@ -23,6 +23,13 @@ tables and helper functions.</p>
 <p>Raw C code passed through to the compiler.</p>
 <dt>table {block}<dd>
 <p>Structured Speed Table definition, see Chapter 3 for data types, Chapter 4 for example.</p>
+<dt>CTableBuildPath <i>directory</i><dd>
+The source code to the speedtable (generated C code and included .c and .h files) and the compiled object and shared library are stored in a subdirectory of the current directory at the time the Speed Table package is invoked. If this directory is not appropriate, use the CTableBuildPath procedure to change it immediately after including the speedtables package. For example:
+
+<pre>
+package require speedtable
+CTableBuildPath ~/.ctables
+</pre>
 </dl>
 <H3>Meta-table (Class) Methods</H3>
 <p>The following methods are available as arguments to the meta-table (class)
