@@ -20,13 +20,15 @@ CExtension Filtertest 1.0 {
     #   TCL_CONTINUE for a miss.
     #   TCL_RETURN or TCL_BREAK to terminate the search without an error.
     #   TCL_ERROR to terminate the search with an error.
-    cfilter latorlong code {
-      double target;
-      if(Tcl_GetDoubleFromObj (interp, filter, &target) != TCL_OK)
-        return TCL_ERROR;
-      if(row->latitude == target || row->longitude == target) return TCL_OK;
-      return TCL_CONTINUE;
-    }
+
+   # New style filter, memoization and argument parsing is hidden
+   cfilter latorlong args {double target} code {
+     if(row->latitude == target || row->longitude == target)
+	return TCL_OK;
+     return TCL_CONTINUE;
+   }
+
+   # Old style filter with all the guts hanging out
     cfilter distance code {
       static double target_lat, target_long, target_range;
       static int lastSequence = 0;
