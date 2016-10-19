@@ -58,6 +58,15 @@ CExtension Filtertest 1.0 {
       if(dsquared <= (target_range * target_range)) return TCL_OK;
       return TCL_CONTINUE;
     }
+
+   # new style complex filter
+    cfilter distance2 args {double target_lat double target_long double target_range} code {
+      double dlat = target_lat - row->latitude;
+      double dlong = target_long - row->longitude;
+      double dsquared = (dlat * dlat) + (dlong * dlong);
+      if(dsquared <= (target_range * target_range)) return TCL_OK;
+      return TCL_CONTINUE;
+    }
   }
 }
 
@@ -72,6 +81,12 @@ for {set i 0} {$i < 100} {incr i} {
 
 puts "Testing distance"
 set found [t search -filter {{distance {40 30 40}}} -countOnly 1]
+if {$found != 47} {
+  error "Should have returned 47 points within 30 units of (40,30) (got $found)"
+}
+
+puts "Testing distance2"
+set found [t search -filter {{distance2 {40 30 40}}} -countOnly 1]
 if {$found != 47} {
   error "Should have returned 47 points within 30 units of (40,30) (got $found)"
 }
