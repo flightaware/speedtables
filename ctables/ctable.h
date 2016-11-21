@@ -459,8 +459,8 @@ struct ctable_CreatorTable {
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
     void (*dstring_append_get_tabsep) (CONST char *key, ctable_BaseRow *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
 
-    int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
-    int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
+    int (*array_set) (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
+    int (*array_set_with_nulls) (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
 
     int (*search_compare) (Tcl_Interp *interp, CTableSearch *searchControl, ctable_BaseRow *pointer);
     int (*sort_compare) (void *clientData, const ctable_BaseRow *pointer1, const ctable_BaseRow *pointer2);

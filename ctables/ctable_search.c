@@ -631,9 +631,9 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 		       continue;
 		   }
 	           if (search->action == CTABLE_SEARCH_ACTION_ARRAY) {
-		       result = creator->array_set (interp, search->rowVarNameObj, row, i);
+		       result = creator->array_set (interp, ctable, search->rowVarNameObj, row, i);
 		   } else {
-		       result = creator->array_set_with_nulls (interp, search->rowVarNameObj, row, i);
+		       result = creator->array_set_with_nulls (interp, ctable, search->rowVarNameObj, row, i);
 		   }
 	       }
 	    } else {
@@ -641,9 +641,9 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	       for (i = 0; i < search->nRetrieveFields; i++) {
 	           if (search->action == CTABLE_SEARCH_ACTION_ARRAY) {
-		       result = creator->array_set (interp, search->rowVarNameObj, row, search->retrieveFields[i]);
+		       result = creator->array_set (interp, ctable, search->rowVarNameObj, row, search->retrieveFields[i]);
 		   } else {
-		       result = creator->array_set_with_nulls (interp, search->rowVarNameObj, row, search->retrieveFields[i]);
+		       result = creator->array_set_with_nulls (interp, ctable, search->rowVarNameObj, row, search->retrieveFields[i]);
 		   }
 	       }
 	    }

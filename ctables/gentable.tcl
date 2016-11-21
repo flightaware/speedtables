@@ -1808,7 +1808,7 @@ ${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, CTable *ctable, 
 
 variable arraySetFromFieldSource {
 int
-${table}_array_set (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *vPointer, int field)
+${table}_array_set (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arrayNameObj, ctable_BaseRow *vPointer, int field)
 {
     struct $table *row = (struct $table *)vPointer;
     Tcl_Obj   *obj;
@@ -1820,7 +1820,7 @@ ${table}_array_set (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *v
         return TCL_OK;
     }
 
-    if (Tcl_ObjSetVar2 (interp, arrayNameObj, ${table}_NameObjList[field], obj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *)NULL) {
+    if (Tcl_ObjSetVar2 (interp, arrayNameObj, ctable->creator->nameObjList[field], obj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *)NULL) {
         return TCL_ERROR;
     }
 
@@ -1828,13 +1828,13 @@ ${table}_array_set (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *v
 }
 
 int
-${table}_array_set_with_nulls (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *vPointer, int field)
+${table}_array_set_with_nulls (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arrayNameObj, ctable_BaseRow *vPointer, int field)
 {
     struct $table *row = (struct $table*)vPointer;
     Tcl_Obj   *obj;
 
     obj = ${table}_get (interp, row, field);
-    if (Tcl_ObjSetVar2 (interp, arrayNameObj, ${table}_NameObjList[field], obj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *)NULL) {
+    if (Tcl_ObjSetVar2 (interp, arrayNameObj, ctable->creator->nameObjList[field], obj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *)NULL) {
         return TCL_ERROR;
     }
 
