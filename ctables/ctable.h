@@ -455,7 +455,7 @@ struct ctable_CreatorTable {
     Tcl_Obj *(*gen_keyvalue_list) (CTable *ctable, ctable_BaseRow *pointer);
     Tcl_Obj *(*gen_nonnull_keyvalue_list) (CTable *ctable, ctable_BaseRow *pointer);
     int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
-    int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
+    int (*lappend_field_and_name) (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
     void (*dstring_append_get_tabsep) (CONST char *key, ctable_BaseRow *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
 
