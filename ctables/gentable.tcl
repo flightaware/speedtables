@@ -3949,11 +3949,9 @@ proc gen_name_objlist {table} {
     emit "    Tcl_Obj **nameObjList = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj) * $lengthDef);"
     emit ""
 
-    # create and initialize all of the NameObj objects containing field
-    # names as Tcl objects and increment their reference counts so
-    # (hopefully, heh) they'll never be deleted.
-    #
-    # also populate the *_NameObjList table
+    # create and initialize an array containing all of the NameObj
+    # objects containing field names as Tcl objects and increment
+    # their reference counts so (hopefully, heh) they'll never be deleted.
     #
     set position 0
     foreach fieldName $fieldList {
@@ -3966,7 +3964,7 @@ proc gen_name_objlist {table} {
 	emit ""
 	incr position
     }
-    emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
+    emit "    nameObjList\[$position\] = (Tcl_Obj *) NULL;"
     emit ""
     emit "    return nameObjList;"
     emit "$rightCurly"
@@ -3991,17 +3989,7 @@ proc gen_setup_routine {table} {
     #
     # also populate the *_NameObjList table
     #
-    set position 0
-    foreach fieldName $fieldList {
-	upvar ::ctable::fields::$fieldName field
-
-        set arrayElement [field_to_nameObjArray $table $fieldName]
-        emit "    $arrayElement = Tcl_NewStringObj (\"$fieldName\", -1);"
-	emit "    Tcl_IncrRefCount ($arrayElement);"
-	emit ""
-	incr position
-    }
-    emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
+    emit "    ${table}_NameObjList = gen_${table}_nameObjList ();"
     emit ""
 
     set emptyObj ${table}_DefaultEmptyStringObj
@@ -4676,7 +4664,7 @@ proc gen_field_names {} {
     emit ""
     # end of values
 
-    emit "static Tcl_Obj *${table}_NameObjList\[[string toupper $table]_NFIELDS + 1\];"
+    emit "static Tcl_Obj **${table}_NameObjList;"
     emit ""
 
     emit "static Tcl_Obj *${table}_DefaultEmptyStringObj;"
