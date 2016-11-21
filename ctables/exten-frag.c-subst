@@ -25,7 +25,7 @@
     t->registeredProcTablePtr = hashTablePtr;
     t->nextAutoCounter = 0;
     t->fieldNames = ${table}_fields;
-    t->nameObjList = ${table}_NameObjList;
+    t->nameObjList = gen_${table}_nameObjList ();
 
     t->nFields = $NFIELDS;
     t->nLinkedLists = $NLINKED_LISTS;
