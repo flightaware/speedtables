@@ -426,7 +426,6 @@ struct ctable_CreatorTable {
 
     CONST char          **fieldNames;
     Tcl_Obj             **nameObjList;
-    Tcl_Obj		**keyObjList;
     int                  *fieldList;
     int			 *publicFieldList;
     enum ctable_types    *fieldTypes;
