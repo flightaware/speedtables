@@ -663,11 +663,11 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 		    if (is_hidden_field(creator,i) && !is_key_field(creator,i,search->noKeys)) {
 			continue;
 		    }
-		    creator->lappend_nonnull_field_and_name (interp, listObj, row, i);
+		    creator->lappend_nonnull_field_and_name (interp, ctable, listObj, row, i);
 		 }
 	    } else {
 		for (i = 0; i < search->nRetrieveFields; i++) {
-		    creator->lappend_nonnull_field_and_name (interp, listObj, row, search->retrieveFields[i]);
+		    creator->lappend_nonnull_field_and_name (interp, ctable, listObj, row, search->retrieveFields[i]);
 		}
 	    }
 	    break;

@@ -1771,7 +1771,7 @@ ${table}_lappend_field_and_nameobj (Tcl_Interp *interp, CTable *ctable, ctable_B
 
 variable lappendNonnullFieldAndNameObjSource {
 int
-${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *vPointer, int field)
+${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *destListObj, ctable_BaseRow *vPointer, int field)
 {
     struct $table *row = (struct $table *)vPointer;
     Tcl_Obj   *obj;
@@ -1781,7 +1781,7 @@ ${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListOb
         return TCL_OK;
     }
 
-    if (Tcl_ListObjAppendElement (interp, destListObj, ${table}_NameObjList[field]) == TCL_ERROR) {
+    if (Tcl_ListObjAppendElement (interp, destListObj, ctable->creator->nameObjList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
@@ -1793,7 +1793,7 @@ ${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListOb
 }
 
 int
-${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, ctable_BaseRow *vPointer, Tcl_Obj *fieldObj)
+${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *vPointer, Tcl_Obj *fieldObj)
 {
     int        field;
 
@@ -1801,7 +1801,7 @@ ${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, ctable_BaseRow *
         return TCL_ERROR;
     }
 
-    return ${table}_lappend_nonnull_field_and_name (interp, Tcl_GetObjResult(interp), vPointer, field);
+    return ${table}_lappend_nonnull_field_and_name (interp, ctable, Tcl_GetObjResult(interp), vPointer, field);
 }
 
 }

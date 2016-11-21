@@ -1870,7 +1870,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	for (i = 3; i < objc; i++) {
-	    if (${table}_lappend_nonnull_field_and_nameobj (interp, row, objv[i]) == TCL_ERROR) {
+	    if (${table}_lappend_nonnull_field_and_nameobj (interp, ctable, row, objv[i]) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 	}
