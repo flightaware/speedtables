@@ -206,13 +206,6 @@ proc field_to_var {table fieldName varName} {
     }
     return "${table}_${fieldName}_$varName"
 }
-#
-# field_to_nameObj - return a field mapped to the Tcl name object we'll
-# use to expose the name to Tcl
-#
-proc field_to_nameObj {table fieldName} {
-    return [field_to_var $table $fieldName nameObj]
-}
 
 proc field_to_nameObjArray {table fieldName} {
     variable fieldList
@@ -3961,9 +3954,9 @@ proc gen_setup_routine {table} {
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
-	set nameObj [field_to_nameObj $table $fieldName]
-        emit "    ${table}_NameObjList\[$position\] = $nameObj = Tcl_NewStringObj (\"$fieldName\", -1);"
-	emit "    Tcl_IncrRefCount ($nameObj);"
+        set arrayElement [field_to_nameObjArray $table $fieldName]
+        emit "    $arrayElement = Tcl_NewStringObj (\"$fieldName\", -1);"
+	emit "    Tcl_IncrRefCount ($arrayElement);"
 	emit ""
 	incr position
     }
@@ -4597,12 +4590,6 @@ proc gen_field_names {} {
 	append unique "\n    $uniqueVal,"
     }
     emit "[string range $unique 0 end-1]\n$rightCurly;\n"
-
-    emit "// define objects that will be filled with the corresponding field names"
-    foreach fieldName $fieldList {
-        emit "Tcl_Obj *[field_to_nameObj $table $fieldName];"
-    }
-    emit ""
 
     emit "// define field property list keys and values to allow introspection"
 
