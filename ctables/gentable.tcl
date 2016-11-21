@@ -3933,6 +3933,47 @@ proc gen_get_function {table} {
 }
 
 #
+# gen_name_objlist - emit code to create a list of points to Tcl objects
+#  for all of the columns in the table
+#  libary load time
+#
+proc gen_name_objlist {table} {
+    variable fieldList
+    variable fields
+    variable leftCurly
+    variable rightCurly
+
+    emit "Tcl_Obj ** gen_${table}_nameObjList (void) $leftCurly"
+
+    set lengthDef [string toupper $table]_NFIELDS
+    emit "    Tcl_Obj **nameObjList = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj) * $lengthDef);"
+    emit ""
+
+    # create and initialize all of the NameObj objects containing field
+    # names as Tcl objects and increment their reference counts so
+    # (hopefully, heh) they'll never be deleted.
+    #
+    # also populate the *_NameObjList table
+    #
+    set position 0
+    foreach fieldName $fieldList {
+	upvar ::ctable::fields::$fieldName field
+
+        set element nameObjList\[$position\]
+
+        emit "    $element = Tcl_NewStringObj (\"$fieldName\", -1);"
+	emit "    Tcl_IncrRefCount ($element);"
+	emit ""
+	incr position
+    }
+    emit "    ${table}_NameObjList\[$position\] = (Tcl_Obj *) NULL;"
+    emit ""
+    emit "    return nameObjList;"
+    emit "$rightCurly"
+    emit ""
+}
+
+#
 # gen_setup_routine - emit code to be run for this table type at shared 
 #  libary load time
 #
@@ -6193,6 +6234,8 @@ proc table {name data} {
     ::ctable::gen_field_names
 
     ::ctable::gen_filters
+
+    ::ctable::gen_name_objlist $name
 
     ::ctable::gen_setup_routine $name
 
