@@ -861,7 +861,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		    return TCL_ERROR;
 		} else {
 
-		    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_get (interp, row, field)) == TCL_ERROR) {
+		    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_get (interp, ctable, row, field)) == TCL_ERROR) {
 			Tcl_AppendResult (interp, " while appending incremented value", (char *)NULL);
 			return TCL_ERROR;
 		    }
@@ -888,7 +888,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	        return TCL_ERROR;
 	    }
 
-	    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_get (interp, row, field)) == TCL_ERROR) {
+	    if (Tcl_ListObjAppendElement (interp, Tcl_GetObjResult (interp), ${table}_get (interp, ctable, row, field)) == TCL_ERROR) {
 		Tcl_AppendResult (interp, " while appending incremented value", (char *)NULL);
 		return TCL_ERROR;
 	    }
@@ -1813,12 +1813,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	if (objc == 3) {
-	    Tcl_SetObjResult (interp, ${table}_genlist (interp, row));
+	    Tcl_SetObjResult (interp, ${table}_genlist (interp, ctable, row));
 	    break;
 	}
 
 	for (i = 3; i < objc; i++) {
-	    if (${table}_lappend_fieldobj (interp, row, objv[i]) == TCL_ERROR) {
+	    if (${table}_lappend_fieldobj (interp, ctable, row, objv[i]) == TCL_ERROR) {
 	        return TCL_ERROR;
 	    }
 	}

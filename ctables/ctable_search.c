@@ -603,13 +603,13 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	  case CTABLE_SEARCH_ACTION_GET: {
 	    if (search->nRetrieveFields < 0) {
-		listObj = creator->gen_list (interp, row);
+		listObj = creator->gen_list (interp, ctable, row);
 	    } else {
 	       int i;
 
 	       listObj = Tcl_NewObj ();
 	       for (i = 0; i < search->nRetrieveFields; i++) {
-		   creator->lappend_field (interp, listObj, row, search->retrieveFields[i]);
+		   creator->lappend_field (interp, ctable, listObj, row, search->retrieveFields[i]);
 	       }
 	    }
 	    break;
@@ -2692,7 +2692,7 @@ ctable_ListIndex (Tcl_Interp *interp, CTable *ctable, int fieldNum) {
 
     for (jsw_sreset (skip); (p = jsw_srow (skip)) != NULL; jsw_snext(skip)) {
 
-        if (ctable->creator->lappend_field (interp, resultObj, p, fieldNum) == TCL_ERROR) {
+        if (ctable->creator->lappend_field (interp, ctable, resultObj, p, fieldNum) == TCL_ERROR) {
 	    Tcl_AppendResult (interp, " while walking index fields", (char *) NULL);
 	    return TCL_ERROR;
 	}
@@ -2919,14 +2919,14 @@ ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
         return TCL_OK;
     }
 
-    if (ctable->creator->lappend_field (interp, resultObj, row, ctable->creator->fieldList[field]) == TCL_ERROR) {
+    if (ctable->creator->lappend_field (interp, ctable, resultObj, row, ctable->creator->fieldList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 
     jsw_findlast (skip);
     row = jsw_srow (skip);
 
-    if (ctable->creator->lappend_field (interp, resultObj, row, ctable->creator->fieldList[field]) == TCL_ERROR) {
+    if (ctable->creator->lappend_field (interp, ctable, resultObj, row, ctable->creator->fieldList[field]) == TCL_ERROR) {
         return TCL_ERROR;
     }
 

@@ -30,6 +30,10 @@
     t->defaultEmptyStringObj = Tcl_NewObj ();
     Tcl_IncrRefCount (t->defaultEmptyStringObj);
 
+    t->nullValueObj = Tcl_NewObj ();
+    Tcl_IncrRefCount (t->nullValueObj);
+    t->nullValueString = Tcl_GetStringFromObj (t->nullValueObj, &t->nullValueSize);
+
     t->nFields = $NFIELDS;
     t->nLinkedLists = $NLINKED_LISTS;
 

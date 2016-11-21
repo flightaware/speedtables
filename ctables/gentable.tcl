@@ -476,7 +476,7 @@ variable nullIndexDuringSetSource {
 # nullCheckDuringSetSource - standard stuff for handling nulls during set
 #
 variable nullCheckDuringSetSource {
-	int obj_is_null = ${table}_obj_is_null (obj);
+	int obj_is_null = ${table}_obj_is_null (ctable, obj);
 	if (obj_is_null) {
 	    if (!row->_${fieldName}IsNull) {
 $handleNullIndex
@@ -1683,7 +1683,7 @@ ctable_BaseRow *${table}_find (CTable *ctable, CONST char *key) {
 }
 
 Tcl_Obj *
-${table}_get_fieldobj (Tcl_Interp *interp, struct $table *row, Tcl_Obj *fieldObj)
+${table}_get_fieldobj (Tcl_Interp *interp, CTable *ctable, struct $table *row, Tcl_Obj *fieldObj)
 {
     int field;
 
@@ -1691,15 +1691,15 @@ ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *row, Tcl_Obj *fieldObj
         return (Tcl_Obj *)NULL;
     }
 
-    return ${table}_get (interp, row, field);
+    return ${table}_get (interp, ctable, row, field);
 }
 
 int
-${table}_lappend_field (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *vPointer, int field)
+${table}_lappend_field (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *destListObj, ctable_BaseRow *vPointer, int field)
 {
     struct $table *row = (struct $table *) vPointer;
 
-    Tcl_Obj *obj = ${table}_get (interp, row, field);
+    Tcl_Obj *obj = ${table}_get (interp, ctable, row, field);
 
     if (Tcl_ListObjAppendElement (interp, destListObj, obj) == TCL_ERROR) {
         return TCL_ERROR;
@@ -1709,10 +1709,10 @@ ${table}_lappend_field (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow
 }
 
 int
-${table}_lappend_fieldobj (Tcl_Interp *interp, ctable_BaseRow *vPointer, Tcl_Obj *fieldObj)
+${table}_lappend_fieldobj (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *vPointer, Tcl_Obj *fieldObj)
 {
     struct $table *row = (struct $table*) vPointer;
-    Tcl_Obj *obj = ${table}_get_fieldobj (interp, row, fieldObj);
+    Tcl_Obj *obj = ${table}_get_fieldobj (interp, ctable, row, fieldObj);
 
     if (obj == NULL) {
         return TCL_ERROR;
@@ -1737,7 +1737,7 @@ ${table}_lappend_field_and_name (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *de
         return TCL_ERROR;
     }
 
-    obj = ${table}_get (interp, row, field);
+    obj = ${table}_get (interp, ctable, row, field);
     if (Tcl_ListObjAppendElement (interp, destListObj, obj) == TCL_ERROR) {
         return TCL_ERROR;
     }
@@ -1766,8 +1766,8 @@ ${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, CTable *ctable, Tcl
     struct $table *row = (struct $table *)vPointer;
     Tcl_Obj   *obj;
 
-    obj = ${table}_get (interp, row, field);
-    if (obj == ${table}_NullValueObj) {
+    obj = ${table}_get (interp, ctable, row, field);
+    if (obj == ctable->creator->nullValueObj) {
         return TCL_OK;
     }
 
@@ -1803,8 +1803,8 @@ ${table}_array_set (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arrayNameObj, c
     struct $table *row = (struct $table *)vPointer;
     Tcl_Obj   *obj;
 
-    obj = ${table}_get (interp, row, field);
-    if (obj == ${table}_NullValueObj) {
+    obj = ${table}_get (interp, ctable, row, field);
+    if (obj == ctable->creator->nullValueObj) {
         // it's null?  unset it from the array, might not be there, ignore error
         Tcl_UnsetVar2 (interp, Tcl_GetString (arrayNameObj), ${table}_fields[field], 0);
         return TCL_OK;
@@ -1823,7 +1823,7 @@ ${table}_array_set_with_nulls (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arra
     struct $table *row = (struct $table*)vPointer;
     Tcl_Obj   *obj;
 
-    obj = ${table}_get (interp, row, field);
+    obj = ${table}_get (interp, ctable, row, field);
     if (Tcl_ObjSetVar2 (interp, arrayNameObj, ctable->creator->nameObjList[field], obj, TCL_LEAVE_ERR_MSG) == (Tcl_Obj *)NULL) {
         return TCL_ERROR;
     }
@@ -1841,7 +1841,7 @@ ${table}_array_set_with_nulls (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arra
 
 variable fieldGetSource {
 Tcl_Obj *
-${table}_get (Tcl_Interp *interp, ctable_BaseRow *vPointer, int field) $leftCurly
+${table}_get (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *vPointer, int field) $leftCurly
     struct $table *row = (struct $table*) vPointer;
 
     switch ((enum ${table}_fields) field) $leftCurly
@@ -2272,7 +2272,8 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
     if(withNulls && !nullString) {
 	int nullLen;
 
-	nullString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullLen);
+	nullString = ctable->creator->nullValueString;
+	nullLen = ctable->creator->nullValueSize;
     }
 
     while (1) {
@@ -3154,19 +3155,19 @@ proc gen_delete_subr {subr struct} {
 
 
 variable isNullSubrSource {
-int ${table}_obj_is_null(Tcl_Obj *obj) {
+int ${table}_obj_is_null(CTable *ctable, Tcl_Obj *obj) {
     char     *objString;
     int       objStringLength;
 
      objString = Tcl_GetStringFromObj (obj, &objStringLength);
 
-     if (objStringLength == ${table}_NullValueSize) {
+     if (objStringLength == ctable->creator->nullValueSize) {
 	if (objStringLength == 0) {
 	    // strings are both zero length, a match on empty strings
 	    return 1;
 	}
 
-	return (strncmp (${table}_NullValueString, objString, ${table}_NullValueSize) == 0);
+	return (strncmp (ctable->creator->nullValueString, objString, ctable->creator->nullValueSize) == 0);
      }
 
     // string lengths didn't match so strings don't match
@@ -4007,11 +4008,6 @@ proc gen_setup_routine {table} {
 	}
     }
 
-    emit "    // initialize the null string object to the default (empty) value"
-    emit "    ${table}_NullValueObj = Tcl_NewObj ();"
-    emit "    ${table}_NullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &${table}_NullValueSize);"
-    emit "    Tcl_IncrRefCount (${table}_NullValueObj);"
-
     emit "$rightCurly"
     emit ""
 }
@@ -4171,7 +4167,7 @@ proc gen_new_obj {type fieldName} {
 
 	short {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewIntObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewIntObj (row->$fieldName)"
 	    }
@@ -4179,7 +4175,7 @@ proc gen_new_obj {type fieldName} {
 
 	int {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewIntObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewIntObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewIntObj (row->$fieldName)"
 	    }
@@ -4187,7 +4183,7 @@ proc gen_new_obj {type fieldName} {
 
 	long {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewLongObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewLongObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewLongObj (row->$fieldName)"
 	    }
@@ -4195,7 +4191,7 @@ proc gen_new_obj {type fieldName} {
 
 	wide {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewWideIntObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewWideIntObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewWideIntObj (row->$fieldName)"
 	    }
@@ -4203,7 +4199,7 @@ proc gen_new_obj {type fieldName} {
 
 	double {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewDoubleObj (row->$fieldName)"
 	    }
@@ -4211,7 +4207,7 @@ proc gen_new_obj {type fieldName} {
 
 	float {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewDoubleObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewDoubleObj (row->$fieldName)"
 	    }
@@ -4219,7 +4215,7 @@ proc gen_new_obj {type fieldName} {
 
 	boolean {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewBooleanObj (row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewBooleanObj (row->$fieldName)"
 	    } else {
 		return "Tcl_NewBooleanObj (row->$fieldName)"
 	    }
@@ -4229,7 +4225,7 @@ proc gen_new_obj {type fieldName} {
 	    # if there's no default for the var string, the null pointer 
 	    # response is the null
 	    if {![info exists field(default)]} {
-	        set defObj ${table}_NullValueObj
+	        set defObj ctable->creator->nullValueObj
 	    } else {
 		if {$field(default) == ""} {
 		    set defObj ctable->creator->defaultEmptyStringObj
@@ -4239,7 +4235,7 @@ proc gen_new_obj {type fieldName} {
 	    }
 
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : ((row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length))"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : ((row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length))"
 	    } else {
 		return "(row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length)"
 	    }
@@ -4247,7 +4243,7 @@ proc gen_new_obj {type fieldName} {
 
 	char {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (&row->$fieldName, 1)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewStringObj (&row->$fieldName, 1)"
 	    } else {
 		return "Tcl_NewStringObj (&row->$fieldName, 1)"
 	    }
@@ -4255,7 +4251,7 @@ proc gen_new_obj {type fieldName} {
 
 	fixedstring {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (row->$fieldName, $field(length))"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewStringObj (row->$fieldName, $field(length))"
 	    } else {
 		return "Tcl_NewStringObj (row->$fieldName, $field(length))"
 	    }
@@ -4263,7 +4259,7 @@ proc gen_new_obj {type fieldName} {
 
 	inet {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (inet_ntoa (row->$fieldName), -1)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewStringObj (inet_ntoa (row->$fieldName), -1)"
 	    } else {
 		return "Tcl_NewStringObj (inet_ntoa (row->$fieldName), -1)"
 	    }
@@ -4271,7 +4267,7 @@ proc gen_new_obj {type fieldName} {
 
 	mac {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : Tcl_NewStringObj (ether_ntoa (&row->$fieldName), -1)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : Tcl_NewStringObj (ether_ntoa (&row->$fieldName), -1)"
 	    } else {
 		return "Tcl_NewStringObj (ether_ntoa (&row->$fieldName), -1)"
 	    }
@@ -4279,7 +4275,7 @@ proc gen_new_obj {type fieldName} {
 
 	tclobj {
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : ((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
+		return "row->_${fieldName}IsNull ? ctable->creator->nullValueObj : ((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
 	    } else {
 		return "((row->$fieldName == (Tcl_Obj *) NULL) ? Tcl_NewObj () : row->$fieldName)"
 	    }
@@ -4396,7 +4392,7 @@ proc gen_list {} {
 
     set lengthDef [string toupper $table]_NFIELDS
 
-    emit "Tcl_Obj *${table}_genlist (Tcl_Interp *interp, ctable_BaseRow *vRow) $leftCurly"
+    emit "Tcl_Obj *${table}_genlist (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *vRow) $leftCurly"
     emit "    struct $table *row = (struct $table *)vRow;"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef];"
@@ -4495,7 +4491,7 @@ proc gen_nonnull_keyvalue_list {} {
 	    emit "    listObjv\[position++] = [gen_new_obj $field(type) $fieldName];"
 	} else {
 	    emit "    obj = [gen_new_obj $field(type) $fieldName];"
-	    emit "    if (obj != ${table}_NullValueObj) $leftCurly"
+	    emit "    if (obj != ctable->creator->nullValueObj) $leftCurly"
 	    emit "        listObjv\[position++] = [field_to_name_objlist_reference $fieldName];"
 	    emit "        listObjv\[position++] = obj;"
 	    emit "    $rightCurly"
@@ -4655,12 +4651,6 @@ proc gen_field_names {} {
     emit ""
     # end of values
 
-    emit "// define the null value object"
-    emit "static Tcl_Obj *${table}_NullValueObj;"
-    emit "static char *${table}_NullValueString;"
-    emit "static int ${table}_NullValueSize;"
-    emit ""
-
     emit "// define default objects for varstring fields, if any"
     foreach myField $fieldList {
 	upvar ::ctable::fields::$myField field
@@ -4746,7 +4736,7 @@ proc gen_gets_string_cases {} {
 
 	if {![info exists field(notnull)] || !$field(notnull)} {
 	    emit "        if (row->_${myField}IsNull) $leftCurly"
-	    emit "            return Tcl_GetStringFromObj (${table}_NullValueObj, lengthPtr);"
+	    emit "            return Tcl_GetStringFromObj (ctable->creator->nullValueObj, lengthPtr);"
 	    emit "        $rightCurly"
 	}
 
