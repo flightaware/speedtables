@@ -20,9 +20,10 @@
 // error message.
 //
 static int
-ctable_RunBatch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *tableCmdObj, Tcl_Obj *batchListObj) {
+ctable_RunBatch (CTable *ctable, Tcl_Obj *tableCmdObj, Tcl_Obj *batchListObj) {
     int          listObjc;
     Tcl_Obj    **listObjv;
+    Tcl_Interp  *interp = ctable->creator->interp;
 
     int          i;
     int          commandResult = TCL_ERROR;
