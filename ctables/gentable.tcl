@@ -217,6 +217,17 @@ proc field_to_nameObjArray {table fieldName} {
     return "${table}_NameObjList\[$position\]"
 }
 
+proc field_to_name_objlist_reference {fieldName} {
+    variable fieldList
+
+    set position [lsearch $fieldList $fieldName]
+    if {$position < 0} {
+	error "field '$fieldName' not in fieldList '$fieldList'"
+    }
+
+    return "ctable->creator->nameObjList\[$position]"
+}
+
 #
 # gen_allocate - return the code to allocate memory
 #
@@ -4457,7 +4468,7 @@ proc gen_keyvalue_list {} {
 
 	upvar ::ctable::fields::$fieldName field
 
-	emit "    listObjv\[$position] = ctable->creator->nameObjList\[$position];"
+	emit "    listObjv\[$position] = [field_to_name_objlist_reference $fieldName];"
 	incr position
 
 	set_list_obj $position $field(type) $fieldName
@@ -4485,7 +4496,7 @@ proc gen_nonnull_keyvalue_list {} {
 
     set lengthDef [string toupper $table]_NFIELDS
 
-    emit "Tcl_Obj *${table}_gen_nonnull_keyvalue_list (Tcl_Interp *interp, struct $table *row) $leftCurly"
+    emit "Tcl_Obj *${table}_gen_nonnull_keyvalue_list (CTable *ctable, struct $table *row) $leftCurly"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
     emit "    int position = 0;"
@@ -4500,12 +4511,12 @@ proc gen_nonnull_keyvalue_list {} {
 	upvar ::ctable::fields::$fieldName field
 
 	if {[is_key $fieldName]} {
-	    emit "    listObjv\[position++] = [field_to_nameObjArray $table $fieldName];"
+	    emit "    listObjv\[position++] = [field_to_name_objlist_reference $fieldName];"
 	    emit "    listObjv\[position++] = [gen_new_obj $field(type) $fieldName];"
 	} else {
 	    emit "    obj = [gen_new_obj $field(type) $fieldName];"
 	    emit "    if (obj != ${table}_NullValueObj) $leftCurly"
-	    emit "        listObjv\[position++] = [field_to_nameObjArray $table $fieldName];"
+	    emit "        listObjv\[position++] = [field_to_name_objlist_reference $fieldName];"
 	    emit "        listObjv\[position++] = obj;"
 	    emit "    $rightCurly"
 	}

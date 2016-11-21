@@ -1865,7 +1865,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
 	if (objc == 3) {
-	    Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (interp, row));
+	    Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (ctable, row));
 	    break;
 	}
 
