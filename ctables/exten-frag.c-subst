@@ -80,7 +80,7 @@
         f = t->fields[i] = (ctable_FieldInfo *)ckalloc (sizeof (ctable_FieldInfo));
 
 	f->name = ${table}_fields[i];
-	f->nameObj = ${table}_NameObjList[i];
+	f->nameObj = t->nameObjList[i];
 	f->number = i;
 	f->type = t->fieldTypes[i];
 	f->needsQuoting = ${table}_needs_quoting[i];

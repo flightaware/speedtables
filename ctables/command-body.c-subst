@@ -331,7 +331,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	  }
 
-	  for (i = 0; (obj = ${table}_NameObjList[i]) != NULL; i++) {
+	  for (i = 0; (obj = ctable->creator->nameObjList[i]) != NULL; i++) {
 	      if (!is_hidden_obj(obj) && Tcl_ListObjAppendElement (interp, resultObj, obj) == TCL_ERROR) {
 	          return TCL_ERROR;
 	      }
@@ -342,7 +342,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       // return the key
       case OPT_KEY: {
-	  Tcl_SetObjResult (interp, ${table}_NameObjList[${table}_keyField]);
+	  Tcl_SetObjResult (interp, ctable->creator->nameObjList[${table}_keyField]);
 	  break;
       }
 
@@ -1939,7 +1939,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	    for(i = 0; i < $nFields; i++) {
 		if(${table}_is_null(row, i)) {
-		    if(Tcl_ListObjAppendElement(interp, result, ${table}_NameObjList[i]) == TCL_ERROR) {
+		    if(Tcl_ListObjAppendElement(interp, result, ctable->creator->nameObjList[i]) == TCL_ERROR) {
 			return TCL_ERROR;
 		    }
 		}
