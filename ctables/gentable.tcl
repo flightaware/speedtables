@@ -2285,10 +2285,7 @@ ${table}_import_tabsep (CTable *ctable, CONST char *channelName, int *fieldNums,
 
 //${table}_dumpFieldNums(fieldNums, nFields, "after key check");
     if(withNulls && !nullString) {
-	int nullLen;
-
 	nullString = ctable->creator->nullValueString;
-	nullLen = ctable->creator->nullValueSize;
     }
 
     while (1) {
