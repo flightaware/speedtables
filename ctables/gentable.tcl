@@ -4443,7 +4443,7 @@ proc gen_keyvalue_list {} {
 
     set lengthDef [string toupper $table]_NFIELDS
 
-    emit "Tcl_Obj *${table}_gen_keyvalue_list (Tcl_Interp *interp, ctable_BaseRow *vRow) $leftCurly"
+    emit "Tcl_Obj *${table}_gen_keyvalue_list (CTable *ctable, ctable_BaseRow *vRow) $leftCurly"
     emit "    struct $table *row = (struct $table *)vRow;"
 
     emit "    Tcl_Obj *listObjv\[$lengthDef * 2];"
@@ -4457,7 +4457,7 @@ proc gen_keyvalue_list {} {
 
 	upvar ::ctable::fields::$fieldName field
 
-	emit "    listObjv\[$position] = [field_to_nameObjArray $table $fieldName];"
+	emit "    listObjv\[$position] = ctable->creator->nameObjList\[$position];"
 	incr position
 
 	set_list_obj $position $field(type) $fieldName
