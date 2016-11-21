@@ -207,20 +207,10 @@ proc field_to_var {table fieldName varName} {
     return "${table}_${fieldName}_$varName"
 }
 
-proc field_to_nameObjArray {table fieldName} {
-    variable fieldList
-    set position [lsearch $fieldList $fieldName]
-    if {$position < 0} {
-	error "field '$fieldName' not in fieldList '$fieldList'"
-    }
-
-    return "${table}_NameObjList\[$position\]"
-}
-
-proc position_to_name_objlist_reference {position} {
-    return "ctable->creator->nameObjList\[$position]"
-}
-
+#
+# field_to_name_objlist_reference - convert a column name to
+#   a reference to the column name object
+#
 proc field_to_name_objlist_reference {fieldName} {
     variable fieldList
 
@@ -229,7 +219,7 @@ proc field_to_name_objlist_reference {fieldName} {
 	error "field '$fieldName' not in fieldList '$fieldList'"
     }
 
-    return [position_to_name_objlist_reference $position]
+    return "ctable->creator->nameObjList\[$position]"
 }
 
 #
@@ -4002,11 +3992,6 @@ proc gen_setup_routine {table} {
     # names as Tcl objects and increment their reference counts so 
     # (hopefully, heh) they'll never be deleted.
     #
-    # also populate the *_NameObjList table
-    #
-    emit "    ${table}_NameObjList = gen_${table}_nameObjList ();"
-    emit ""
-
     set emptyObj ${table}_DefaultEmptyStringObj
     emit "    $emptyObj = Tcl_NewObj ();"
     emit "    Tcl_IncrRefCount ($emptyObj);"
@@ -4678,9 +4663,6 @@ proc gen_field_names {} {
     emit "[string range $propstring 0 end-1]$rightCurly;"
     emit ""
     # end of values
-
-    emit "static Tcl_Obj **${table}_NameObjList;"
-    emit ""
 
     emit "static Tcl_Obj *${table}_DefaultEmptyStringObj;"
     emit ""
