@@ -426,6 +426,7 @@ struct ctable_CreatorTable {
 
     CONST char          **fieldNames;
     Tcl_Obj             **nameObjList;
+    Tcl_Obj              *defaultEmptyStringObj;
     int                  *fieldList;
     int			 *publicFieldList;
     enum ctable_types    *fieldTypes;
@@ -449,7 +450,7 @@ struct ctable_CreatorTable {
     int (*set_null) (Tcl_Interp *interp, struct CTable *ctable, ctable_BaseRow *row, int field, int indexCtl);
 
     Tcl_Obj *(*get) (Tcl_Interp *interp, ctable_BaseRow *row, int field);
-    CONST char *(*get_string) (const ctable_BaseRow *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
+    CONST char *(*get_string) (CTable *ctable, const ctable_BaseRow *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
 
     Tcl_Obj *(*gen_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
     Tcl_Obj *(*gen_keyvalue_list) (CTable *ctable, ctable_BaseRow *pointer);
@@ -457,7 +458,7 @@ struct ctable_CreatorTable {
     int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
     int (*lappend_field_and_name) (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
-    void (*dstring_append_get_tabsep) (CONST char *key, ctable_BaseRow *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
+    void (*dstring_append_get_tabsep) (CTable *ctable, CONST char *key, ctable_BaseRow *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
 
     int (*array_set) (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
     int (*array_set_with_nulls) (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);

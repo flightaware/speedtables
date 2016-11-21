@@ -27,6 +27,9 @@
     t->fieldNames = ${table}_fields;
     t->nameObjList = gen_${table}_nameObjList ();
 
+    t->defaultEmptyStringObj = Tcl_NewObj ();
+    Tcl_IncrRefCount (t->defaultEmptyStringObj);
+
     t->nFields = $NFIELDS;
     t->nLinkedLists = $NLINKED_LISTS;
 

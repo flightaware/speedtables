@@ -573,9 +573,9 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	// string-append the specified fields, or all fields, tab separated
 
 	if (search->nRetrieveFields < 0) {
-	    (*creator->dstring_append_get_tabsep) (key, row, creator->publicFieldList, creator->nPublicFields, &dString, search->noKeys, search->sepstr, search->quoteType, search->nullString);
+	    (*creator->dstring_append_get_tabsep) (ctable, key, row, creator->publicFieldList, creator->nPublicFields, &dString, search->noKeys, search->sepstr, search->quoteType, search->nullString);
 	} else {
-	    (*creator->dstring_append_get_tabsep) (key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys, search->sepstr, search->quoteType, search->nullString);
+	    (*creator->dstring_append_get_tabsep) (ctable, key, row, search->retrieveFields, search->nRetrieveFields, &dString, search->noKeys, search->sepstr, search->quoteType, search->nullString);
 	}
 
 	// write the line out
@@ -2664,7 +2664,7 @@ ctable_DumpIndex (CTable *ctable, int field) {
     jsw_dump_head (skip);
 
     for (jsw_sreset (skip); (row = jsw_srow (skip)) != NULL; jsw_snext(skip)) {
-        s = ctable->creator->get_string (row, field, NULL, utilityObj);
+        s = ctable->creator->get_string (ctable, row, field, NULL, utilityObj);
 	jsw_dump (s, skip, ctable->creator->fields[field]->indexNumber);
     }
 
@@ -2807,7 +2807,7 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *row,
 # ifdef SEARCHDEBUG
 // dump info about row being inserted
 utilityObj = Tcl_NewObj();
-printf("ctable_InsertIntoIndex row 0x%lx, field %d, field name %s, index %d, value '%s'\n", (long)row, field, f->name, f->indexNumber, ctable->creator->get_string (row, field, NULL, utilityObj));
+printf("ctable_InsertIntoIndex row 0x%lx, field %d, field name %s, index %d, value '%s'\n", (long)row, field, f->name, f->indexNumber, ctable->creator->get_string (ctable, row, field, NULL, utilityObj));
 fflush(stdout);
 Tcl_DecrRefCount (utilityObj);
 if(field == TRACKFIELD) {
@@ -2819,7 +2819,7 @@ if(field == TRACKFIELD) {
     if (!jsw_sinsert_linked (skip, row, f->indexNumber, f->unique)) {
 
 	utilityObj = Tcl_NewObj();
-	Tcl_AppendResult (interp, "unique check failed for field \"", f->name, "\", value \"", ctable->creator->get_string (row, field, NULL, utilityObj), "\"", (char *) NULL);
+	Tcl_AppendResult (interp, "unique check failed for field \"", f->name, "\", value \"", ctable->creator->get_string (ctable, row, field, NULL, utilityObj), "\"", (char *) NULL);
 	Tcl_DecrRefCount (utilityObj);
         return TCL_ERROR;
     }

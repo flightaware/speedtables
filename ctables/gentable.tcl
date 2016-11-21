@@ -285,7 +285,7 @@ proc gen_deallocate {ctable pointer {private 0}} {
 proc gen_defaultEmptyString {ctable lvalue {private 0}} {
     variable withSharedTables
     variable table
-    set priv "Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &($lvalue))"
+    set priv "Tcl_GetStringFromObj (ctable->creator->defaultEmptyStringObj, &($lvalue))"
     set pub "(($lvalue) = 0, ($ctable)->emptyString)"
 
     if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
@@ -1849,7 +1849,7 @@ ${table}_get (Tcl_Interp *interp, ctable_BaseRow *vPointer, int field) $leftCurl
 
 variable fieldGetStringSource {
 CONST char *
-${table}_get_string (const ctable_BaseRow *vPointer, int field, int *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
+${table}_get_string (CTable *ctable, const ctable_BaseRow *vPointer, int field, int *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
     int length;
     const struct $table *row = (const struct $table*) vPointer;
 
@@ -1884,7 +1884,7 @@ void ${table}_dumpFieldNums(int *fieldNums, int nFields, CONST char *msg)
 }
 
 void
-${table}_dstring_append_get_tabsep (CONST char *key, ctable_BaseRow *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, CONST char *sepstr, int quoteType, CONST char *nullString) {
+${table}_dstring_append_get_tabsep (CTable *ctable, CONST char *key, ctable_BaseRow *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, CONST char *sepstr, int quoteType, CONST char *nullString) {
     int              i;
     CONST char      *string;
     int              nChars;
@@ -1913,7 +1913,7 @@ ${table}_dstring_append_get_tabsep (CONST char *key, ctable_BaseRow *vPointer, i
 	    continue;
 	}
 
-	string = ${table}_get_string (row, fieldNums[i], &nChars, utilityObj);
+	string = ${table}_get_string (ctable, row, fieldNums[i], &nChars, utilityObj);
 	if (nChars != 0) {
 	    int copy = 0;
 	    if (quoteType && ${table}_needs_quoting[fieldNums[i]]) {
@@ -2069,7 +2069,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
         Tcl_DStringSetLength (&dString, 0);
 
-	${table}_dstring_append_get_tabsep (key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys, sepstr, quoteType, nullString);
+	${table}_dstring_append_get_tabsep (ctable, key, (struct ${table} *)row, fieldNums, nFields, &dString, noKeys, sepstr, quoteType, nullString);
 
 	if (Tcl_WriteChars (channel, Tcl_DStringValue (&dString), Tcl_DStringLength (&dString)) < 0) {
 	    Tcl_AppendResult (interp, "write error on channel \"", channelName, "\"", (char *)NULL);
@@ -3988,15 +3988,6 @@ proc gen_setup_routine {table} {
 
     emit "void ${table}_setup (void) $leftCurly"
 
-    # create and initialize all of the NameObj objects containing field
-    # names as Tcl objects and increment their reference counts so 
-    # (hopefully, heh) they'll never be deleted.
-    #
-    set emptyObj ${table}_DefaultEmptyStringObj
-    emit "    $emptyObj = Tcl_NewObj ();"
-    emit "    Tcl_IncrRefCount ($emptyObj);"
-    emit ""
-
     #
     # create and initialize string objects for varstring defaults
     #
@@ -4241,7 +4232,7 @@ proc gen_new_obj {type fieldName} {
 	        set defObj ${table}_NullValueObj
 	    } else {
 		if {$field(default) == ""} {
-		    set defObj ${table}_DefaultEmptyStringObj
+		    set defObj ctable->creator->defaultEmptyStringObj
 		} else {
 		    set defObj ${table}_${fieldName}DefaultStringObj
 		}
@@ -4664,9 +4655,6 @@ proc gen_field_names {} {
     emit ""
     # end of values
 
-    emit "static Tcl_Obj *${table}_DefaultEmptyStringObj;"
-    emit ""
-
     emit "// define the null value object"
     emit "static Tcl_Obj *${table}_NullValueObj;"
     emit "static char *${table}_NullValueString;"
@@ -4772,7 +4760,7 @@ proc gen_gets_string_cases {} {
 	    emit "        if (row->${myField} == NULL) $leftCurly"
 
 	    if {![info exists field(default)] || $field(default) == ""} {
-	        set source ${table}_DefaultEmptyStringObj
+	        set source ctable->creator->defaultEmptyStringObj
 	    } else {
 	        set source ${table}_${myField}DefaultStringObj
 	    }
@@ -4794,7 +4782,7 @@ proc gen_gets_string_cases {} {
 
 	  "tclobj" {
 	    emit "        if (row->$myField == NULL) $leftCurly"
-	    emit "            return Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, lengthPtr);"
+	    emit "            return Tcl_GetStringFromObj (ctable->creator->defaultEmptyStringObj, lengthPtr);"
 	    emit "        $rightCurly"
 	    emit "        return Tcl_GetStringFromObj (row->$myField, lengthPtr);"
 	  }

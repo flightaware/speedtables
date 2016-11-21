@@ -1152,7 +1152,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 			      }
 		              continue;
 		          }
-		          valueObj = ${table}_DefaultEmptyStringObj;
+		          valueObj = ctable->creator->defaultEmptyStringObj;
 		      } else {
 		          Tcl_SetStringObj (utilityObj, value, -1);
 		          valueObj = utilityObj;
