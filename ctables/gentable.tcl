@@ -3969,8 +3969,9 @@ proc gen_name_objlist {table} {
 
     emit "Tcl_Obj ** gen_${table}_nameObjList (void) $leftCurly"
 
-    set lengthDef [string toupper $table]_NFIELDS
-    emit "    Tcl_Obj **nameObjList = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj) * $lengthDef);"
+    # Need to add one for the final NULL
+    set lengthDef "([string toupper $table]_NFIELDS + 1)"
+    emit "    Tcl_Obj **nameObjList = (Tcl_Obj **)ckalloc (sizeof (Tcl_Obj *) * $lengthDef);"
     emit ""
 
     # create and initialize an array containing all of the NameObj
