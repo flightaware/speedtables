@@ -1571,13 +1571,11 @@ struct $table *${table}_find_or_create (CTable *ctable, const char *key, int *in
     const char *key_value = key;
     struct $table *row = NULL;
 
-    static struct $table *savedRow = NULL;
 #ifdef WITH_SHARED_TABLES
-    static struct $table *savedSharedRow = NULL;
     int isShared = ctable->share_type == CTABLE_SHARED_MASTER;
-    struct $table *nextRow = isShared ? savedSharedRow : savedRow;
+    struct $table *nextRow = (struct $table *) (isShared ? ctable->savedSharedRow : ctable->savedRow);
 #else
-    struct $table *nextRow = savedRow;
+    struct $table *nextRow = (struct $table *) (ctable->savedRow);
 #endif
 
     // Make sure the preallocated row is prepared
@@ -1637,10 +1635,10 @@ struct $table *${table}_find_or_create (CTable *ctable, const char *key, int *in
     // Remember what we allocated (or didn't).
 #ifdef WITH_SHARED_TABLES
     if(isShared)
-	savedSharedRow = nextRow;
+	ctable->savedSharedRow = (ctable_BaseRow *)nextRow;
     else
 #endif
-	savedRow = nextRow;
+	ctable->savedRow = (ctable_BaseRow *)nextRow;
 
     return row;
 }

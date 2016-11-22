@@ -505,7 +505,10 @@ struct CTable {
 // reader-only
     volatile struct CTable		*share_ctable;
     volatile reader_t			*my_reader;
+    ctable_BaseRow			*savedSharedRow;
 #endif
+    ctable_BaseRow			*savedRow;
+
     int					 performanceCallbackEnable:1;
     char				*performanceCallback;
     double				 performanceCallbackThreshold;

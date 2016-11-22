@@ -238,6 +238,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 		    Tcl_AppendResult(interp, "Can not save ctable name in share", NULL);
 		    goto createError;
 		}
+		ctable->savedSharedRow = NULL;
 	    } else
 #endif
 	        ctable = (CTable *)ckalloc (sizeof(CTable));
@@ -251,6 +252,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->destroying = 0;
 	    ctable->searching = 0;
 	    ctable->nullKeyValue = NULL;
+	    ctable->savedRow = NULL;
 
 	    ctable->performanceCallbackEnable = 0;
 	    ctable->performanceCallback = NULL;
