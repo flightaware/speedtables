@@ -293,7 +293,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      for(i = 0; infoStrings[i]; i++) {
 		  tmpobj = infoStrings[i][0]
 			 ? Tcl_NewStringObj(infoStrings[i], -1)
-			 : ctable_quoteTypeList(interp);
+			 : ctable_quoteTypeList(ctable);
 
 		  if (Tcl_ListObjAppendElement (interp, list, tmpobj) == TCL_ERROR) {
 		      Tcl_AppendResult(interp, " (internal error)", NULL);
@@ -310,7 +310,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		  }
 		  tmpobj = infoStrings[i+1][0]
 			 ? Tcl_NewStringObj(infoStrings[i+1], -1)
-                         : ctable_quoteTypeList(interp);
+                         : ctable_quoteTypeList(ctable);
 		  if (Tcl_ListObjAppendElement (interp, list, tmpobj) == TCL_ERROR) {
 		      Tcl_AppendResult(interp, " (internal error)", NULL);
 		      return TCL_ERROR;
@@ -680,7 +680,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	Tcl_Obj      **listObjv;
 	char	      *key;
         Tcl_Obj       *keyObj;
-	static char    keyString[32];
+	char           keyString[32];
 	int	       nocomplain = 0;
 	Tcl_Obj *CONST*origObjv = objv;
 

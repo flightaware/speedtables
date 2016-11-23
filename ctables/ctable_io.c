@@ -193,19 +193,22 @@ CTABLE_INTERNAL int ctable_parseQuoteType(Tcl_Interp *interp, Tcl_Obj *obj)
 //
 // Return a list of ctable quote type names (cache it, too)
 //
-CTABLE_INTERNAL Tcl_Obj *ctable_quoteTypeList(Tcl_Interp *interp)
+CTABLE_INTERNAL Tcl_Obj *ctable_quoteTypeList(CTable *ctable)
 {
-    static Tcl_Obj *result = NULL;
+    if(!ctable->creator->quoteTypeList) {
+	Tcl_Interp *interp = ctable->creator->interp;
+	int index;
+	Tcl_Obj *result = Tcl_NewObj();
 
-    if (!result) {
-        int index;
-	result = Tcl_NewObj();
-        for(index = 0; ctable_quote_names[index]; index++) {
+	for(index = 0; ctable_quote_names[index]; index++) {
 	    Tcl_ListObjAppendElement(interp, result, Tcl_NewStringObj(ctable_quote_names[index], -1));
 	}
-	Tcl_IncrRefCount(result);
+
+	ctable->creator->quoteTypeList = result;
+	Tcl_IncrRefCount(ctable->creator->quoteTypeList);
     }
-    return result;
+
+    return ctable->creator->quoteTypeList;
 }
 
 // vim: set ts=8 sw=4 sts=4 noet :

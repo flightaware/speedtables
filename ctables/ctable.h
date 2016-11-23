@@ -429,6 +429,7 @@ struct ctable_CreatorTable {
     Tcl_Obj             **nameObjList;
     Tcl_Obj              *defaultEmptyStringObj;
     Tcl_Obj              *nullValueObj;
+    Tcl_Obj              *quoteTypeList;
     char                 *nullValueString;
     int                   nullValueSize;
     int                  *fieldList;

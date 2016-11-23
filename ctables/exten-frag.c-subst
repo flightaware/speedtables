@@ -35,6 +35,8 @@
     Tcl_IncrRefCount (t->nullValueObj);
     t->nullValueString = Tcl_GetStringFromObj (t->nullValueObj, &t->nullValueSize);
 
+    t->quoteTypeList = NULL;
+
     t->nFields = $NFIELDS;
     t->nLinkedLists = $NLINKED_LISTS;
 
