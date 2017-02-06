@@ -599,7 +599,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 
 	      if (!shmattachpid(ctable->share, pid)) {
-		  Tcl_AppendResult("Can't register pid ", Tcl_GetString(objv[2]), " in shared memory", NULL);
+		  Tcl_AppendResult(interp, "Can't register pid ", Tcl_GetString(objv[2]), " in shared memory", NULL);
 		  return TCL_ERROR;
 	      }
 
