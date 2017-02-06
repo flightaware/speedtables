@@ -390,7 +390,9 @@ int shmattachpid(shm_t   *share, int pid)
 {
     volatile mapheader_t *map = share->map;
 
-    if(!pid) return 0;         // invalid pid
+    if(!pid) {
+	return 0;         // invalid pid
+    }
     if(pid2reader(map, pid)) return 1;    // success, already added.
 
     for (unsigned i = 0; i < MAX_SHMEM_READERS; i++) {
