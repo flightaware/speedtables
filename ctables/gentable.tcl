@@ -723,10 +723,41 @@ proc gen_check_unchanged_string {fieldName default defaultLength} {
 proc gen_default_test {varName lengthName default defaultLength} {
     if {$defaultLength == 0} { return "!*$varName" }
 
-    set def0 '[cquote [string index $default 0] {'}]'
+    # first character as a char to avoid calling strlen
+    # For the rare case where the default string is nonprintable,
+    # fudge it.
+    if {[string index $default 0] == "\\"} {
+       set def0 "\"$default\"\[0]"
+    } else {
+	set def0 '[string index $default 0]'
+    }
 
     return "$lengthName == $defaultLength && *$varName == $def0 && strncmp ($varName, \"$default\", $defaultLength) == 0"
 }
+
+proc default_code_wrapper {fieldName code} {
+	variable fields
+
+	array set params $fields($fieldName)
+
+	if {[info exists params(default)]} {
+		set default $params(default)
+	} elseif {[info exist params(notnull)] && $params(notnull)} {
+		set default ""
+	} else {
+		return $code
+	}
+
+	return "
+		if (row->$fieldName) {
+			$code
+		} else {
+			row->$fieldName = (char *)\"[cquote $default]\";
+			$code
+			row->$fieldName = NULL;
+		}"
+}
+
 
 #
 # varstringSetSource - code we run subst over to generate a set of a string.
@@ -755,9 +786,13 @@ variable varstringSetSource {
 	// even if the previous value was default, so if the new value is
 	// default we know the old value wasn't.
 	if ([gen_default_test stringPtr length $default $defaultLength]) {
-[gen_ctable_remove_from_index $fieldName]
 	    if (row->$fieldName != NULL) {
+[gen_ctable_remove_from_index $fieldName]
 	        [gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
+	    } else {
+		row->$fieldName = (char*)\"$default\";
+[gen_ctable_remove_from_index $fieldName]
+		row->$fieldName = NULL;
 	    }
 
 	    // It's a change to the default string. If we're
@@ -779,7 +814,8 @@ variable varstringSetSource {
 
 	// previous field isn't null, new field isn't null, isn't
 	// the default string, and isn't the same as the previous field
-[gen_ctable_remove_from_index $fieldName]
+	// but previous field may be the default string!
+	[default_code_wrapper $fieldName [gen_ctable_remove_from_index $fieldName]]
 
 	// new string value
 	// if the allocated length is less than what we need, get more,

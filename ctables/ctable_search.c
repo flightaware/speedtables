@@ -2736,7 +2736,7 @@ if(field == TRACKFIELD) {
 	    // something to match
             *row->_ll_nodes[index].head = row;
 	    if (!jsw_serase (skip, row)) {
-		fprintf (stderr, "Attempted to remove non-existent field %s", ctable->creator->fields[field]->name);
+		fprintf (stderr, "Attempted to remove non-existent field %s\n", ctable->creator->fields[field]->name);
 	    }
 	    *row->_ll_nodes[index].head = NULL; // don't think this is needed, but do it anyway
 	}
