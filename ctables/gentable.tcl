@@ -691,74 +691,6 @@ variable keySetSource {
       }
 }
 
-proc gen_check_unchanged_string {fieldName default defaultLength} {
-    variable leftCurly
-    variable rightCurly
-
-	append code "if (!row->$fieldName) $leftCurly"
-	if {"$defaultLength" == "0"} {
-	    append code "
-            if (!*stringPtr)
-		return TCL_OK;"
-	} else {
-	    # For the rare case where the default string is nonprintable,
-	    # fudge it.
-	    if {[string index $default 0] == "\\"} {
-	       set def0 "\"$default\"\[0]"
-	    } else {
-		set def0 '[string index $default 0]'
-	    }
-	    append code "
-	    if (length == $defaultLength && *stringPtr == $def0 && (strncmp (stringPtr, \"$default\", $defaultLength) == 0))
-	        return TCL_OK;"
-	}
-	append code "
-        $rightCurly else $leftCurly
-	    if(length == row->_${fieldName}Length && *stringPtr == *row->$fieldName && strcmp(stringPtr, row->$fieldName) == 0)
-	        return TCL_OK;
-	$rightCurly"
-	return $code
-}
-
-proc gen_default_test {varName lengthName default defaultLength} {
-    if {$defaultLength == 0} { return "!*$varName" }
-
-    # first character as a char to avoid calling strlen
-    # For the rare case where the default string is nonprintable,
-    # fudge it.
-    if {[string index $default 0] == "\\"} {
-       set def0 "\"$default\"\[0]"
-    } else {
-	set def0 '[string index $default 0]'
-    }
-
-    return "$lengthName == $defaultLength && *$varName == $def0 && strncmp ($varName, \"$default\", $defaultLength) == 0"
-}
-
-proc default_code_wrapper {fieldName code} {
-	variable fields
-
-	array set params $fields($fieldName)
-
-	if {[info exists params(default)]} {
-		set default $params(default)
-	} elseif {[info exist params(notnull)] && $params(notnull)} {
-		set default ""
-	} else {
-		return $code
-	}
-
-	return "
-		if (row->$fieldName) {
-			$code
-		} else {
-			row->$fieldName = (char *)\"[cquote $default]\";
-			$code
-			row->$fieldName = NULL;
-		}"
-}
-
-
 #
 # varstringSetSource - code we run subst over to generate a set of a string.
 #
@@ -779,43 +711,13 @@ variable varstringSetSource {
 [gen_null_check_during_set_source $table $fieldName]
 
 	stringPtr = Tcl_GetStringFromObj (obj, &length);
-[gen_unset_null_during_set_source $table $fieldName \
-	[gen_check_unchanged_string $fieldName $default $defaultLength]]
+[gen_unset_null_during_set_source $table $fieldName "
+	if(length == row->_${fieldName}Length && *stringPtr == *row->$fieldName && strcmp(stringPtr, row->$fieldName) == 0)
+	        return TCL_OK;"]
 
-	// we now know it's not the same as the previous value of the string,
-	// even if the previous value was default, so if the new value is
-	// default we know the old value wasn't.
-	if ([gen_default_test stringPtr length $default $defaultLength]) {
-	    if (row->$fieldName != NULL) {
-[gen_ctable_remove_from_index $fieldName]
-	        [gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
-	    } else {
-		row->$fieldName = (char*)\"$default\";
-[gen_ctable_remove_from_index $fieldName]
-		row->$fieldName = NULL;
-	    }
-
-	    // It's a change to the default string. If we're
-	    // indexed, force the default string in there so the 
-	    // compare routine will be happy and then insert it.
-	    // can't use our proc here yet because of the
-	    // default empty string obj fanciness
-	    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
-		row->$fieldName = (char*)\"[cquote $default]\";      // TODO: gross cast discards const.
-		if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
-	    }
-	    row->$fieldName = NULL;
-	    row->_${fieldName}AllocatedLength = 0;
-	    row->_${fieldName}Length = 0;
-	    break;
-	}
-
-	// previous field isn't null, new field isn't null, isn't
-	// the default string, and isn't the same as the previous field
-	// but previous field may be the default string!
-	[default_code_wrapper $fieldName [gen_ctable_remove_from_index $fieldName]]
+	// previous field isn't null, new field isn't null, and
+	// isn't the same as the previous field
+	[gen_ctable_remove_from_index $fieldName]
 
 	// new string value
 	// if the allocated length is less than what we need, get more,
@@ -880,8 +782,7 @@ variable fixedstringSetSource {
 	int   len;
 [gen_null_check_during_set_source $table $fieldName]
 	stringPtr = Tcl_GetStringFromObj (obj, &len);
-[gen_unset_null_during_set_source $table $fieldName \
-	"if (len == 0 && [expr [string length $default] > 0]) stringPtr = \"$default\";
+[gen_unset_null_during_set_source $table $fieldName "
 	if (*stringPtr == *row->$fieldName && strncmp(row->$fieldName, stringPtr, $length) == 0)
 	    return TCL_OK;"]
 [gen_ctable_remove_from_index $fieldName]
@@ -986,25 +887,18 @@ variable nullSortSource {
 }
 
 #
-# gen_null_default_check_during_sort_comp -
-#	emit null and default checking as part of field
+# gen_null_check_during_sort_comp -
+#	emit null checking as part of field
 #  comparing in a sort
 #
-proc gen_null_default_check_during_sort_comp {table fieldName} {
+proc gen_null_check_during_sort_comp {table fieldName} {
     variable nullSortSource
     variable varstringSortCompareNullSource
-    variable varstringSortCompareDefaultSource
 
     upvar ::ctable::fields::$fieldName field
 
     if {"$field(type)" == "varstring"} {
-	if {![info exists field(default)] || "$field(default)" == ""} {
-	     set source $varstringSortCompareNullSource
-	} else {
-	     set source $varstringSortCompareDefaultSource
-	     set defaultString "\"[cquote $field(default)]\""
-	     set defaultChar "'[cquote [string index $field(default) 0] {'}]'"
-	}
+	set source $varstringSortCompareNullSource
     } elseif {[info exists field(notnull)] && $field(notnull)} {
         set source ""
     } else {
@@ -1039,7 +933,7 @@ proc gen_null_exclude_during_sort_comp {table fieldName} {
 #
 variable boolSortSource {
 	case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
           if (row1->$fieldName && !row2->$fieldName) {
 	      result = -direction;
 	      break;
@@ -1061,7 +955,7 @@ variable boolSortSource {
 #
 variable numberSortSource {
       case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
         if (row1->$fieldName < row2->$fieldName) {
 	    result = -direction;
 	    break;
@@ -1075,39 +969,6 @@ variable numberSortSource {
 	result = 0;
 	break;
       }
-}
-
-#
-# varstringSortCompareDefaultSource - compare against default strings for
-#   sorting
-#
-# note there's also a varstringCompareNullSource that's pretty close to this
-# but returns stuff rather than setting results and doing a break
-#
-#
-variable varstringSortCompareDefaultSource {
-    if (!row1->$fieldName) {
-	if(!row2->$fieldName) {
-	    result = 0;
-	    break;
-	} else {
-	    if ($defaultChar != row2->${fieldName}[0]) {
-		result = direction * (($defaultChar < row2->${fieldName}[0]) ? -1 : 1);
-		break;
-	    }
-	    result = direction * strcmp($defaultString, row2->$fieldName);
-	    break;
-	}
-    } else {
-	if(!row2->$fieldName) {
-	    if (row1->${fieldName}[0] != $defaultChar) {
-		result = direction * ((row1->${fieldName}[0] < $defaultChar) ? -1 : 1);
-		break;
-	    }
-	    result = direction * strcmp(row1->$fieldName, $defaultString);
-	    break;
-	}
-    }
 }
 
 #
@@ -1138,7 +999,7 @@ variable varstringSortCompareNullSource {
 #
 variable varstringSortSource {
       case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
 
         result = direction * strcmp (row1->$fieldName, row2->$fieldName);
 	break;
@@ -1151,7 +1012,7 @@ variable varstringSortSource {
 #
 variable fixedstringSortSource {
       case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
         result = direction * strncmp (row1->$fieldName, row2->$fieldName, $length);
 	break;
       }
@@ -1163,7 +1024,7 @@ variable fixedstringSortSource {
 #
 variable binaryDataSortSource {
       case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
         result = direction * memcmp (&row1->$fieldName, &row2->$fieldName, $length);
 	break;
       }
@@ -2929,6 +2790,7 @@ proc gen_defaults_subr {struct} {
 	    }
 
 	    varstring {
+		# TODO: INSERT CODE TO INITIALIZE DEAFULT OR NOTNULL STRINGS
 	        emit "        $baseCopy.$fieldName = (char *) NULL;"
 		emit "        $baseCopy._${fieldName}Length = 0;"
 		emit "        $baseCopy._${fieldName}AllocatedLength = 0;"
@@ -5002,25 +4864,14 @@ variable fieldCompareNullCheckSource {
 #
 proc gen_field_compare_null_check_source {table fieldName} {
     variable fieldCompareNullCheckSource
-    variable varstringCompareDefaultSource
     variable varstringCompareNullSource
     variable varstringCompareEmptySource
     upvar ::ctable::fields::$fieldName field
 
-    if {"$field(type)" == "varstring"} {
-	# Varstring is different because there's three special cases for varstring:
-	#   NULL string, DEFAULT string, and EMPTY string
-	if {[info exists field(default)]} {
-	     set source $varstringCompareDefaultSource
-	     set defaultString "\"[cquote $field(default)]\""
-	     set defaultChar "'[cquote [string index $field(default) 0] {'}]'"
-        } elseif {[info exists field(notnull)] && $field(notnull)} {
-             set source $varstringCompareEmptySource
-	} else {
-	     set source $varstringCompareNullSource
-	}
-    } elseif {[info exists field(notnull)] && $field(notnull)} {
+    if {[info exists field(notnull)] && $field(notnull)} {
         set source ""
+    } elseif {"$field(type)" == "varstring"} {
+	set source $varstringCompareNullSource
     } else {
 	set source $fieldCompareNullCheckSource
     }
@@ -5123,27 +4974,6 @@ variable varstringFieldCompSource {
 
 
 #
-# varstringCompareDefaultSource - compare against default strings
-#
-# note there's also a varstringSortCompareDefaultSource that's pretty close to 
-# this but sets a result variable and does a break to get out of a case
-# statement rather than returning something
-#
-variable varstringCompareDefaultSource {
-    if (!row1->$fieldName) {
-	if(!row2->$fieldName) {
-	    return 0;
-	} else {
-	    return strcmp($defaultString, row2->$fieldName);
-	}
-    } else {
-	if(!row2->$fieldName) {
-	    return strcmp(row1->$fieldName, $defaultString);
-	}
-    }
-}
-
-#
 # varstringCompareNullSource - compare against default empty string
 #
 # note there's also a varstringSortCompareNullSource that's pretty close to 
@@ -5164,22 +4994,6 @@ variable varstringCompareNullSource {
 	}
     }
 }
-
-variable varstringCompareEmptySource {
-    // empty string sorts low
-    if (!row1->$fieldName) {
-	if(!row2->$fieldName) {
-	    return 0;
-	} else {
-	    return -1;
-	}
-    } else {
-	if(!row2->$fieldName) {
-	    return 1;
-	}
-    }
-}
-
 
 #
 # fixedstringFieldCompSource - code we run subst over to generate a comapre of a 
