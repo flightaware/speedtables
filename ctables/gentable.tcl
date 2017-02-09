@@ -737,7 +737,7 @@ variable varstringSetSource {
 		return TCL_ERROR;
 	    }
 
-	    if (row->${fieldName}AllocatedLength > 0) {
+	    if (row->_${fieldName}AllocatedLength > 0) {
 		[gen_deallocate ctable "row->$fieldName" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    }
 	    row->$fieldName = mem;
@@ -2781,6 +2781,7 @@ proc gen_defaults_subr {struct} {
     emit "	  $rightCurly"
     emit ""
 
+    set fieldNum 0
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
@@ -2790,8 +2791,16 @@ proc gen_defaults_subr {struct} {
 	    }
 
 	    varstring {
-		# TODO: INSERT CODE TO INITIALIZE DEFAULT OR NOTNULL STRINGS
-	        emit "        $baseCopy.$fieldName = (char *) NULL;"
+		set initLength 0
+		if {[info exists field(default)]} {
+		    set initValue "${table}_defaultStrings\[$fieldNum]"
+		    set initLength [string length $field(default)]
+		} elseif {[info exists field(notnull)] && $field(notnull)} {
+		    set initValue "${table}_defaultStrings\[$fieldNum]"
+		} else {
+		    set initValue "NULL"
+		}
+	        emit "        $baseCopy.$fieldName = (char *) $initValue;"
 		emit "        $baseCopy._${fieldName}Length = 0;"
 		emit "        $baseCopy._${fieldName}AllocatedLength = 0;"
 
@@ -2876,11 +2885,26 @@ proc gen_defaults_subr {struct} {
 		}
 	    }
 	}
+        incr fieldNum;
     }
 
     emit "    $rightCurly"
     emit ""
     emit "    *row = $baseCopy;"
+    if {$withSharedTables} {
+        set fieldNum 0
+	# TODO - MAKE THIS REAL
+	foreach fieldName $fieldList {
+	    upvar ::ctable::fields::$fieldName field
+
+	    if {$field(type) == "varstring"} {
+		if {[info exists field(default)] || ([info exists field(notnull)] && $field(notnull))} {
+		    emit "    row->$fieldName = (char *) ctable->defaultStrings\[$fieldNum];"
+		}
+	    }
+	    incr fieldNum
+	}
+    }
 
     emit "$rightCurly"
     emit ""
@@ -3017,14 +3041,14 @@ proc gen_delete_subr {subr struct} {
 	switch $field(type) {
 	    varstring {
     		if {$withSharedTables} {
-	            emit "    if (row->$fieldName != (char *) NULL) {"
+	            emit "    if (row->_${fieldName}AllocatedLength > 0) {"
 		    emit "	  if(!is_shared || indexCtl == CTABLE_INDEX_PRIVATE)"
 		    emit "            ckfree((char *)row->$fieldName);"
 		    emit "        else if(is_master && !final)"
 		    emit "            shmfree(ctable->share, (char *)row->$fieldName);"
 		    emit "    }"
 		} else {
-	            emit "    if (row->$fieldName != (char *) NULL) ckfree((char *)row->$fieldName);"
+	            emit "    if (row->_${fieldName}AllocatedLength > 0) ckfree((char *)row->$fieldName);"
 		}
 	    }
 	}
