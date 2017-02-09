@@ -2941,14 +2941,8 @@ emit "    (long)row->_ll_nodes\[$listnum].prev,"
 emit "    (long)row->_ll_nodes\[$listnum].next);"
 emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
 }
-	    if {"$def" != "" && "$field(type)" == "varstring"} {
-		emit "        row->$fieldName = (char*)\"[cquote $def]\";  // TODO: discards const"
-	    }
 	    emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
 	    emit "            return TCL_ERROR;"
-	    if {"$def" != "" && "$field(type)" == "varstring"} {
-	        emit "        row->$fieldName = NULL;"
-	    }
 	    emit "    $rightCurly"
 	} else {
 	    emit "// Field \"$fieldName\" ($fieldnum) not indexed"
