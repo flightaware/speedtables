@@ -696,13 +696,20 @@ variable keySetSource {
 #
 # strings are char *'s that we manage automagically.
 #
-# Get the string from the passed-in object.  If the length of the string
-# matches the length of the default string, see if the length of the
-# default string is zero or if obj's string matches the default string.
-# If so, set the char * field in the row to NULL.  Upon a fetch of the
-# field, we'll provide the default string.
+# If the string isn't changed, return immediately.
 #
-# Otherwise allocate space for the new string value and copy it in.
+# Remove from index if we're indexed.
+#
+# If the new string doesn't fit in the allocated space:
+#
+#    If space has been allocated for the existing string (not null and not initialized to the
+#    static default string), free the old string.
+#
+#    Allocate space for the new string (TODO: allocate strings to fixed size blocks to reduse fragmentation)
+#
+# Copy the string in and set the new length.
+#
+# Add back to index.
 #
 variable varstringSetSource {
       case $optname: {
