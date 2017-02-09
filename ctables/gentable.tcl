@@ -2848,9 +2848,10 @@ proc gen_defaults_subr {struct} {
     emit "    $rightCurly"
     emit ""
     emit "    *row = $baseCopy;"
+
+    # Poke in shared default strings where needed.
     if {$withSharedTables} {
         set fieldNum 0
-	# TODO - MAKE THIS REAL
 	foreach fieldName $fieldList {
 	    upvar ::ctable::fields::$fieldName field
 
