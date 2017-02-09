@@ -1274,13 +1274,9 @@ proc gen_assign_length_with_default {table fieldName varName rowName shortcut} {
 variable varstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
-	  CONST char *[gen_assign_string_with_default $table $fieldName string row 1]
-	  [gen_assign_length_with_default $table $fieldName stringLength row 1]
-	  CONST char *string1 = NULL;
 
 [gen_standard_comp_null_check_source $table $fieldName]
 
-	  [gen_assign_string_with_default $table $fieldName string1 row1 0]
 	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH) || (compType == CTABLE_COMP_MATCH_CASE) || (compType == CTABLE_COMP_NOTMATCH_CASE)) {
 [gen_null_exclude_during_sort_comp $table $fieldName]
 	      // matchMeansKeep will be 1 if matching means keep,
@@ -1293,7 +1289,7 @@ variable varstringCompSource {
 		  CONST char *match;
 
 		  exclude = !matchMeansKeep;
-		  for (field = string, match = string1; *match != '*' && *match != '\0'; match++, field++) {
+		  for (field = row->$fieldName, match = row1->$fieldName; *match != '*' && *match != '\0'; match++, field++) {
 		      // printf("comparing '%c' and '%c'\n", *field, *match);
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
@@ -1310,11 +1306,11 @@ variable varstringCompSource {
 		  // if we got here it was anchored and we now know the score
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
-	          exclude = (boyer_moore_search (sm, (unsigned char *)string, stringLength, sm->nocase) == NULL);
+	          exclude = (boyer_moore_search (sm, (unsigned char *)row->$fieldName, row->_${fieldName}Length, sm->nocase) == NULL);
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
-	          exclude = !(Tcl_StringCaseMatch (string, string1, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
+	          exclude = !(Tcl_StringCaseMatch (row->$fieldName, row1->$fieldName, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
               } else {
@@ -1322,7 +1318,7 @@ variable varstringCompSource {
 	      }
 	  }
 
-          strcmpResult = strcmp (string, string1);
+          strcmpResult = strcmp (row->$fieldName, row1->$fieldName);
 [gen_standard_comp_switch_source $fieldName]
         }
 }
