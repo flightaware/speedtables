@@ -737,7 +737,7 @@ variable varstringSetSource {
 		return TCL_ERROR;
 	    }
 
-	    if (row->$fieldName != NULL) {
+	    if (row->${fieldName}AllocatedLength > 0) {
 		[gen_deallocate ctable "row->$fieldName" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    }
 	    row->$fieldName = mem;
@@ -2790,7 +2790,7 @@ proc gen_defaults_subr {struct} {
 	    }
 
 	    varstring {
-		# TODO: INSERT CODE TO INITIALIZE DEAFULT OR NOTNULL STRINGS
+		# TODO: INSERT CODE TO INITIALIZE DEFAULT OR NOTNULL STRINGS
 	        emit "        $baseCopy.$fieldName = (char *) NULL;"
 		emit "        $baseCopy._${fieldName}Length = 0;"
 		emit "        $baseCopy._${fieldName}AllocatedLength = 0;"
