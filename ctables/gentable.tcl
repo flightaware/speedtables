@@ -3265,10 +3265,8 @@ proc emit_set_standard_field {fieldName setSourceVarName} {
 #
 # emit_set_varstring_field - emit code to set a varstring field
 #
-proc emit_set_varstring_field {table fieldName default defaultLength} {
+proc emit_set_varstring_field {table fieldName} {
     variable varstringSetSource
-
-    set default [cquote $default]
 
     set optname [field_to_enum $fieldName]
 
@@ -3543,14 +3541,7 @@ proc gen_sets {} {
 	    }
 
 	    varstring {
-	        if {[info exists field(default)]} {
-		    set default $field(default)
-		    set defaultLength [string length $field(default)]
-		} else {
-		    set default ""
-		    set defaultLength 0
-		}
-		emit_set_varstring_field $table $fieldName $default $defaultLength
+		emit_set_varstring_field $table $fieldName
 	    }
 
 	    boolean {
