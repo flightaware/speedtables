@@ -2801,7 +2801,7 @@ proc gen_defaults_subr {struct} {
 		    set initValue "NULL"
 		}
 	        emit "        $baseCopy.$fieldName = (char *) $initValue;"
-		emit "        $baseCopy._${fieldName}Length = 0;"
+		emit "        $baseCopy._${fieldName}Length = $initLength;"
 		emit "        $baseCopy._${fieldName}AllocatedLength = 0;"
 
 		if {![info exists field(notnull)] || !$field(notnull)} {
