@@ -3837,25 +3837,6 @@ proc gen_setup_routine {table} {
     emit "    Tcl_IncrRefCount ($emptyObj);"
     emit ""
 
-    #
-    # create and initialize string objects for varstring defaults
-    #
-    emit "    // defaults for varstring objects, if any"
-    foreach fieldName $fieldList {
-	upvar ::ctable::fields::$fieldName field
-
-	if {$field(type) != "varstring"} continue
-	if {![info exists field(default)]} continue
-
-	set defObj ${table}_${fieldName}DefaultStringObj
-
-	if {$field(default) != ""} {
-	    emit "    $defObj = Tcl_NewStringObj (\"[cquote $field(default)]\", -1);"
-	    emit "    Tcl_IncrRefCount ($defObj);"
-	    emit ""
-	}
-    }
-
     emit "    // initialize the null string object to the default (empty) value"
     emit "    ${table}_NullValueObj = Tcl_NewObj ();"
     emit "    ${table}_NullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &${table}_NullValueSize);"
@@ -4510,21 +4491,6 @@ proc gen_field_names {} {
     emit "static int ${table}_NullValueSize;"
     emit ""
 
-    emit "// define default objects for varstring fields, if any"
-    foreach myField $fieldList {
-	upvar ::ctable::fields::$myField field
-
-	if {$field(type) == "varstring" && [info exists field(default)]} {
-	    if {$field(default) != ""} {
-		emit "static Tcl_Obj *${table}_${myField}DefaultStringObj;"
-	    }
-	    lappend defaultStrings [cquote $field(default)]
-	} else {
-	    lappend defaultStrings ""
-	}
-    }
-    emit ""
-
     set nullableList {}
 
     foreach myField $fieldList {
@@ -4534,9 +4500,6 @@ proc gen_field_names {} {
         if {[info exists field(notnull)] && $field(notnull)} {
 	    set value 0
         }
-#	if {[info exists field(default)]} {
-#	    set value 1
-#	}
 
 	lappend nullableList $value
     }
@@ -4546,6 +4509,18 @@ proc gen_field_names {} {
     emit ""
 
     if {$withSharedTables} {
+	set defaultStrings {}
+
+        foreach myField $fieldList {
+	    upvar ::ctable::fields::$myField field
+
+	    if {$field(type) == "varstring" && [info exists field(default)]} {
+	        lappend defaultStrings [cquote $field(default)]
+	    } else {
+	        lappend defaultStrings ""
+	    }
+        }
+
         emit "// define default string list"
         emit "static CONST char *${table}_defaultStrings\[] = $leftCurly"
         emit "    \"[join $defaultStrings {", "}]\""
@@ -4606,15 +4581,11 @@ proc gen_gets_string_cases {} {
 	  }
 
 	  "varstring" {
-	    emit "        if (row->${myField} == NULL) $leftCurly"
-
-	    if {![info exists field(default)] || $field(default) == ""} {
-	        set source ${table}_DefaultEmptyStringObj
-	    } else {
-	        set source ${table}_${myField}DefaultStringObj
+	    if {![info exists field(notnull)] || $field(notnull) == 0} {
+	        emit "        if (row->${myField} == NULL) $leftCurly"
+	        emit "            return Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, lengthPtr);"
+	        emit "        $rightCurly"
 	    }
-	    emit "            return Tcl_GetStringFromObj ($source, lengthPtr);"
-	    emit "        $rightCurly"
 	    emit "        *lengthPtr = row->_${myField}Length;"
 	    emit "        return row->$myField;"
 	  }
