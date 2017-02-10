@@ -4075,22 +4075,10 @@ proc gen_new_obj {type fieldName} {
 	}
 
 	varstring {
-	    # if there's no default for the var string, the null pointer 
-	    # response is the null
-	    if {![info exists field(default)]} {
-	        set defObj ${table}_NullValueObj
-	    } else {
-		if {$field(default) == ""} {
-		    set defObj ${table}_DefaultEmptyStringObj
-		} else {
-		    set defObj ${table}_${fieldName}DefaultStringObj
-		}
-	    }
-
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : ((row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length))"
+		return "(row->_${fieldName}IsNull || !row->$fieldName) ? ${table}_NullValueObj : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length)"
 	    } else {
-		return "(row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length)"
+		return "Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length)"
 	    }
 	}
 
