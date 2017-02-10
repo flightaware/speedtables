@@ -271,26 +271,6 @@ proc gen_deallocate {ctable pointer {private 0}} {
     return "( (($ctable)->share_type != CTABLE_SHARED_MASTER || ($private)) ? $priv : $pub)"
 }
 
-#
-# Default empty string for table
-#
-proc gen_defaultEmptyString {ctable lvalue {private 0}} {
-    variable withSharedTables
-    variable table
-    set priv "Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &($lvalue))"
-    set pub "(($lvalue) = 0, ($ctable)->emptyString)"
-
-    if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
-	return $priv
-    }
-
-    if {"$private" == "0" || "$private" == "false"} {
-	return $pub
-    }
-
-    return "(($private) ? $priv : $pub)"
-}
-
 variable allocateSource {
 void ${table}_shmpanic(CTable *ctable)
 {
