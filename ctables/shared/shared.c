@@ -383,14 +383,16 @@ volatile reader_t *pid2reader(volatile mapheader_t *map, int pid)
 }
 
 
-// Add ourself (pid) to the list of readers.
-// Callable by slaves.
+// Add client (pid) to the list of readers.
+// Callable by master.
 // Returns 1 on success, 0 on failure.
 int shmattachpid(shm_t   *share, int pid)
 {
     volatile mapheader_t *map = share->map;
 
-    if(!pid) return 0;         // invalid pid
+    if(!pid) {
+	return 0;         // invalid pid
+    }
     if(pid2reader(map, pid)) return 1;    // success, already added.
 
     for (unsigned i = 0; i < MAX_SHMEM_READERS; i++) {

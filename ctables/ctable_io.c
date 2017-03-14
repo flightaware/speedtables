@@ -60,7 +60,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 		    j += 3;
 		    break;
 		case CTABLE_QUOTE_ESCAPE: {
-		    char *off = strchr(special, c);
+		    const char *off = strchr(special, c);
 		    newptr[j++] = '\\';
 		    if(off) {
 			newptr[j++] = replace[off - special];

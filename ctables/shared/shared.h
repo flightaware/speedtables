@@ -25,13 +25,13 @@ using namespace boost::container;
 #if (LONG_MAX == 4294967296L) /* 32 bit long */
   typedef size_t cell_t;
   #define cellabs(t) abs(t)
-  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(int), SIZE_T_should_be_int);
-  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 4, SIZE_T_should_be_32_bits);
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(int), "SIZE_T_should_be_int");
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 4, "SIZE_T_should_be_32_bits");
 #else /* 64 bit long */
   typedef size_t cell_t;
   #define cellabs(t) llabs(t)
-  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(long long), SIZE_T_should_be_long_long);
-  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 8, SIZE_T_should_be_64_bits);
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(long long), "SIZE_T_should_be_long_long");
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 8, "SIZE_T_should_be_64_bits");
 #endif
 
 #define CELLSIZE (sizeof (cell_t))
