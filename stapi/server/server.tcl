@@ -1002,8 +1002,6 @@ namespace eval ::stapi {
     variable time_column
     variable sql_cache
 
-    set ctable_name $ctable2name($ctable)
-
     upvar 1 $_retsql retsql
 
     if {"$_err" != ""} {
@@ -1021,6 +1019,7 @@ namespace eval ::stapi {
     if {![info exists ctable2name($ctable)]} {
       set reason "$ctable: Not a cached ctable"
     } else {
+      set ctable_name $ctable2name($ctable)
       set sql_file [workname $ctable_name sql]
 
       if {![file exists $sql_file]} {
