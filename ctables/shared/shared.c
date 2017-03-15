@@ -966,6 +966,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             ) {
                 return TCL_ERROR;
             }
+	    Tcl_IncrRefCount(list);
             Tcl_SetObjResult(interp, list);
             return TCL_OK;
         }
