@@ -15,6 +15,19 @@
 //64 bit
 #define MAPADDR ((char *) 0xA0000000000)
 
+char *magic2string(int magic)
+{
+	static char string[256];
+	int i;
+
+	for(i = 0; i < 256; i++) {
+		if(magic == 0) break;
+		string[i] = magic & 0xFF;
+		magic >>= 8;
+	}
+	string[i] = 0;
+	return string;
+}
 void usage (char *av0)
 {
     fprintf(stderr, "Usage: %s filename\n", av0);
@@ -23,7 +36,7 @@ void usage (char *av0)
 int main(int ac, char **av)
 {
 	shm_t          *share;
-	char           *filename;
+	char           *filename = NULL;
 	char           *av0 = *av;
 
 	while (*++av) {
@@ -47,14 +60,14 @@ int main(int ac, char **av)
 	}
 	printf("FILE %s\n", share->filename);
 	printf("SHARE %s\n", share->name);
-	printf("MAP magic = %08lx headersize = %d mapsize = %d cycle = %d\n",
-	       share->map->magic,
+	printf("MAP magic = %s headersize = %d mapsize = %d cycle = %d\n",
+	       magic2string(share->map->magic),
 	       share->map->headersize,
 	       share->map->mapsize,
 	       share->map->cycle);
 
 	int i;
-	int live;
+	int live = 0;
 
 	for(i = 0; i < MAX_SHMEM_READERS; i++) {
 		if(share->map->readers[i].pid) {
@@ -66,13 +79,15 @@ int main(int ac, char **av)
 				putchar(' ');
 
 				
-			printf("%5d: %5d %8x;", i,
+			printf("%d: %5d %8x;", i,
 				share->map->readers[i].pid, 
 				share->map->readers[i].cycle);
 
 			live++;
 		}
 	}
+
+	if(live) putchar('\n');
 
 	printf("NREADERS %d\n", live);
 
