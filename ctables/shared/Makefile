@@ -1,12 +1,12 @@
 CC=g++
 
-all: dumper
+all: st_dumper
 
 clean:
-	-rm dumper dumper.o shared.o
+	-rm st_dumper dumper.o shared.o
 
-dumper: shared.o dumper.o
-	$(CC) -o dumper dumper.o shared.o
+st_dumper: shared.o dumper.o
+	$(CC) -o st_dumper dumper.o shared.o
 
 .c.o:
 	$(CC) -c $< -o $@
