@@ -8,7 +8,12 @@
 
 #include "shared.h"
 
-#define MAPADDR ((char *) 0xA0000000)
+// 32 bit OSX
+//#define MAPADDR ((char *) 0xA000000)
+// 32 bit FreeBSD
+//#define MAPADDR ((char *) 0xA0000000)
+//64 bit
+#define MAPADDR ((char *) 0xA0000000000)
 
 void usage (char *av0)
 {
