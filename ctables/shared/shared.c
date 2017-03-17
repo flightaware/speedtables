@@ -72,10 +72,10 @@ void shared_perror(const char *text) {
 }
 
 
-#ifdef WITH_TCL
 // linkup_assoc_data - attach the bits of data that multiple speedtables
 // C shared libraries need to share.
 // Callable by master or slaves.
+// If not using Tcl, just allocate it if it doesn't exist already
 static void
 linkup_assoc_data (Tcl_Interp *interp)
 {
@@ -84,22 +84,25 @@ linkup_assoc_data (Tcl_Interp *interp)
         return;
     }
 
+#ifdef WITH_TCL
     // locate the associated data 
     assocData = (struct speedtablesAssocData *)Tcl_GetAssocData (interp, ASSOC_DATA_KEY, NULL);
     if (assocData != NULL) {
         //IFDEBUG(fprintf(SHM_DEBUG_FP, "found assocData at %lX\n", (long unsigned int)assocData);)
         return;
     }
+#endif
 
     assocData = (struct speedtablesAssocData *)ckalloc (sizeof (struct speedtablesAssocData));
     assocData->autoshare = 0;
     assocData->share_base = NULL;
     assocData->share_list = NULL;
 
+#ifdef WITH_TCL
     //IFDEBUG(fprintf(SHM_DEBUG_FP, "on interp %lX, constructed assocData at %lX\n", (long unsigned int) interp, (long unsigned int)assocData);)
     Tcl_SetAssocData (interp, ASSOC_DATA_KEY, NULL, (ClientData)assocData);
-}
 #endif
+}
 
 
 // map_file - map a file at addr. If the file doesn't exist, create it first
