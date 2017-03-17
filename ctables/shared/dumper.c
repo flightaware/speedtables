@@ -60,11 +60,9 @@ int main(int ac, char **av)
 	}
 	printf("FILE %s\n", share->filename);
 	printf("SHARE %s\n", share->name);
-	printf("MAP magic = %s headersize = %d mapsize = %d cycle = %d\n",
-	       magic2string(share->map->magic),
-	       share->map->headersize,
-	       share->map->mapsize,
-	       share->map->cycle);
+	printf("MAP magic = %s (%x) headersize = %d cycle = %d\n",
+	       magic2string(share->map->magic), share->map->magic,
+	       share->map->headersize, share->map->cycle);
 
 	int i;
 	int live = 0;
@@ -90,6 +88,36 @@ int main(int ac, char **av)
 	if(live) putchar('\n');
 
 	printf("NREADERS %d\n", live);
+
+	if(share->map->namelist) {
+		printf("SYMBOLS:\n");
+		volatile struct symbol_t *sym;
+
+		for(sym = share->map->namelist; sym; sym = sym->next) {
+			printf("  %s", sym->name);
+			switch (sym->type) {
+				case SYM_TYPE_DATA:
+					//printf(" DATA");
+					break;
+				case SYM_TYPE_STRING:
+					printf(" '%s'", sym->addr);
+					break;
+				default:
+					printf(" UNKNOWN");
+					break;
+			}
+			putchar('\n');
+		}
+	}
+
+	if(share->objects) {
+		printf("OBJECTS:\n");
+		struct object_t *obj;
+
+		for(obj = share->objects; obj; obj = obj->next) {
+			printf("  %s\n", obj->name);
+		}
+	}
 
 	return	0;
 }
