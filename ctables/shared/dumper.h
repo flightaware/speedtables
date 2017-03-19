@@ -76,4 +76,11 @@ struct CTable {
     CT_LIST_ENTRY(CTable)                   instance;
 };
 
+#ifdef WITH_SHARED_TABLES
+# define CTABLE_SHARED_NONE 0
+# define CTABLE_SHARED_MASTER 1
+# define CTABLE_SHARED_READER 2
+#endif
+
+
 void dump_speedtable_info (struct CTable *t);

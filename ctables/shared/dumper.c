@@ -136,5 +136,10 @@ int main(int ac, char **av)
 
 void dump_speedtable_info (struct CTable *t)
 {
-	// TODO
+	if(t->share_type != CTABLE_SHARED_MASTER && t->share_type != CTABLE_SHARED_READER) {
+		printf(" (type %d)", t->share_type);
+		return;
+	}
+        printf(" (count %d)", t->count);
+	//printf(" (minfree %d)", t->share_min_free);
 }
