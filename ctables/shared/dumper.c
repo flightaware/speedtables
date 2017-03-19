@@ -8,6 +8,8 @@
 
 #include "shared.h"
 
+#include "dumper.h"
+
 // 32 bit OSX
 //#define MAPADDR ((char *) 0xA000000)
 // 32 bit FreeBSD
@@ -38,9 +40,17 @@ int main(int ac, char **av)
 	shm_t          *share;
 	char           *filename = NULL;
 	char           *av0 = *av;
+	int expand_speedtables = 0;
 
 	while (*++av) {
-		if (filename == NULL) {
+		if(**av == '-') {
+			if (strcmp(*av, "-speed") == 0) {
+				expand_speedtables = 1;
+			} else {
+				usage(av0);
+				exit(-1);
+			}
+		} else if (filename == NULL) {
 			filename = *av;
 		} else {
 			usage(av0);
@@ -97,7 +107,9 @@ int main(int ac, char **av)
 			printf("  %s", sym->name);
 			switch (sym->type) {
 				case SYM_TYPE_DATA:
-					//printf(" DATA");
+					if(expand_speedtables) {
+						dump_speedtable_info((struct CTable *)sym->addr);
+					}
 					break;
 				case SYM_TYPE_STRING:
 					printf(" '%s'", sym->addr);
@@ -120,4 +132,9 @@ int main(int ac, char **av)
 	}
 
 	return	0;
+}
+
+void dump_speedtable_info (struct CTable *t)
+{
+	// TODO
 }
