@@ -20,9 +20,6 @@
 
 #include "shared.h"
 
-
-
-
 // Data that must be shared between multiple speedtables C extensions
 //
 // NB we used Tcl's interpreter-associated property lists to create, find and

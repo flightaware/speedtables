@@ -5,7 +5,6 @@
 #ifndef SHM_SHARED_H
 #define SHM_SHARED_H
 
-
 #include <limits.h>
 #include <stddef.h>
 #include <boost/static_assert.hpp>
@@ -169,6 +168,7 @@ int parse_size(const char *s, size_t *ptr);
 int parse_flags(const char *s);
 const char *flags2string(int flags);
 size_t shmfreemem(shm_t *shm, int check);
+const char *get_last_shmem_error();
 
 #define SYM_TYPE_STRING 1
 #define SYM_TYPE_DATA 0
