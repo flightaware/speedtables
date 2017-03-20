@@ -83,4 +83,5 @@ struct CTable {
 #endif
 
 
-void dump_speedtable_info (struct CTable *t);
+void dump_speedtable_info (struct CTable *t, int verbose);
+int check_speedtable(struct CTable *t, int log);

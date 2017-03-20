@@ -32,7 +32,7 @@ char *magic2string(int magic)
 }
 void usage (char *av0)
 {
-    fprintf(stderr, "Usage: %s filename\n", av0);
+	fprintf(stderr, "Usage: %s filename\n", av0);
 }
 
 int main(int ac, char **av)
@@ -71,8 +71,8 @@ int main(int ac, char **av)
 	printf("FILE %s\n", share->filename);
 	printf("SHARE %s\n", share->name);
 	printf("MAP magic = %s (%x) headersize = %d cycle = %d\n",
-	       magic2string(share->map->magic), share->map->magic,
-	       share->map->headersize, share->map->cycle);
+		magic2string(share->map->magic), share->map->magic,
+		share->map->headersize, share->map->cycle);
 
 	int i;
 	int live = 0;
@@ -107,8 +107,8 @@ int main(int ac, char **av)
 			printf("  %s", sym->name);
 			switch (sym->type) {
 				case SYM_TYPE_DATA:
-					if(expand_speedtables) {
-						dump_speedtable_info((struct CTable *)sym->addr);
+					if(expand_speedtables || check_speedtable((struct CTable *)sym->addr, expand_speedtables)) {
+						dump_speedtable_info((struct CTable *)sym->addr, expand_speedtables);
 					}
 					break;
 				case SYM_TYPE_STRING:
@@ -134,12 +134,44 @@ int main(int ac, char **av)
 	return	0;
 }
 
-void dump_speedtable_info (struct CTable *t)
+// Look at stuff in teh CTable and see if it's reasonable.
+int check_speedtable(struct CTable *t, int log)
 {
 	if(t->share_type != CTABLE_SHARED_MASTER && t->share_type != CTABLE_SHARED_READER) {
-		printf(" (type %d)", t->share_type);
+		if(log) fprintf(stderr, "check_speedtable, t->share_type == %d\n", t->share_type);
+		return 0;
+	}
+
+	if(t->destroying != 0 && t->destroying != 1) {
+		if(log) fprintf(stderr, "check_speedtable, t->destroying = %d\n", t->destroying);
+		return 0;
+	}
+
+	if(t->searching != 0 && t->searching != 1) {
+		if(log) fprintf(stderr, "check_speedtable, t->searching = %d\n", t->searching);
+		return 0;
+	}
+
+	if(t->emptyString < (char *)t) {
+		if(log) fprintf(stderr, "check_speedtable, t = %x && t->emptyString == %x\n", t, t->emptyString);
+		return 0;
+	}
+
+	if(t->defaultStrings < (char **)t) {
+		if(log) fprintf(stderr, "check_speedtable, t = %x && t->defaultStrings == %x\n", t, t->defaultStrings);
+		return 0;
+	}
+
+	return 1;
+}
+
+void dump_speedtable_info (struct CTable *t, int verbose)
+{
+	if(t->share_type != CTABLE_SHARED_MASTER && t->share_type != CTABLE_SHARED_READER) {
+		printf(" (type %d?)", t->share_type);
 		return;
 	}
-        printf(" (count %d)", t->count);
+
+	printf(" (count %d)", t->count);
 	//printf(" (minfree %d)", t->share_min_free);
 }
