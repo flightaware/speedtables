@@ -65,12 +65,14 @@ int main(int ac, char **av)
 	share = map_file(filename, MAPADDR, 0, 0, 0);
 
 	if (!share) {
-		fprintf(stderr, "map_file('%s', %08x, 0, 0, 0) failed\n", filename, MAPADDR);
+		const char *what = get_last_shmem_error();
+		if(!what) what = "Unknown error";
+		fprintf(stderr, "map_file('%s', %lx, 0, 0, 0) failed: %s\n", filename, MAPADDR, what);
 		exit(2);
 	}
 	printf("FILE %s\n", share->filename);
 	printf("SHARE %s\n", share->name);
-	printf("MAP magic = %s (%x) headersize = %d cycle = %d\n",
+	printf("MAP magic = %s (%x) headersize = %d cycle = %x\n",
 		magic2string(share->map->magic), share->map->magic,
 		share->map->headersize, share->map->cycle);
 
