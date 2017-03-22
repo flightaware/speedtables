@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -41,11 +42,14 @@ int main(int ac, char **av)
 	char           *filename = NULL;
 	char           *av0 = *av;
 	int expand_speedtables = 0;
+	int verify_pids = 0;
 
 	while (*++av) {
 		if(**av == '-') {
 			if (strcmp(*av, "-speed") == 0) {
 				expand_speedtables = 1;
+			} else if (strcmp(*av, "-verify") == 0) {
+				verify_pids = 1;
 			} else {
 				usage(av0);
 				exit(-1);
@@ -81,6 +85,12 @@ int main(int ac, char **av)
 
 	for(i = 0; i < MAX_SHMEM_READERS; i++) {
 		if(share->map->readers[i].pid) {
+			const char *flag = " ";
+			if(verify_pids) {
+				if (kill(share->map->readers[i].pid, 0) == -1) {
+					flag = "?";
+				}
+			}
 			if(live == 0)
 				printf("READERS:");
 			if(live % 4 == 0)
@@ -89,8 +99,9 @@ int main(int ac, char **av)
 				putchar(' ');
 
 				
-			printf("%d: %5d %8x;", i,
+			printf("%3d: %5d%s %8x;", i,
 				share->map->readers[i].pid, 
+				flag,
 				share->map->readers[i].cycle);
 
 			live++;
