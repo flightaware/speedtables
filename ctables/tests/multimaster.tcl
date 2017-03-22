@@ -52,5 +52,9 @@ proc check_value {table format expected actual} {
 check_value elements "Expected %d rows, got %d, a" 10 [elements count]
 check_value nameval "Expected %d rows, got %d, a" 1000 [nameval count]
 
-#package require ctable_server
+package require ctable_server
 
+::ctable_server::register ctable://*:1616/elements elements
+::ctable_server::register ctable://*:1616/nameval nameval
+
+if !$tcl_interactive { vwait die }
