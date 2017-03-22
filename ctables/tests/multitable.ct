@@ -4,14 +4,18 @@
 
 package require ctable
 
-CExtension multi 1.0 {
+if {![info exists suffix]} {
+	set suffix ""
+}
 
-CTable nameval {
+CExtension multi$suffix 1.0 {
+
+CTable nameval$suffix {
     varstring name 
     varstring value
 }
 
-CTable elements {
+CTable elements$suffix {
     varstring name
     varstring symbol
 }
@@ -29,6 +33,6 @@ CTable albums {
 
 }
 
-package require Multi
+package require Multi$suffix
 package require Multitoo
 
