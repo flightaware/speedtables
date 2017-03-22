@@ -8,15 +8,19 @@ if {![info exists suffix]} {
 	set suffix ""
 }
 
+if {![info exists nametags]} {
+	set nametags [list]
+}
+
 CExtension multi$suffix 1.0 {
 
 CTable nameval$suffix {
-    varstring name 
+    varstring name {*}$nametags
     varstring value
 }
 
 CTable elements$suffix {
-    varstring name
+    varstring name {*}$nametags
     varstring symbol
 }
 
