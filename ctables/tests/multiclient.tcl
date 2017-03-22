@@ -23,3 +23,28 @@ if {$count != 1000} {
 
 $nameval destroy
 
+set nameval [::stapi::connect shared://1616/nameval -build stobj]
+set elements [::stapi::connect shared://1616/elements -build stobj]
+
+$nameval destroy
+
+set count 0
+$elements search -array row -code {
+        incr count
+}
+if {$count != 10} {
+	error "Expected 10 rows got $count"
+}
+
+set count 0
+$elements search -compare {{= name Beryllium}} -array row -code {
+	incr count
+	if {"$row(symbol)" != "Be"} {
+		error "Expected symbol 'Be' got '$row(symbol)'"
+	}
+}
+
+if {$count != 1} {
+	error "Expected 1 row matching 'Beryllium' got $count"
+}
+
