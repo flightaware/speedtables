@@ -85,10 +85,12 @@ int main(int ac, char **av)
 
 	for(i = 0; i < MAX_SHMEM_READERS; i++) {
 		if(share->map->readers[i].pid) {
-			const char *flag = " ";
+			const char *flag = "";
 			if(verify_pids) {
 				if (kill(share->map->readers[i].pid, 0) == -1) {
 					flag = "?";
+				} else {
+					flag = " ";
 				}
 			}
 			if(live == 0)
