@@ -5,6 +5,7 @@
 
 delay=5
 script=multiclient.tcl
+logfile=serverlog_multimaster.log
 
 while
   case "$1" in
@@ -15,11 +16,14 @@ while
 do
   shift
 done
+echo "Cleaning up from previous runs"
+echo "+ rm -f sharefile.dat"
+rm -f sharefile.dat
 
 echo "Starting ./multimaster.tcl"
-echo + ${TCLSHSTAPI} ./multimaster.tcl
+echo "+ ${TCLSHSTAPI} ./multimaster.tcl > $logfile &"
 
-${TCLSHSTAPI} ./multimaster.tcl &
+${TCLSHSTAPI} ./multimaster.tcl > $logfile &
 master_pid=$!
 
 trap 'kill $master_pid 2>/dev/null' 2
