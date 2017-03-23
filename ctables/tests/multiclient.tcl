@@ -54,17 +54,18 @@ $elements destroy
 
 puts "Randomly connecting and disconnecting..."
 array set table_names [list 0 nameval 1 elements]
+set n [llength [array names table_names]]
 catch {array unset tables}
 unset -nocomplain tables
-for {set i 0} {$i < 1000} {incr i} {
-    set t [expr {int(rand() * 2)}]
+for {set i 0} {$i < 100000} {incr i} {
+    set t [expr {int(rand() * $n)}]
     if [info exists tables($t)] {
         $tables($t) destroy
 	unset tables($t)
     } else {
 	set tables($t) [::stapi::connect shared://1616/$table_names($t) -build stobj]
     }
-    for {set j 0} {$j < 2} {incr j} {
+    for {set j 0} {$j < $n} {incr j} {
 	if [info exists tables($t)] {
 	    $tables($t) search -countOnly 1
 	}
