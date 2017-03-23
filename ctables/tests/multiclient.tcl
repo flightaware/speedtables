@@ -53,7 +53,7 @@ if {$count != 1} {
 $elements destroy
 
 puts "Randomly connecting and disconnecting..."
-array set table_names [list 0 nameval 1 elements]
+array set table_names [list 0 nameval 1 elements 2 characters]
 set n [llength [array names table_names]]
 catch {array unset tables}
 unset -nocomplain tables

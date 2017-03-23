@@ -11,13 +11,16 @@ source multitable.ct
 
 nameval_m create nameval master file sharefile.dat
 elements_m create elements master file sharefile.dat
+anim_characters_m create characters master file sharefile.dat
 
 nameval index create name
 elements index create name
+characters index create name
 
 puts "nameval share info -> [nameval share info]"
 puts "elements share info -> [elements share info]"
 puts "nameval share list -> [nameval share list]"
+puts stderr "nameval share list -> [nameval share list]"
 
 foreach {elt nam sym} {
   1 Hydrogen H
@@ -56,5 +59,6 @@ package require ctable_server
 
 ::ctable_server::register ctable://*:1616/elements elements
 ::ctable_server::register ctable://*:1616/nameval nameval
+::ctable_server::register ctable://*:1616/characters characters
 
 if !$tcl_interactive { vwait die }

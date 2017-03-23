@@ -26,8 +26,19 @@ echo "+ ${TCLSHSTAPI} ./multimaster.tcl > $logfile &"
 ${TCLSHSTAPI} ./multimaster.tcl > $logfile &
 master_pid=$!
 
-trap 'kill $master_pid 2>/dev/null' 2
+trap "kill $master_pid 2>/dev/null" 0
 sleep $delay
+
+while
+  if grep 'register ctable' $logfile > /dev/null
+  then false
+  else true
+  fi
+do
+  echo "Waiting..."
+  sleep $delay
+done
+
 echo "Started ./multimaster.tcl"
 
 echo "Running ./$script"
