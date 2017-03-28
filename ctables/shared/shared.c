@@ -245,6 +245,12 @@ int unmap_file(shm_t   *share)
       delete share->garbage;
     }
     ckfree(share->filename);
+
+#ifndef MAP_NOSYNC
+    // Try to be similar to MAP_NOSYNC
+    madvise(share->share_base, share->managed_shm->get_size(), MS_INVALIDATE);
+#endif
+
     delete share->managed_shm;
 
     ckfree((char*)share);
