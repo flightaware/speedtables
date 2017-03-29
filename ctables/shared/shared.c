@@ -838,8 +838,8 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     char        *sharename = NULL;
     shm_t       *share     = NULL;
 
-    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "free", "invalidate", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_FREE, CMD_INVALIDATE };
+    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "free", (char *)NULL};
+    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_FREE };
 
     static CONST struct {
         int need_share;         // if a missing share is an error
@@ -855,8 +855,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         {1, -4, "name ?name?..."}, // CMD_MULTIGET
         {1, -5, "name value ?name value?..."}, // CMD_SET
         {1,  3, ""}, // CMD_INFO
-        {1,  -3, "?quick?"}, // CMD_FREE
-        {1,  3, ""} // CMD_INVALIDATE
+        {1,  -3, "?quick?"} // CMD_FREE
     };
 
     if (Tcl_GetIndexFromObj (interp, objv[1], commands, "command", TCL_EXACT, &cmdIndex) != TCL_OK) {
@@ -1071,11 +1070,6 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             }
             return TCL_OK;
         }
-
-	case CMD_INVALIDATE: {
-	    madvise(share->share_base, share->managed_shm->get_size(), MADV_DONTNEED);
-	    return TCL_OK;
-	}
 
     }
     Tcl_AppendResult(interp, "Should not happen, internal error: no defined subcommand or missing break in switch", NULL);
