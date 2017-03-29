@@ -19,6 +19,8 @@ done
 echo "Cleaning up from previous runs"
 echo "+ rm -f sharefile.dat"
 rm -f sharefile.dat
+echo "+ rm -rf stobj"
+rm -rf stobj
 
 echo "Starting ./multimaster.tcl"
 echo "+ ${TCLSHSTAPI} ./multimaster.tcl > $logfile &"

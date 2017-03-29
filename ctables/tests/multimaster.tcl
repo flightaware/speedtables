@@ -55,6 +55,9 @@ proc check_value {table format expected actual} {
 check_value elements "Expected %d rows, got %d, a" 10 [elements count]
 check_value nameval "Expected %d rows, got %d, a" 1000 [nameval count]
 
+set ac_table characters
+source dumb-data.tcl
+
 package require ctable_server
 
 ::ctable_server::register ctable://*:1616/elements elements
