@@ -88,9 +88,6 @@
 <dt>free<dd>
 <p>Returns an estimate of the free memory in the share. This estimate does not count pools, and is calculated by iterating over the free list and the garbage collection pool and adding up the total size of each free or dirty block.</p>
 
-<dt>invalidate<dd>
-<p>Invoke madvise(addr, size, MS_INVALIDATE) on the memory mapped file. By clearing the dirty bits on the pages the OS will not flush dirty pages to the disk backing store at exit. WARNING: This completely destroys the consistency of the table.  This is only useful at exit.  If the program accesses the table it will crash.</p>
-
 </dl>
 
 </dl>
