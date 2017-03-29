@@ -1073,7 +1073,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
         }
 
 	case CMD_INVALIDATE: {
-	    msync(share->share_base, share->managed_shm->get_size(), MS_INVALIDATE);
+	    madvise(share->share_base, share->managed_shm->get_size(), MADV_DONTNEED);
 	    return TCL_OK;
 	}
 
