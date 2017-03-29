@@ -88,6 +88,7 @@ pools:
 	$(TCLSH) poolspeed.tcl
 
 allstapi: stapi multishared stapireturn
+	rm -f serverlog_multimaster.log sharefile.dat
 
 reader:
 	rm -rf stobj
@@ -123,7 +124,6 @@ filter2:
 
 multishared:
 	sh multimaster.sh
-	rm -f sharefile.dat
 
 multireader:
 	rm -rf stobj
