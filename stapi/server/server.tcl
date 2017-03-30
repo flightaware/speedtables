@@ -41,6 +41,7 @@ namespace eval ::stapi {
   variable time_column
   variable sql_cache
   variable rowbyrow
+  variable polling
 
   # Mapping from sql column types to ctable field types
   variable sql2speedtable
@@ -581,6 +582,9 @@ namespace eval ::stapi {
   #   -rowbyrow 0|1
   #      Enable or disable (default) row-by-row mode
   #
+  #   -polling interval
+  #      Call update every $interval rows
+  #
   # Options that don't begin with a dash are passed to the ctable create
   # command.
   #
@@ -590,6 +594,7 @@ namespace eval ::stapi {
     variable time_column
     variable default_timeout
     variable rowbyrow
+    variable polling
 
     # default arguments
     set pattern "*"
@@ -597,6 +602,7 @@ namespace eval ::stapi {
     set time_col ""
     set indices {}
     set rowbyrow_arg 0
+    set polling_arg 0
 
     # Parse and validate
     if {[llength $args] & 1} {
@@ -613,6 +619,7 @@ namespace eval ::stapi {
 	-col* { set time_col $v }
 	-ind* { lappend indices $v }
 	-row* { set rowbyrow_arg $v }
+	-pol* ( set polling_arg $v }
 	-* { return -code error "Unknown option '$n'" }
 	default {
 	   lappend open_command $n $v
@@ -626,6 +633,7 @@ namespace eval ::stapi {
 
     # Now we know the name, save metadata
     set rowbyrow($ctable) $rowbyrow_arg
+    set polling($ctable) $polling_arg
 
     # we need to know this to find the tsv file and sql file
     set ctable_name "c_$name"
@@ -723,11 +731,12 @@ namespace eval ::stapi {
     set sql [set_time_limit $sql $time_col $last_read]
 
     if {$rowbyrow_arg} {
-      set reader read_ctable_from_sql_rowbyrow
+      set reader read_ctable_from_sql_rowbyrow_poll
     } else {
-      set reader read_ctable_from_sql
+      set reader read_ctable_from_sql_poll
     }
-    if {[catch {$reader $ctable $sql} err]} {
+
+    if {[catch {$reader $ctable $sql $polling_arg} err]} {
       $ctable destroy
       unlockfile $tsv_file
       return -code error -errorinfo $::errorInfo $err
@@ -848,11 +857,11 @@ namespace eval ::stapi {
     }
 
     if {$rowbyrow($ctable)} {
-      set reader read_ctable_from_sql_rowbyrow
+      set reader read_ctable_from_sql_rowbyrow_poll
     } else {
-      set reader read_ctable_from_sql
+      set reader read_ctable_from_sql_poll
     }
-    return [$reader $ctable $sql $_err]
+    return [$reader $ctable $sql $polling($ctable) $_err]
   }
 
   #
@@ -881,11 +890,11 @@ namespace eval ::stapi {
     $ctable reset
 
     if {$rowbyrow($ctable)} {
-      set reader read_ctable_from_sql_rowbyrow
+      set reader read_ctable_from_sql_rowbyrow_poll
     } else {
-      set reader read_ctable_from_sql
+      set reader read_ctable_from_sql_poll
     }
-    return [$reader $ctable $sql $_err]
+    return [$reader $ctable $sql $polling($ctable) $_err]
   }
 
   #
