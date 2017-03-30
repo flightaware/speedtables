@@ -3,12 +3,22 @@ package require Pgtcl
 source test_common.tcl
 
 package require st_postgres
+package require st_server
 
 source postgres.tcl
 
 set conn [pgconn]
 
+::stapi::set_conn $conn
+
 set verbose 0
+
+proc readfile {file} {
+	set fp [open $file]
+	set text [read $fp]
+	close $fp
+	return $text
+}
 
 proc do_sql {conn sql} {
 	global verbose
