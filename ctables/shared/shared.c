@@ -20,9 +20,6 @@
 
 #include "shared.h"
 
-
-
-
 // Data that must be shared between multiple speedtables C extensions
 //
 // NB we used Tcl's interpreter-associated property lists to create, find and
@@ -72,34 +69,42 @@ void shared_perror(const char *text) {
 }
 
 
-#ifdef WITH_TCL
-// linkup_assoc_data - attach the bits of data that multiple speedtables
+// set/linkup_assoc_data - attach the bits of data that multiple speedtables
 // C shared libraries need to share.
 // Callable by master or slaves.
+// If not using Tcl, just allocate it if it doesn't exist already
+#ifdef WITH_TCL
 static void
 linkup_assoc_data (Tcl_Interp *interp)
+#else
+void
+set_assoc_data ()
+#endif
 {
     if (assocData != NULL) {
       //IFDEBUG(fprintf(SHM_DEBUG_FP, "previously found assocData at %lX\n", (long unsigned int)assocData);)
         return;
     }
 
+#ifdef WITH_TCL
     // locate the associated data 
     assocData = (struct speedtablesAssocData *)Tcl_GetAssocData (interp, ASSOC_DATA_KEY, NULL);
     if (assocData != NULL) {
         //IFDEBUG(fprintf(SHM_DEBUG_FP, "found assocData at %lX\n", (long unsigned int)assocData);)
         return;
     }
+#endif
 
     assocData = (struct speedtablesAssocData *)ckalloc (sizeof (struct speedtablesAssocData));
     assocData->autoshare = 0;
     assocData->share_base = NULL;
     assocData->share_list = NULL;
 
+#ifdef WITH_TCL
     //IFDEBUG(fprintf(SHM_DEBUG_FP, "on interp %lX, constructed assocData at %lX\n", (long unsigned int) interp, (long unsigned int)assocData);)
     Tcl_SetAssocData (interp, ASSOC_DATA_KEY, NULL, (ClientData)assocData);
-}
 #endif
+}
 
 
 // map_file - map a file at addr. If the file doesn't exist, create it first
@@ -115,7 +120,13 @@ linkup_assoc_data (Tcl_Interp *interp)
 //
 shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, int create)
 {
-    shm_t *p = assocData->share_list;
+    shm_t *p;
+
+#ifndef WITH_TCL
+    set_assoc_data();
+#endif
+
+    p = assocData->share_list;
 
 
     // Look for an already mapped share
@@ -199,6 +210,10 @@ int unmap_file(shm_t   *share)
         return 1;
     }
 
+#ifndef WITH_TCL
+    set_assoc_data();
+#endif
+
     // remove from list
     if(!assocData->share_list) {
         return 0;
@@ -241,6 +256,10 @@ int unmap_file(shm_t   *share)
 // Callable by master or slaves.
 void unmap_all(void)
 {
+#ifndef WITH_TCL
+    set_assoc_data();
+#endif
+
     while(assocData->share_list) {
         shm_t *p    = assocData->share_list;
         shm_t *next = p->next;
@@ -966,6 +985,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             ) {
                 return TCL_ERROR;
             }
+	    Tcl_IncrRefCount(list);
             Tcl_SetObjResult(interp, list);
             return TCL_OK;
         }
