@@ -44,7 +44,7 @@ puts stderr "Set up DB"
 do_sql $conn [readfile pgtcl_create.sql]
 
 # prepared statements are case sensitive lowercase even if declared uppercase.
-do_sql $conn {PREPARE INSERTANIMAL AS INSERT INTO ANIMALS (ID, TYPE, NAME, WEIGHT) VALUES ($1, $2, $3, $4);}
+do_sql $conn {PREPARE INSERTANIMAL AS INSERT INTO TEST_ANIMALS (ID, TYPE, NAME, WEIGHT) VALUES ($1, $2, $3, $4);}
 
 puts stderr "Insert big animals"
 array set animals {
@@ -71,10 +71,10 @@ for {set i 1} {$i < 100} {incr i} {
 }
 
 puts stderr "Building ctable"
-::stapi::init_ctable animals ANIMALS "" [::stapi::from_table ANIMALS id]
+::stapi::init_ctable animals TEST_ANIMALS "" [::stapi::from_table TEST_ANIMALS id]
 set a [::stapi::open_cached animals]
 
-set sql "select ID, TYPE, NAME, WEIGHT from ANIMALS;"
+set sql "select ID, TYPE, NAME, WEIGHT from TEST_ANIMALS;"
 ::stapi::read_ctable_from_sql $a $sql
 
 $a search -array row -code {
