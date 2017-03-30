@@ -223,7 +223,7 @@ namespace eval ::stapi {
   # The "_poll" variant takes an integer argument to determine how often to run "update" during import
   #
   proc read_ctable_from_sql {ctable sql {_err ""}} {
-    uplevel 1 [list read_ctable_from_sql_poll $ctable $sql 0 $_err]
+    uplevel 1 [list [namespace which read_ctable_from_sql_poll] $ctable $sql 0 $_err]
   }
 
   proc read_ctable_from_sql_poll {ctable sql poll_interval {_err ""}} {
@@ -275,7 +275,7 @@ namespace eval ::stapi {
   # The "_poll" variant takes an integer argument to determine how often to run "update" during import
   #
   proc read_ctable_from_sql_rowbyrow {ctable sql {_err ""}} {
-    uplevel 1 [list read_ctable_from_sql_rowbyrow_poll $ctable $sql 0 $_err]
+    uplevel 1 [list [namespace which read_ctable_from_sql_rowbyrow_poll] $ctable $sql 0 $_err]
   }
 
   proc read_ctable_from_sql_rowbyrow_poll {ctable sql poll_interval {_err ""}} {
