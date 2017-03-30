@@ -195,7 +195,7 @@ namespace eval ::stapi {
 		pg_catalog.format_type(a.atttypid, a.atttypmod) as type,
 		a.attnotnull as not_null
 		FROM pg_class c, pg_attribute a, pg_type t
-		WHERE c.relname = '$table'
+		WHERE c.relname = '[string tolower $table]'
 		  and a.attnum > 0
 		  and a.attrelid = c.oid
 		  and a.atttypid = t.oid
