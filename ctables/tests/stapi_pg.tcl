@@ -2,6 +2,7 @@ package require Pgtcl
 
 source test_common.tcl
 
+source ../../stapi/pgsql.tcl
 package require st_postgres
 package require st_server
 
