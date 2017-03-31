@@ -104,9 +104,23 @@ proc pong {} {
    after 1 pong
 }
 
-after 1 pong
+# prime the pump
+pong
+
+# Simple dumb test using read_ctable_from_sql_rowbyrow_poll explicitly
+set ::pongcount 0
 ::stapi::read_ctable_from_sql_rowbyrow_poll $a $sql 1
 
 puts "pong called $::pongcount times - total rows [$a count]"
+
+# Switch to polled table, and use reload_ctable to test
+$a destroy
+set a [::stapi::open_cached animals -rowbyrow 1 -polling 1]
+
+set ::pongcount 0
+::stapi::reload_ctable $a
+
+puts "pong called $::pongcount times - total rows [$a count]"
+
 
 puts "\nDone"
