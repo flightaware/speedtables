@@ -619,7 +619,7 @@ namespace eval ::stapi {
 	-col* { set time_col $v }
 	-ind* { lappend indices $v }
 	-row* { set rowbyrow_arg $v }
-	-pol* ( set polling_arg $v }
+	-pol* { set polling_arg $v }
 	-* { return -code error "Unknown option '$n'" }
 	default {
 	   lappend open_command $n $v
