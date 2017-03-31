@@ -2,9 +2,10 @@ package require Pgtcl
 
 source test_common.tcl
 
+# Explicitly pull in this version of stapi.
 source ../../stapi/pgsql.tcl
-package require st_postgres
-package require st_server
+source ../../stapi/server/lock.tcl
+source ../../stapi/server/server.tcl
 
 source postgres.tcl
 
