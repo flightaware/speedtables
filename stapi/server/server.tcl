@@ -844,6 +844,7 @@ namespace eval ::stapi {
   #
   proc refresh_ctable {ctable {time_col ""} {last_read 0} {_err ""}} {
     variable rowbyrow
+    variable polling
     if {"$_err" != ""} {
       upvar 1 $_err err
       set _err err
@@ -874,6 +875,7 @@ namespace eval ::stapi {
   #
   proc reload_ctable {ctable {_err ""}} {
     variable rowbyrow
+    variable polling
     if {"$_err" != ""} {
       upvar 1 $_err err
       set _err err
