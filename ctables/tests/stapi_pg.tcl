@@ -98,4 +98,15 @@ if {$oweight != $nweight} {
 }
 puts "Imported results matched."
 
+set ::pongcount 0
+proc pong {} {
+   incr ::pongcount
+   after 1 pong
+}
+
+after 1 pong
+::stapi::read_ctable_from_sql_rowbyrow_poll $a $sql 1
+
+puts "pong called $::pongcount times - total rows [$a count]"
+
 puts "\nDone"
