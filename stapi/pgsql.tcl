@@ -338,7 +338,7 @@ namespace eval ::stapi {
 	    return
 	}
 
-	$ctable import_postgres_result $pg_res -poll_code update -poll_interval 100
+	$ctable import_postgres_result $pg_res -poll_interval 100
 	pg_result $pg_res -clear
     }
     after 10 [list ::stapi::read_ctable_async_poll $ctable $callback]
