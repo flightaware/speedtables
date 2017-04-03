@@ -53,6 +53,11 @@ clean:
 	rm -f *.core vgcore*
 	rm -f tmp_*
 
+
+pgtests:
+        $(TCLSH) pgtcl.tcl
+        $(TCLSH) stapi_pg.tcl
+
 compare:
 	rm -rf stobj
 	$(TCLSH) index-compare.tcl
