@@ -74,7 +74,8 @@ set oweight 0
 foreach id [array names animals] {
 	array set row $animals($id)
 	incr oweight $row(weight)
-	do_prepared $conn insertanimal $id $row(type) $row(name) $row(weight) }
+	do_prepared $conn insertanimal $id $row(type) $row(name) $row(weight)
+}
 
 puts stderr "Insert small animals"
 for {set i 1} {$i < 100} {incr i} {
@@ -82,6 +83,16 @@ for {set i 1} {$i < 100} {incr i} {
 	do_prepared $conn insertanimal [expr 100 + $i] chicken "chicken #$i" 10
 }
 
+puts stderr "Testing postgres ... reading schema"
+set schema {{_key {} TEXT(id)} {id {character varying}} {name {character varying}} {type {character varying}} {weight integer}}
+set read_schema [::stapi::from_table TEST_ANIMALS id]
+if {$read_schema ne $schema} {
+	puts stderr "Expected $schema"
+	puts stderr "Read $read_schema"
+	error "Schema mismatch"
+}
+
+::stapi::init_ctable animals TEST_ANIMALS "" [::stapi::from_table TEST_ANIMALS id]
 puts stderr "Building ctable"
 ::stapi::init_ctable animals TEST_ANIMALS "" [::stapi::from_table TEST_ANIMALS id]
 set a [::stapi::open_cached animals]
