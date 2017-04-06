@@ -756,6 +756,34 @@ namespace eval ::stapi {
     return $ctable
   }
 
+  # Make changes in cache settings
+  proc tune_cached {ctable args} {
+    variable rowbyrow
+    variable polling
+    variable ctable2name
+    if {![info exists ctable2name($ctable)]} {
+      error "$ctable: Not a cached ctable"
+    }
+
+    foreach {n v} $args {
+      switch -glob -- $n {
+	-row* { set rowbyrow_arg $v }
+	-pol* { set polling_arg $v }
+	default {
+	  error "$ctable: $n is not a tunable parameter"
+	}
+      }
+    }
+
+    # update metadata
+    if {[info exists rowbyrow_arg]} {
+	set rowbyrow($ctable) $rowbyrow_arg
+    }
+    if {[info exists polling_arg]} {
+	set polling($ctable) $polling_arg
+    }
+  }
+
   #
   # gen_refresh_ctable_sql ctable sql ?time_col? ?last_read? ?err?
   #
