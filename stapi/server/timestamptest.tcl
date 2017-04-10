@@ -3,18 +3,18 @@
 # add new directories to make sure we're testing this version of
 # stapi and speedtables
 if [info exists env(ST_PREFIX)] {
-  lappend auto_path $env(ST_PREFIX)
+  set auto_path [linsert $auto_path 0 $env(ST_PREFIX)]
 }
 if [info exists env(STAPI_PREFIX)] {
-  lappend auto_path $env(STAPI_PREFIX)
+  set auto_path [linsert $auto_path 0 $env(STAPI_PREFIX)]
 } else {
   set d [exec pwd]
   if [file exists $d/pkgIndex.tcl] {
-    lappend auto_path $d
+    set auto_path [linsert $auto_path 0 $d]
   }
   set d [file dirname $d]
   if [file exists $d/pkgIndex.tcl] {
-    lappend auto_path $d
+    set auto_path [linsert $auto_path 0 $d]
   } 
 }
 puts "Using auto_path $auto_path"
