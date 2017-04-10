@@ -415,7 +415,7 @@ namespace eval ::stapi {
       # is it "something(n)"? handle those special cases
       if {[regexp {([^(]*)\([0-9]*} $t dummy baseType] == 1} {
 
-	    # is it "charater(n)?"
+	    # is it "character(n)?"
 	    if {[regexp {character\(([^)]*)} $t dummy count] == 1} {
 	      set t "fixedstring"
 	      set width " $count"
