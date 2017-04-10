@@ -195,7 +195,7 @@ namespace eval ::stapi {
 		pg_catalog.format_type(a.atttypid, a.atttypmod) as type,
 		a.attnotnull as not_null
 		FROM pg_class c, pg_attribute a, pg_type t
-		WHERE c.relname = '$table'
+		WHERE c.relname = '[string tolower $table]'
 		  and a.attnum > 0
 		  and a.attrelid = c.oid
 		  and a.atttypid = t.oid
@@ -220,7 +220,13 @@ namespace eval ::stapi {
   #
   # if successful it returns the number of tuples read, from zero on up.
   #
+  # The "_poll" variant takes an integer argument to determine how often to run "update" during import
+  #
   proc read_ctable_from_sql {ctable sql {_err ""}} {
+    uplevel 1 [list [namespace which read_ctable_from_sql_poll] $ctable $sql 0 $_err]
+  }
+
+  proc read_ctable_from_sql_poll {ctable sql poll_interval {_err ""}} {
     if {[string length $_err] > 0} {
 	upvar 1 $_err err
     }
@@ -232,7 +238,7 @@ namespace eval ::stapi {
       set errinf "$err\nIn \"sql\""
     } else {
 	# postgres request succeeded, try to import it into the speedtable
-	if {[catch {$ctable import_postgres_result $pg_res} err] == 1} {
+	if {[catch {$ctable import_postgres_result $pg_res -poll_interval $poll_interval} err] == 1} {
 	  # failed
 	  set ok 0
 	  set errinf $::errorInfo
@@ -266,7 +272,13 @@ namespace eval ::stapi {
   #
   # if successful it returns the number of tuples read, from zero on up.
   #
+  # The "_poll" variant takes an integer argument to determine how often to run "update" during import
+  #
   proc read_ctable_from_sql_rowbyrow {ctable sql {_err ""}} {
+    uplevel 1 [list [namespace which read_ctable_from_sql_rowbyrow_poll] $ctable $sql 0 $_err]
+  }
+
+  proc read_ctable_from_sql_rowbyrow_poll {ctable sql poll_interval {_err ""}} {
     if {[string length $_err] > 0} {
 	upvar 1 $_err err
     }
@@ -274,7 +286,7 @@ namespace eval ::stapi {
     set ok 1
 
     pg_sendquery [conn] $sql
-    if {[catch {$ctable import_postgres_result -rowbyrow [conn] -info status} err] == 1} {
+    if {[catch {$ctable import_postgres_result -rowbyrow [conn] -poll_interval $poll_interval -info status} err] == 1} {
 	# failed
 	set ok 0
 	set errinf $::errorInfo
@@ -301,11 +313,7 @@ namespace eval ::stapi {
   #  this code invokes the SQL statement and loads the results into the
   #  specified ctable, asynchronously
   #
-  # does a Tcl error if it gets an error from postgres unless error variable
-  # is specified, in which case it sets the error message into the error
-  # variable and returns -1.
-  #
-  # if successful it returns the number of tuples read, from zero on up.
+  # There is no return value.
   #
   proc read_ctable_from_sql_async {ctable sql callback} {
     pg_blocking [conn] 0
@@ -330,7 +338,7 @@ namespace eval ::stapi {
 	    return
 	}
 
-	$ctable import_postgres_result $pg_res -poll_code update -poll_interval 100
+	$ctable import_postgres_result $pg_res -poll_interval 100
 	pg_result $pg_res -clear
     }
     after 10 [list ::stapi::read_ctable_async_poll $ctable $callback]
