@@ -57,6 +57,10 @@ corrupt:
 	rm -rf stobj
 	$(TCLSH) corruption-test.tcl
 
+pgtests:
+        $(TCLSH) pgtcl.tcl
+        $(TCLSH) stapi_pg.tcl
+
 compare:
 	rm -rf stobj
 	$(TCLSH) index-compare.tcl

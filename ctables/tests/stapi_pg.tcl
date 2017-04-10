@@ -2,10 +2,16 @@ package require Pgtcl
 
 source test_common.tcl
 
+# Explicitly pull in this version of stapi.
+source ../../stapi/pgsql.tcl
+source ../../stapi/server/lock.tcl
+source ../../stapi/server/server.tcl
 
 source postgres.tcl
 
 set conn [pgconn]
+
+::stapi::set_conn $conn
 
 set verbose 0
 
@@ -63,35 +69,37 @@ array set animals {
 	7	{type pangolin name bob weight 26}
 }
 
-puts stderr "Insert small animals"
+puts stderr "Insert big animals"
 set oweight 0
 foreach id [array names animals] {
 	array set row $animals($id)
 	incr oweight $row(weight)
-	do_prepared $conn insertanimal $id $row(type) $row(name) $row(weight) }
+	do_prepared $conn insertanimal $id $row(type) $row(name) $row(weight)
+}
 
+puts stderr "Insert small animals"
 for {set i 1} {$i < 100} {incr i} {
 	incr oweight 10
 	do_prepared $conn insertanimal [expr 100 + $i] chicken "chicken #$i" 10
 }
 
+puts stderr "Testing postgres ... reading schema"
+set schema {{_key {} TEXT(id)} {id {character varying}} {name {character varying}} {type {character varying}} {weight integer}}
+set read_schema [::stapi::from_table TEST_ANIMALS id]
+if {$read_schema ne $schema} {
+	puts stderr "Expected $schema"
+	puts stderr "Read $read_schema"
+	error "Schema mismatch"
+}
+
+::stapi::init_ctable animals TEST_ANIMALS "" [::stapi::from_table TEST_ANIMALS id]
 puts stderr "Building ctable"
-source pgtcl_ctable.tcl
+::stapi::init_ctable animals TEST_ANIMALS "" [::stapi::from_table TEST_ANIMALS id]
+set a [::stapi::open_cached animals]
 
-puts stderr "Creating ctable"
-set a [Animals create #auto]
+set sql "select ID, TYPE, NAME, WEIGHT from TEST_ANIMALS;"
+::stapi::read_ctable_from_sql $a $sql
 
-puts stderr "Import test"
-set r [pg_exec $conn "select id, name, type, weight from test_animals;"]
-puts "  results"
-    puts "    status    [pg_result $r -status]"
-    puts "    numTuples [pg_result $r -numTuples]"
-    puts "    conn      [pg_result $r -conn]"
-$a import_postgres_result $r
-pg_result $r -clear
-puts "Import complete"
-
-set nweight 0
 $a search -array row -code {
 	incr nweight $row(weight)
 }
@@ -101,42 +109,29 @@ if {$oweight != $nweight} {
 }
 puts "Imported results matched."
 
-$a reset
-
-puts stderr "Import row-by-row test"
-pg_sendquery $conn "select id, name, type, weight from test_animals;"
-$a import_postgres_result -rowbyrow $conn -info stat
-puts "Import maybe complete"
-if {"[array get stat]" != "numTuples 106"} {
-	error "Info array was [array get stat], expected "numTuples 106"
+set ::pongcount 0
+proc pong {} {
+   incr ::pongcount
+   after 1 pong
 }
 
-set rweight 0
-$a search -array row -code {
-	incr rweight $row(weight)
-}
-puts "original weight $oweight - rowbyrow weight $rweight"
-if {$oweight != $rweight} {
-	error "Weights didn't match!"
-}
-puts "Imported results matched."
+# prime the pump
+pong
 
-set oldrows [$a count]
-puts stderr "Import loop test"
-for {set i 0} {$i < 10000} {incr i} {
-	if {$i % 10 == 0} {
-		puts -nonewline "."
-		if {$i % 750 == 740} {
-			puts ""
-		} 
-	}
-	$a reset
-	pg_sendquery $conn "select id, name, type, weight from test_animals;"
-	$a import_postgres_result -rowbyrow $conn
-	set newrows [$a count]
-	if {$newrows != $oldrows} {
-		puts "!"
-		error "Expected $oldrows rows, got $newrows rows"
-	}
-}
+# Simple dumb test using read_ctable_from_sql_rowbyrow_poll explicitly
+set ::pongcount 0
+::stapi::read_ctable_from_sql_rowbyrow_poll $a $sql 1
+
+puts "pong called $::pongcount times - total rows [$a count]"
+
+# Switch to polled table, and use reload_ctable to test
+$a destroy
+set a [::stapi::open_cached animals -rowbyrow 1 -polling 1]
+
+set ::pongcount 0
+::stapi::reload_ctable $a
+
+puts "pong called $::pongcount times - total rows [$a count]"
+
+
 puts "\nDone"
