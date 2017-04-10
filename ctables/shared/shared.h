@@ -5,7 +5,6 @@
 #ifndef SHM_SHARED_H
 #define SHM_SHARED_H
 
-
 #include <limits.h>
 #include <stddef.h>
 #include <boost/static_assert.hpp>
@@ -25,13 +24,13 @@ using namespace boost::container;
 #if (LONG_MAX == 4294967296L) /* 32 bit long */
   typedef size_t cell_t;
   #define cellabs(t) abs(t)
-  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(int), SIZE_T_should_be_int);
-  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 4, SIZE_T_should_be_32_bits);
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(int), "SIZE_T_should_be_int");
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 4, "SIZE_T_should_be_32_bits");
 #else /* 64 bit long */
   typedef size_t cell_t;
   #define cellabs(t) llabs(t)
-  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(long long), SIZE_T_should_be_long_long);
-  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 8, SIZE_T_should_be_64_bits);
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == sizeof(long long), "SIZE_T_should_be_long_long");
+  BOOST_STATIC_ASSERT_MSG(sizeof(size_t) == 8, "SIZE_T_should_be_64_bits");
 #endif
 
 #define CELLSIZE (sizeof (cell_t))
@@ -40,6 +39,10 @@ using namespace boost::container;
 // If defining a TCL extension, using TCL
 #if defined(SHARED_TCL_EXTENSION) && !defined(WITH_TCL)
 #  define WITH_TCL
+#endif
+
+#ifndef WITH_TCL
+#define CONST const
 #endif
 
 // TUNING
@@ -165,6 +168,7 @@ int parse_size(const char *s, size_t *ptr);
 int parse_flags(const char *s);
 const char *flags2string(int flags);
 size_t shmfreemem(shm_t *shm, int check);
+const char *get_last_shmem_error();
 
 #define SYM_TYPE_STRING 1
 #define SYM_TYPE_DATA 0

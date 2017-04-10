@@ -21,7 +21,7 @@ TCLSHM          = $(TCLSH)
 #TCLSH=tclsh8.4
 #TCLSHM=$(TCLSH)m
 
-all: maintests macip stapi stapireturn
+all: maintests macip allstapi
 
 maintests:
 	rm -rf stobj
@@ -52,6 +52,11 @@ clean:
 	rm -f *.dat
 	rm -f *.core vgcore*
 	rm -f tmp_*
+
+
+pgtests:
+        $(TCLSH) pgtcl.tcl
+        $(TCLSH) stapi_pg.tcl
 
 compare:
 	rm -rf stobj
@@ -87,6 +92,9 @@ pools:
 	rm -f *.dat
 	$(TCLSH) poolspeed.tcl
 
+allstapi: stapi multishared stapireturn
+	rm -f serverlog_multimaster.log sharefile.dat
+
 reader:
 	rm -rf stobj
 	rm -f *.dat
@@ -118,6 +126,9 @@ filter:
 filter2:
 	rm -rf stobj
 	$(TCLSH) filter2.tcl
+
+multishared:
+	sh multimaster.sh
 
 multireader:
 	rm -rf stobj
