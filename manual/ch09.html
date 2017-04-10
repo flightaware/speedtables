@@ -98,7 +98,11 @@ speed table arguments for the field
 <p>Name of a field to create an index on. Multiple <tt>-index</tt> entries are allowed.</p>
 <dt>-rowbyrow 1<dd>
 <p>Use the "row by row" method when importng the table. See Chapter 5 for the advantages and hazards of this mechanism.</p>
+<dt>-polling N<dd>
+<p>Enable polling (calling update) when importing SQL results, update is called every N rows.
 </dl>
+<dt><tt>::stapi::tune_cached ?-opt value?...</tt><dd>
+<p>Modify some parameters of <tt>open_cached</tt> that can be safely modified on the fly. Currently only -rowbyrow and -polling can be specified.
 <dt><tt>::stapi::refresh_ctable ctable ?last_read? ?err?</tt><dd>
 <p>Update new rows from SQL for speed table <tt>ctable</tt>.</p>
 <p>If <tt>last_read</tt> is non-zero, use that rather than last modify time of the cache file.</p>
