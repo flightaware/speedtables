@@ -115,6 +115,6 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_shared 1.11.0
+package provide st_shared 1.11.1
 
 # vim: set ts=8 sw=4 sts=4 noet :
