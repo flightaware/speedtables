@@ -58,8 +58,8 @@ corrupt:
 	$(TCLSH) corruption-test.tcl
 
 pgtests:
-        $(TCLSH) pgtcl.tcl
-        $(TCLSH) stapi_pg.tcl
+	$(TCLSH) pgtcl.tcl
+	$(TCLSH) stapi_pg.tcl
 
 compare:
 	rm -rf stobj
