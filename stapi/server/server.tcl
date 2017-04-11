@@ -104,6 +104,10 @@ namespace eval ::stapi {
     varstring	varchar
   }
 
+  variable ctabletypes {
+    boolean fixedstring varstring char mac short int long wide float double inet tclobj key
+  }
+
   # ::stapi::init ?options?
   #
   # Options:
@@ -210,8 +214,6 @@ namespace eval ::stapi {
   #    the field name.
   # 
   proc init_ctable {name tables where_clause args} {
-    variable sql2speedtable
-
     # Validate arguments.
     if {"$name" == ""} {
       return -code error "Empty ctable name"
@@ -375,6 +377,7 @@ namespace eval ::stapi {
   # 
   proc create_speedtable_definition {tableName columns} {
     variable sql2speedtable
+    variable ctabletypes
 
     # Validate arguments.
     if {"$tableName" == ""} {
@@ -432,6 +435,8 @@ namespace eval ::stapi {
       # can we direct lookup this thing in our table?
       if {[info exists sql2speedtable($t)]} {
         set t $sql2speedtable($t)
+      } elseif {[lsearch ctabletypes $t] == -1} {
+	set t varstring
       }
 
       if {[info exists options($n)]} {
