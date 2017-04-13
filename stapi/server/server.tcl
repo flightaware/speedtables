@@ -736,12 +736,12 @@ namespace eval ::stapi {
     set sql [set_time_limit $sql $time_col $last_read]
 
     if {$rowbyrow_arg} {
-      set reader read_ctable_from_sql_rowbyrow_poll
+      set reader read_ctable_from_sql_rowbyrow_full
     } else {
-      set reader read_ctable_from_sql_poll
+      set reader read_ctable_from_sql_full
     }
 
-    if {[catch {$reader $ctable $sql $polling_arg} err]} {
+    if {[catch {$reader $ctable $sql $polling_arg 0} err]} {
       $ctable destroy
       unlockfile $tsv_file
       return -code error -errorinfo $::errorInfo $err
@@ -891,11 +891,11 @@ namespace eval ::stapi {
     }
 
     if {$rowbyrow($ctable)} {
-      set reader read_ctable_from_sql_rowbyrow_poll
+      set reader read_ctable_from_sql_rowbyrow_full
     } else {
-      set reader read_ctable_from_sql_poll
+      set reader read_ctable_from_sql_full
     }
-    return [$reader $ctable $sql $polling($ctable) $_err]
+    return [$reader $ctable $sql $polling($ctable) 0 $_err]
   }
 
   #
@@ -925,11 +925,11 @@ namespace eval ::stapi {
     $ctable reset
 
     if {$rowbyrow($ctable)} {
-      set reader read_ctable_from_sql_rowbyrow_poll
+      set reader read_ctable_from_sql_rowbyrow_full
     } else {
-      set reader read_ctable_from_sql_poll
+      set reader read_ctable_from_sql_full
     }
-    return [$reader $ctable $sql $polling($ctable) $_err]
+    return [$reader $ctable $sql $polling($ctable) 0 $_err]
   }
 
   #
