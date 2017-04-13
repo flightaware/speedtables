@@ -12,6 +12,8 @@ source searchtest-def.tcl
 
 source dumb-data.tcl
 
+puts "Testing dirty and clean"
+
 set dirty_count 0
 set dirty_keys {}
 t search -compare {{= _dirty 1}} -key k -code {
@@ -53,3 +55,9 @@ if {$dirty_count != 2} {
   error "Expected 2 dirty rows got $dirty_count"
 }
 
+set dirty_keys [lsort $dirty_keys]
+if {$dirty_keys != "meatwad shake"} {
+  error "Expected dirty keys to equal 'meatwad shake' got $dirty_keys"
+}
+
+puts "OK"
