@@ -46,6 +46,7 @@ maintests:
 	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
 	$(TCLSH) match-fail-test.tcl
+	$(TCLSH) clean-test.tcl
 
 clean:
 	rm -rf stobj

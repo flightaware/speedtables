@@ -3877,6 +3877,52 @@ proc put_init_extension_source {extension extensionVersion} {
     emit [subst -nobackslashes -nocommands $initExtensionSource]
 }
 
+variable noCleanTableSource {
+CONST int
+${table}_clean(Tcl_Interp *interp, CTable *ctable)
+{
+    Tcl_AppendResult(interp, "Dirty bits not implemented.", NULL);
+    return TCL_ERROR;
+}
+}
+
+variable cleanTableSource {
+CONST int
+${table}_clean(Tcl_Interp *interp, CTable *ctable)
+{
+    ctable_BaseRow *row;
+
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_READER) {
+	Tcl_AppendResult(interp, "Clean not possible in a shared reader.", NULL);
+	return TCL_ERROR;
+     }
+#endif
+
+    CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+	((${table} *)row)->_dirty = 0;
+    }
+
+    return TCL_OK;
+}
+}
+
+#
+# gen_clean_function - create a *_clean function to clean the dirty bits in the table
+#
+proc gen_clean_function {table} {
+    variable withDirty
+    variable cleanTableSource
+    variable noCleanTableSource
+
+    if {!$withDirty} {
+	emit [subst -nobackslashes -nocommands $noCleanTableSource]
+    } else {
+	set _dirty "SPECIAL_[string toupper $table]_DIRTY"
+	emit [subst -nobackslashes -nocommands $cleanTableSource]
+    }
+}
+
 #
 # gen_set_function - create a *_set routine that takes a pointer to the
 # tcl interp, an object, a pointer to a table row and a field number,
@@ -4154,6 +4200,8 @@ proc gen_code {} {
     gen_get_function $table
 
     gen_incr_function $table
+
+    gen_clean_function $table
 
     gen_field_compare_functions
 
