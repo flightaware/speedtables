@@ -2119,7 +2119,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *stringPtr, int *fieldIds, int nFields, int keyColumn, CONST char *sepstr, CONST char *nullString, int quoteType) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *stringPtr, int *fieldIds, int nFields, int keyColumn, CONST char *sepstr, CONST char *nullString, int quoteType, int dirty) {
     struct $table *row;
     const char    *key;
     int            indexCtl;
@@ -2221,18 +2221,27 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *string
 		col++;
     }
 
+    if(dirty) {
+        if (${table}_dirty (interp, ctable, row) == TCL_ERROR) {
+	    Tcl_DecrRefCount (utilityObj);
+	    return TCL_ERROR;
+        }
+    }
+
+
     if (indexCtl == CTABLE_INDEX_NEW) {
         if(${table}_index_defaults(interp, ctable, row) == TCL_ERROR) {
-			return TCL_ERROR;
-		}
+	    Tcl_DecrRefCount (utilityObj);
+	    return TCL_ERROR;
 	}
+    }
 
     Tcl_DecrRefCount (utilityObj);
     return TCL_OK;
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, CONST char *pattern, int noKeys, int withFieldNames, CONST char *sepstr, CONST char *skip, CONST char *term, int nocomplain, int withNulls, int quoteType, CONST char *nullString, int poll_interval, Tcl_Obj *poll_code, int poll_foreground) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, CONST char *pattern, int noKeys, int withFieldNames, CONST char *sepstr, CONST char *skip, CONST char *term, int nocomplain, int withNulls, int quoteType, CONST char *nullString, int poll_interval, Tcl_Obj *poll_code, int poll_foreground, int dirty) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = NULL;
@@ -2374,7 +2383,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 	    }
 	}
 
-	if (${table}_set_from_tabsep (interp, ctable, stringPtr, fieldNums, nFields, keyColumn, sepstr, nullString, quoteType) == TCL_ERROR) {
+	if (${table}_set_from_tabsep (interp, ctable, stringPtr, fieldNums, nFields, keyColumn, sepstr, nullString, quoteType, dirty) == TCL_ERROR) {
 	    char lineNumberString[32];
 
 	    sprintf (lineNumberString, "%d", recordNumber + 1);
@@ -4221,6 +4230,8 @@ proc gen_code {} {
 
     gen_reinsert_row_function $table
 
+    gen_clean_function $table
+
     gen_set_function $table
 
     gen_set_null_function $table
@@ -4230,8 +4241,6 @@ proc gen_code {} {
     gen_get_function $table
 
     gen_incr_function $table
-
-    gen_clean_function $table
 
     gen_field_compare_functions
 
