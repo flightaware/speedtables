@@ -150,9 +150,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     int indexCtl;
     int commandStatus = TCL_OK;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", "clean", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, NUM_OPTIONS
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, OPT_CLEAN, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
@@ -914,6 +914,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int               nTuples;
 	  int               field;
 	  int               noKeys = 0;
+	  int               dirty = 0;
 	  int               pgRow;
 	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
 	  Tcl_Obj          *valueObj;
@@ -963,6 +964,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      Tcl_AppendResult (interp, "in argument to -poll_interval", NULL);
 		      return TCL_ERROR;
 		  }
+	      } else if (strcmp (option, "-dirty") == 0) {
+	          if (i >= objc)
+		      goto import_arg_err;
+		  if (Tcl_GetIntFromObj(interp, objv[i++], &dirty) == TCL_ERROR) {
+		      Tcl_AppendResult (interp, "in argument to -dirty", NULL);
+		      return TCL_ERROR;
+		  }
 	      } else if(dataSource == NULL) {
 		  dataSource = option;
 	      } else {
@@ -972,7 +980,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  if (dataSource == NULL) {
 	    import_arg_err:
-	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate? ?-info arrayName?");
+	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate? ?-info arrayName? ?-dirty flag?");
 	      return TCL_ERROR;
 	  }
 
@@ -1159,6 +1167,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      }
 		      ${table}_set (interp, ctable, valueObj, row, fieldList[field], indexCtl);
 	          }
+
+		  if (dirty) {
+		      if (${table}_dirty (interp, ctable, row) == TCL_ERROR) {
+			  tclStatus = TCL_ERROR;
+			  goto done;
+		      }
+		  }
 
                   if (indexCtl == CTABLE_INDEX_NEW)
 	              if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR) {
@@ -1449,6 +1464,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int		 poll_interval = 0;
 	Tcl_Obj		*poll_code = NULL;
 	int		 poll_foreground = 0;
+	int		 withDirty = 0;
 
 	while (objIdx < objc) {
 	    char *possibleSwitch;
@@ -1509,6 +1525,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    } else if (strcmp (possibleSwitch, "-nokeys") == 0) {
 		objIdx++;
 		noKeys = 1;
+	    } else if (optIndex == OPT_READ_TABSEP && strcmp (possibleSwitch, "-dirty") == 0) {
+		objIdx++;
+		withDirty = 1;
 	    } else if (strcmp (possibleSwitch, "-with_field_names") == 0) {
 		objIdx++;
 		withFieldNames = 1;
@@ -1616,7 +1635,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	if (optIndex == OPT_WRITE_TABSEP) {
 	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, term, quoteType, nullString);
 	} else if(optIndex == OPT_READ_TABSEP) {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls, quoteType, nullString, poll_interval, poll_code, poll_foreground);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls, quoteType, nullString, poll_interval, poll_code, poll_foreground, withDirty);
 	}
 
 	if(fieldIds) ckfree((char *)fieldIds);
@@ -2051,6 +2070,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	Tcl_AppendResult(interp, "performance callback not implemented on this OS", (char *)NULL);
 	return TCL_ERROR;
 #endif
+      }
+
+      case OPT_CLEAN: {
+	return ${table}_clean (interp, ctable);
       }
     }
 
