@@ -21,26 +21,27 @@ t search -compare {{= _dirty 1}} -key k -code {
   lappend dirty_keys $k
 }
 
-if {$dirty_count != 31} {
-  error "Expected 31 dirty rows got $dirty_count"
+set expected [t count]
+
+if {$dirty_count != $expected} {
+  error "Expected $expected dirty rows got $dirty_count"
+}
+
+set keys [lsort [t names]]
+set dirty_keys [lsort $dirty_keys]
+
+if {$keys != $dirty_keys} {
+  error "Expected '$keys' got '$dirty_keys'
 }
 
 t clean
 
-set dirty_count 0
-set dirty_keys {}
-t search -compare {{= _dirty 1}} -key k -code {
-  incr dirty_count
-  lappend dirty_keys $k
-}
+set dirty_count [t search -compare {{= _dirty 1}} -countOnly 1]
 
 if {$dirty_count != 0} {
   error "Expected 0 dirty rows got $dirty_count"
 }
 
-set show "ATHF"
-set home "Next To Carl"
- 
 t set meatwad coolness -100
 t set shake coolness -100
 
