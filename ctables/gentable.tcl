@@ -3877,30 +3877,60 @@ proc put_init_extension_source {extension extensionVersion} {
     emit [subst -nobackslashes -nocommands $initExtensionSource]
 }
 
-variable noCleanTableSource {
+variable noCleanDirtyTableSource {
 CONST int
 ${table}_clean(Tcl_Interp *interp, CTable *ctable)
 {
     Tcl_AppendResult(interp, "Dirty bits not implemented.", NULL);
     return TCL_ERROR;
 }
+
+CONST int
+${table}_dirty(Tcl_Interp *interp, CTable *ctable)
+{
+    Tcl_AppendResult(interp, "Dirty bits not implemented.", NULL);
+    return TCL_ERROR;
+}
 }
 
-variable cleanTableSource {
+variable cleanDirtyTableSource {
 CONST int
 ${table}_clean(Tcl_Interp *interp, CTable *ctable)
 {
-    ctable_BaseRow *row;
+    ctable_BaseRow *row = NULL;
 
 #ifdef WITH_SHARED_TABLES
     if(ctable->share_type == CTABLE_SHARED_READER) {
 	Tcl_AppendResult(interp, "Clean not possible in a shared reader.", NULL);
+	Tcl_SetErrorCode (interp, "speedtables", "read_only", NULL);
 	return TCL_ERROR;
      }
 #endif
 
     CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
 	((${table} *)row)->_dirty = 0;
+    }
+
+    return TCL_OK;
+}
+
+CONST int
+${table}_dirty(Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *row)
+{
+#ifdef WITH_SHARED_TABLES
+    if(ctable->share_type == CTABLE_SHARED_READER) {
+	Tcl_AppendResult(interp, "Dirty not possible in a shared reader.", NULL);
+	Tcl_SetErrorCode (interp, "speedtables", "read_only", NULL);
+	return TCL_ERROR;
+     }
+#endif
+
+    if (row) {
+	((${table} *)row)->_dirty = 1;
+    } else {
+        CTABLE_LIST_FOREACH (ctable->ll_head, row, 0) {
+	    ((${table} *)row)->_dirty = 1;
+        }
     }
 
     return TCL_OK;
@@ -3912,14 +3942,14 @@ ${table}_clean(Tcl_Interp *interp, CTable *ctable)
 #
 proc gen_clean_function {table} {
     variable withDirty
-    variable cleanTableSource
-    variable noCleanTableSource
+    variable cleanDirtyTableSource
+    variable noCleanDirtyTableSource
 
     if {!$withDirty} {
-	emit [subst -nobackslashes -nocommands $noCleanTableSource]
+	emit [subst -nobackslashes -nocommands $noCleanDirtyTableSource]
     } else {
 	set _dirty "SPECIAL_[string toupper $table]_DIRTY"
-	emit [subst -nobackslashes -nocommands $cleanTableSource]
+	emit [subst -nobackslashes -nocommands $cleanDirtyTableSource]
     }
 }
 

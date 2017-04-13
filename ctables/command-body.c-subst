@@ -914,6 +914,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int               nTuples;
 	  int               field;
 	  int               noKeys = 0;
+	  int               dirty = 0;
 	  int               pgRow;
 	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
 	  Tcl_Obj          *valueObj;
@@ -961,6 +962,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      goto import_arg_err;
 		  if (Tcl_GetIntFromObj(interp, objv[i++], &poll_interval) == TCL_ERROR) {
 		      Tcl_AppendResult (interp, "in argument to -poll_interval", NULL);
+		      return TCL_ERROR;
+		  }
+	      } else if (strcmp (option, "-dirty") == 0) {
+	          if (i >= objc)
+		      goto import_arg_err;
+		  if (Tcl_GetIntFromObj(interp, objv[i++], &dirty) == TCL_ERROR) {
+		      Tcl_AppendResult (interp, "in argument to -dirty", NULL);
 		      return TCL_ERROR;
 		  }
 	      } else if(dataSource == NULL) {
@@ -1159,6 +1167,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      }
 		      ${table}_set (interp, ctable, valueObj, row, fieldList[field], indexCtl);
 	          }
+
+		  if (dirty) {
+		      if (${table}_dirty (interp, ctable, row) == TCL_ERROR) {
+			  tclStatus = TCL_ERROR;
+			  goto done;
+		      }
+		  }
 
                   if (indexCtl == CTABLE_INDEX_NEW)
 	              if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR) {
