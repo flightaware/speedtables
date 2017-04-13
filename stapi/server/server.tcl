@@ -436,7 +436,7 @@ namespace eval ::stapi {
       # can we direct lookup this thing in our table?
       if {[info exists sql2speedtable($t)]} {
         set t $sql2speedtable($t)
-      } elseif {[lsearch ctabletypes $t] == -1} {
+      } elseif {[lsearch $ctabletypes $t] == -1} {
 	set t varstring
       }
 
