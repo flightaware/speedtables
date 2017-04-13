@@ -980,7 +980,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  if (dataSource == NULL) {
 	    import_arg_err:
-	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate? ?-info arrayName?");
+	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate? ?-info arrayName? ?-dirty flag?");
 	      return TCL_ERROR;
 	  }
 
