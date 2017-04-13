@@ -46,6 +46,7 @@ maintests:
 	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
 	$(TCLSH) match-fail-test.tcl
+	$(TCLSH) clean-test.tcl
 
 clean:
 	rm -rf stobj
@@ -53,10 +54,9 @@ clean:
 	rm -f *.core vgcore*
 	rm -f tmp_*
 
-
 pgtests:
-        $(TCLSH) pgtcl.tcl
-        $(TCLSH) stapi_pg.tcl
+	$(TCLSH) pgtcl.tcl
+	$(TCLSH) stapi_pg.tcl
 
 compare:
 	rm -rf stobj

@@ -118,9 +118,15 @@ proc pong {} {
 # prime the pump
 pong
 
-# Simple dumb test using read_ctable_from_sql_rowbyrow_poll explicitly
+# Simple dumb test using read_ctable_from_sql_rowbyrow_full explicitly
 set ::pongcount 0
-::stapi::read_ctable_from_sql_rowbyrow_poll $a $sql 1
+::stapi::read_ctable_from_sql_rowbyrow_full $a $sql 1 0
+
+set expected [$a count]
+
+if {$::pongcount != $expected} {
+	error "pong called $::pongcount times - expected $expected"
+}
 
 puts "pong called $::pongcount times - total rows [$a count]"
 
@@ -131,7 +137,10 @@ set a [::stapi::open_cached animals -rowbyrow 1 -polling 1]
 set ::pongcount 0
 ::stapi::reload_ctable $a
 
-puts "pong called $::pongcount times - total rows [$a count]"
+set expected [$a count]
 
+if {$::pongcount != $expected} {
+	error "pong called $::pongcount times - expected $expected"
+}
 
 puts "\nDone"

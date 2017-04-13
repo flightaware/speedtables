@@ -220,13 +220,14 @@ namespace eval ::stapi {
   #
   # if successful it returns the number of tuples read, from zero on up.
   #
-  # The "_poll" variant takes an integer argument to determine how often to run "update" during import
+  # The "_full" variant takes an integer argument to determine how often to run "update" during import, and
+  # a dirty flag to determine if it should mark read rows dirty. The non_full variant is for legacy code
   #
   proc read_ctable_from_sql {ctable sql {_err ""}} {
-    uplevel 1 [list [namespace which read_ctable_from_sql_poll] $ctable $sql 0 $_err]
+    uplevel 1 [list [namespace which read_ctable_from_sql_full] $ctable $sql 0 0 $_err]
   }
 
-  proc read_ctable_from_sql_poll {ctable sql poll_interval {_err ""}} {
+  proc read_ctable_from_sql_full {ctable sql poll_interval dirty {_err ""}} {
     if {[string length $_err] > 0} {
 	upvar 1 $_err err
     }
@@ -238,7 +239,7 @@ namespace eval ::stapi {
       set errinf "$err\nIn \"sql\""
     } else {
 	# postgres request succeeded, try to import it into the speedtable
-	if {[catch {$ctable import_postgres_result $pg_res -poll_interval $poll_interval} err] == 1} {
+	if {[catch {$ctable import_postgres_result $pg_res -poll_interval $poll_interval -dirty $dirty} err] == 1} {
 	  # failed
 	  set ok 0
 	  set errinf $::errorInfo
@@ -272,13 +273,13 @@ namespace eval ::stapi {
   #
   # if successful it returns the number of tuples read, from zero on up.
   #
-  # The "_poll" variant takes an integer argument to determine how often to run "update" during import
+  # The "_full" variant takes an integer argument to determine how often to run "update" during import
   #
   proc read_ctable_from_sql_rowbyrow {ctable sql {_err ""}} {
-    uplevel 1 [list [namespace which read_ctable_from_sql_rowbyrow_poll] $ctable $sql 0 $_err]
+    uplevel 1 [list [namespace which read_ctable_from_sql_rowbyrow_full] $ctable $sql 0 0 $_err]
   }
 
-  proc read_ctable_from_sql_rowbyrow_poll {ctable sql poll_interval {_err ""}} {
+  proc read_ctable_from_sql_rowbyrow_full {ctable sql poll_interval dirty {_err ""}} {
     if {[string length $_err] > 0} {
 	upvar 1 $_err err
     }
@@ -286,7 +287,7 @@ namespace eval ::stapi {
     set ok 1
 
     pg_sendquery [conn] $sql
-    if {[catch {$ctable import_postgres_result -rowbyrow [conn] -poll_interval $poll_interval -info status} err] == 1} {
+    if {[catch {$ctable import_postgres_result -rowbyrow [conn] -poll_interval $poll_interval -dirty $dirty -info status} err] == 1} {
 	# failed
 	set ok 0
 	set errinf $::errorInfo
@@ -372,4 +373,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_postgres 1.10.1
+package provide st_postgres 1.11.1

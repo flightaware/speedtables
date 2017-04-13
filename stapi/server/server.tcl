@@ -46,6 +46,7 @@ namespace eval ::stapi {
   variable timestamp_table
   variable timestamp_sql
   variable polling
+  variable dirty
 
   # Mapping from sql column types to ctable field types
   variable sql2speedtable
@@ -106,6 +107,10 @@ namespace eval ::stapi {
     int		integer
     long	integer
     varstring	varchar
+  }
+
+  variable ctabletypes {
+    boolean fixedstring varstring char mac short int long wide float double inet tclobj key
   }
 
   # ::stapi::init ?options?
@@ -219,8 +224,6 @@ namespace eval ::stapi {
   # timestamp file via something like "SELECT MAX(sql) AS field FROM table_list;"
   #
   proc init_ctable {name tables where_clause args} {
-    variable sql2speedtable
-
     # Validate arguments.
     if {"$name" == ""} {
       return -code error "Empty ctable name"
@@ -557,6 +560,7 @@ namespace eval ::stapi {
   # 
   proc create_speedtable_definition {tableName columns} {
     variable sql2speedtable
+    variable ctabletypes
 
     # Validate arguments.
     if {"$tableName" == ""} {
@@ -614,6 +618,8 @@ namespace eval ::stapi {
       # can we direct lookup this thing in our table?
       if {[info exists sql2speedtable($t)]} {
         set t $sql2speedtable($t)
+      } elseif {[lsearch ctabletypes $t] == -1} {
+	set t varstring
       }
 
       if {[info exists options($n)]} {
@@ -769,6 +775,9 @@ namespace eval ::stapi {
   #   -polling interval
   #      Call update every $interval rows
   #
+  #   -dirty 0|1
+  #      Set rows unconditionally _dirty when read from postgres
+  #
   # Options that don't begin with a dash are passed to the ctable create
   # command.
   #
@@ -780,6 +789,7 @@ namespace eval ::stapi {
     variable rowbyrow
     variable sync_tsv
     variable polling
+    variable dirty
 
     # default arguments
     set pattern "*"
@@ -789,6 +799,7 @@ namespace eval ::stapi {
     set rowbyrow_arg 0
     set sync_tsv_arg 0
     set polling_arg 0
+    set dirty_arg 0
 
     # Parse and validate
     if {[llength $args] & 1} {
@@ -807,6 +818,7 @@ namespace eval ::stapi {
 	-row* { set rowbyrow_arg $v }
 	-syn* { set sync_tsv_arg $v }
 	-pol* { set polling_arg $v }
+	-dir* { set dirty_arg $v }
 	-* { return -code error "Unknown option '$n'" }
 	default {
 	   lappend open_command $n $v
@@ -822,6 +834,7 @@ namespace eval ::stapi {
     set rowbyrow($ctable) $rowbyrow_arg
     set sync_tsv($ctable) $sync_tsv_arg
     set polling($ctable) $polling_arg
+    set dirty($ctable) $dirty_arg
 
     # we need to know this to find the tsv file and sql file
     set ctable_name "c_$name"
@@ -928,12 +941,12 @@ namespace eval ::stapi {
     query_timestamp $ctable_name
 
     if {$rowbyrow_arg} {
-      set reader read_ctable_from_sql_rowbyrow_poll
+      set reader read_ctable_from_sql_rowbyrow_full
     } else {
-      set reader read_ctable_from_sql_poll
+      set reader read_ctable_from_sql_full
     }
 
-    if {[catch {$reader $ctable $sql $polling_arg} err]} {
+    if {[catch {$reader $ctable $sql $polling_arg $dirty_arg} err]} {
       $ctable destroy
       unlockfile $tsv_file
       return -code error -errorinfo $::errorInfo $err
@@ -959,6 +972,7 @@ namespace eval ::stapi {
   proc tune_cached {ctable args} {
     variable rowbyrow
     variable polling
+    variable dirty
     variable ctable2name
     if {![info exists ctable2name($ctable)]} {
       error "$ctable: Not a cached ctable"
@@ -966,20 +980,13 @@ namespace eval ::stapi {
 
     foreach {n v} $args {
       switch -glob -- $n {
-	-row* { set rowbyrow_arg $v }
-	-pol* { set polling_arg $v }
+	-row* { set rowbyrow($ctable) $v }
+	-dir* { set dirty($ctable) $v }
+	-pol* { set polling($ctable) $v }
 	default {
 	  error "$ctable: $n is not a tunable parameter"
 	}
       }
-    }
-
-    # update metadata
-    if {[info exists rowbyrow_arg]} {
-	set rowbyrow($ctable) $rowbyrow_arg
-    }
-    if {[info exists polling_arg]} {
-	set polling($ctable) $polling_arg
     }
   }
 
@@ -1116,6 +1123,7 @@ namespace eval ::stapi {
     variable rowbyrow
     variable sync_tsv
     variable polling
+    variable dirty
 
     if {"$_err" != ""} {
       upvar 1 $_err err
@@ -1130,15 +1138,15 @@ namespace eval ::stapi {
     }
 
     if {$rowbyrow($ctable)} {
-      set reader read_ctable_from_sql_rowbyrow_poll
+      set reader read_ctable_from_sql_rowbyrow_full
     } else {
-      set reader read_ctable_from_sql_poll
+      set reader read_ctable_from_sql_full
     }
 
     # Grab timestamp BEFORE we read
     query_timestamp $ctable2name($ctable)
 
-    set result [$reader $ctable $sql $polling($ctable) $_err]
+    set result [$reader $ctable $sql $polling($ctable) $dirty($ctable) $_err]
 
     if {$sync_tsv($ctable) && $result != -1} {
       check_sync $ctable
@@ -1155,11 +1163,14 @@ namespace eval ::stapi {
   #
   # This function is used to synchronise a table that may have had deleted rows.
   #
+  # TODO: make it use the dirty flag code?
+  #
   proc reload_ctable {ctable {_err ""}} {
     variable ctable2name
     variable rowbyrow
     variable sync_tsv
     variable polling
+    variable dirty
 
     if {"$_err" != ""} {
       upvar 1 $_err err
@@ -1177,15 +1188,15 @@ namespace eval ::stapi {
     $ctable reset
 
     if {$rowbyrow($ctable)} {
-      set reader read_ctable_from_sql_rowbyrow_poll
+      set reader read_ctable_from_sql_rowbyrow_full
     } else {
-      set reader read_ctable_from_sql_poll
+      set reader read_ctable_from_sql_full
     }
 
     # Grab timestamp BEFORE we read
     query_timestamp $ctable2name($ctable)
 
-    set result [$reader $ctable $sql $polling($ctable) $_err]
+    set result [$reader $ctable $sql $polling($ctable) $dirty($ctable) $_err]
 
     if {$sync_tsv($ctable) && $result != -1} {
       check_sync $ctable
@@ -1558,4 +1569,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_server 1.10.1
+package provide st_server 1.11.1
