@@ -2875,6 +2875,7 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
 
     // we should plug the list in last, so that concurrent users don't
     // walk an incomplete skiplist, but ctable_InsertIntoIndex needs this
+    // TODO: make ctable_InsertIntoIndex a wrapper around a new "ctable_InsertIntoSkiplist"?
     ctable->skipLists[field] = skip;
 
     // Walk the whole table to create the index
