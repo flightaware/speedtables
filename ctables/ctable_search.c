@@ -2884,16 +2884,12 @@ ctable_CreateIndex (Tcl_Interp *interp, CTable *ctable, int field, int depth) {
 	// (not here so much as in read_tabsep because here we just unwind
 	// and undo the new index if we get an error)
 	if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
-	    Tcl_Obj *utilityObj;
-
 	    // you can't leave them with a partial index or there will
 	    // be heck to pay later when queries don't find all the
 	    // rows, etc
 	    jsw_sdelete_skiplist (skip, 0);
 	    ctable->skipLists[field] = NULL;
-	    utilityObj = Tcl_NewObj();
 	    Tcl_AppendResult (interp, " while creating index", (char *) NULL);
-	    Tcl_DecrRefCount (utilityObj);
 	    return TCL_ERROR;
 	}
     }
