@@ -958,9 +958,10 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
         c->tranTable = tranTable;
         tranTable = NULL;
         c->cursorId = search->cursorId;
-        c->offset = search->offset;
+        c->offset = c->tranIndex = search->offset;
         c->offsetLimit = search->offsetLimit;
 	c->cursorState = CTABLE_CURSOR_OK;
+        search->cursor = cursor;
 
 	Tcl_SetObjResult (interp, Tcl_NewIntObj(search->cursorId));
     } else if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
@@ -1950,7 +1951,9 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
     }
 
 #ifdef WITH_SHARED_TABLES
-    if(locked_cycle != LOST_HORIZON)
+    if(search->cursor)
+	search->cursor->lockCycle = locked_cycle;
+    else if(locked_cycle != LOST_HORIZON)
 	read_unlock(ctable->share);
 
     if(skipListCopy)
@@ -2044,6 +2047,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
     search->cursorId = 0;
+    search->cursor = NULL;
 
     // Give each search a unique non-zero sequence number
     if(++staticSequence == 0) ++staticSequence;

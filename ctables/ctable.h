@@ -210,6 +210,25 @@ struct ctable_BaseRow {
         (var) && ((tvar) = (var)->_ll_nodes[i].next); \
          var = tvar)
 
+// Cursor state values
+#define CTABLE_CURSOR_NEW       0
+#define CTABLE_CURSOR_OK        1
+#define CTABLE_CURSOR_DELETING -1
+
+struct cursor {
+    struct cursor   *nextCursor;
+    struct CTable   *ownerTable;
+    int              cursorId;
+    ctable_BaseRow **tranTable;
+    int              tranIndex;
+    int              offset;
+    int              offsetLimit;
+    int              cursorState;
+#ifdef WITH_SHARED_TABLES
+    int              lockCycle;
+#endif
+}
+
 // define ctable search comparison types
 // these terms must line up with the definition of searchTerms
 //  in function ctable_ParseSearch
@@ -322,12 +341,14 @@ struct CTableSearchFilter {
 #define CTABLE_SEARCH_ACTION_WRITE_TABSEP 6
 #define CTABLE_SEARCH_ACTION_TRANSACTION_ONLY 7
 #define CTABLE_SEARCH_ACTION_CODE 8
+#define CTABLE_SEARCH_ACTION_CURSOR 9
 
 // transactions are run after the operation is complete, so they don't modify
 // a field that's being searched on
 #define CTABLE_SEARCH_TRAN_NONE 0
 #define CTABLE_SEARCH_TRAN_DELETE 1
 #define CTABLE_SEARCH_TRAN_UPDATE 2
+#define CTABLE_SEARCH_TRAN_CURSOR 3
 
 // Buffering types
 #define CTABLE_BUFFER_DEFAULT -1
@@ -404,17 +425,11 @@ struct CTableSearch {
 
     // Unique search ID for memoization
     int					 sequence;
-};
 
-struct cursor {
-    struct cursor   *nextCursor;
-    struct CTable   *ownerTable;
-    int              cursorId;
-    ctable_BaseRow **tranTable;
-    int              offset;
-    int              offsetLimit;
-    int              cursorState;
-}
+    // cursor ID and structure
+    int                                  cursorId;
+    struct cursor                       *cursor;
+};
 
 struct ctable_FieldInfo {
     CONST char              *name;
