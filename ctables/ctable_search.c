@@ -820,7 +820,7 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
     int fieldIndex, rowIndex;
     ctable_CreatorTable *creator = ctable->creator;
 
-    if(search->tranType == CTABLE_SEARCH_TRAN_NONE) {
+    if(search->tranType == CTABLE_SEARCH_TRAN_NONE || search->tranType == CTABLE_SEARCH_TRAN_CURSOR) {
 	return TCL_OK;
     }
 
@@ -950,7 +950,20 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
       ctable_qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, (cmp_t*) creator->sort_compare);
     }
 
-    if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
+    if (search->tranType == CTABLE_SEARCH_TRAN_CURSOR) {
+        struct cursor *c = ckalloc(sizeof (struct cursor));
+        c->nextCursor = ctable->cursors;
+        c->ownerTable = ctable;
+        ctable->cursors = c;
+        c->tranTable = tranTable;
+        tranTable = NULL;
+        c->cursorId = search->cursorId;
+        c->offset = search->offset;
+        c->offsetLimit = search->offsetLimit;
+	c->cursorState = CTABLE_CURSOR_OK;
+
+	Tcl_SetObjResult (interp, Tcl_NewIntObj(search->cursorId));
+    } else if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
         // walk the result
         for (walkIndex = search->offset; walkIndex < search->offsetLimit; walkIndex++) {
 	    if(search->pollInterval && --search->nextPoll <= 0) {
@@ -987,7 +1000,7 @@ normal_return:
     search->matchCount = search->offsetLimit - search->offset;
 
     // Finally, perform any pending transaction.
-    if(search->tranType != CTABLE_SEARCH_TRAN_NONE) {
+    if(search->tranType != CTABLE_SEARCH_TRAN_NONE && search->tranType !=  CTABLE_SEARCH_TRAN_CURSOR) {
 	if (ctable_PerformTransaction(interp, ctable, search) == TCL_ERROR) {
 	    return TCL_ERROR;
 	}
@@ -1239,6 +1252,8 @@ CTABLE_INTERNAL void ctable_PrepareTransactions(CTable *ctable, CTableSearch *se
     //     We explicitly requested bufering.
     if (search->action == CTABLE_SEARCH_ACTION_NONE) {
 	search->bufferResults = CTABLE_BUFFER_NONE;
+    } else if(search->action == CTABLE_SEARCH_ACTION_CURSOR) {
+	search->bufferResults = CTABLE_BUFFER_DEFER;
     } else if(search->sortControl.nFields > 0) {
 	search->bufferResults = CTABLE_BUFFER_DEFER;
 #ifdef WITH_SHARED_TABLES
@@ -2028,6 +2043,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->alreadySearched = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
+    search->cursorId = 0;
 
     // Give each search a unique non-zero sequence number
     if(++staticSequence == 0) ++staticSequence;
@@ -2322,6 +2338,10 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	  case SEARCH_OPT_CURSOR: {
 	    int cursor_id;
 
+            if(search->tranType != CTABLE_SEARCH_TRAN_NONE || search->action != CTABLE_SEARCH_ACTION_NONE) {
+		Tcl_AppendResult (interp, "Can not combine -cursor with other operations", (char *)NULL);
+	    }
+
 	    if (Tcl_GetString (objv[i]) == "#auto") {
 		cursor_id = 1;
 		struct cursor *c = ctable->cursors;
@@ -2335,17 +2355,16 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	        Tcl_AppendResult (interp, " while processing cursor id", (char *) NULL);
 	        return TCL_ERROR;
 	    }
+
 	    // currently, we only support one cursor
 	    if(ctable->cursors) {
 		Tcl_AppendResult (interp, "Too many cursors on table", (char *)NULL);
 		return TCL_ERROR;
 	    }
 
-            if(search->tranType != CTABLE_SEARCH_TRAN_NONE) {
-	    }
-
 	    search->tranType = CTABLE_SEARCH_TRAN_CURSOR;
 	    search->action = CTABLE_SEARCH_ACTION_CURSOR;
+	    search->cursorId = cursor_id;
 	  }
 	}
     }
@@ -2355,7 +2374,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     // leaving the search action "none"
     if (search->codeBody != NULL) {
 	if (search->action == CTABLE_SEARCH_ACTION_WRITE_TABSEP || search->action == CTABLE_SEARCH_ACTION_CURSOR) {
-	    Tcl_AppendResult (interp, "Both -code and -write_tabsep specified", NULL);
+	    Tcl_AppendResult (interp, "Both -code and -write_tabsep or -cursor specified", NULL);
 	    goto errorReturn;
 	}
 	if (search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {

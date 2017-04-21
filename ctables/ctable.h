@@ -411,7 +411,9 @@ struct cursor {
     struct CTable   *ownerTable;
     int              cursorId;
     ctable_BaseRow **tranTable;
-    int              tranIndex;
+    int              offset;
+    int              offsetLimit;
+    int              cursorState;
 }
 
 struct ctable_FieldInfo {
