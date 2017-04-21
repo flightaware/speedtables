@@ -150,9 +150,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     int indexCtl;
     int commandStatus = TCL_OK;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", "clean", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", "clean", "cursor", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, OPT_CLEAN, NUM_OPTIONS
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, OPT_CLEAN, OPT_CURSOR, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
@@ -2075,6 +2075,28 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       case OPT_CLEAN: {
 	return ${table}_clean (interp, ctable);
       }
+
+      case OPT_CURSOR: {
+	int id;
+
+	if (objc < 4) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "cursor_id command ?args?");
+	    return TCL_ERROR;
+	}
+
+        if (Tcl_GetIntFromObj (interp, objv[2], &id) == TCL_ERROR) {
+            Tcl_AppendResult(interp, " parsing cursor id", NULL);
+            return TCL_ERROR;
+        }
+
+	for (cursor = ctable->cursors; cursor; cursor = cursor->nextCursor) {
+	    if(cursor->cursorId == id)
+		break;
+	}
+	if(!cursor) {
+	    Tcl_AppendResult(interp, "cursor ", Tcl_GetSTringFromObj(objv[2]), " does not exist");
+	    return ctable_cursor_command(interp, ctable, cursor, Tcl_GetSTringFromObj(objv[3]), &objv[4], objc-4);
+	}
     }
 
 #ifdef WITH_SHARED_TABLES

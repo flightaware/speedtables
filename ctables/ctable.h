@@ -410,7 +410,6 @@ struct cursor {
     struct cursor   *nextCursor;
     struct CTable   *ownerTable;
     int              cursorId;
-    char            *cursorName;
     ctable_BaseRow **tranTable;
     int              tranIndex;
 }
