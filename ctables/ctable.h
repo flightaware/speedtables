@@ -406,6 +406,15 @@ struct CTableSearch {
     int					 sequence;
 };
 
+struct cursor {
+    struct cursor   *nextCursor;
+    struct CTable   *ownerTable;
+    int              cursorId;
+    char            *cursorName;
+    ctable_BaseRow **tranTable;
+    int              tranIndex;
+}
+
 struct ctable_FieldInfo {
     CONST char              *name;
     Tcl_Obj                 *nameObj;
@@ -508,6 +517,9 @@ struct CTable {
 
     Tcl_Command                          commandInfo;
     long                                 count;
+
+    struct cursor			*cursors;
+
     CT_LIST_ENTRY(CTable)                   instance;
 };
 
