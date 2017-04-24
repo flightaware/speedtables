@@ -220,7 +220,7 @@ puts "ok"
 
 puts -nonewline "testing 'methods'..."
 set methlab [
-  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result import_cassandra_future fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach key makekey methods attach getprop share null isnull verify performance_callback clean
+  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result import_cassandra_future fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach key makekey methods attach getprop share null isnull verify performance_callback clean cursor
 ]
 set methods [t methods]
 if {"$methods" != "$methlab"} {
@@ -243,10 +243,10 @@ foreach {n v} $proplist {
 puts "ok"
 
 puts -nonewline "testing 'getprop' with invalid property..."
+set expected_error "Unknown property 'rumplestiltskin'"
 if {[catch {t getprop rumplestiltskin} result] == 1} {
-    if {$result == "Unknown property 'rumplestiltskin'."} {
-    } else {
-	error "t getprop rumplestiltskin got '$result'"
+    if {![string match "$expected_error*" $result]} {
+	error "t getprop rumplestiltskin got '$result' expected '$expected_error'"
     }
 } else {
     error "should have gotten an error"

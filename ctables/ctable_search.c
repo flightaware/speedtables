@@ -2348,6 +2348,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    }
 
 	    search->action = CTABLE_SEARCH_ACTION_WRITE_TABSEP;
+
+	    break;
 	  }
 
 	  case SEARCH_OPT_CURSOR: {
