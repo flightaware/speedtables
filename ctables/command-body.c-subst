@@ -32,7 +32,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
 	    return TCL_OK;
 	} else {
 	    if (interp != NULL) {
-		Tcl_AppendResult(interp, "Can't reset read-only shared table.", NULL);
+		Tcl_AppendResult(interp, "Can't reset read-only shared table", (char *)NULL);
 		Tcl_SetErrorCode (interp, "speedtables", "read_only", NULL);
 	    }
 	    return TCL_ERROR;
@@ -251,7 +251,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	if(shmcheck[optIndex]) {
 	    // Check for free space
 	    if(shmfreemem(ctable->share, 0) < ctable->share_min_free) {
-		Tcl_AppendResult (interp, "Free shared memory low.", NULL);
+		Tcl_AppendResult (interp, "Free shared memory low", (char *)NULL);
 		Tcl_SetErrorCode (interp, "speedtables", "shared_memory_low", NULL);
 		return TCL_ERROR;
 	    }
@@ -295,7 +295,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 			 : ctable_quoteTypeList(interp);
 
 		  if (Tcl_ListObjAppendElement (interp, list, tmpobj) == TCL_ERROR) {
-		      Tcl_AppendResult(interp, " (internal error)", NULL);
+		      Tcl_AppendResult(interp, " (internal error)", (char *)NULL);
 		      return TCL_ERROR;
 		  }
 	      }
@@ -303,7 +303,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      for(j = 2; j < objc; j++) {
     		  if (Tcl_GetIndexFromObj (interp, objv[j], infoStrings, "property", TCL_EXACT, &i) != TCL_OK || (i & 1)) {
 		      Tcl_ResetResult(interp); // Because it's misleading
-		      Tcl_AppendResult(interp, "Unknown property '", Tcl_GetString(objv[j]), "'.", NULL);
+		      Tcl_AppendResult(interp, "Unknown property '", Tcl_GetString(objv[j]), "'", (char *)NULL);
 		      Tcl_SetErrorCode (interp, "speedtables", "unknown_property", NULL);
 		      return TCL_ERROR;
 		  }
@@ -311,7 +311,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 			 ? Tcl_NewStringObj(infoStrings[i+1], -1)
                          : ctable_quoteTypeList(interp);
 		  if (Tcl_ListObjAppendElement (interp, list, tmpobj) == TCL_ERROR) {
-		      Tcl_AppendResult(interp, " (internal error)", NULL);
+		      Tcl_AppendResult(interp, " (internal error)", (char *)NULL);
 		      return TCL_ERROR;
 		  }
 	      }
@@ -2085,7 +2085,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	}
 
         if (Tcl_GetIntFromObj (interp, objv[2], &id) == TCL_ERROR) {
-            Tcl_AppendResult(interp, " parsing cursor id", NULL);
+            Tcl_AppendResult(interp, " parsing cursor id", (char *)NULL);
             return TCL_ERROR;
         }
 
@@ -2093,10 +2093,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    if(cursor->cursorId == id)
 		break;
 	}
+
 	if(!cursor) {
-	    Tcl_AppendResult(interp, "cursor ", Tcl_GetSTringFromObj(objv[2]), " does not exist");
-	    return ctable_cursor_command(interp, ctable, cursor, Tcl_GetSTringFromObj(objv[3]), &objv[4], objc-4);
-	}
+	    Tcl_AppendResult(interp, "cursor ", Tcl_GetSTringFromObj(objv[2]), " does not exist", (char *)NULL);
+            return TCL_ERROR;
+        }
+
+	return ctable_cursor_command(interp, ctable, cursor, Tcl_GetSTringFromObj(objv[3]), &objv[4], objc-4);
     }
 
 #ifdef WITH_SHARED_TABLES

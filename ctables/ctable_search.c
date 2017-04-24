@@ -951,18 +951,29 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
     }
 
     if (search->tranType == CTABLE_SEARCH_TRAN_CURSOR) {
-        struct cursor *c = ckalloc(sizeof (struct cursor));
-        c->nextCursor = ctable->cursors;
-        c->ownerTable = ctable;
-        ctable->cursors = c;
-        c->tranTable = tranTable;
-        tranTable = NULL;
-        c->cursorId = search->cursorId;
-        c->offset = c->tranIndex = search->offset;
-        c->offsetLimit = search->offsetLimit;
-	c->cursorState = CTABLE_CURSOR_OK;
-        search->cursor = cursor;
+	// ALLOCATE and build new cursor
+        search->cursor = ckalloc(sizeof (struct cursor));
 
+	// MOVE transaction table to cursor
+        search->cursor->tranTable = tranTable;
+        tranTable = NULL;
+
+	// COPY search cursor info to cursor
+        search->cursor->cursorId = search->cursorId;
+        search->cursor->offset = search->cursor->tranIndex = search->offset;
+        search->cursor->offsetLimit = search->offsetLimit;
+
+	// INSERT cursor into cursor list
+        search->cursor->nextCursor = ctable->cursors;
+        ctable->cursors = search->cursor;
+
+	// SAVE ctable link in cursor
+        search->cursor->ownerTable = ctable;
+
+	// MARK cursor as valid
+	search->cursor->cursorState = CTABLE_CURSOR_OK;
+
+	// RETURN cursor ID to caller
 	Tcl_SetObjResult (interp, Tcl_NewIntObj(search->cursorId));
     } else if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
         // walk the result
@@ -2340,27 +2351,46 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	  }
 
 	  case SEARCH_OPT_CURSOR: {
-	    int cursor_id;
+	    int cursor_id = 0;
+	    struct cursor *c;
 
             if(search->tranType != CTABLE_SEARCH_TRAN_NONE || search->action != CTABLE_SEARCH_ACTION_NONE) {
 		Tcl_AppendResult (interp, "Can not combine -cursor with other operations", (char *)NULL);
 	    }
 
 	    if (Tcl_GetString (objv[i]) == "#auto") {
-		cursor_id = 1;
-		struct cursor *c = ctable->cursors;
-		while(c) {
-		  if(c->cursorId >= cursor_id) {
-		    cursor_id = c->cursorId + 1;
-		  }
-		  c = c->nextCursor;
+		static int auto_cursor_id = 0;
+		cursor_id = ++auto_cursor_id;
+
+		for (c = ctable->cursors; c; c = c->nextCursor) {
+		    if(c->cursorId >= cursor_id) {
+		        cursor_id = c->cursorId + 1;
+		    }
 		}
-	    } else if (Tcl_GetIntFromObj (interp, objv[i++], &search->cursor) == TCL_ERROR) {
-	        Tcl_AppendResult (interp, " while processing cursor id", (char *) NULL);
-	        return TCL_ERROR;
+
+		if(cursor_id >= auto_cursor_id) {
+		    auto_cursor_id = cursor_id;
+		}
+	    } else {
+		if (Tcl_GetIntFromObj (interp, objv[i++], &search->cursor) == TCL_ERROR) {
+	            Tcl_AppendResult (interp, " while processing cursor id", (char *) NULL);
+	            return TCL_ERROR;
+		}
+
+	        if(cursor_id == 0) {
+		    Tcl_AppendResult (interp, "Cursor ID must be non-zero", (char *)NULL);
+		    return TCL_ERROR;
+	        }
+
+		for (c = ctable->cursors; c; c = c->nextCursor) {
+		    if(c->cursorId == cursor_id) {
+		        Tcl_AppendResult (interp, "Cursor ID must not duplicate an existing cursor", (char *)NULL);
+	                return TCL_ERROR;
+		    }
+		}
 	    }
 
-	    // currently, we only support one cursor
+	    // currently, we only support one cursor. TODO: fix this if needed
 	    if(ctable->cursors) {
 		Tcl_AppendResult (interp, "Too many cursors on table", (char *)NULL);
 		return TCL_ERROR;
@@ -2378,7 +2408,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     // leaving the search action "none"
     if (search->codeBody != NULL) {
 	if (search->action == CTABLE_SEARCH_ACTION_WRITE_TABSEP || search->action == CTABLE_SEARCH_ACTION_CURSOR) {
-	    Tcl_AppendResult (interp, "Both -code and -write_tabsep or -cursor specified", NULL);
+	    Tcl_AppendResult (interp, "Both -code and -write_tabsep or -cursor specified", (char *)NULL);
 	    goto errorReturn;
 	}
 	if (search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {
