@@ -227,7 +227,7 @@ struct cursor {
 #ifdef WITH_SHARED_TABLES
     int              lockCycle;
 #endif
-}
+};
 
 // define ctable search comparison types
 // these terms must line up with the definition of searchTerms

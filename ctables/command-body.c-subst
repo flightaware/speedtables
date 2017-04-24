@@ -2079,6 +2079,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_CURSOR: {
 	int id;
+	struct cursor *c;
 
 	if (objc < 4) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "cursor_id command ?args?");
@@ -2090,18 +2091,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
             return TCL_ERROR;
         }
 
-	for (cursor = ctable->cursors; cursor; cursor = cursor->nextCursor) {
-	    if(cursor->cursorId == id)
+	for (c = ctable->cursors; c; c = c->nextCursor) {
+	    if(c->cursorId == id)
 		break;
 	}
 
-	if(!cursor) {
-	    Tcl_AppendResult(interp, "cursor ", Tcl_GetSTringFromObj(objv[2]), " does not exist", (char *)NULL);
+	if(!c) {
+	    Tcl_AppendResult(interp, "cursor ", Tcl_GetString(objv[2]), " does not exist", (char *)NULL);
             return TCL_ERROR;
         }
 
 	// dont end_write()
-	return ctable_CursorCommand(interp, ctable, cursor, objv[3], &objv[4], objc-4);
+	return ctable_CursorCommand(interp, ctable, c, objv[3], &objv[4], objc-4);
+      }
     }
 
 #ifdef WITH_SHARED_TABLES

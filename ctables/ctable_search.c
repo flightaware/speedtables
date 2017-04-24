@@ -952,11 +952,11 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 
     if (search->tranType == CTABLE_SEARCH_TRAN_CURSOR) {
 	// ALLOCATE and build new cursor
-        search->cursor = ckalloc(sizeof (struct cursor));
+        search->cursor = (struct cursor *)ckalloc(sizeof (struct cursor));
 
 	// MOVE transaction table to cursor
-        search->cursor->tranTable = tranTable;
-        tranTable = NULL;
+        search->cursor->tranTable = search->tranTable;
+        search->tranTable = NULL;
 
 	// COPY search cursor info to cursor
         search->cursor->cursorId = search->cursorId;
@@ -2358,7 +2358,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 		Tcl_AppendResult (interp, "Can not combine -cursor with other operations", (char *)NULL);
 	    }
 
-	    if (Tcl_GetString (objv[i]) == "#auto") {
+	    if (strcmp (Tcl_GetString (objv[i]), "#auto") == 0) {
 		static int auto_cursor_id = 0;
 		cursor_id = ++auto_cursor_id;
 
@@ -2372,7 +2372,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 		    auto_cursor_id = cursor_id;
 		}
 	    } else {
-		if (Tcl_GetIntFromObj (interp, objv[i++], &search->cursor) == TCL_ERROR) {
+		if (Tcl_GetIntFromObj (interp, objv[i++], &cursor_id) == TCL_ERROR) {
 	            Tcl_AppendResult (interp, " while processing cursor id", (char *) NULL);
 	            return TCL_ERROR;
 		}
@@ -3013,17 +3013,17 @@ ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
 }
 
 CTABLE_INTERNAL int
-ctable_CursorCommand(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *command, Tcl_Obj *objv, int objc)
+ctable_CursorCommand(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *command, Tcl_Obj *CONST objv[], int objc)
 {
-    static char *cursorCommands = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_set", "delete", "count", NULL };
-    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_DELETE, CURSOR_COUNT };
-    int command = 0;
+    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_set", "delete", "count", NULL };
+    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_SET, CURSOR_DELETE, CURSOR_COUNT, NUM_CURSOR_COMMANDS };
+    int command_id = 0;
 
-    if (Tcl_GetIndexFromObj (interp, command, cursorCommands, "cursor command", TCL_EXACT, &command) != TCL_OK) {
+    if (Tcl_GetIndexFromObj (interp, command, cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
         return TCL_ERROR;
     }
 
-    switch (command) {
+    switch (command_id) {
 	case CURSOR_DESTROY: {
 	    struct cursor *prev = NULL;
 	    struct cursor *next = ctable->cursors;
@@ -3043,7 +3043,7 @@ ctable_CursorCommand(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, 
 
 #ifdef WITH_SHARED_TABLES
 	    if(cursor->lockCycle != LOST_HORIZON)
-		read_unlock(ctable);
+		read_unlock(ctable->share);
 	    end_write(ctable);
 #endif
 
