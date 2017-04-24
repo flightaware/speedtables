@@ -2073,7 +2073,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_CLEAN: {
-	return ${table}_clean (interp, ctable);
+	commandStatus = ${table}_clean (interp, ctable);
+	break;
       }
 
       case OPT_CURSOR: {
