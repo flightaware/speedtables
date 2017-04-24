@@ -4912,10 +4912,10 @@ proc gen_gets_string_cases {} {
 
 variable sharedStaticSource {
 
-// Call write-lock at least once during command.
+// Call write-lock at least once during command. Cursors do their own locking and unlocking.
 static INLINE void begin_write(CTable *ctable)
 {
-  if(ctable->share_type == CTABLE_SHARED_MASTER) {
+  if(ctable->share_type == CTABLE_SHARED_MASTER && !ctable->cursors) {
     write_lock(ctable->share);
     ctable->was_locked = 1;
   }
@@ -4924,7 +4924,7 @@ static INLINE void begin_write(CTable *ctable)
 // Call write-unlock once at the end of the command, IFF it was locked
 static INLINE void end_write(CTable *ctable)
 {
-  if(ctable->was_locked && ctable->share_type == CTABLE_SHARED_MASTER) {
+  if(ctable->was_locked && ctable->share_type == CTABLE_SHARED_MASTER && !ctable->cursors) {
     write_unlock(ctable->share);
     ctable->was_locked = 0;
   }
