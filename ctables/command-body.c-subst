@@ -2100,7 +2100,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
             return TCL_ERROR;
         }
 
-	return ctable_cursor_command(interp, ctable, cursor, Tcl_GetSTringFromObj(objv[3]), &objv[4], objc-4);
+	// dont end_write()
+	return ctable_CursorCommand(interp, ctable, cursor, objv[3], &objv[4], objc-4);
     }
 
 #ifdef WITH_SHARED_TABLES

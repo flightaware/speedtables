@@ -3012,4 +3012,50 @@ ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
     return TCL_OK;
 }
 
+CTABLE_INTERNAL int
+ctable_CursorCommand(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *command, Tcl_Obj *objv, int objc)
+{
+    static char *cursorCommands = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_set", "delete", "count", NULL };
+    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_DELETE, CURSOR_COUNT };
+    int command = 0;
+
+    if (Tcl_GetIndexFromObj (interp, command, cursorCommands, "cursor command", TCL_EXACT, &command) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    switch (command) {
+	case CURSOR_DESTROY: {
+	    struct cursor *prev = NULL;
+	    struct cursor *next = ctable->cursors;
+	    while(next && next != cursor) {
+		prev = next;
+		next = next->nextCursor;
+	    }
+	    if(!next) {
+		Tcl_AppendResult(interp, "Can't find cursor in ctable (can't happen)", (char *)NULL);
+	    }
+	    if(prev)
+		prev->nextCursor = next->nextCursor;
+	    else
+		ctable->cursors = next->nextCursor;
+
+	    ckfree(cursor->tranTable);
+
+#ifdef WITH_SHARED_TABLES
+	    if(cursor->lockCycle != LOST_HORIZON)
+		read_unlock(ctable);
+	    end_write(ctable);
+#endif
+
+	    ckfree(cursor);
+
+	    return TCL_OK;
+	}
+
+// TODO: rest of commands!
+	default:
+	    Tcl_AppendResult(interp, "Unimplemented command ", Tcl_GetString(command), (char *)NULL);
+	    return TCL_ERROR;
+    }
+}
 // vim: set ts=8 sw=4 sts=4 noet :
