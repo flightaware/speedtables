@@ -137,8 +137,9 @@ void ${table}_cmdDeleteProc (ClientData clientData)
     }
 }
 
-// Forward definition
+// Forward definitions
 int ${table}MetaObjCmd(ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc);
 
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
@@ -2078,31 +2079,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_CURSOR: {
-	int id;
-	struct cursor *c;
-
-	if (objc < 4) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "cursor_id command ?args?");
-	    return TCL_ERROR;
-	}
-
-        if (Tcl_GetIntFromObj (interp, objv[2], &id) == TCL_ERROR) {
-            Tcl_AppendResult(interp, " parsing cursor id", (char *)NULL);
-            return TCL_ERROR;
-        }
-
-	for (c = ctable->cursors; c; c = c->nextCursor) {
-	    if(c->cursorId == id)
-		break;
-	}
-
-	if(!c) {
-	    Tcl_AppendResult(interp, "cursor ", Tcl_GetString(objv[2]), " does not exist", (char *)NULL);
-            return TCL_ERROR;
-        }
-
 	// dont end_write()
-	return ctable_CursorCommand(interp, ctable, c, objv[3], &objv[4], objc-4);
+	return ${table}CursorCommand(interp, ctable, objv, objc);
       }
     }
 
@@ -2111,4 +2089,103 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 #endif
     return commandStatus;
 }
+
+int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc)
+{
+    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_set", "delete", "count", NULL };
+    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_SET, CURSOR_DELETE, CURSOR_COUNT, NUM_CURSOR_COMMANDS };
+    int command_id = 0;
+    struct cursor *cursor;
+    int id;
+
+    if (objc < 4) {
+	Tcl_WrongNumArgs(interp, 2, objv, "cursor_id command ?args?");
+	return TCL_ERROR;
+    }
+
+    if (Tcl_GetIntFromObj (interp, objv[2], &id) == TCL_ERROR) {
+	Tcl_AppendResult(interp, " parsing cursor id", (char *)NULL);
+	return TCL_ERROR;
+    }
+
+    for (cursor = ctable->cursors; cursor; cursor = cursor->nextCursor) {
+	if(cursor->cursorId == id)
+	    break;
+    }
+
+    if(!cursor) {
+	Tcl_AppendResult(interp, "cursor ", Tcl_GetString(objv[2]), " does not exist", (char *)NULL);
+	return TCL_ERROR;
+    }
+
+    if (Tcl_GetIndexFromObj (interp, objv[3], cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    switch (command_id) {
+	case CURSOR_DESTROY: {
+	    struct cursor *prev = NULL;
+	    struct cursor *next = ctable->cursors;
+	    while(next && next != cursor) {
+		prev = next;
+		next = next->nextCursor;
+	    }
+	    if(!next) {
+		Tcl_AppendResult(interp, "Can't find cursor in ctable (can't happen)", (char *)NULL);
+	    }
+	    if(prev)
+		prev->nextCursor = next->nextCursor;
+	    else
+		ctable->cursors = next->nextCursor;
+
+	    ckfree(cursor->tranTable);
+
+#ifdef WITH_SHARED_TABLES
+	    if(cursor->lockCycle != LOST_HORIZON)
+		read_unlock(ctable->share);
+	    end_write(ctable);
+#endif
+
+	    ckfree(cursor);
+
+	    return TCL_OK;
+	}
+
+	case CURSOR_RESET: {
+	    cursor->tranIndex = cursor->offset;
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->tranIndex));
+	    return TCL_OK;
+	}
+
+	case CURSOR_NEXT: {
+	    if(cursor->tranIndex < cursor->offsetLimit-1) cursor->tranIndex++;
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->tranIndex));
+	    return TCL_OK;
+	}
+
+	case CURSOR_INDEX: {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->tranIndex));
+	    return TCL_OK;
+	}
+
+	case CURSOR_GET: {
+	    if(objc == 4) {
+		Tcl_SetObjResult (interp, ${table}_genlist (interp, cursor->tranTable[cursor->tranIndex]));
+	    } else {
+		int i;
+
+		for(i = 4; i < objc; i++) {
+		    if (${table}_lappend_fieldobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
+			return TCL_ERROR;
+		}
+	    }
+        }
+
+// TODO: rest of commands!
+	default:
+	    Tcl_AppendResult(interp, "Unimplemented command ", Tcl_GetString(objv[3]), (char *)NULL);
+	    return TCL_ERROR;
+    }
+}
+
 // vim: set ts=8 sw=4 sts=4 noet :
