@@ -2092,8 +2092,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc)
 {
-    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_set", "delete", "count", NULL };
-    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_SET, CURSOR_DELETE, CURSOR_COUNT, NUM_CURSOR_COMMANDS };
+    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "array_set", "delete", "count", NULL };
+    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_ARRAY_SET, CURSOR_DELETE, CURSOR_COUNT, NUM_CURSOR_COMMANDS };
     int command_id = 0;
     struct cursor *cursor;
     int id;
@@ -2181,9 +2181,35 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	    }
         }
 
-// TODO: rest of commands!
+	case CURSOR_SET: {
+	    goto unimplemented;
+	}
+
+	case CURSOR_ARRAY_GET: {
+	    goto unimplemented;
+	}
+
+	case CURSOR_ARRAY_GET_WITH_NULLS: {
+	    goto unimplemented;
+	}
+
+	case CURSOR_ARRAY_SET: {
+	    goto unimplemented;
+	}
+
+	case CURSOR_DELETE: {
+	  unimplemented:
+	    Tcl_AppendResult(interp, "Unimplemented subcommand ", Tcl_GetString(objv[3]), (char *)NULL);
+	    return TCL_ERROR;
+	}
+
+	case CURSOR_COUNT: {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->offsetLimit - cursor->offset));
+	    return TCL_OK;
+	}
+
 	default:
-	    Tcl_AppendResult(interp, "Unimplemented command ", Tcl_GetString(objv[3]), (char *)NULL);
+	    Tcl_AppendResult(interp, "Unknown subcommand ", Tcl_GetString(objv[3]), (char *)NULL);
 	    return TCL_ERROR;
     }
 }
