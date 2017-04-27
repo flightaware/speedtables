@@ -2135,33 +2135,7 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 
     switch (command_id) {
 	case CURSOR_DESTROY: {
-	    struct cursor *prev = NULL;
-	    struct cursor *next = ctable->cursors;
-	    while(next && next != cursor) {
-		prev = next;
-		next = next->nextCursor;
-	    }
-	    if(!next) {
-		Tcl_AppendResult(interp, "Can't find cursor in ctable (can't happen)", (char *)NULL);
-	    }
-	    if(prev)
-		prev->nextCursor = next->nextCursor;
-	    else
-		ctable->cursors = next->nextCursor;
-
-	    ckfree(cursor->tranTable);
-
-#ifdef WITH_SHARED_TABLES
-	    if(!ctable->cursors) { // unlock table when destroying the LAST cursor on the table
-	        if(cursor->lockCycle != LOST_HORIZON)
-		    read_unlock(ctable->share);
-	        end_write(ctable);
-	    }
-#endif
-
-	    ckfree(cursor);
-
-	    return TCL_OK;
+	    return ctable_DestroyCursor(interp, ctable, cursor);
 	}
 
 	case CURSOR_RESET: {

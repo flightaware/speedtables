@@ -535,6 +535,10 @@ struct CTable {
     long                                 count;
 
     struct cursor			*cursors;
+#ifdef WITH_SHARED_TABLES
+// reader only
+    int					 cursorLock;
+#endif
 
     CT_LIST_ENTRY(CTable)                   instance;
 };

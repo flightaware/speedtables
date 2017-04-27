@@ -3017,4 +3017,43 @@ ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
     return TCL_OK;
 }
 
+CTABLE_INTERNAL int
+ctable_DestroyCursor(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor)
+{
+    struct cursor *prev = NULL;
+    struct cursor *next = ctable->cursors;
+    while(next && next != cursor) {
+	prev = next;
+	next = next->nextCursor;
+    }
+    if(!next) {
+	Tcl_AppendResult(interp, "Can't find cursor in ctable (can't happen)", (char *)NULL);
+    }
+    if(prev)
+	prev->nextCursor = next->nextCursor;
+    else
+	ctable->cursors = next->nextCursor;
+
+    ckfree(cursor->tranTable);
+
+#ifdef WITH_SHARED_TABLES
+    // destroying a read-locked cursor? Tag the whole ctable as locked
+    if(cursor->lockCycle != LOST_HORIZON)
+	ctable->cursorLock = 1;
+
+    if(!ctable->cursors) {
+	// if the table was tagged as locked, and this is the last cursor, unlock it
+	if(ctable->cursorLock) {
+	    read_unlock(ctable->share);
+	    ctable->cursorLock = 0;
+	}
+        end_write(ctable);
+    }
+#endif
+
+    ckfree(cursor);
+
+    return TCL_OK;
+}
+
 // vim: set ts=8 sw=4 sts=4 noet :
