@@ -2078,8 +2078,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	break;
       }
 
-      case OPT_CURSOR: {
-	// dont end_write()
+      case OPT_CURSOR: { // dont end_write()
+	if (objc == 2) {
+	    struct cursor *c;
+	    Tcl_Obj *l = Tcl_NewObj();
+
+	    for(c = ctable->cursors; c; c = c->nextCursor) {
+		Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(c->cursorId));
+	    }
+	    Tcl_IncrRefCount(l);
+	    Tcl_SetObjResult(interp, l);
+	    return TCL_OK;
+	}
+
 	return ${table}CursorCommand(interp, ctable, objv, objc);
       }
     }
