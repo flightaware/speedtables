@@ -972,9 +972,6 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
 
 	// MARK cursor as valid
 	search->cursor->cursorState = CTABLE_CURSOR_OK;
-
-	// RETURN cursor ID to caller
-	Tcl_SetObjResult (interp, Tcl_NewIntObj(search->cursorId));
     } else if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
         // walk the result
         for (walkIndex = search->offset; walkIndex < search->offsetLimit; walkIndex++) {
@@ -1958,7 +1955,11 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
     }
 
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
-	Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
+	if(search->cursor) {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->cursorId));
+	} else {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
+	}
     }
 
 #ifdef WITH_SHARED_TABLES
