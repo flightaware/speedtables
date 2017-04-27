@@ -2373,6 +2373,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 		if(cursor_id >= auto_cursor_id) {
 		    auto_cursor_id = cursor_id;
 		}
+
+		++i;
 	    } else {
 		if (Tcl_GetIntFromObj (interp, objv[i++], &cursor_id) == TCL_ERROR) {
 	            Tcl_AppendResult (interp, " while processing cursor id", (char *) NULL);
