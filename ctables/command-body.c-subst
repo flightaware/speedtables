@@ -2186,11 +2186,29 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	}
 
 	case CURSOR_ARRAY_GET: {
-	    goto unimplemented;
+	    if(objc == 4) {
+		Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (interp, (${table} *)cursor->tranTable[cursor->tranIndex]));
+	    } else {
+		int i;
+
+		for(i = 4; i < objc; i++) {
+		    if (${table}_lappend_nonnull_field_and_nameobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
+			return TCL_ERROR;
+		}
+	    }
 	}
 
 	case CURSOR_ARRAY_GET_WITH_NULLS: {
-	    goto unimplemented;
+	    if(objc == 4) {
+		Tcl_SetObjResult (interp,  ${table}_gen_keyvalue_list (interp, (${table} *)cursor->tranTable[cursor->tranIndex]));
+	    } else {
+		int i;
+
+		for(i = 4; i < objc; i++) {
+		    if (${table}_lappend_field_and_nameobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
+			return TCL_ERROR;
+		}
+	    }
 	}
 
 	case CURSOR_ARRAY_SET: {
@@ -2208,9 +2226,10 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	    return TCL_OK;
 	}
 
-	default:
+	default: {
 	    Tcl_AppendResult(interp, "Unknown subcommand ", Tcl_GetString(objv[3]), (char *)NULL);
 	    return TCL_ERROR;
+	}
     }
 }
 
