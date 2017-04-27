@@ -2096,7 +2096,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     }
 
 #ifdef WITH_SHARED_TABLES
-    end_write(ctable);
+    if(!readonly[optIndex]) {
+	// Inform the shared memory code that a write is ending
+	end_write(ctable);
+    }
 #endif
     return commandStatus;
 }
