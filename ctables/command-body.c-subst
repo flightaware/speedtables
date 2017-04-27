@@ -2194,7 +2194,59 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
         }
 
 	case CURSOR_SET: {
-	    goto unimplemented;
+	    int              i;
+	    int              listObjc;
+	    Tcl_Obj        **listObjv;
+	    struct ${table} *row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
+	    int              nocomplain = 0;
+
+	    while (objc > 5) {
+		char *opt = Tcl_GetString(objv[4]);
+
+		// no an option
+		if (opt[0] != '-')
+		    break;
+
+		// starts with a -, eat an object
+		objv++;
+		objc--;
+
+		// It's --, no more options
+		if (opt[1] == '-' && opt[2] == '\0')
+		    break;
+
+		// Look for known options
+		if (strcmp(opt, "-nocomplain") == 0) {
+		    nocomplain = 1;
+		} else {
+		    Tcl_AppendResult(interp, "Unknown option ", opt, NULL);
+		    return TCL_ERROR;
+		}
+	    }
+
+	    if (objc == 5) {
+		if (Tcl_ListObjGetElements(interp, objv[4], &listObjc, &listObjv) == TCL_ERROR) {
+		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		    return TCL_ERROR;
+		}
+	    } else {
+		listObjc = objc - 4;
+		listObjv = (Tcl_Obj **)&objv[4];
+	    }
+
+	    if ((listObjc % 2) != 0) {
+		Tcl_AppendResult (interp, "key-value list must contain an even number of elements", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
+	    for (i = 0; i < listObjc; i+= 2) {
+		if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], CTABLE_INDEX_NORMAL, nocomplain) == TCL_ERROR) {
+		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		    return TCL_ERROR;
+		}
+	    }
+
+	    return TCL_OK;
 	}
 
 	case CURSOR_ARRAY_GET: {
