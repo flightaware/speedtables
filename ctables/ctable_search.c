@@ -26,6 +26,8 @@
 // forward references
 CTABLE_INTERNAL struct cursor *
 ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search);
+CTABLE_INTERNAL int
+ctable_CreateCursorCommand(Tcl_Interp *interp, struct cursor *cursor);
 CTABLE_INTERNAL Tcl_Obj *
 ctable_CursorToName(struct cursor *cursor);
 
@@ -1943,7 +1945,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
 	if(search->cursor) {
 	    // We got here so we can create the command
-	    // TODO ctable_CreateCursorCommand(interp, search->cursor);
+	    ctable_CreateCursorCommand(interp, search->cursor);
 	    Tcl_SetObjResult (interp, ctable_CursorToName (search->cursor));
 	} else {
 	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
