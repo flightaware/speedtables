@@ -224,6 +224,7 @@ struct cursor {
     int              offset;
     int              offsetLimit;
     int              cursorState;
+    Tcl_Command      commandInfo;
 #ifdef WITH_SHARED_TABLES
     int              lockCycle;
 #endif
@@ -494,6 +495,7 @@ struct ctable_CreatorTable {
     void (*delete_row) (struct CTable *ctable, ctable_BaseRow *row, int indexCtl);
 
     int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+    int (*cursor_command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 #ifdef SANITY_CHECKS
     void (*sanity_check_pointer)(struct CTable *ctable, void *ptr, int indexCtl, CONST char *where);

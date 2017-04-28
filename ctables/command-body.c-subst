@@ -2104,32 +2104,19 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     return commandStatus;
 }
 
-int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc)
+int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *CONST objv[], int objc)
 {
     static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "array_set", "delete", "count", NULL };
     enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_ARRAY_SET, CURSOR_DELETE, CURSOR_COUNT, NUM_CURSOR_COMMANDS };
     int command_id = 0;
-    struct cursor *cursor;
 
-    if (objc < 4) {
-	Tcl_WrongNumArgs(interp, 2, objv, "cursor_id command ?args?");
-	return TCL_ERROR;
-    }
-
-    cursor = ctable_NameToCursor(interp, ctable, objv[2]);
-
-    if(!cursor) {
-	Tcl_AppendResult(interp, "cursor ", Tcl_GetString(objv[2]), " does not exist", (char *)NULL);
-	return TCL_ERROR;
-    }
-
-    if (Tcl_GetIndexFromObj (interp, objv[3], cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
+    if (Tcl_GetIndexFromObj (interp, objv[0], cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
         return TCL_ERROR;
     }
 
     switch (command_id) {
 	case CURSOR_DESTROY: {
-	    return ctable_DestroyCursor(interp, ctable, cursor);
+	    return ctable_DestroyCursor(interp, cursor);
 	}
 
 	case CURSOR_RESET: {
@@ -2150,12 +2137,12 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	}
 
 	case CURSOR_GET: {
-	    if(objc == 4) {
+	    if(objc == 1) {
 		Tcl_SetObjResult (interp, ${table}_genlist (interp, cursor->tranTable[cursor->tranIndex]));
 	    } else {
 		int i;
 
-		for(i = 4; i < objc; i++) {
+		for(i = 1; i < objc; i++) {
 		    if (${table}_lappend_fieldobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
 			return TCL_ERROR;
 		}
@@ -2170,8 +2157,8 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	    struct ${table} *row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
 	    int              nocomplain = 0;
 
-	    while (objc > 5) {
-		char *opt = Tcl_GetString(objv[4]);
+	    while (objc > 2) {
+		char *opt = Tcl_GetString(objv[1]);
 
 		// no an option
 		if (opt[0] != '-')
@@ -2194,14 +2181,14 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 		}
 	    }
 
-	    if (objc == 5) {
-		if (Tcl_ListObjGetElements(interp, objv[4], &listObjc, &listObjv) == TCL_ERROR) {
+	    if (objc == 2) {
+		if (Tcl_ListObjGetElements(interp, objv[1], &listObjc, &listObjv) == TCL_ERROR) {
 		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
 		    return TCL_ERROR;
 		}
 	    } else {
-		listObjc = objc - 4;
-		listObjv = (Tcl_Obj **)&objv[4];
+		listObjc = objc - 1;
+		listObjv = (Tcl_Obj **)&objv[1];
 	    }
 
 	    if ((listObjc % 2) != 0) {
@@ -2220,12 +2207,12 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	}
 
 	case CURSOR_ARRAY_GET: {
-	    if(objc == 4) {
+	    if(objc == 1) {
 		Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (interp, (${table} *)cursor->tranTable[cursor->tranIndex]));
 	    } else {
 		int i;
 
-		for(i = 4; i < objc; i++) {
+		for(i = 1; i < objc; i++) {
 		    if (${table}_lappend_nonnull_field_and_nameobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
 			return TCL_ERROR;
 		}
@@ -2234,12 +2221,12 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	}
 
 	case CURSOR_ARRAY_GET_WITH_NULLS: {
-	    if(objc == 4) {
+	    if(objc == 1) {
 		Tcl_SetObjResult (interp,  ${table}_gen_keyvalue_list (interp, (${table} *)cursor->tranTable[cursor->tranIndex]));
 	    } else {
 		int i;
 
-		for(i = 4; i < objc; i++) {
+		for(i = 1; i < objc; i++) {
 		    if (${table}_lappend_field_and_nameobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
 			return TCL_ERROR;
 		}
@@ -2253,7 +2240,7 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 
 	case CURSOR_DELETE: {
 	  unimplemented:
-	    Tcl_AppendResult(interp, "Unimplemented subcommand ", Tcl_GetString(objv[3]), (char *)NULL);
+	    Tcl_AppendResult(interp, "Unimplemented subcommand ", Tcl_GetString(objv[0]), (char *)NULL);
 	    return TCL_ERROR;
 	}
 
@@ -2263,10 +2250,41 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	}
 
 	default: {
-	    Tcl_AppendResult(interp, "Unknown subcommand ", Tcl_GetString(objv[3]), (char *)NULL);
+	    Tcl_AppendResult(interp, "Unknown subcommand ", Tcl_GetString(objv[0]), (char *)NULL);
 	    return TCL_ERROR;
 	}
     }
+}
+
+int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc)
+{
+    struct cursor *cursor;
+
+    if (objc < 4) {
+	Tcl_WrongNumArgs(interp, 2, objv, "cursor_id command ?args?");
+	return TCL_ERROR;
+    }
+
+    cursor = ctable_NameToCursor(interp, ctable, objv[2]);
+
+    if(!cursor) {
+	Tcl_AppendResult(interp, "cursor ", Tcl_GetString(objv[2]), " does not exist", (char *)NULL);
+	return TCL_ERROR;
+    }
+
+    return ${table}CursorCommandCommon(interp, ctable, cursor, objv+3, objc-3);
+}
+
+int ${table}CursorObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+    struct cursor *cursor = (struct cursor *)cData;
+    CTable *ctable = cursor->ownerTable;
+
+    if (objc < 1) {
+	Tcl_WrongNumArgs(interp, 1, objv, "command ?args?");
+	return TCL_ERROR;
+    }
+    return ${table}CursorCommandCommon(interp, ctable, cursor, objv+1, objc-1);
 }
 
 // vim: set ts=8 sw=4 sts=4 noet :

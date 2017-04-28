@@ -1942,6 +1942,8 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
 	if(search->cursor) {
+	    // We got here so we can create the command
+	    // TODO ctable_CreateCursorCommand(interp, search->cursor);
 	    Tcl_SetObjResult (interp, ctable_CursorToName (search->cursor));
 	} else {
 	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
@@ -2356,9 +2358,9 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
 		// use command name of the ctable as the base of the cursor name
 		tableName = Tcl_GetStringFromObj (objv[0], &tableNameLength);
-		tableNameLength += 42;
+		tableNameLength += 42+2;
 		cursorName = (char *) ckalloc (tableNameLength);
-		snprintf(cursorName, tableNameLength, "%s%lu", tableName, ++auto_cursor_id);
+		snprintf(cursorName, tableNameLength, "%s_C%lu", tableName, ++auto_cursor_id);
 	    } else {
 		char *tmp = (char *)ckalloc (strlen(cursorName) + 1);
 		strcpy(tmp, cursorName);
@@ -2997,17 +2999,21 @@ ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
 }
 
 CTABLE_INTERNAL int
-ctable_DestroyCursor(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor)
+ctable_DestroyCursor(Tcl_Interp *interp, struct cursor *cursor)
 {
+    if(!cursor->ownerTable) return TCL_OK; // being deleted
+    CTable *ctable = cursor->ownerTable;
+    cursor->ownerTable = NULL;
+
     struct cursor *prev = NULL;
     struct cursor *next = ctable->cursors;
     while(next && next != cursor) {
 	prev = next;
 	next = next->nextCursor;
     }
-    if(!next) {
-	Tcl_AppendResult(interp, "Can't find cursor in ctable (can't happen)", (char *)NULL);
-    }
+    if(!next) return TCL_OK; // already deleted
+
+    // Remove from ctable
     if(prev)
 	prev->nextCursor = next->nextCursor;
     else
@@ -3021,6 +3027,12 @@ ctable_DestroyCursor(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor)
     if(cursor->cursorName) {
 	ckfree(cursor->cursorName);
 	cursor->cursorName = NULL;
+    }
+
+    if(interp && cursor->commandInfo) {
+	Tcl_Command tmp = cursor->commandInfo;
+	cursor->commandInfo = NULL;
+	Tcl_DeleteCommandFromToken(interp, tmp);
     }
 
 #ifdef WITH_SHARED_TABLES
@@ -3072,7 +3084,34 @@ ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 	// MARK cursor as valid
 	cursor->cursorState = CTABLE_CURSOR_OK;
 
+	// INIT remaining feilds
+	cursor->commandInfo = NULL;
+
 	return cursor;
+}
+
+CTABLE_INTERNAL void
+ctable_DeleteCursorCommand(ClientData clientData)
+{
+	struct cursor *cursor = (struct cursor *)clientData;
+
+	// Make sure we don't lead ourselves back here
+	cursor->commandInfo = NULL;
+
+	// Remove the cursor from the ctable and destroy it
+	ctable_DestroyCursor(NULL, cursor);
+}
+
+CTABLE_INTERNAL int
+ctable_CreateCursorCommand(Tcl_Interp *interp, struct cursor *cursor)
+{
+	if(cursor->commandInfo) return TCL_OK; // already exists
+
+	Tcl_ObjCmdProc *commandProc = cursor->ownerTable->creator->cursor_command;
+
+	cursor->commandInfo = Tcl_CreateObjCommand(interp, cursor->cursorName, commandProc, (ClientData)cursor, ctable_DeleteCursorCommand);
+
+	return cursor->commandInfo ? TCL_OK : TCL_ERROR;
 }
 
 CTABLE_INTERNAL struct cursor *
