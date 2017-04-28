@@ -2110,22 +2110,13 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
     enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_ARRAY_SET, CURSOR_DELETE, CURSOR_COUNT, NUM_CURSOR_COMMANDS };
     int command_id = 0;
     struct cursor *cursor;
-    int id;
 
     if (objc < 4) {
 	Tcl_WrongNumArgs(interp, 2, objv, "cursor_id command ?args?");
 	return TCL_ERROR;
     }
 
-    if (Tcl_GetIntFromObj (interp, objv[2], &id) == TCL_ERROR) {
-	Tcl_AppendResult(interp, " parsing cursor id", (char *)NULL);
-	return TCL_ERROR;
-    }
-
-    for (cursor = ctable->cursors; cursor; cursor = cursor->nextCursor) {
-	if(cursor->cursorId == id)
-	    break;
-    }
+    cursor = ctable_IdToCursor(interp, ctable, objv[2]);
 
     if(!cursor) {
 	Tcl_AppendResult(interp, "cursor ", Tcl_GetString(objv[2]), " does not exist", (char *)NULL);

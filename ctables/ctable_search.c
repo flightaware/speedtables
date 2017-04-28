@@ -3056,4 +3056,21 @@ ctable_DestroyCursor(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor)
     return TCL_OK;
 }
 
+CTABLE_INTERNAL struct cursor *
+ctable_IdToCursor(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj)
+{
+    struct cursor *cursor;
+    int id;
+
+    if (Tcl_GetIntFromObj (interp, obj, &id) == TCL_ERROR)
+	return NULL;
+
+    for (cursor = ctable->cursors; cursor; cursor = cursor->nextCursor) {
+	if(cursor->cursorId == id)
+	    break;
+    }
+
+    return cursor;
+}
+
 // vim: set ts=8 sw=4 sts=4 noet :
