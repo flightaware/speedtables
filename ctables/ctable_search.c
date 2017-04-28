@@ -23,6 +23,12 @@
 
 #include <time.h>
 
+// forward references
+CTABLE_INTERNAL struct cursor *
+ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search);
+CTABLE_INTERNAL Tcl_Obj *
+ctable_CursorToId(struct cursor *cursor);
+
 //#define INDEXDEBUG
 // #define MEGADEBUG
 // #define SEARCHDEBUG
@@ -951,27 +957,7 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
     }
 
     if (search->tranType == CTABLE_SEARCH_TRAN_CURSOR) {
-	// ALLOCATE and build new cursor
-        search->cursor = (struct cursor *)ckalloc(sizeof (struct cursor));
-
-	// MOVE transaction table to cursor
-        search->cursor->tranTable = search->tranTable;
-        search->tranTable = NULL;
-
-	// COPY search cursor info to cursor
-        search->cursor->cursorId = search->cursorId;
-        search->cursor->offset = search->cursor->tranIndex = search->offset;
-        search->cursor->offsetLimit = search->offsetLimit;
-
-	// INSERT cursor into cursor list
-        search->cursor->nextCursor = ctable->cursors;
-        ctable->cursors = search->cursor;
-
-	// SAVE ctable link in cursor
-        search->cursor->ownerTable = ctable;
-
-	// MARK cursor as valid
-	search->cursor->cursorState = CTABLE_CURSOR_OK;
+	search->cursor = ctable_CreateCursor(interp, ctable, search);
     } else if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
         // walk the result
         for (walkIndex = search->offset; walkIndex < search->offsetLimit; walkIndex++) {
@@ -1956,7 +1942,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
 	if(search->cursor) {
-	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->cursorId));
+	    Tcl_SetObjResult (interp, ctable_CursorToId (search->cursor));
 	} else {
 	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
 	}
@@ -3057,6 +3043,36 @@ ctable_DestroyCursor(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor)
 }
 
 CTABLE_INTERNAL struct cursor *
+ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
+{
+	if (!search->tranTable) return NULL;
+
+	// ALLOCATE and build new cursor
+        struct cursor *cursor = (struct cursor *)ckalloc(sizeof (struct cursor));
+
+	// MOVE transaction table to cursor
+        cursor->tranTable = search->tranTable;
+        search->tranTable = NULL;
+
+	// COPY search cursor info to cursor
+        cursor->cursorId = search->cursorId;
+        cursor->offset = cursor->tranIndex = search->offset;
+        cursor->offsetLimit = search->offsetLimit;
+
+	// INSERT cursor into cursor list
+        cursor->nextCursor = ctable->cursors;
+        ctable->cursors = cursor;
+
+	// SAVE ctable link in cursor
+        cursor->ownerTable = ctable;
+
+	// MARK cursor as valid
+	cursor->cursorState = CTABLE_CURSOR_OK;
+
+	return cursor;
+}
+
+CTABLE_INTERNAL struct cursor *
 ctable_IdToCursor(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj)
 {
     struct cursor *cursor;
@@ -3072,5 +3088,12 @@ ctable_IdToCursor(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj)
 
     return cursor;
 }
+
+CTABLE_INTERNAL Tcl_Obj *
+ctable_CursorToId(struct cursor *cursor)
+{
+	return Tcl_NewIntObj(cursor->cursorId);
+}
+
 
 // vim: set ts=8 sw=4 sts=4 noet :
