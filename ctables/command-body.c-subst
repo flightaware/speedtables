@@ -2084,7 +2084,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    Tcl_Obj *l = Tcl_NewObj();
 
 	    for(c = ctable->cursors; c; c = c->nextCursor) {
-		Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(c->cursorId));
+		Tcl_ListObjAppendElement(interp, l, Tcl_NewStringObj(c->cursorName, -1));
 	    }
 	    Tcl_IncrRefCount(l);
 	    Tcl_SetObjResult(interp, l);
@@ -2116,7 +2116,7 @@ int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST obj
 	return TCL_ERROR;
     }
 
-    cursor = ctable_IdToCursor(interp, ctable, objv[2]);
+    cursor = ctable_NameToCursor(interp, ctable, objv[2]);
 
     if(!cursor) {
 	Tcl_AppendResult(interp, "cursor ", Tcl_GetString(objv[2]), " does not exist", (char *)NULL);

@@ -218,7 +218,7 @@ struct ctable_BaseRow {
 struct cursor {
     struct cursor   *nextCursor;
     struct CTable   *ownerTable;
-    int              cursorId;
+    char            *cursorName;
     ctable_BaseRow **tranTable;
     int              tranIndex;
     int              offset;
@@ -427,7 +427,7 @@ struct CTableSearch {
     int					 sequence;
 
     // cursor ID and structure
-    int                                  cursorId;
+    char                                *cursorName;
     struct cursor                       *cursor;
 };
 

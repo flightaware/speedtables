@@ -27,7 +27,7 @@
 CTABLE_INTERNAL struct cursor *
 ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search);
 CTABLE_INTERNAL Tcl_Obj *
-ctable_CursorToId(struct cursor *cursor);
+ctable_CursorToName(struct cursor *cursor);
 
 //#define INDEXDEBUG
 // #define MEGADEBUG
@@ -1942,7 +1942,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
 	if(search->cursor) {
-	    Tcl_SetObjResult (interp, ctable_CursorToId (search->cursor));
+	    Tcl_SetObjResult (interp, ctable_CursorToName (search->cursor));
 	} else {
 	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
 	}
@@ -2044,7 +2044,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->alreadySearched = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
-    search->cursorId = 0;
+    search->cursorName = NULL;
     search->cursor = NULL;
 
     // Give each search a unique non-zero sequence number
@@ -2340,56 +2340,49 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	  }
 
 	  case SEARCH_OPT_CURSOR: {
-	    int cursor_id = 0;
+	    char *cursorName = NULL;
 	    struct cursor *c;
 
             if(search->tranType != CTABLE_SEARCH_TRAN_NONE || search->action != CTABLE_SEARCH_ACTION_NONE) {
 		Tcl_AppendResult (interp, "Can not combine -cursor with other operations", (char *)NULL);
 	    }
 
-	    if (strcmp (Tcl_GetString (objv[i]), "#auto") == 0) {
-		static int auto_cursor_id = 0;
-		cursor_id = ++auto_cursor_id;
+	    cursorName = Tcl_GetString (objv[i++]);
 
-		for (c = ctable->cursors; c; c = c->nextCursor) {
-		    if(c->cursorId >= cursor_id) {
-		        cursor_id = c->cursorId + 1;
-		    }
-		}
+	    if (strcmp (cursorName, "#auto") == 0) {
+		char *tableName = NULL;
+		int tableNameLength;
+		static unsigned long int auto_cursor_id = 0;
 
-		if(cursor_id >= auto_cursor_id) {
-		    auto_cursor_id = cursor_id;
-		}
-
-		++i;
+		// use command name of the ctable as the base of the cursor name
+		tableName = Tcl_GetStringFromObj (objv[0], &tableNameLength);
+		tableNameLength += 42;
+		cursorName = (char *) ckalloc (tableNameLength);
+		snprintf(cursorName, tableNameLength, "%s%lu", tableName, ++auto_cursor_id);
 	    } else {
-		if (Tcl_GetIntFromObj (interp, objv[i++], &cursor_id) == TCL_ERROR) {
-	            Tcl_AppendResult (interp, " while processing cursor id", (char *) NULL);
+		char *tmp = (char *)ckalloc (strlen(cursorName) + 1);
+		strcpy(tmp, cursorName);
+		cursorName = tmp;
+	    }
+
+	    for (c = ctable->cursors; c; c = c->nextCursor) {
+		if(strcmp(c->cursorName, cursorName)) {
+		    Tcl_AppendResult (interp, "Cursor name must not duplicate an existing cursor on the same table", (char *)NULL);
+		    ckfree(cursorName);
 	            return TCL_ERROR;
-		}
-
-	        if(cursor_id == 0) {
-		    Tcl_AppendResult (interp, "Cursor ID must be non-zero", (char *)NULL);
-		    return TCL_ERROR;
-	        }
-
-		for (c = ctable->cursors; c; c = c->nextCursor) {
-		    if(c->cursorId == cursor_id) {
-		        Tcl_AppendResult (interp, "Cursor ID must not duplicate an existing cursor", (char *)NULL);
-	                return TCL_ERROR;
-		    }
 		}
 	    }
 
 	    // currently, we only support one cursor. TODO: fix this if needed
 	    if(ctable->cursors) {
 		Tcl_AppendResult (interp, "Too many cursors on table", (char *)NULL);
+		ckfree(cursorName);
 		return TCL_ERROR;
 	    }
 
 	    search->tranType = CTABLE_SEARCH_TRAN_CURSOR;
 	    search->action = CTABLE_SEARCH_ACTION_CURSOR;
-	    search->cursorId = cursor_id;
+	    search->cursorName = cursorName;
 	  }
 	}
     }
@@ -3020,7 +3013,15 @@ ctable_DestroyCursor(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor)
     else
 	ctable->cursors = next->nextCursor;
 
-    ckfree(cursor->tranTable);
+    if(cursor->tranTable) {
+	ckfree(cursor->tranTable);
+	cursor->tranTable = NULL;
+    }
+
+    if(cursor->cursorName) {
+	ckfree(cursor->cursorName);
+	cursor->cursorName = NULL;
+    }
 
 #ifdef WITH_SHARED_TABLES
     // destroying a read-locked cursor? Tag the whole ctable as locked
@@ -3045,17 +3046,19 @@ ctable_DestroyCursor(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor)
 CTABLE_INTERNAL struct cursor *
 ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 {
-	if (!search->tranTable) return NULL;
+	// Defense - if it's already been created from this search, or the search doesn't need a cursor, drop it
+	if (!search->tranTable || !search->cursorName) return NULL;
 
 	// ALLOCATE and build new cursor
         struct cursor *cursor = (struct cursor *)ckalloc(sizeof (struct cursor));
 
-	// MOVE transaction table to cursor
+	// MOVE transaction table naem cursor name to cursor
         cursor->tranTable = search->tranTable;
         search->tranTable = NULL;
+        cursor->cursorName = search->cursorName;
+	search->cursorName = NULL;
 
 	// COPY search cursor info to cursor
-        cursor->cursorId = search->cursorId;
         cursor->offset = cursor->tranIndex = search->offset;
         cursor->offsetLimit = search->offsetLimit;
 
@@ -3073,16 +3076,13 @@ ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 }
 
 CTABLE_INTERNAL struct cursor *
-ctable_IdToCursor(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj)
+ctable_NameToCursor(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj)
 {
     struct cursor *cursor;
-    int id;
-
-    if (Tcl_GetIntFromObj (interp, obj, &id) == TCL_ERROR)
-	return NULL;
+    char *cursorName = Tcl_GetString(obj);
 
     for (cursor = ctable->cursors; cursor; cursor = cursor->nextCursor) {
-	if(cursor->cursorId == id)
+	if(strcmp(cursor->cursorName, cursorName) == 0)
 	    break;
     }
 
@@ -3090,9 +3090,9 @@ ctable_IdToCursor(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj)
 }
 
 CTABLE_INTERNAL Tcl_Obj *
-ctable_CursorToId(struct cursor *cursor)
+ctable_CursorToName(struct cursor *cursor)
 {
-	return Tcl_NewIntObj(cursor->cursorId);
+	return Tcl_NewStringObj(cursor->cursorName, -1);
 }
 
 
