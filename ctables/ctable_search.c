@@ -2370,18 +2370,11 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    }
 
 	    for (c = ctable->cursors; c; c = c->nextCursor) {
-		if(strcmp(c->cursorName, cursorName)) {
+		if(strcmp(c->cursorName, cursorName) == 0) {
 		    Tcl_AppendResult (interp, "Cursor name must not duplicate an existing cursor on the same table", (char *)NULL);
 		    ckfree(cursorName);
 	            return TCL_ERROR;
 		}
-	    }
-
-	    // currently, we only support one cursor. TODO: fix this if needed
-	    if(ctable->cursors) {
-		Tcl_AppendResult (interp, "Too many cursors on table", (char *)NULL);
-		ckfree(cursorName);
-		return TCL_ERROR;
 	    }
 
 	    search->tranType = CTABLE_SEARCH_TRAN_CURSOR;

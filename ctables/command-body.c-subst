@@ -2106,12 +2106,25 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *CONST objv[], int objc)
 {
-    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "array_set", "delete", "count", NULL };
-    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_ARRAY_SET, CURSOR_DELETE, CURSOR_COUNT, NUM_CURSOR_COMMANDS };
+    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "delete", "count", "at_end", NULL };
+    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_DELETE, CURSOR_COUNT, CURSOR_AT_END, NUM_CURSOR_COMMANDS };
     int command_id = 0;
 
     if (Tcl_GetIndexFromObj (interp, objv[0], cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
         return TCL_ERROR;
+    }
+
+    // check for end of line
+    if(cursor->tranIndex >= cursor->offsetLimit) {
+	switch(command_id) {
+	    case CURSOR_DELETE:
+	    case CURSOR_GET:
+	    case CURSOR_SET:
+	    case CURSOR_ARRAY_GET:
+	    case CURSOR_ARRAY_GET_WITH_NULLS:
+		Tcl_AppendResult(interp, "Cursor past end of transaction", (char *)NULL);
+		return TCL_ERROR;
+	}
     }
 
     switch (command_id) {
@@ -2125,14 +2138,30 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    return TCL_OK;
 	}
 
+	case CURSOR_AT_END: {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->tranIndex >= cursor->offsetLimit));
+	    return TCL_OK;
+	}
+
 	case CURSOR_NEXT: {
-	    if(cursor->tranIndex < cursor->offsetLimit-1) cursor->tranIndex++;
-	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->tranIndex));
+	    int result;
+	    if(cursor->tranIndex < cursor->offsetLimit)
+		cursor->tranIndex++;
+	    if(cursor->tranIndex < cursor->offsetLimit)
+		result = cursor->tranIndex;
+	    else
+		result = -1;
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(result));
 	    return TCL_OK;
 	}
 
 	case CURSOR_INDEX: {
-	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->tranIndex));
+	    int result;
+	    if(cursor->tranIndex < cursor->offsetLimit)
+		result = cursor->tranIndex;
+	    else
+		result = -1;
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(result));
 	    return TCL_OK;
 	}
 
@@ -2234,12 +2263,7 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    return TCL_OK;
 	}
 
-	case CURSOR_ARRAY_SET: {
-	    goto unimplemented;
-	}
-
 	case CURSOR_DELETE: {
-	  unimplemented:
 	    Tcl_AppendResult(interp, "Unimplemented subcommand ", Tcl_GetString(objv[0]), (char *)NULL);
 	    return TCL_ERROR;
 	}
