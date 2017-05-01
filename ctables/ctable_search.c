@@ -3109,20 +3109,6 @@ ctable_CreateCursorCommand(Tcl_Interp *interp, struct cursor *cursor)
 	return cursor->commandInfo ? TCL_OK : TCL_ERROR;
 }
 
-CTABLE_INTERNAL struct cursor *
-ctable_NameToCursor(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj)
-{
-    struct cursor *cursor;
-    char *cursorName = Tcl_GetString(obj);
-
-    for (cursor = ctable->cursors; cursor; cursor = cursor->nextCursor) {
-	if(strcmp(cursor->cursorName, cursorName) == 0)
-	    break;
-    }
-
-    return cursor;
-}
-
 CTABLE_INTERNAL Tcl_Obj *
 ctable_CursorToName(struct cursor *cursor)
 {
