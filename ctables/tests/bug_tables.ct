@@ -1,0 +1,7 @@
+package require ctable
+
+speedtables Bug_tables 1.0 {
+    table Foo {
+        varstring bar indexed 1 notnull 1;
+    }
+}
