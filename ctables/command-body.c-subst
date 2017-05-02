@@ -2218,6 +2218,23 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    struct ${table} *row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
 	    int              nocomplain = 0;
 
+#ifdef WITH_SHARED_TABLES
+	    if (ctable->share_type == CTABLE_SHARED_READER) {
+		Tcl_AppendResult (interp, "Cursor set is not possible in a shared reader table.", (char *)NULL);
+		Tcl_SetErrorCode (interp, "speedtables", "read_only", NULL);
+		return TCL_ERROR;
+	    } else if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share) {
+		// Check for free space
+		if(shmfreemem(ctable->share, 0) < ctable->share_min_free) {
+		    Tcl_AppendResult (interp, "Free shared memory low", (char *)NULL);
+		    Tcl_SetErrorCode (interp, "speedtables", "shared_memory_low", NULL);
+		    return TCL_ERROR;
+		}
+		// Inform the shared memory code that a write is starting
+		begin_write(ctable);
+	    }
+#endif
+
 	    while (objc > 2) {
 		char *opt = Tcl_GetString(objv[1]);
 
