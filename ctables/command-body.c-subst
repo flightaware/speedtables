@@ -158,34 +158,44 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 #ifdef WITH_SHARED_TABLES
     // Options allowed in shared tables
-    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, NUM_OPTIONS };
+    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, OPT_CURSORS, NUM_OPTIONS };
     static int shared_ok[NUM_OPTIONS] = {-1};
 
     // Read_only options
-    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, NUM_OPTIONS };
+    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
     static int readonly[NUM_OPTIONS] = {-1};
 
     // Memory_allocating options - except for "index create" which
     // has to be checked for explicitly.
     static enum options shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_WRITE_TABSEP, NUM_OPTIONS };
     static int shmcheck[NUM_OPTIONS] = {-1};
+#endif
+
+    static enum options cursor_safe_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
+    static int cursor_ok[NUM_OPTIONS] = {-1};
 
     // First time through, make it a bitmap.
-    if(shared_ok[0] == -1) {
+    if(cursor_ok[0] == -1) {
 	int i;
 	for(i = 0; i < NUM_OPTIONS; i++) {
+	    cursor_ok[i] = FALSE;
+#ifdef WITH_SHARED_TABLES
 	    shared_ok[i] = FALSE;
 	    readonly[i] = FALSE;
 	    shmcheck[i] = FALSE;
+#endif
 	}
+	for(i = 0; cursor_safe_options[i] != NUM_OPTIONS; i++)
+	    cursor_ok[cursor_safe_options[i]] = TRUE;
+#ifdef WITH_SHARED_TABLES
 	for(i = 0; shared_options[i] != NUM_OPTIONS; i++)
 	    shared_ok[shared_options[i]] = TRUE;
 	for(i = 0; readonly_options[i] != NUM_OPTIONS; i++)
 	    readonly[readonly_options[i]] = TRUE;
 	for(i = 0; shmcheck_options[i] != NUM_OPTIONS; i++)
 	    shmcheck[shmcheck_options[i]] = TRUE;
-    }
 #endif
+    }
 
     if (objc == 1) {
         Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
@@ -239,6 +249,14 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     }
 
     // fall through to primitives
+
+    if (ctable->cursors) {
+	if (!cursor_ok[optIndex]) {
+	    Tcl_AppendResult (interp, "Command '", options[optIndex], "' is not possible while a cursor exists on the table.", (char *)NULL);
+	    Tcl_SetErrorCode (interp, "speedtables", "read_only", NULL);
+	    return TCL_ERROR;
+	}
+    }
 
 #ifdef WITH_SHARED_TABLES
     if (ctable->share_type == CTABLE_SHARED_READER) {
