@@ -2080,13 +2080,39 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_CURSORS: {
 	char *pattern = NULL;
-	if (objc < 2 || objc > 3) {
-	    Tcl_WrongNumArgs (interp, 2, objv, "?pattern?");
+	int destroy = FALSE;
+	int opt = 2;
+
+	while(opt < objc) {
+	    char *optname = Tcl_GetString(objv[opt]);
+	    if (optname[0] != '-') break;
+	    opt++;
+	    if (strcmp(optname, "-match") == 0)
+		pattern = Tcl_GetString(objv[opt++]);
+	    else if (strcmp(optname, "-destroy") == 0)
+		destroy = TRUE;
+	    else {
+		Tcl_AppendResult(interp, "Unknown cursors option '", optname, "'", (char *)NULL);
+		return TCL_ERROR;
+	    }
+	}
+
+	if (opt < objc) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "?-destroy? ?-match pattern?");
 	    return TCL_ERROR;
 	}
 
-	if (objc == 3)
-	    pattern = Tcl_GetString(objv[2]);
+	if(destroy) {
+	    if(pattern) {
+		Tcl_AppendResult(interp, "Cursors -pattern and -destroy are not compatible", (char *)NULL);
+		return TCL_ERROR;
+	    }
+	    while(ctable->cursors) {
+		if (ctable_DestroyCursor(interp, ctable->cursors) != TCL_OK)
+		    return TCL_ERROR;
+	    }
+	    return TCL_OK;
+	}
 
 	struct cursor *c;
 	Tcl_Obj *l = Tcl_NewObj();
