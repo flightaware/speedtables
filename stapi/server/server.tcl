@@ -1279,4 +1279,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_server 1.12.1
+package provide st_server 1.12.2

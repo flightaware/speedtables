@@ -379,4 +379,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_postgres 1.12.1
+package provide st_postgres 1.12.2
