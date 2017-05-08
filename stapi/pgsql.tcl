@@ -239,7 +239,10 @@ namespace eval ::stapi {
       set errinf "$err\nIn \"sql\""
     } else {
 	# postgres request succeeded, try to import it into the speedtable
-	if {[catch {$ctable import_postgres_result $pg_res -poll_interval $poll_interval -dirty $dirty} err] == 1} {
+	set command [list]
+	lappend command $ctable import_postgres_result $pg_res -poll_interval $poll_interval
+	if {$dirty} {lappend command -dirty $dirty}
+	if {[catch $command err] == 1} {
 	  # failed
 	  set ok 0
 	  set errinf $::errorInfo
@@ -287,7 +290,10 @@ namespace eval ::stapi {
     set ok 1
 
     pg_sendquery [conn] $sql
-    if {[catch {$ctable import_postgres_result -rowbyrow [conn] -poll_interval $poll_interval -dirty $dirty -info status} err] == 1} {
+    set command [list]
+    lappend command $ctable import_postgres_result -rowbyrow [conn] -poll_interval $poll_interval -info status
+    if {$dirty} { lappend command -dirty $dirty }
+    if {[catch $command err] == 1} {
 	# failed
 	set ok 0
 	set errinf $::errorInfo
