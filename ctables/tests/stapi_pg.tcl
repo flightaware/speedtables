@@ -143,4 +143,26 @@ if {$::pongcount != $expected} {
 	error "pong called $::pongcount times - expected $expected"
 }
 
+$a clean
+
+set delsql "DELETE FROM TEST_ANIMALS WHERE ID = '2';"
+set r [pg_exec $conn $delsql]
+set s [pg_result $r -status]
+set e [pg_result $r -error]
+pg_result $r -clear
+if {"$s" != "PGRES_COMMAND_OK"} {
+	error "Postgres error $e in $delsql"
+}
+
+set sql "select ID, TYPE, NAME, WEIGHT from TEST_ANIMALS;"
+::stapi::read_ctable_from_sql_full $a $sql 1 1
+set dirty_animals [list]
+$a search -compare {{= _dirty 0}} -array r -code {
+	lappend dirty_animals $r(name)
+}
+
+if {"$dirty_animals" != "bossie"} {
+	error "Clean/dirty test expecting to only find "bossie" got "$dirty_animals"
+}
+
 puts "\nDone"
