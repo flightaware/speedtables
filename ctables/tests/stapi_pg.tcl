@@ -155,7 +155,7 @@ if {"$s" != "PGRES_COMMAND_OK"} {
 }
 
 set sql "select ID, TYPE, NAME, WEIGHT from TEST_ANIMALS;"
-::stapi::read_ctable_from_sql_full $a $sql 1 1
+::stapi::read_ctable_from_sql_full $a $sql 0 1
 set dirty_animals [list]
 $a search -compare {{= _dirty 0}} -array r -code {
 	lappend dirty_animals $r(name)
