@@ -1959,6 +1959,11 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 	    // We got here so we can create the command
 	    ctable_CreateCursorCommand(interp, search->cursor);
 	    Tcl_SetObjResult (interp, ctable_CursorToName (search->cursor));
+	} else if (search->cursorName) {
+	    struct cursor *cursor = ctable_CreateEmptyCursor(interp, ctable, search->cursorName);
+	    search->cursorName = NULL;
+	    ctable_CreateCursorCommand(interp, cursor);
+	    Tcl_SetObjResult (interp, ctable_CursorToName (cursor));
 	} else {
 	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
 	}
