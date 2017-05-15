@@ -21,7 +21,7 @@ TCLSHM          = $(TCLSH)
 #TCLSH=tclsh8.4
 #TCLSHM=$(TCLSH)m
 
-all: maintests macip allstapi
+all: maintests macip allstapi corrupt
 
 maintests:
 	rm -rf stobj
@@ -53,6 +53,10 @@ clean:
 	rm -f *.dat
 	rm -f *.core vgcore*
 	rm -f tmp_*
+
+corrupt:
+	rm -rf stobj
+	$(TCLSH) corruption-test.tcl
 
 pgtests:
 	$(TCLSH) pgtcl.tcl

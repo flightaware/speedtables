@@ -271,26 +271,6 @@ proc gen_deallocate {ctable pointer {private 0}} {
     return "( (($ctable)->share_type != CTABLE_SHARED_MASTER || ($private)) ? $priv : $pub)"
 }
 
-#
-# Default empty string for table
-#
-proc gen_defaultEmptyString {ctable lvalue {private 0}} {
-    variable withSharedTables
-    variable table
-    set priv "Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, &($lvalue))"
-    set pub "(($lvalue) = 0, ($ctable)->emptyString)"
-
-    if {!$withSharedTables || "$private" == "1" || "$private" == "TRUE"} {
-	return $priv
-    }
-
-    if {"$private" == "0" || "$private" == "false"} {
-	return $pub
-    }
-
-    return "(($private) ? $priv : $pub)"
-}
-
 variable allocateSource {
 void ${table}_shmpanic(CTable *ctable)
 {
@@ -691,86 +671,25 @@ variable keySetSource {
       }
 }
 
-proc gen_check_unchanged_string {fieldName default defaultLength} {
-    variable leftCurly
-    variable rightCurly
-
-	append code "if (!row->$fieldName) $leftCurly"
-	if {"$defaultLength" == "0"} {
-	    append code "
-            if (!*stringPtr)
-		return TCL_OK;"
-	} else {
-	    # For the rare case where the default string is nonprintable,
-	    # fudge it.
-	    if {[string index $default 0] == "\\"} {
-	       set def0 "\"$default\"\[0]"
-	    } else {
-		set def0 '[string index $default 0]'
-	    }
-	    append code "
-	    if (length == $defaultLength && *stringPtr == $def0 && (strncmp (stringPtr, \"$default\", $defaultLength) == 0))
-	        return TCL_OK;"
-	}
-	append code "
-        $rightCurly else $leftCurly
-	    if(length == row->_${fieldName}Length && *stringPtr == *row->$fieldName && strcmp(stringPtr, row->$fieldName) == 0)
-	        return TCL_OK;
-	$rightCurly"
-	return $code
-}
-
-proc gen_default_test {varName lengthName default defaultLength} {
-    if {$defaultLength == 0} { return "!*$varName" }
-
-    # first character as a char to avoid calling strlen
-    # For the rare case where the default string is nonprintable,
-    # fudge it.
-    if {[string index $default 0] == "\\"} {
-       set def0 "\"$default\"\[0]"
-    } else {
-	set def0 '[string index $default 0]'
-    }
-
-    return "$lengthName == $defaultLength && *$varName == $def0 && strncmp ($varName, \"$default\", $defaultLength) == 0"
-}
-
-proc default_code_wrapper {fieldName code} {
-	variable fields
-
-	array set params $fields($fieldName)
-
-	if {[info exists params(default)]} {
-		set default $params(default)
-	} elseif {[info exist params(notnull)] && $params(notnull)} {
-		set default ""
-	} else {
-		return $code
-	}
-
-	return "
-		if (row->$fieldName) {
-			$code
-		} else {
-			row->$fieldName = (char *)\"[cquote $default]\";
-			$code
-			row->$fieldName = NULL;
-		}"
-}
-
-
 #
 # varstringSetSource - code we run subst over to generate a set of a string.
 #
 # strings are char *'s that we manage automagically.
 #
-# Get the string from the passed-in object.  If the length of the string
-# matches the length of the default string, see if the length of the
-# default string is zero or if obj's string matches the default string.
-# If so, set the char * field in the row to NULL.  Upon a fetch of the
-# field, we'll provide the default string.
+# If the string isn't changed, return immediately.
 #
-# Otherwise allocate space for the new string value and copy it in.
+# Remove from index if we're indexed.
+#
+# If the new string doesn't fit in the allocated space:
+#
+#    If space has been allocated for the existing string (not null and not initialized to the
+#    static default string), free the old string.
+#
+#    Allocate space for the new string (TODO: allocate strings to fixed size blocks to reduse fragmentation)
+#
+# Copy the string in and set the new length.
+#
+# Add back to index.
 #
 variable varstringSetSource {
       case $optname: {
@@ -779,43 +698,13 @@ variable varstringSetSource {
 [gen_null_check_during_set_source $table $fieldName]
 
 	stringPtr = Tcl_GetStringFromObj (obj, &length);
-[gen_unset_null_during_set_source $table $fieldName \
-	[gen_check_unchanged_string $fieldName $default $defaultLength]]
+[gen_unset_null_during_set_source $table $fieldName "
+	if(length == row->_${fieldName}Length && *stringPtr == *row->$fieldName && strcmp(stringPtr, row->$fieldName) == 0)
+	        return TCL_OK;"]
 
-	// we now know it's not the same as the previous value of the string,
-	// even if the previous value was default, so if the new value is
-	// default we know the old value wasn't.
-	if ([gen_default_test stringPtr length $default $defaultLength]) {
-	    if (row->$fieldName != NULL) {
-[gen_ctable_remove_from_index $fieldName]
-	        [gen_deallocate ctable row->$fieldName "indexCtl == CTABLE_INDEX_PRIVATE"];
-	    } else {
-		row->$fieldName = (char*)\"$default\";
-[gen_ctable_remove_from_index $fieldName]
-		row->$fieldName = NULL;
-	    }
-
-	    // It's a change to the default string. If we're
-	    // indexed, force the default string in there so the 
-	    // compare routine will be happy and then insert it.
-	    // can't use our proc here yet because of the
-	    // default empty string obj fanciness
-	    if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists\[field] != NULL)) {
-		row->$fieldName = (char*)\"[cquote $default]\";      // TODO: gross cast discards const.
-		if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
-		    return TCL_ERROR;
-		}
-	    }
-	    row->$fieldName = NULL;
-	    row->_${fieldName}AllocatedLength = 0;
-	    row->_${fieldName}Length = 0;
-	    break;
-	}
-
-	// previous field isn't null, new field isn't null, isn't
-	// the default string, and isn't the same as the previous field
-	// but previous field may be the default string!
-	[default_code_wrapper $fieldName [gen_ctable_remove_from_index $fieldName]]
+	// previous field isn't null, new field isn't null, and
+	// isn't the same as the previous field
+	[gen_ctable_remove_from_index $fieldName]
 
 	// new string value
 	// if the allocated length is less than what we need, get more,
@@ -835,7 +724,7 @@ variable varstringSetSource {
 		return TCL_ERROR;
 	    }
 
-	    if (row->$fieldName != NULL) {
+	    if (row->_${fieldName}AllocatedLength > 0) {
 		[gen_deallocate ctable "row->$fieldName" "indexCtl == CTABLE_INDEX_PRIVATE"];
 	    }
 	    row->$fieldName = mem;
@@ -880,8 +769,7 @@ variable fixedstringSetSource {
 	int   len;
 [gen_null_check_during_set_source $table $fieldName]
 	stringPtr = Tcl_GetStringFromObj (obj, &len);
-[gen_unset_null_during_set_source $table $fieldName \
-	"if (len == 0 && [expr [string length $default] > 0]) stringPtr = \"$default\";
+[gen_unset_null_during_set_source $table $fieldName "
 	if (*stringPtr == *row->$fieldName && strncmp(row->$fieldName, stringPtr, $length) == 0)
 	    return TCL_OK;"]
 [gen_ctable_remove_from_index $fieldName]
@@ -986,25 +874,18 @@ variable nullSortSource {
 }
 
 #
-# gen_null_default_check_during_sort_comp -
-#	emit null and default checking as part of field
+# gen_null_check_during_sort_comp -
+#	emit null checking as part of field
 #  comparing in a sort
 #
-proc gen_null_default_check_during_sort_comp {table fieldName} {
+proc gen_null_check_during_sort_comp {table fieldName} {
     variable nullSortSource
     variable varstringSortCompareNullSource
-    variable varstringSortCompareDefaultSource
 
     upvar ::ctable::fields::$fieldName field
 
     if {"$field(type)" == "varstring"} {
-	if {![info exists field(default)] || "$field(default)" == ""} {
-	     set source $varstringSortCompareNullSource
-	} else {
-	     set source $varstringSortCompareDefaultSource
-	     set defaultString "\"[cquote $field(default)]\""
-	     set defaultChar "'[cquote [string index $field(default) 0] {'}]'"
-	}
+	set source $varstringSortCompareNullSource
     } elseif {[info exists field(notnull)] && $field(notnull)} {
         set source ""
     } else {
@@ -1039,7 +920,7 @@ proc gen_null_exclude_during_sort_comp {table fieldName} {
 #
 variable boolSortSource {
 	case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
           if (row1->$fieldName && !row2->$fieldName) {
 	      result = -direction;
 	      break;
@@ -1061,7 +942,7 @@ variable boolSortSource {
 #
 variable numberSortSource {
       case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
         if (row1->$fieldName < row2->$fieldName) {
 	    result = -direction;
 	    break;
@@ -1075,39 +956,6 @@ variable numberSortSource {
 	result = 0;
 	break;
       }
-}
-
-#
-# varstringSortCompareDefaultSource - compare against default strings for
-#   sorting
-#
-# note there's also a varstringCompareNullSource that's pretty close to this
-# but returns stuff rather than setting results and doing a break
-#
-#
-variable varstringSortCompareDefaultSource {
-    if (!row1->$fieldName) {
-	if(!row2->$fieldName) {
-	    result = 0;
-	    break;
-	} else {
-	    if ($defaultChar != row2->${fieldName}[0]) {
-		result = direction * (($defaultChar < row2->${fieldName}[0]) ? -1 : 1);
-		break;
-	    }
-	    result = direction * strcmp($defaultString, row2->$fieldName);
-	    break;
-	}
-    } else {
-	if(!row2->$fieldName) {
-	    if (row1->${fieldName}[0] != $defaultChar) {
-		result = direction * ((row1->${fieldName}[0] < $defaultChar) ? -1 : 1);
-		break;
-	    }
-	    result = direction * strcmp(row1->$fieldName, $defaultString);
-	    break;
-	}
-    }
 }
 
 #
@@ -1138,7 +986,7 @@ variable varstringSortCompareNullSource {
 #
 variable varstringSortSource {
       case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
 
         result = direction * strcmp (row1->$fieldName, row2->$fieldName);
 	break;
@@ -1151,7 +999,7 @@ variable varstringSortSource {
 #
 variable fixedstringSortSource {
       case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
         result = direction * strncmp (row1->$fieldName, row2->$fieldName, $length);
 	break;
       }
@@ -1163,7 +1011,7 @@ variable fixedstringSortSource {
 #
 variable binaryDataSortSource {
       case $fieldEnum: {
-[gen_null_default_check_during_sort_comp $table $fieldName]
+[gen_null_check_during_sort_comp $table $fieldName]
         result = direction * memcmp (&row1->$fieldName, &row2->$fieldName, $length);
 	break;
       }
@@ -1368,58 +1216,15 @@ variable numberCompSource {
 }
 
 #
-# Generate an assignment to a string that may be a null
-# string with a default value. If shortcut is true then the case where the
-# string is null is taken care of elsewhere, otherwise we need to use the
-# default value (or the empty string).
-#
-proc gen_assign_string_with_default {table fieldName varName rowName shortcut} {
-    upvar ::ctable::fields::$fieldName field
-
-    if {$shortcut && !([info exists field(notnull)] && $field(notnull))} {
-	return "$varName = $rowName->$fieldName;"
-    }
-    if {[info exists field(default)]} {
-	set default "\"[cquote $field(default)]\""
-    } else {
-	set default "\"\""
-    }
-    return "$varName = $rowName->$fieldName ? $rowName->$fieldName : $default;"
-}
-
-#
-# Generate a declaration and an assignment to the length of a string that
-# might be null. If it's null AND the shortcut doesn't mean we've taken care
-# of this case elsewhere then use the length of the defaul value.
-#
-proc gen_assign_length_with_default {table fieldName varName rowName shortcut} {
-    upvar ::ctable::fields::$fieldName field
-
-    if {$shortcut && !([info exists field(notnull)] && $field(notnull))} {
-	return "int $varName = $rowName->_${fieldName}Length;"
-    }
-    if {[info exists field(default)]} {
-	set defaultLength [string length $field(default)]
-    } else {
-	set defaultLength 0
-    }
-    return "int $varName = $rowName->$fieldName ? $rowName->_${fieldName}Length : $defaultLength;"
-}
-
-#
 # varstringCompSource - code we run subst over to generate a compare of 
 # a string.
 #
 variable varstringCompSource {
         case $fieldEnum: {
           int     strcmpResult;
-	  CONST char *[gen_assign_string_with_default $table $fieldName string row 1]
-	  [gen_assign_length_with_default $table $fieldName stringLength row 1]
-	  CONST char *string1 = NULL;
 
 [gen_standard_comp_null_check_source $table $fieldName]
 
-	  [gen_assign_string_with_default $table $fieldName string1 row1 0]
 	  if ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH) || (compType == CTABLE_COMP_MATCH_CASE) || (compType == CTABLE_COMP_NOTMATCH_CASE)) {
 [gen_null_exclude_during_sort_comp $table $fieldName]
 	      // matchMeansKeep will be 1 if matching means keep,
@@ -1432,7 +1237,7 @@ variable varstringCompSource {
 		  CONST char *match;
 
 		  exclude = !matchMeansKeep;
-		  for (field = string, match = string1; *match != '*' && *match != '\0'; match++, field++) {
+		  for (field = row->$fieldName, match = row1->$fieldName; *match != '*' && *match != '\0'; match++, field++) {
 		      // printf("comparing '%c' and '%c'\n", *field, *match);
 		      if (sm->nocase) {
 			  if (tolower (*field) != tolower (*match)) {
@@ -1449,11 +1254,11 @@ variable varstringCompSource {
 		  // if we got here it was anchored and we now know the score
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
-	          exclude = (boyer_moore_search (sm, (unsigned char *)string, stringLength, sm->nocase) == NULL);
+	          exclude = (boyer_moore_search (sm, (unsigned char *)row->$fieldName, row->_${fieldName}Length, sm->nocase) == NULL);
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
 	      } else if (sm->type == CTABLE_STRING_MATCH_PATTERN) {
-	          exclude = !(Tcl_StringCaseMatch (string, string1, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
+	          exclude = !(Tcl_StringCaseMatch (row->$fieldName, row1->$fieldName, ((compType == CTABLE_COMP_MATCH) || (compType == CTABLE_COMP_NOTMATCH))));
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
               } else {
@@ -1461,7 +1266,7 @@ variable varstringCompSource {
 	      }
 	  }
 
-          strcmpResult = strcmp (string, string1);
+          strcmpResult = strcmp (row->$fieldName, row1->$fieldName);
 [gen_standard_comp_switch_source $fieldName]
         }
 }
@@ -2929,6 +2734,7 @@ proc gen_defaults_subr {struct} {
     emit "	  $rightCurly"
     emit ""
 
+    set fieldNum 0
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
@@ -2938,8 +2744,17 @@ proc gen_defaults_subr {struct} {
 	    }
 
 	    varstring {
-	        emit "        $baseCopy.$fieldName = (char *) NULL;"
-		emit "        $baseCopy._${fieldName}Length = 0;"
+		set initLength 0
+		if {[info exists field(default)]} {
+		    set initValue "${table}_defaultStrings\[$fieldNum]"
+		    set initLength [string length $field(default)]
+		} elseif {[info exists field(notnull)] && $field(notnull)} {
+		    set initValue "${table}_defaultStrings\[$fieldNum]"
+		} else {
+		    set initValue "NULL"
+		}
+	        emit "        $baseCopy.$fieldName = (char *) $initValue;"
+		emit "        $baseCopy._${fieldName}Length = $initLength;"
 		emit "        $baseCopy._${fieldName}AllocatedLength = 0;"
 
 		if {![info exists field(notnull)] || !$field(notnull)} {
@@ -3023,11 +2838,27 @@ proc gen_defaults_subr {struct} {
 		}
 	    }
 	}
+        incr fieldNum;
     }
 
     emit "    $rightCurly"
     emit ""
     emit "    *row = $baseCopy;"
+
+    # Poke in shared default strings where needed.
+    if {$withSharedTables} {
+        set fieldNum 0
+	foreach fieldName $fieldList {
+	    upvar ::ctable::fields::$fieldName field
+
+	    if {$field(type) == "varstring"} {
+		if {[info exists field(default)] || ([info exists field(notnull)] && $field(notnull))} {
+		    emit "    row->$fieldName = (char *) ctable->defaultStrings\[$fieldNum];"
+		}
+	    }
+	    incr fieldNum
+	}
+    }
 
     emit "$rightCurly"
     emit ""
@@ -3064,14 +2895,8 @@ emit "    (long)row->_ll_nodes\[$listnum].prev,"
 emit "    (long)row->_ll_nodes\[$listnum].next);"
 emit "fprintf(stderr, \"Inserting $fieldName into new row for $struct\\n\");"
 }
-	    if {"$def" != "" && "$field(type)" == "varstring"} {
-		emit "        row->$fieldName = (char*)\"[cquote $def]\";  // TODO: discards const"
-	    }
 	    emit "        if (ctable_InsertIntoIndex (interp, ctable, row, $fieldnum) == TCL_ERROR)"
 	    emit "            return TCL_ERROR;"
-	    if {"$def" != "" && "$field(type)" == "varstring"} {
-	        emit "        row->$fieldName = NULL;"
-	    }
 	    emit "    $rightCurly"
 	} else {
 	    emit "// Field \"$fieldName\" ($fieldnum) not indexed"
@@ -3164,14 +2989,14 @@ proc gen_delete_subr {subr struct} {
 	switch $field(type) {
 	    varstring {
     		if {$withSharedTables} {
-	            emit "    if (row->$fieldName != (char *) NULL) {"
+	            emit "    if (row->_${fieldName}AllocatedLength > 0) {"
 		    emit "	  if(!is_shared || indexCtl == CTABLE_INDEX_PRIVATE)"
 		    emit "            ckfree((char *)row->$fieldName);"
 		    emit "        else if(is_master && !final)"
 		    emit "            shmfree(ctable->share, (char *)row->$fieldName);"
 		    emit "    }"
 		} else {
-	            emit "    if (row->$fieldName != (char *) NULL) ckfree((char *)row->$fieldName);"
+	            emit "    if (row->_${fieldName}AllocatedLength > 0) ckfree((char *)row->$fieldName);"
 		}
 	    }
 	}
@@ -3437,10 +3262,8 @@ proc emit_set_standard_field {fieldName setSourceVarName} {
 #
 # emit_set_varstring_field - emit code to set a varstring field
 #
-proc emit_set_varstring_field {table fieldName default defaultLength} {
+proc emit_set_varstring_field {table fieldName} {
     variable varstringSetSource
-
-    set default [cquote $default]
 
     set optname [field_to_enum $fieldName]
 
@@ -3715,14 +3538,7 @@ proc gen_sets {} {
 	    }
 
 	    varstring {
-	        if {[info exists field(default)]} {
-		    set default $field(default)
-		    set defaultLength [string length $field(default)]
-		} else {
-		    set default ""
-		    set defaultLength 0
-		}
-		emit_set_varstring_field $table $fieldName $default $defaultLength
+		emit_set_varstring_field $table $fieldName
 	    }
 
 	    boolean {
@@ -4086,25 +3902,6 @@ proc gen_setup_routine {table} {
     emit "    Tcl_IncrRefCount ($emptyObj);"
     emit ""
 
-    #
-    # create and initialize string objects for varstring defaults
-    #
-    emit "    // defaults for varstring objects, if any"
-    foreach fieldName $fieldList {
-	upvar ::ctable::fields::$fieldName field
-
-	if {$field(type) != "varstring"} continue
-	if {![info exists field(default)]} continue
-
-	set defObj ${table}_${fieldName}DefaultStringObj
-
-	if {$field(default) != ""} {
-	    emit "    $defObj = Tcl_NewStringObj (\"[cquote $field(default)]\", -1);"
-	    emit "    Tcl_IncrRefCount ($defObj);"
-	    emit ""
-	}
-    }
-
     emit "    // initialize the null string object to the default (empty) value"
     emit "    ${table}_NullValueObj = Tcl_NewObj ();"
     emit "    ${table}_NullValueString = Tcl_GetStringFromObj (${table}_NullValueObj, &${table}_NullValueSize);"
@@ -4326,22 +4123,10 @@ proc gen_new_obj {type fieldName} {
 	}
 
 	varstring {
-	    # if there's no default for the var string, the null pointer 
-	    # response is the null
-	    if {![info exists field(default)]} {
-	        set defObj ${table}_NullValueObj
-	    } else {
-		if {$field(default) == ""} {
-		    set defObj ${table}_DefaultEmptyStringObj
-		} else {
-		    set defObj ${table}_${fieldName}DefaultStringObj
-		}
-	    }
-
 	    if {![info exists field(notnull)] || !$field(notnull)} {
-		return "row->_${fieldName}IsNull ? ${table}_NullValueObj : ((row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length))"
+		return "(row->_${fieldName}IsNull || !row->$fieldName) ? ${table}_NullValueObj : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length)"
 	    } else {
-		return "(row->$fieldName == (char *) NULL) ? $defObj  : Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length)"
+		return "Tcl_NewStringObj (row->$fieldName, row->_${fieldName}Length)"
 	    }
 	}
 
@@ -4773,21 +4558,6 @@ proc gen_field_names {} {
     emit "static int ${table}_NullValueSize;"
     emit ""
 
-    emit "// define default objects for varstring fields, if any"
-    foreach myField $fieldList {
-	upvar ::ctable::fields::$myField field
-
-	if {$field(type) == "varstring" && [info exists field(default)]} {
-	    if {$field(default) != ""} {
-		emit "static Tcl_Obj *${table}_${myField}DefaultStringObj;"
-	    }
-	    lappend defaultStrings [cquote $field(default)]
-	} else {
-	    lappend defaultStrings ""
-	}
-    }
-    emit ""
-
     set nullableList {}
 
     foreach myField $fieldList {
@@ -4797,9 +4567,6 @@ proc gen_field_names {} {
         if {[info exists field(notnull)] && $field(notnull)} {
 	    set value 0
         }
-#	if {[info exists field(default)]} {
-#	    set value 1
-#	}
 
 	lappend nullableList $value
     }
@@ -4809,6 +4576,18 @@ proc gen_field_names {} {
     emit ""
 
     if {$withSharedTables} {
+	set defaultStrings {}
+
+        foreach myField $fieldList {
+	    upvar ::ctable::fields::$myField field
+
+	    if {$field(type) == "varstring" && [info exists field(default)]} {
+	        lappend defaultStrings [cquote $field(default)]
+	    } else {
+	        lappend defaultStrings ""
+	    }
+        }
+
         emit "// define default string list"
         emit "static CONST char *${table}_defaultStrings\[] = $leftCurly"
         emit "    \"[join $defaultStrings {", "}]\""
@@ -4869,15 +4648,11 @@ proc gen_gets_string_cases {} {
 	  }
 
 	  "varstring" {
-	    emit "        if (row->${myField} == NULL) $leftCurly"
-
-	    if {![info exists field(default)] || $field(default) == ""} {
-	        set source ${table}_DefaultEmptyStringObj
-	    } else {
-	        set source ${table}_${myField}DefaultStringObj
+	    if {![info exists field(notnull)] || $field(notnull) == 0} {
+	        emit "        if (row->${myField} == NULL) $leftCurly"
+	        emit "            return Tcl_GetStringFromObj (${table}_DefaultEmptyStringObj, lengthPtr);"
+	        emit "        $rightCurly"
 	    }
-	    emit "            return Tcl_GetStringFromObj ($source, lengthPtr);"
-	    emit "        $rightCurly"
 	    emit "        *lengthPtr = row->_${myField}Length;"
 	    emit "        return row->$myField;"
 	  }
@@ -5089,25 +4864,14 @@ variable fieldCompareNullCheckSource {
 #
 proc gen_field_compare_null_check_source {table fieldName} {
     variable fieldCompareNullCheckSource
-    variable varstringCompareDefaultSource
     variable varstringCompareNullSource
     variable varstringCompareEmptySource
     upvar ::ctable::fields::$fieldName field
 
-    if {"$field(type)" == "varstring"} {
-	# Varstring is different because there's three special cases for varstring:
-	#   NULL string, DEFAULT string, and EMPTY string
-	if {[info exists field(default)]} {
-	     set source $varstringCompareDefaultSource
-	     set defaultString "\"[cquote $field(default)]\""
-	     set defaultChar "'[cquote [string index $field(default) 0] {'}]'"
-        } elseif {[info exists field(notnull)] && $field(notnull)} {
-             set source $varstringCompareEmptySource
-	} else {
-	     set source $varstringCompareNullSource
-	}
-    } elseif {[info exists field(notnull)] && $field(notnull)} {
+    if {[info exists field(notnull)] && $field(notnull)} {
         set source ""
+    } elseif {"$field(type)" == "varstring"} {
+	set source $varstringCompareNullSource
     } else {
 	set source $fieldCompareNullCheckSource
     }
@@ -5210,27 +4974,6 @@ variable varstringFieldCompSource {
 
 
 #
-# varstringCompareDefaultSource - compare against default strings
-#
-# note there's also a varstringSortCompareDefaultSource that's pretty close to 
-# this but sets a result variable and does a break to get out of a case
-# statement rather than returning something
-#
-variable varstringCompareDefaultSource {
-    if (!row1->$fieldName) {
-	if(!row2->$fieldName) {
-	    return 0;
-	} else {
-	    return strcmp($defaultString, row2->$fieldName);
-	}
-    } else {
-	if(!row2->$fieldName) {
-	    return strcmp(row1->$fieldName, $defaultString);
-	}
-    }
-}
-
-#
 # varstringCompareNullSource - compare against default empty string
 #
 # note there's also a varstringSortCompareNullSource that's pretty close to 
@@ -5251,22 +4994,6 @@ variable varstringCompareNullSource {
 	}
     }
 }
-
-variable varstringCompareEmptySource {
-    // empty string sorts low
-    if (!row1->$fieldName) {
-	if(!row2->$fieldName) {
-	    return 0;
-	} else {
-	    return -1;
-	}
-    } else {
-	if(!row2->$fieldName) {
-	    return 1;
-	}
-    }
-}
-
 
 #
 # fixedstringFieldCompSource - code we run subst over to generate a comapre of a 

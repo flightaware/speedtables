@@ -25,7 +25,7 @@ proc do_sql {conn sql} {
 	pg_result $r -clear
 	if {"$s" != "PGRES_COMMAND_OK"} {
 		puts stderr $e
-		error "Postgres error $s in $sql"
+		error "Postgres error $e in $sql"
 	}
 }
 
@@ -38,7 +38,7 @@ proc do_prepared {conn statement args} {
 	pg_result $r -clear
 	if {"$s" != "PGRES_COMMAND_OK"} {
 		puts stderr $e
-		error "Postgres error $s in prepared statement $statement $args"
+		error "Postgres error $e in prepared statement $statement $args"
 	}
 }
 
