@@ -25,6 +25,8 @@
 
 // forward references
 CTABLE_INTERNAL struct cursor *
+ctable_CreateEmptyCursor(Tcl_Interp *interp, CTable *ctable, char *name);
+CTABLE_INTERNAL struct cursor *
 ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search);
 CTABLE_INTERNAL int
 ctable_CreateCursorCommand(Tcl_Interp *interp, struct cursor *cursor);
@@ -1424,7 +1426,17 @@ restart_search:
         if(locked_cycle != LOST_HORIZON)
 	    read_unlock(ctable->share);
 #endif
-        Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
+	if (search->cursor) {
+	    ctable_CreateCursorCommand(interp, search->cursor);
+	    Tcl_SetObjResult (interp, ctable_CursorToName (search->cursor));
+	} else if (search->cursorName) {
+	    struct cursor *cursor = ctable_CreateEmptyCursor(interp, ctable, search->cursorName);
+	    search->cursorName = NULL;
+	    ctable_CreateCursorCommand(interp, cursor);
+	    Tcl_SetObjResult (interp, ctable_CursorToName (cursor));
+	} else {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
+	}
         return TCL_OK;
     }
 
@@ -3054,6 +3066,39 @@ ctable_DestroyCursor(Tcl_Interp *interp, struct cursor *cursor)
 }
 
 CTABLE_INTERNAL struct cursor *
+ctable_CreateEmptyCursor(Tcl_Interp *interp, CTable *ctable, char *cursorName)
+{
+	// ALLOCATE and build new cursor
+        struct cursor *cursor = (struct cursor *)ckalloc(sizeof (struct cursor));
+
+	// CREATE empty transaction table (1 element, empty)
+	cursor->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *));
+	cursor->tranTable[0] = (ctable_BaseRow *)NULL;
+	cursor->tranIndex = 0;
+
+	// INITIALIZE default values
+        cursor->cursorName = cursorName;
+        cursor->offset = 0;
+        cursor->offsetLimit = 0;
+	cursor->commandInfo = NULL;
+#ifdef WITH_SHARED_TABLES
+	cursor->lockCycle = LOST_HORIZON;
+#endif
+
+	// INSERT cursor into cursor list
+        cursor->nextCursor = ctable->cursors;
+        ctable->cursors = cursor;
+
+	// SAVE ctable link in cursor
+        cursor->ownerTable = ctable;
+
+	// MARK cursor as valid
+	cursor->cursorState = CTABLE_CURSOR_OK;
+
+	return cursor;
+}
+
+CTABLE_INTERNAL struct cursor *
 ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 {
 	// Defense - if it's already been created from this search, or the search doesn't need a cursor, drop it
@@ -3084,6 +3129,9 @@ ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 
 	// INIT remaining feilds
 	cursor->commandInfo = NULL;
+#ifdef WITH_SHARED_TABLES
+	cursor->lockCycle = LOST_HORIZON;
+#endif
 
 	return cursor;
 }
