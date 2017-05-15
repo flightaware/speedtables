@@ -2003,6 +2003,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 #endif
 	quick_count = ctable->count;
 
+// TODO figure out how to handle the case where a cursor command is being used. In the meantime we can't use this shortcut
+#if 0
     // if there are no rows in the table, the search won't turn up
     // anything, so skip all that
     if (quick_count == 0)
@@ -2012,6 +2014,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
 	return TCL_RETURN;
     }
+#endif
 
     // initialize search control structure
     search->ctable = ctable;
