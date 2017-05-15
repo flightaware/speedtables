@@ -2216,6 +2216,11 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	}
 
 	case CURSOR_GET: {
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+	      past_end_of_search:
+		Tcl_AppendResult (interp, "Cursor past end of search.", (char *)NULL);
+		return TCL_ERROR;
+	    }
 	    if(objc == 1) {
 		Tcl_SetObjResult (interp, ${table}_genlist (interp, cursor->tranTable[cursor->tranIndex]));
 	    } else {
@@ -2236,6 +2241,9 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    struct ${table} *row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
 	    int              nocomplain = 0;
 
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+	        goto past_end_of_search;
+	    }
 #ifdef WITH_SHARED_TABLES
 	    if (ctable->share_type == CTABLE_SHARED_READER) {
 		Tcl_AppendResult (interp, "Cursor set is not possible in a shared reader table.", (char *)NULL);
@@ -2303,6 +2311,9 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	}
 
 	case CURSOR_ARRAY_GET: {
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+		goto past_end_of_search;
+	    }
 	    if(objc == 1) {
 		Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (interp, (${table} *)cursor->tranTable[cursor->tranIndex]));
 	    } else {
@@ -2317,6 +2328,9 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	}
 
 	case CURSOR_ARRAY_GET_WITH_NULLS: {
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+		goto past_end_of_search;
+	    }
 	    if(objc == 1) {
 		Tcl_SetObjResult (interp,  ${table}_gen_keyvalue_list (interp, (${table} *)cursor->tranTable[cursor->tranIndex]));
 	    } else {
@@ -2341,6 +2355,9 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	}
 
 	case CURSOR_KEY: {
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+		goto past_end_of_search;
+	    }
 	    struct ctable_BaseRow *row = cursor->tranTable[cursor->tranIndex];
 	    Tcl_SetObjResult (interp, Tcl_NewStringObj(row->hashEntry.key, -1));
 	    return TCL_OK;
