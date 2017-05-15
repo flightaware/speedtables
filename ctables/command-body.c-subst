@@ -2156,8 +2156,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *CONST objv[], int objc)
 {
-    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "delete", "count", "at_end", NULL };
-    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_DELETE, CURSOR_COUNT, CURSOR_AT_END, NUM_CURSOR_COMMANDS };
+    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "delete", "count", "at_end", "key", NULL };
+    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_DELETE, CURSOR_COUNT, CURSOR_AT_END, CURSOR_KEY, NUM_CURSOR_COMMANDS };
     int command_id = 0;
 
     if (Tcl_GetIndexFromObj (interp, objv[0], cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
@@ -2337,6 +2337,12 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 
 	case CURSOR_COUNT: {
 	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->offsetLimit - cursor->offset));
+	    return TCL_OK;
+	}
+
+	case CURSOR_KEY: {
+	    struct ctable_BaseRow *row = cursor->tranTable[cursor->tranIndex];
+	    Tcl_SetObjResult (interp, Tcl_NewStringObj(row->hashEntry.key, -1));
 	    return TCL_OK;
 	}
 
