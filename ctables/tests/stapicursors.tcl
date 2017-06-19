@@ -27,10 +27,10 @@ $c destroy
 set names [array names orig]
 set num [llength $names]
 
-puts "Scanning 10000 samples"
+puts "Scanning 1000 samples"
 
 set missed 0
-for {set i 0} {$i < 10000} {incr i} {
+for {set i 0} {$i < 1000} {incr i} {
     set n [expr {int(rand() * $num)}]
     set k [lindex $names $n]
     set old $curr($k)
@@ -61,7 +61,7 @@ for {set i 0} {$i < 10000} {incr i} {
     after 150
 }
 
-puts "\n\n10000 passes [llength [array names changed]] modified"
+puts "\n\n1000 passes [llength [array names changed]] modified"
 
 foreach id [array names idwant] {
     if {$idwant($id) != $idfound($id)} {

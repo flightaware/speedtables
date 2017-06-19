@@ -63,7 +63,92 @@ puts [list $c get = [$c get]]
 puts [list $c next = [$c next]]
 puts [list $c get = [$c get]]
 
-puts "Destoying $c"
+puts "Destroying $c"
 $c destroy
+
+puts "Flooding the table with extras"
+
+for {set i 0} {$i < 10000} {incr i} {
+	set n extra$i
+	t set $n id $n name "Extra $i" show ALL home NONE age 0 coolness 0
+}
+
+puts "Performance tests"
+
+proc codetest {} {
+	set len 0
+	::t search -array_get l -code { incr len [llength $l] }
+	return $len
+}
+
+proc sorttest {} {
+	set len 0
+	::t search -array_get l -sort coolness -code { incr len [llength $l] }
+	return $len
+}
+
+proc curstest {} {
+	set len 0
+	set c [::t search -cursor #auto]
+	while {![$c at_end]} {
+		incr len [llength [$c array_get]]
+		$c next
+	}
+	$c destroy
+	return $len
+}
+
+puts [list codetest [time codetest]]
+
+puts [list sorttest [time sorttest]]
+
+puts [list curstest [time curstest]]
+
+puts "Performance tests 2"
+
+proc codetest {} {
+	set len 0
+	::t search -array_get l -compare {{> coolness 0}} -code { incr len [llength $l] }
+	return $len
+}
+
+proc curstest {} {
+	set len 0
+	set c [::t search -compare {{> coolness 0}} -cursor #auto]
+	while {![$c at_end]} {
+		incr len [llength [$c array_get]]
+		$c next
+	}
+	$c destroy
+	return $len
+}
+
+puts [list codetest [time codetest]]
+
+puts [list curstest [time curstest]]
+
+puts "Performance tests 3"
+
+proc codetest {} {
+	set len 0
+	::t search -key k -code { incr len [llength $k] }
+	return $len
+}
+
+proc curstest {} {
+	set len 0
+	set c [::t search -cursor #auto]
+	while {![$c at_end]} {
+		incr len [llength [$c key]]
+		$c next
+	}
+	$c destroy
+	return $len
+}
+
+puts [list codetest [time codetest]]
+
+puts [list curstest [time curstest]]
+
 
 puts [list t cursors = [t cursors]]
