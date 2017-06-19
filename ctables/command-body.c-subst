@@ -2122,7 +2122,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	if(destroy) {
 	    if(pattern) {
-		Tcl_AppendResult(interp, "Cursors -pattern and -destroy are not compatible", (char *)NULL);
+		Tcl_AppendResult(interp, "Cursors -match and -destroy are not compatible", (char *)NULL);
 		return TCL_ERROR;
 	    }
 	    while(ctable->cursors) {
