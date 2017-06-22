@@ -642,6 +642,12 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_DELETE: {
+	if(ctable->cursors) {
+	    Tcl_AppendResult(interp, "Can not delete while cursors are active.\n", NULL);
+	    Tcl_SetErrorCode (interp, "speedtables", "no_delete_with_cursors", NULL);
+	    return TCL_ERROR;
+	}
+
 	if(ctable->searching) {
 	    Tcl_AppendResult(interp, "Can not delete from inside search.\n", NULL);
 	    Tcl_SetErrorCode (interp, "speedtables", "no_delete_inside_search", NULL);

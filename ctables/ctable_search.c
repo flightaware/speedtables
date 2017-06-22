@@ -2272,6 +2272,11 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    }
 
 	    if(do_delete) {
+	      if(ctable->cursors) {
+	        Tcl_AppendResult(interp, "Can not delete while cursors are active.\n", NULL);
+	        Tcl_SetErrorCode (interp, "speedtables", "no_delete_with_cursors", NULL);
+	        return TCL_ERROR;
+	      }
 #ifdef WITH_SHARED_TABLES
 	      if(ctable->share_type == CTABLE_SHARED_READER) {
 		Tcl_AppendResult (interp, "Can't modify read-only tables.", (char *)NULL);
