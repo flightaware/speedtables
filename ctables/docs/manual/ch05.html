@@ -50,7 +50,7 @@ arguments.
 </dl>
 <H3> Table (Object) Methods </H3>
 <p>The following built-in methods are available as arguments to each instance of a speed table:</p>
-<p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep</i>, <i>key</i>, <i>makekey</i>, <i>store</i>, <i>share</i>, <i>getprop</i>, <i>attach</i></p>
+<p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep</i>, <i>key</i>, <i>makekey</i>, <i>store</i>, <i>share</i>, <i>getprop</i>, <i>attach</i>, <i>cursors</i></p>
 <p>For the examples, assume we have done a "<tt>cable_info create x</tt>"</p>
 <dl compact>
 
@@ -216,7 +216,8 @@ $table search \
     ?-write_tabsep channel? ?-tab string? ?-with_field_names 0|1? \
     ?-nokeys 0|1? ?-null string? \
     ?-delete 0|1? ?-buffer 0|1? ?-update {field value}? \
-    ?-poll_interval interval? ?-poll_code codeBody?
+    ?-poll_interval interval? ?-poll_code codeBody? \
+    ?-cursor name?
 </pre>
 <p>Search options:</p>
 <dl>
@@ -366,6 +367,40 @@ $points search -filter [list [list distance [concat $fieldLatLong 150]]] -code {
 <dt>-countOnly 1<dd>
 <p><tt>countOnly</tt> is deprecated, it only exists for legacy reasons.</p>
 
+<dt>-cursor <i>name</i><dd>
+<dt>-cursor #auto<dd>
+<p>Create a named cursor. This can not be combined with any other active commands, it creates a new object that holds the
+results of the search so it can be processed separately from the search command. The restun value of the search will be the name of the cursor rather than a count of matched rows.</p>
+<p>Cursor commands:</p>
+
+<dl>
+<dt>$cursor destroy<dd>
+<p>Delete the named cursor.</p>
+<dt>$cursor reset<dd>
+<p>Position the cursor at the beginning of the search results.</p>
+<dt>$cursor next<dd>
+<p>Step to the next result in the list. Returns the index of the result or -1 if past the end of the results.</p>
+<dt>$cursor index<dd>
+<p>Returns the index of the result or -1 if past the end of the results.</p>
+<dt>$cursor get ?field?...<dd>
+<p>Return the current row, or the fields names from the current row, as a list.</p>
+<dt>$cursor array_get ?field?...<dd>
+<p>Return the current row, or the fields names from the current row, as a key value list suitable for passing to array_set. Null values are omitted from the list</p>
+<dt>$cursor array_get_with_nulls ?field?...<dd>
+<p>Return the current row, or the fields names from the current row, as a key value list suitable for passing to array_set Null values are returns as empty strings.</p>
+<dt>$cursor set ?field value?...<dd>
+<p>Set the named fields in the current row to the provided values.</p>
+<dt>$cursor count<dd>
+<p>Return the number of rows in the cursor.</p>
+<dt>$cursor at_end<dd>
+<p>Return true if the cursor is at the end of the results.</p>
+<dt>$cursor key<dd>
+<p>Return the key for the current row.</p>
+</dl>
+
+<p>Note that the cursor results are buffered. Multiple cursors can exist and it is safe to change the results of cursors while other cursors exist, but the results may be surprising so it's not recommended. It is not possible to delete rows from the speedtable while cursors are in use.</p>
+</dl>
+
 </dl>
 
 <p>Search Examples:</p>
@@ -388,6 +423,11 @@ $table search \
   }
 close $fp
 </pre>
+
+<dt>cursors<dd>
+<p>Return a list of all cursors open on the speedtable.</p>
+<dt>cursors destroy<dd>
+<p>Destroy all cursors open on the speedtable.</p>
 
 <dt>incr<dd>
 <p>Increment the specified numeric values, returning a list of the new incremented values</p>

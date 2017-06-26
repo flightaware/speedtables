@@ -23,6 +23,16 @@
 
 #include <time.h>
 
+// forward references
+CTABLE_INTERNAL struct cursor *
+ctable_CreateEmptyCursor(Tcl_Interp *interp, CTable *ctable, char *name);
+CTABLE_INTERNAL struct cursor *
+ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search);
+CTABLE_INTERNAL int
+ctable_CreateCursorCommand(Tcl_Interp *interp, struct cursor *cursor);
+CTABLE_INTERNAL Tcl_Obj *
+ctable_CursorToName(struct cursor *cursor);
+
 //#define INDEXDEBUG
 // #define MEGADEBUG
 // #define SEARCHDEBUG
@@ -820,7 +830,7 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
     int fieldIndex, rowIndex;
     ctable_CreatorTable *creator = ctable->creator;
 
-    if(search->tranType == CTABLE_SEARCH_TRAN_NONE) {
+    if(search->tranType == CTABLE_SEARCH_TRAN_NONE || search->tranType == CTABLE_SEARCH_TRAN_CURSOR) {
 	return TCL_OK;
     }
 
@@ -950,7 +960,9 @@ ctable_PostSearchCommonActions (Tcl_Interp *interp, CTable *ctable, CTableSearch
       ctable_qsort_r (search->tranTable, search->matchCount, sizeof (ctable_HashEntry *), &search->sortControl, (cmp_t*) creator->sort_compare);
     }
 
-    if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
+    if (search->tranType == CTABLE_SEARCH_TRAN_CURSOR) {
+	search->cursor = ctable_CreateCursor(interp, ctable, search);
+    } else if(search->bufferResults == CTABLE_BUFFER_DEFER) { // we deferred the operation to here
         // walk the result
         for (walkIndex = search->offset; walkIndex < search->offsetLimit; walkIndex++) {
 	    if(search->pollInterval && --search->nextPoll <= 0) {
@@ -987,7 +999,7 @@ normal_return:
     search->matchCount = search->offsetLimit - search->offset;
 
     // Finally, perform any pending transaction.
-    if(search->tranType != CTABLE_SEARCH_TRAN_NONE) {
+    if(search->tranType != CTABLE_SEARCH_TRAN_NONE && search->tranType !=  CTABLE_SEARCH_TRAN_CURSOR) {
 	if (ctable_PerformTransaction(interp, ctable, search) == TCL_ERROR) {
 	    return TCL_ERROR;
 	}
@@ -1239,6 +1251,8 @@ CTABLE_INTERNAL void ctable_PrepareTransactions(CTable *ctable, CTableSearch *se
     //     We explicitly requested bufering.
     if (search->action == CTABLE_SEARCH_ACTION_NONE) {
 	search->bufferResults = CTABLE_BUFFER_NONE;
+    } else if(search->action == CTABLE_SEARCH_ACTION_CURSOR) {
+	search->bufferResults = CTABLE_BUFFER_DEFER;
     } else if(search->sortControl.nFields > 0) {
 	search->bufferResults = CTABLE_BUFFER_DEFER;
 #ifdef WITH_SHARED_TABLES
@@ -1412,7 +1426,17 @@ restart_search:
         if(locked_cycle != LOST_HORIZON)
 	    read_unlock(ctable->share);
 #endif
-        Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
+	if (search->cursor) {
+	    ctable_CreateCursorCommand(interp, search->cursor);
+	    Tcl_SetObjResult (interp, ctable_CursorToName (search->cursor));
+	} else if (search->cursorName) {
+	    struct cursor *cursor = ctable_CreateEmptyCursor(interp, ctable, search->cursorName);
+	    search->cursorName = NULL;
+	    ctable_CreateCursorCommand(interp, cursor);
+	    Tcl_SetObjResult (interp, ctable_CursorToName (cursor));
+	} else {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
+	}
         return TCL_OK;
     }
 
@@ -1931,11 +1955,24 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
     }
 
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
-	Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
+	if(search->cursor) {
+	    // We got here so we can create the command
+	    ctable_CreateCursorCommand(interp, search->cursor);
+	    Tcl_SetObjResult (interp, ctable_CursorToName (search->cursor));
+	} else if (search->cursorName) {
+	    struct cursor *cursor = ctable_CreateEmptyCursor(interp, ctable, search->cursorName);
+	    search->cursorName = NULL;
+	    ctable_CreateCursorCommand(interp, cursor);
+	    Tcl_SetObjResult (interp, ctable_CursorToName (cursor));
+	} else {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj (search->matchCount));
+	}
     }
 
 #ifdef WITH_SHARED_TABLES
-    if(locked_cycle != LOST_HORIZON)
+    if(search->cursor)
+	search->cursor->lockCycle = locked_cycle;
+    else if(locked_cycle != LOST_HORIZON)
 	read_unlock(ctable->share);
 
     if(skipListCopy)
@@ -1963,9 +2000,9 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
     static int staticSequence = 0;
 
-    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", "-null", "-filter", (char *)NULL};
+    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", "-null", "-filter", "-cursor", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL, SEARCH_OPT_QUOTE_TYPE, SEARCH_OPT_NULL_STRING, SEARCH_OPT_FILTER};
+    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL, SEARCH_OPT_QUOTE_TYPE, SEARCH_OPT_NULL_STRING, SEARCH_OPT_FILTER, SEARCH_OPT_CURSOR};
     if (objc < 2) {
       wrong_args:
 	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-filter list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-nokeys 0|1? ?-offset offset? ?-sort {?-?field1..}? ?-write_tabsep channel? ?-tab value? ?-delete 0|1? ?-update {fields value...}? ?-buffer 0|1? ?-poll_interval interval? ?-poll_code codeBody? ?-quote type?");
@@ -1983,6 +2020,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 #endif
 	quick_count = ctable->count;
 
+// TODO figure out how to handle the case where a cursor command is being used. In the meantime we can't use this shortcut
+#if 0
     // if there are no rows in the table, the search won't turn up
     // anything, so skip all that
     if (quick_count == 0)
@@ -1992,6 +2031,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	Tcl_SetObjResult (interp, Tcl_NewIntObj (0));
 	return TCL_RETURN;
     }
+#endif
 
     // initialize search control structure
     search->ctable = ctable;
@@ -2028,6 +2068,8 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->alreadySearched = -1;
     search->tranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
+    search->cursorName = NULL;
+    search->cursor = NULL;
 
     // Give each search a unique non-zero sequence number
     if(++staticSequence == 0) ++staticSequence;
@@ -2230,6 +2272,11 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	    }
 
 	    if(do_delete) {
+	      if(ctable->cursors) {
+	        Tcl_AppendResult(interp, "Can not delete while cursors are active.\n", NULL);
+	        Tcl_SetErrorCode (interp, "speedtables", "no_delete_with_cursors", NULL);
+	        return TCL_ERROR;
+	      }
 #ifdef WITH_SHARED_TABLES
 	      if(ctable->share_type == CTABLE_SHARED_READER) {
 		Tcl_AppendResult (interp, "Can't modify read-only tables.", (char *)NULL);
@@ -2320,15 +2367,54 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
 	    break;
 	  }
+
+	  case SEARCH_OPT_CURSOR: {
+	    char *cursorName = NULL;
+	    struct cursor *c;
+
+            if(search->tranType != CTABLE_SEARCH_TRAN_NONE || search->action != CTABLE_SEARCH_ACTION_NONE) {
+		Tcl_AppendResult (interp, "Can not combine -cursor with other operations", (char *)NULL);
+	    }
+
+	    cursorName = Tcl_GetString (objv[i++]);
+
+	    if (strcmp (cursorName, "#auto") == 0) {
+		char *tableName = NULL;
+		int tableNameLength;
+		static unsigned long int auto_cursor_id = 0;
+
+		// use command name of the ctable as the base of the cursor name
+		tableName = Tcl_GetStringFromObj (objv[0], &tableNameLength);
+		tableNameLength += 42+2;
+		cursorName = (char *) ckalloc (tableNameLength);
+		snprintf(cursorName, tableNameLength, "%s_C%lu", tableName, ++auto_cursor_id);
+	    } else {
+		char *tmp = (char *)ckalloc (strlen(cursorName) + 1);
+		strcpy(tmp, cursorName);
+		cursorName = tmp;
+	    }
+
+	    for (c = ctable->cursors; c; c = c->nextCursor) {
+		if(strcmp(c->cursorName, cursorName) == 0) {
+		    Tcl_AppendResult (interp, "Cursor name must not duplicate an existing cursor on the same table", (char *)NULL);
+		    ckfree(cursorName);
+	            return TCL_ERROR;
+		}
+	    }
+
+	    search->tranType = CTABLE_SEARCH_TRAN_CURSOR;
+	    search->action = CTABLE_SEARCH_ACTION_CURSOR;
+	    search->cursorName = cursorName;
+	  }
 	}
     }
 
-    // If we have a code body, make sure we're not doing a write_tabsep, make
+    // If we have a code body, make sure we're not doing a write_tabsep or returning a cursor, make
     // sure we have a row variable or a key variable, and that we're not
     // leaving the search action "none"
     if (search->codeBody != NULL) {
-	if (search->action == CTABLE_SEARCH_ACTION_WRITE_TABSEP) {
-	    Tcl_AppendResult (interp, "Both -code and -write_tabsep specified", NULL);
+	if (search->action == CTABLE_SEARCH_ACTION_WRITE_TABSEP || search->action == CTABLE_SEARCH_ACTION_CURSOR) {
+	    Tcl_AppendResult (interp, "Both -code and -write_tabsep or -cursor specified", (char *)NULL);
 	    goto errorReturn;
 	}
 	if (search->rowVarNameObj == NULL && search->keyVarNameObj == NULL) {
@@ -2931,5 +3017,164 @@ ctable_LappendIndexLowAndHi (Tcl_Interp *interp, CTable *ctable, int field) {
 
     return TCL_OK;
 }
+
+CTABLE_INTERNAL int
+ctable_DestroyCursor(Tcl_Interp *interp, struct cursor *cursor)
+{
+    if(!cursor->ownerTable) return TCL_OK; // being deleted
+    CTable *ctable = cursor->ownerTable;
+    cursor->ownerTable = NULL;
+
+    struct cursor *prev = NULL;
+    struct cursor *next = ctable->cursors;
+    while(next && next != cursor) {
+	prev = next;
+	next = next->nextCursor;
+    }
+    if(!next) return TCL_OK; // already deleted
+
+    // Remove from ctable
+    if(prev)
+	prev->nextCursor = next->nextCursor;
+    else
+	ctable->cursors = next->nextCursor;
+
+    if(cursor->tranTable) {
+	ckfree(cursor->tranTable);
+	cursor->tranTable = NULL;
+    }
+
+    if(cursor->cursorName) {
+	ckfree(cursor->cursorName);
+	cursor->cursorName = NULL;
+    }
+
+    if(interp && cursor->commandInfo) {
+	Tcl_Command tmp = cursor->commandInfo;
+	cursor->commandInfo = NULL;
+	Tcl_DeleteCommandFromToken(interp, tmp);
+    }
+
+#ifdef WITH_SHARED_TABLES
+    // destroying a read-locked cursor? Tag the whole ctable as locked
+    if(cursor->lockCycle != LOST_HORIZON)
+	ctable->cursorLock = 1;
+
+    if(!ctable->cursors) {
+	// if the table was tagged as locked, and this is the last cursor, unlock it
+	if(ctable->cursorLock) {
+	    read_unlock(ctable->share);
+	    ctable->cursorLock = 0;
+	}
+        end_write(ctable);
+    }
+#endif
+
+    ckfree(cursor);
+
+    return TCL_OK;
+}
+
+CTABLE_INTERNAL struct cursor *
+ctable_CreateEmptyCursor(Tcl_Interp *interp, CTable *ctable, char *cursorName)
+{
+	// ALLOCATE and build new cursor
+        struct cursor *cursor = (struct cursor *)ckalloc(sizeof (struct cursor));
+
+	// CREATE empty transaction table (1 element, empty)
+	cursor->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *));
+	cursor->tranTable[0] = (ctable_BaseRow *)NULL;
+	cursor->tranIndex = 0;
+
+	// INITIALIZE default values
+        cursor->cursorName = cursorName;
+        cursor->offset = 0;
+        cursor->offsetLimit = 0;
+	cursor->commandInfo = NULL;
+#ifdef WITH_SHARED_TABLES
+	cursor->lockCycle = LOST_HORIZON;
+#endif
+
+	// INSERT cursor into cursor list
+        cursor->nextCursor = ctable->cursors;
+        ctable->cursors = cursor;
+
+	// SAVE ctable link in cursor
+        cursor->ownerTable = ctable;
+
+	// MARK cursor as valid
+	cursor->cursorState = CTABLE_CURSOR_OK;
+
+	return cursor;
+}
+
+CTABLE_INTERNAL struct cursor *
+ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
+{
+	// Defense - if it's already been created from this search, or the search doesn't need a cursor, drop it
+	if (!search->tranTable || !search->cursorName) return NULL;
+
+	// ALLOCATE and build new cursor
+        struct cursor *cursor = (struct cursor *)ckalloc(sizeof (struct cursor));
+
+	// MOVE transaction table naem cursor name to cursor
+        cursor->tranTable = search->tranTable;
+        search->tranTable = NULL;
+        cursor->cursorName = search->cursorName;
+	search->cursorName = NULL;
+
+	// COPY search cursor info to cursor
+        cursor->offset = cursor->tranIndex = search->offset;
+        cursor->offsetLimit = search->offsetLimit;
+
+	// INSERT cursor into cursor list
+        cursor->nextCursor = ctable->cursors;
+        ctable->cursors = cursor;
+
+	// SAVE ctable link in cursor
+        cursor->ownerTable = ctable;
+
+	// MARK cursor as valid
+	cursor->cursorState = CTABLE_CURSOR_OK;
+
+	// INIT remaining feilds
+	cursor->commandInfo = NULL;
+#ifdef WITH_SHARED_TABLES
+	cursor->lockCycle = LOST_HORIZON;
+#endif
+
+	return cursor;
+}
+
+CTABLE_INTERNAL void
+ctable_DeleteCursorCommand(ClientData clientData)
+{
+	struct cursor *cursor = (struct cursor *)clientData;
+
+	// Make sure we don't lead ourselves back here
+	cursor->commandInfo = NULL;
+
+	// Remove the cursor from the ctable and destroy it
+	ctable_DestroyCursor(NULL, cursor);
+}
+
+CTABLE_INTERNAL int
+ctable_CreateCursorCommand(Tcl_Interp *interp, struct cursor *cursor)
+{
+	if(cursor->commandInfo) return TCL_OK; // already exists
+
+	Tcl_ObjCmdProc *commandProc = cursor->ownerTable->creator->cursor_command;
+
+	cursor->commandInfo = Tcl_CreateObjCommand(interp, cursor->cursorName, commandProc, (ClientData)cursor, ctable_DeleteCursorCommand);
+
+	return cursor->commandInfo ? TCL_OK : TCL_ERROR;
+}
+
+CTABLE_INTERNAL Tcl_Obj *
+ctable_CursorToName(struct cursor *cursor)
+{
+	return Tcl_NewStringObj(cursor->cursorName, -1);
+}
+
 
 // vim: set ts=8 sw=4 sts=4 noet :

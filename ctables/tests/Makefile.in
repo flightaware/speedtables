@@ -47,6 +47,7 @@ maintests:
 	$(TCLSH) tclobj.tcl
 	$(TCLSH) match-fail-test.tcl
 	$(TCLSH) clean-test.tcl
+	$(TCLSH) cursortest.tcl
 
 clean:
 	rm -rf stobj
@@ -61,6 +62,7 @@ corrupt:
 pgtests:
 	$(TCLSH) pgtcl.tcl
 	$(TCLSH) stapi_pg.tcl
+
 
 compare:
 	rm -rf stobj
@@ -96,7 +98,7 @@ pools:
 	rm -f *.dat
 	$(TCLSH) poolspeed.tcl
 
-allstapi: stapi multishared stapireturn
+allstapi: stapi multishared stapireturn stapicursors
 	rm -f serverlog_multimaster.log sharefile.dat
 
 reader:
@@ -174,3 +176,8 @@ stapireturn:
 	rm -rf stobj
 	rm -f *.dat
 	sh stapi.sh -s stapireturn.tcl
+
+stapicursors:
+	rm -rf stobj
+	rm -f *.dat
+	sh stapi.sh -s stapicursors.tcl
