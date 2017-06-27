@@ -2091,6 +2091,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		ctable->performanceCallbackEnable = 1;
 	      }
 	}
+	break;
 #else
 	Tcl_AppendResult(interp, "performance callback not implemented on this OS", (char *)NULL);
 	return TCL_ERROR;
