@@ -621,6 +621,6 @@ proc maketable {cttpUrl sock} {
   return [::sttp_buffer::table $cttpUrl]
 }
 
-package provide ctable_client 1.13.0
+package provide ctable_client 1.13.1
 
 # vim: set ts=8 sw=4 sts=4 noet :
