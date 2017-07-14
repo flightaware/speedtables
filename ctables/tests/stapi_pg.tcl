@@ -164,5 +164,9 @@ $a search -compare {{= _dirty 0}} -array r -code {
 if {"$dirty_animals" != "bossie"} {
 	error "Clean/dirty test expecting to only find "bossie" got "$dirty_animals"
 }
+set c [$a search -compare {{= _dirty 0}} -delete 1]
+if {$c != 1} {
+	error "Clean/dirty test expecting to delete 1 actually deleted $c"
+}
 
 puts "\nDone"
