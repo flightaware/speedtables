@@ -2086,6 +2086,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->matchCount = 0;
     search->alreadySearched = -1;
     search->tranTable = NULL;
+    search->savedTranTable = NULL;
     search->offsetLimit = search->offset + search->limit;
     search->cursorName = NULL;
     search->cursor = NULL;
