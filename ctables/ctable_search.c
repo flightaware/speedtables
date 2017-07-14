@@ -1273,7 +1273,19 @@ CTABLE_INTERNAL void ctable_PrepareTransactions(CTable *ctable, CTableSearch *se
     // if we're buffering,
     // allocate a space for the search results that we'll then sort from
     if (search->bufferResults != CTABLE_BUFFER_NONE) {
-	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *) * ctable->count);
+	// If we have a cached transaction table
+	if(search->savedTranTable) {
+	    if(search->savedTranTableSize >= ctable->count) {
+		search->tranTable = search->savedTranTable;
+		search->tranTableSize = search->savedTranTableSize;
+		search->savedTranTable = NULL;
+		return;
+	    }
+	    ckfree(search->savedTranTable);
+	    search->savedTranTable = NULL;
+	}
+	search->tranTableSize = ctable->count + CTABLE_TRANSACTION_HEADROOM;
+	search->tranTable = (ctable_BaseRow **)ckalloc (sizeof (ctable_BaseRow *) * search->tranTableSize);
     }
 }
 
@@ -1361,7 +1373,9 @@ restart_search:
 	// while exercise again...
 
         if (search->tranTable != NULL) {
-	    ckfree ((char *)search->tranTable);
+	    //ckfree ((char *)search->tranTable);
+	    search->savedTranTable = search->tranTable;
+	    search->savedTranTableSize = search->tranTableSize;
 	    search->tranTable = NULL;
         }
 
@@ -1952,6 +1966,11 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
     if (search->tranTable != NULL) {
 	ckfree ((char *)search->tranTable);
 	search->tranTable = NULL;
+    }
+
+    if (search->savedTranTable != NULL) {
+	ckfree ((char *)search->savedTranTable);
+	search->savedTranTable = NULL;
     }
 
     if (finalResult != TCL_ERROR && (search->codeBody == NULL || finalResult != TCL_RETURN)) {
@@ -3117,7 +3136,7 @@ ctable_CreateCursor(Tcl_Interp *interp, CTable *ctable, CTableSearch *search)
 	// ALLOCATE and build new cursor
         struct cursor *cursor = (struct cursor *)ckalloc(sizeof (struct cursor));
 
-	// MOVE transaction table naem cursor name to cursor
+	// MOVE transaction table & cursor name to cursor
         cursor->tranTable = search->tranTable;
         search->tranTable = NULL;
         cursor->cursorName = search->cursorName;

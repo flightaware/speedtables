@@ -364,6 +364,9 @@ struct CTableSearchFilter {
 // If poll code is provided, the poll code will be run after this many rows
 #define CTABLE_DEFAULT_POLL_INTERVAL 1024
 
+// We allocate this much extra space in case the transaction grows during a search
+#define CTABLE_TRANSACTION_HEADROOM 10
+
 // ctable search struct - this controls everything about a search
 struct CTableSearch {
     struct CTable                       *ctable;
@@ -419,6 +422,12 @@ struct CTableSearch {
     // we use tran table to accumulate matching rows for sorting when
     // searching with sorting, and for completing a transaction after searching
     ctable_BaseRow                     **tranTable;
+    int                                  tranTableSize;
+
+    // We save the transaction table when restarting a search to keep from allocating it over
+    // and over again.
+    ctable_BaseRow                     **savedTranTable;
+    int                                  savedTranTableSize;
 
     // how to quote quotable strings and reptresent nulls in write_tabsep
     int					 quoteType;
