@@ -213,7 +213,7 @@ catch { ::itcl::delete class STDisplay }
 			# TODO: this is not very good; it is probably missing some chars.
 			# Substitute & first :)
 			foreach \
-				src " &		   {\"}		 " \
+				src " &        {\"}      " \
 				dst { {\&amp;} {\&quot;} } {
 					regsub -all $src $str $dst str
 				}
@@ -229,7 +229,7 @@ catch { ::itcl::delete class STDisplay }
 		} else {
 			# TODO: this is not very good; should also hex-encode many other things.
 			foreach \
-				src " &		   {\"}		 <       > " \
+				src " &	       {\"}      <       > " \
 				dst { {\&amp;} {\&quot;} {\&lt;} {\&gt;} } {
 					regsub -all $src $str $dst str
 				}
@@ -237,6 +237,16 @@ catch { ::itcl::delete class STDisplay }
 		}
 	}
 
+	# minimal escape string for protecting HTML only
+	# Avoids changing more than necessary to avoid stepping on legacy filters
+	protected method escape_html {str} {
+		foreach \
+			src " &        <       >       " \
+			dst { {\&amp;} {\&lt;} {\&gt;} } {
+				regsub -all $src $str $dst str
+			}
+		return $str
+	}
 
 	#
 	# read_css_file - parse and read in a CSS file so we can
@@ -2030,7 +2040,7 @@ catch { ::itcl::delete class STDisplay }
 		}
 
 		if [info exists row($column)] {
-			set val [apply_filter $name $row($column) row $type]
+			set val [apply_filter $name [escape_html $row($column)] row $type]
 		}
 
 		return $val
