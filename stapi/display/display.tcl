@@ -2581,5 +2581,5 @@ catch { ::itcl::delete class ::STDisplayField_boolean }
 
 } ; ## ::itcl::class ::STDisplayField_boolean
 
-package provide st_display 1.13.1
+package provide st_display 1.13.2
 
