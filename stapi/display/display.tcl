@@ -240,12 +240,7 @@ catch { ::itcl::delete class STDisplay }
 	# minimal escape string for protecting HTML only
 	# Avoids changing more than necessary to avoid stepping on legacy filters
 	protected method escape_html {str} {
-		foreach \
-			src " &        <       >       " \
-			dst { {\&amp;} {\&lt;} {\&gt;} } {
-				regsub -all $src $str $dst str
-			}
-		return $str
+		return [string map { & &amp; < &lt; > &gt; } $str]
 	}
 
 	#
