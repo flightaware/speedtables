@@ -1084,7 +1084,9 @@ Shared_Init(Tcl_Interp *interp)
         return TCL_ERROR;
 #endif
 
+#ifdef WITH_SHARE_COMMAND
     Tcl_CreateObjCommand(interp, "share", (Tcl_ObjCmdProc *) shareCmd, (ClientData)NULL, (Tcl_CmdDeleteProc *)NULL);
+#endif
 
 #ifdef SHARED_TCL_EXTENSION
     return Tcl_PkgProvide(interp, "Shared", "1.0");

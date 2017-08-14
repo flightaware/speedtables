@@ -18,6 +18,7 @@ using namespace boost::container;
 
 #define WITH_SHMEM_SYMBOL_LIST
 
+#undef WITH_SHARE_COMMAND
 
 
 // Atomic word size, "cell_t".

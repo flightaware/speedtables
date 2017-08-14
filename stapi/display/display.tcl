@@ -210,14 +210,8 @@ catch { ::itcl::delete class STDisplay }
 			# we were running under Apache Rivet and could use its existing command.
 			return $result
 		} else {
-			# TODO: this is not very good; it is probably missing some chars.
-			# Substitute & first :)
-			foreach \
-				src " &        {\"}      " \
-				dst { {\&amp;} {\&quot;} } {
-					regsub -all $src $str $dst str
-				}
-			return $str
+			# This duplicates the Rivet escape_sgml_chars command:
+			return [string map { & &amp; < &lt; > &gt; " &quot; ' &#39; } $str]
 		}
 	}
 
