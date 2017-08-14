@@ -1925,6 +1925,7 @@ catch { ::itcl::delete class STDisplay }
 		$f hidden query -value [escape_cgi $response(query)]
 		$f submit submit -value Yes -class DIODeleteConfirmYesButton
 		$f end
+		$f destroy
 		puts "</TD>"
 		puts {<TD ALIGN="center" CLASS="DIODeleteConfirmNoButton">}
 		set f [::form #auto]
