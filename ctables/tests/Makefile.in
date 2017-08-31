@@ -42,7 +42,7 @@ maintests:
 	$(TCLSH) index-compare.tcl
 	rm -rf stobj
 	$(TCLSH) index-defaults.tcl
-	$(TCLSH) fixed-defaults.tcl
+	$(TCLSH) fixed-default.tcl
 	$(TCLSH) filter.tcl
 	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
