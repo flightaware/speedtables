@@ -774,7 +774,11 @@ variable fixedstringSetSource {
 	if (*stringPtr == *row->$fieldName && strncmp(row->$fieldName, stringPtr, $length) == 0)
 	    return TCL_OK;"]
 [gen_ctable_remove_from_index $fieldName]
-	strncpy (row->$fieldName, stringPtr, $length);
+	if(len < $length) {
+		strncpy (row->$fieldName, "[cquote $default]", $length);
+		strncpy (row->$fieldName, stringPtr, len);
+	} else
+		strncpy (row->$fieldName, stringPtr, $length);
 [gen_ctable_insert_into_index $fieldName]
 	break;
       }
