@@ -2632,11 +2632,12 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 #endif
 
     // flag this search in progress
+    int prev_state = ctable->searching;
     ctable->searching = 1;
 
     result = ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField);
     if (result == TCL_ERROR) {
-        ctable->searching = 0;
+        ctable->searching = prev_state;
         return TCL_ERROR;
     }
 
@@ -2655,7 +2656,7 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 
     ctable_TeardownSearch (&search);
 
-    ctable->searching = 0;
+    ctable->searching = prev_state;
 
 #ifdef CTABLES_CLOCK
     if (ctable->performanceCallbackEnable) {
