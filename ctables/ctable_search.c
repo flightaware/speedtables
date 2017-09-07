@@ -1992,7 +1992,7 @@ if(num_restarts) fprintf(stderr, "%d: Restarted search %d times\n", getpid(), nu
 //
 //
 static int
-ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search, int indexField) {
+ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search, int indexField, int nested_search) {
     int             i;
     int             searchTerm = 0;
     CONST char    **fieldNames = ctable->creator->fieldNames;
@@ -2275,6 +2275,11 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	      if(ctable->cursors) {
 	        Tcl_AppendResult(interp, "Can not delete while cursors are active.\n", NULL);
 	        Tcl_SetErrorCode (interp, "speedtables", "no_delete_with_cursors", NULL);
+	        return TCL_ERROR;
+	      }
+	      if(nested_search) {
+	        Tcl_AppendResult(interp, "Can not delete in nested search.\n", NULL);
+	        Tcl_SetErrorCode (interp, "speedtables", "no_delete_inside_search", NULL);
 	        return TCL_ERROR;
 	      }
 #ifdef WITH_SHARED_TABLES
@@ -2632,12 +2637,12 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 #endif
 
     // flag this search in progress
-    int prev_state = ctable->searching;
+    int nested_search = ctable->searching;
     ctable->searching = 1;
 
-    result = ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField);
+    result = ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField, nested_search);
     if (result == TCL_ERROR) {
-        ctable->searching = prev_state;
+        ctable->searching = nested_search;
         return TCL_ERROR;
     }
 
@@ -2656,7 +2661,7 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 
     ctable_TeardownSearch (&search);
 
-    ctable->searching = prev_state;
+    ctable->searching = nested_search;
 
 #ifdef CTABLES_CLOCK
     if (ctable->performanceCallbackEnable) {
