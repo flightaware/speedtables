@@ -21,8 +21,8 @@ if {![catch boom error]} {
 	error "There should have been an eath_shattering kaboom"
 } else {
 	puts [list Got $error]
-	if {"$error" ne "Can not delete from inside search.\n"} {
-		error [list expected "Can not delete from inside search.\\n" got $error]
+	if {"$error" ne "Can not delete from inside search."} {
+		error [list expected "Can not delete from inside search." got $error]
 	}
 }
 
