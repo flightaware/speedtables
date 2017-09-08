@@ -5628,6 +5628,7 @@ proc compile {fileFragName version} {
     set targetPath [target_path $fileFragName]
     set sourceFile [target_name $fileFragName $version]
     set objFile [target_name $fileFragName $version .o]
+    set buildFile [target_name $fileFragName $version .sh]
 
     if {$withPipe} {
 	set pipeFlag "-pipe"
@@ -5702,7 +5703,8 @@ proc compile {fileFragName version} {
     # Keep sysconfig(ccflags) from overriding optimization level
     regsub -all { -O[0-9] } " $sysconfig(ccflags) " { } sysconfig(ccflags)
 
-    myexec "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $cassString $stubString $memDebugString -c $sourceFile -o $objFile 2>@stderr"
+    set cc_cmd "$sysconfig(cxx) $sysString $optflag $dbgflag $sysconfig(ldflags) $sysconfig(ccflags) -I$include $sysconfig(warn) $pgString $cassString $stubString $memDebugString -c $sourceFile -o $objFile 2>@stderr"
+    myexec $cc_cmd
 
     set ld_cmd "$sysconfig(cxxld) $dbgflag -o $targetPath/lib${fileFragName}$sysconfig(shlib) $objFile"
 
@@ -5729,6 +5731,12 @@ proc compile {fileFragName version} {
 
     append ld_cmd " $sysconfig(ldflags) $stub"
     myexec "$ld_cmd 2>@stderr"
+
+    set fp [open $buildFile w]
+    puts $fp "# Rebuild $fileFragName $version"
+    puts $fp $cc_cmd
+    puts $fp $ld_cmd
+    close $fp
 
     if {$withSubdir} {
 	set pkg_args [list $buildPath */*.tcl */*[info sharedlibextension]]
