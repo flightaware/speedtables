@@ -38,7 +38,7 @@ if {"[info commands memory]" != ""} {
 }
 
     # set to 1 to show compiler commands
-    set showCompilerCommands 1
+    set showCompilerCommands 0
 
     # set to 1 to run various sanity checks on rows
     #set sanityChecks 0

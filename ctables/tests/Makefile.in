@@ -49,6 +49,7 @@ maintests:
 	$(TCLSH) match-fail-test.tcl
 	$(TCLSH) clean-test.tcl
 	$(TCLSH) cursortest.tcl
+	$(TCLSH) nested-search.tcl
 
 clean:
 	rm -rf stobj
