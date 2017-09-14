@@ -1337,6 +1337,13 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     int			   num_restarts = 0;
 
     jsw_skip_t   	  *skipListCopy = NULL;
+
+    // Nested searches need to walk the hash table and there's no hash table in shared reader tables.
+    if(ctable->share_type == CTABLE_SHARED_READER && search->previousSearch) {
+	Tcl_AppendResult (interp, "can't perform nested search with shared tables", (char *) NULL);
+	finalResult = TCL_ERROR;
+	goto clean_and_return;
+    }
 #endif
 
     if (search->writingTabsepIncludeFieldNames) {
@@ -1447,6 +1454,11 @@ restart_search:
 
     // If there's no components in the search, make sure the index is NONE
     if(!search->nComponents) {
+	search->reqIndexField = CTABLE_SEARCH_INDEX_NONE;
+    }
+
+    // If it's a nested search, you have to use the hash table
+    if(search->previousSearch) {
 	search->reqIndexField = CTABLE_SEARCH_INDEX_NONE;
     }
 
