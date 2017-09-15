@@ -1544,6 +1544,17 @@ restart_search:
 		}
 	    }
 
+	    // If we have previous searches, walk back through the previous searches to see if we're already using
+	    // this field
+	    for(s = search->previousSearch; s; s = s->previousSearch) {
+		if(s->searchField == field) {
+		    break;
+		}
+	    }
+	    if(s) {
+		continue;
+	    }
+
 	    score = skipTypes[comparisonType].score;
 
 	    // Prefer to avoid sort
@@ -1555,6 +1566,7 @@ restart_search:
 
 	    // Got a new best candidate, save the world.
 	    skipField = field;
+	    search->searchField = field;
 
 	    skipNext  = skipTypes[comparisonType].skipNext;
 	    skipStart = skipTypes[comparisonType].skipStart;
@@ -1605,6 +1617,7 @@ restart_search:
 	        break;
         }
     }
+
 
     // if we're sorting on the field we're searching, AND we can eliminate
     // the sort because we know we're walking in order, then eliminate the
@@ -2083,6 +2096,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->offsetLimit = search->offset + search->limit;
     search->cursorName = NULL;
     search->cursor = NULL;
+    search->searchField = -1;
 
     // Give each search a unique non-zero sequence number
     if(++staticSequence == 0) ++staticSequence;

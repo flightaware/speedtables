@@ -431,6 +431,9 @@ struct CTableSearch {
     // cursor ID and structure
     char                                *cursorName;
     struct cursor                       *cursor;
+
+    // what index is this searching?
+    int                                  searchField;
 };
 
 struct ctable_FieldInfo {
