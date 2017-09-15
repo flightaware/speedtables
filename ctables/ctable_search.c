@@ -1331,6 +1331,8 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
     int			   canUseHash = 1;
 
+    CTableSearch         *s;
+
 #ifdef WITH_SHARED_TABLES
     int			   firstTime = 1;
     int			   locked_cycle = LOST_HORIZON;
