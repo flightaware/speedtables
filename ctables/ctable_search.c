@@ -1961,6 +1961,10 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
   // We only jump to this on success, so we got to the end of the loop
   // or we broke out of it early
   search_complete:
+
+    // We're no longer walking a skiplist, so make a note of that so it can be re-used.
+    search->searchField = -1;
+
     switch (ctable_PostSearchCommonActions (interp, ctable, search)) {
 	case TCL_ERROR: {
 	    finalResult = TCL_ERROR;
