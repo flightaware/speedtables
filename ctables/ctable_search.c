@@ -147,7 +147,7 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **f
 // and store the field number in the corresponding field number array.
 //
 // If the dash was present set the corresponding direction in the direction
-// array to 0 else set it to 1.
+// array to -1 else set it to 1.
 //
 // It is up to the caller to free the memory pointed to through the
 // fieldList argument.
@@ -1331,6 +1331,8 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
 
     int			   canUseHash = 1;
 
+    CTableSearch         *s;
+
 #ifdef WITH_SHARED_TABLES
     int			   firstTime = 1;
     int			   locked_cycle = LOST_HORIZON;
@@ -1532,6 +1534,17 @@ restart_search:
 		}
 	    }
 
+	    // If we have previous searches, walk back through the previous searches to see if we're already using
+	    // this field
+	    for(s = search->previousSearch; s; s = s->previousSearch) {
+		if(s->searchField == field) {
+		    break;
+		}
+	    }
+	    if(s) {
+		continue;
+	    }
+
 	    score = skipTypes[comparisonType].score;
 
 	    // Prefer to avoid sort
@@ -1543,6 +1556,7 @@ restart_search:
 
 	    // Got a new best candidate, save the world.
 	    skipField = field;
+	    search->searchField = field;
 
 	    skipNext  = skipTypes[comparisonType].skipNext;
 	    skipStart = skipTypes[comparisonType].skipStart;
@@ -1593,6 +1607,7 @@ restart_search:
 	        break;
         }
     }
+
 
     // if we're sorting on the field we're searching, AND we can eliminate
     // the sort because we know we're walking in order, then eliminate the
@@ -1936,6 +1951,10 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
   // We only jump to this on success, so we got to the end of the loop
   // or we broke out of it early
   search_complete:
+
+    // We're no longer walking a skiplist, so make a note of that so it can be re-used.
+    search->searchField = -1;
+
     switch (ctable_PostSearchCommonActions (interp, ctable, search)) {
 	case TCL_ERROR: {
 	    finalResult = TCL_ERROR;
@@ -1992,7 +2011,7 @@ if(num_restarts) fprintf(stderr, "%d: Restarted search %d times\n", getpid(), nu
 //
 //
 static int
-ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search, int indexField, int nested_search) {
+ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search, int indexField, CTableSearch *previous_search) {
     int             i;
     int             searchTerm = 0;
     CONST char    **fieldNames = ctable->creator->fieldNames;
@@ -2035,6 +2054,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 
     // initialize search control structure
     search->ctable = ctable;
+    search->previousSearch = previous_search;
     search->action = CTABLE_SEARCH_ACTION_NONE;
     search->nComponents = 0;
     search->components = NULL;
@@ -2070,6 +2090,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
     search->offsetLimit = search->offset + search->limit;
     search->cursorName = NULL;
     search->cursor = NULL;
+    search->searchField = -1;
 
     // Give each search a unique non-zero sequence number
     if(++staticSequence == 0) ++staticSequence;
@@ -2277,7 +2298,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], i
 	        Tcl_SetErrorCode (interp, "speedtables", "no_delete_with_cursors", NULL);
 	        return TCL_ERROR;
 	      }
-	      if(nested_search) {
+	      if(previous_search) {
 	        Tcl_AppendResult(interp, "Can not delete in nested search.", NULL);
 	        Tcl_SetErrorCode (interp, "speedtables", "no_delete_inside_search", NULL);
 	        return TCL_ERROR;
@@ -2637,12 +2658,12 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 #endif
 
     // flag this search in progress
-    int nested_search = ctable->searching;
-    ctable->searching = 1;
+    CTableSearch *previous_search = ctable->searches;
+    ctable->searches = &search;
 
-    result = ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField, nested_search);
+    result = ctable_SetupSearch (interp, ctable, objv, objc, &search, indexField, previous_search);
     if (result == TCL_ERROR) {
-        ctable->searching = nested_search;
+        ctable->searches = previous_search;
         return TCL_ERROR;
     }
 
@@ -2661,7 +2682,7 @@ ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int obj
 
     ctable_TeardownSearch (&search);
 
-    ctable->searching = nested_search;
+    ctable->searches = previous_search;
 
 #ifdef CTABLES_CLOCK
     if (ctable->performanceCallbackEnable) {

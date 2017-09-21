@@ -367,6 +367,7 @@ struct CTableSearchFilter {
 // ctable search struct - this controls everything about a search
 struct CTableSearch {
     struct CTable                       *ctable;
+    struct CTableSearch                 *previousSearch;
     CTableSearchComponent               *components;
     CTableSearchFilter			*filters;
     char                                *pattern;
@@ -430,6 +431,9 @@ struct CTableSearch {
     // cursor ID and structure
     char                                *cursorName;
     struct cursor                       *cursor;
+
+    // what index is this searching?
+    int                                  searchField;
 };
 
 struct ctable_FieldInfo {
@@ -512,7 +516,7 @@ struct CTable {
 
     int                                  autoRowNumber;
     int                                  destroying;
-    int					 searching;
+    CTableSearch			*searches;
     char				*nullKeyValue;
 #ifdef WITH_SHARED_TABLES
     int					 was_locked;

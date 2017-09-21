@@ -648,7 +648,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
-	if(ctable->searching) {
+	if(ctable->searches) {
 	    Tcl_AppendResult(interp, "Can not delete from inside search.", NULL);
 	    Tcl_SetErrorCode (interp, "speedtables", "no_delete_inside_search", NULL);
 	    return TCL_ERROR;
