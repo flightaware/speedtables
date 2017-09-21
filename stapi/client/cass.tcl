@@ -1236,6 +1236,6 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_client_cassandra 1.13.5
+package provide st_client_cassandra 1.13.6
 
 # vim: set ts=8 sw=4 sts=4 noet :
