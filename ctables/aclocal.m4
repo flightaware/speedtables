@@ -62,12 +62,12 @@ fi
 
 
 # Handle the --with-pgsql configure option.
-AC_ARG_WITH([pgsql-include],
-	[  --with-pgsql-include[=PATH]       Build with pgsql/pgtcl library support],
+AC_ARG_WITH([pgsql],
+	[  --with-pgsql[=PATH]       Build with pgsql/pgtcl library support],
 [
-AC_MSG_CHECKING([location of libpq include file])
+AC_MSG_CHECKING([location of pgsql and pgtcl])
 if test "x$withval" = "x" -o "$withval" = "yes"; then
-  pg_prefixes="/usr/local/include /usr/local/pgsql/include /usr/include /usr/include/postgresql"
+  pg_prefixes="/usr/local /usr/local/pgsql /usr"
 else
   pg_prefixes=$withval
 fi
@@ -76,41 +76,21 @@ fi
 for prefix in $pg_prefixes
 do
   # look for pgsql frontend header
-  if test -f $prefix/libpq-fe.h; then
+  if test -f $prefix/include/libpq-fe.h; then
 sysconfig_tcl_content="$sysconfig_tcl_content
 set sysconfig(pqprefix) $prefix"
-pqprefix=$prefix
   else
     continue
   fi
-done
-if test -z "$pqprefix"; then
-  AC_MSG_ERROR([pgsql libpq-fe.h include file not found under $pg_prefixes])
-fi
 
-AC_MSG_RESULT([found under $pqprefix])
-])
-
-AC_ARG_WITH([pgtcl-lib],
-	[  --with-pgtcl-lib[=PATH]       Build with pgsql/pgtcl library support],
-[
-AC_MSG_CHECKING([location of pgtcl])
-if test "x$withval" = "x" -o "$withval" = "yes"; then
-  pg_prefixes="/usr/lib /usr/local/lib"
-else
-  pg_prefixes=$withval
-fi
-
-# Look for pgsql and pgtcl
-for prefix in $pg_prefixes
-do
   # there may be multiple installed versions of pgtcl so sort with the highest version first.
-  pg_libdirs=`find $prefix -maxdepth 2 -name "pgtcl*" -type d | sort -rn`
+  pg_libdirs=`find $prefix/lib -maxdepth 1 -name "pgtcl*" -type d | sort -rn`
 
   if test -z "$pg_libdirs"; then
      continue
   fi
 
+  # look for pgtcl-ng before pgtcl
   pgtclver=""
   for dir in $pg_libdirs
   do
