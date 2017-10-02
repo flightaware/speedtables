@@ -492,7 +492,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
 	    /* stash what we want to compare to into a row as in "range"
 	     */
-	    {
+	    if (term != CTABLE_COMP_IN) {
 		ctable_BaseRow *row;
 		row = (*ctable->creator->make_empty_row) (ctable);
 		if ((*ctable->creator->set) (interp, ctable, termList[2], row, field, CTABLE_INDEX_PRIVATE) == TCL_ERROR) {
