@@ -207,6 +207,8 @@ search+_test "search+ <" {-compare {{< show M}}} {ur inignot carl frylock shake 
 
 search+_test "using 'in'" {-compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
+search+_test "using 'in' with integers" {-compare {{in age {35 16}}}} {zorak 21 triana dean hank brock}
+
 search_unsorted_test "using index and 'in'" {-index show -compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
 t index drop name
