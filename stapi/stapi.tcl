@@ -2,5 +2,5 @@
 
 package require st_client
 
-package provide stapi 1.13.7
+package provide stapi 1.13.8
 

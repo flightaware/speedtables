@@ -1,4 +1,9 @@
 #
+# Get rid of old configurations
+#
+[ -f Makefile ] && make clean
+
+#
 # This makes sure that TEA knows about all the necessary bits and stuffs them into configure from configure.in
 #
 autoreconf
