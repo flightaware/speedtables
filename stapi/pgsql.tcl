@@ -70,27 +70,23 @@ namespace eval ::stapi {
   #  Do it by returning the connection defined in a call using set_conn
   #  or obtain it from DIO if there's a DIO object to get it from
   #
-  proc conn {{ns ""}} {
-    if {"$ns" != ""} {
-      if {[info exists ${ns}::pg_conn_var]} {
-	# Double-indirection when the DB connection might need to be refreshed.
-        return [set [set ${ns}::pg_conn_var]]
-      } elseif {[info exists ${ns}::pg_conn]} {
-        return [set ${ns}::pg_conn]
+  proc conn {{table ""}} {
+      variable pg_conn
+      variable handles_by_table
+
+      if {$table != "" && [dict exists $handles_by_table $table]} {
+          return [dict get $handles_by_table $table]
       }
-    }
 
-    variable pg_conn
+      if [info exists pg_conn] {
+          return $pg_conn
+      }
 
-    if [info exists pg_conn] {
-      return $pg_conn
-    }
-
-    variable dio_initted
-    if !$dio_initted {
-      set_DIO
-    }
-    return [DIO handle]
+      variable dio_initted
+      if !$dio_initted {
+          set_DIO
+      }
+      return [DIO handle]
   }
 
   #
@@ -175,7 +171,7 @@ namespace eval ::stapi {
 		  #and a.atttypid = t.oid
 		#ORDER BY a.attnum;"
 
-    pg_select [conn] $sql row {
+    pg_select [conn $table] $sql row {
       lappend result $row(col) $row(type)
     }
 
@@ -206,7 +202,7 @@ namespace eval ::stapi {
 		  and a.attrelid = c.oid
 		  and a.atttypid = t.oid
 		ORDER BY a.attnum;"
-    pg_select [conn] $sql row {
+    pg_select [conn $table] $sql row {
       lappend result $row(col) $row(type) $row(not_null)
     }
     if ![info exists result] {
