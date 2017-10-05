@@ -1139,7 +1139,7 @@ enum skipNext_e {
 //   > is only 1 point because we need to loop over "=" at start
 //   range is 4 points for being constrained at both ends
 //   = is 6 points for being a "minimum range"
-//   in is 100 points (and win) because it HAS to be done over a list
+//   in was 6 pints but it's actually pretty bad so it's been downgraded to 2.
 // plus one point for being the sort field, because that saves creating and
 //   sorting the transaction table.
 //
