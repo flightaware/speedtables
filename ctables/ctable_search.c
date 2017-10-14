@@ -402,7 +402,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 		    goto err;
 		}
 
-		# TODO find minimum and maximum of the list and put them in row1 and row2 and continue
+		// TODO find minimum and maximum of the list and put them in row1 and row2 and continue
 	    } else if (term == CTABLE_COMP_RANGE) {
 	        ctable_BaseRow *row;
 
@@ -1164,7 +1164,7 @@ static struct {
   {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_MATCH, 3 }, // MATCH_CASE
   {SKIP_START_NONE,	SKIP_END_NONE,	  SKIP_NEXT_NONE, -2 }, // NOTMATCH_CASE
   {SKIP_START_GE_ROW1,	SKIP_END_GE_ROW2, SKIP_NEXT_ROW,   4 }, // RANGE
-# TODO change to SKIP_START_GE_ROW1, SKIP_END_GT_ROW1 after we have them populated
+// TODO change to SKIP_START_GE_ROW1, SKIP_END_GT_ROW1 after we have them populated
   {SKIP_START_RESET,	SKIP_END_NONE, SKIP_NEXT_IN_LIST,  2 }  // IN
 };
 
