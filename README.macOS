@@ -2,4 +2,6 @@ autoreconf
 # With Apple Tcl
 #./configure
 # With Macports Tcl
-./configure --prefix=/opt/local --with-tcl=/opt/local/lib
+#./configure --prefix=/opt/local --with-tcl=/opt/local/lib
+# With Tcl in /usr/local
+./configure --prefix=/usr/local --with-tcl=/usr/local/lib
