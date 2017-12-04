@@ -72,7 +72,7 @@ ctable_verifyField(CTable *ctable, int field, int verbose)
 		    break;
 	    }
 	    if(row != walk)
-	        panic("row 0x%lx not found in table", (long)row);
+	        Tcl_Panic("row 0x%lx not found in table", (long)row);
 	    fprintf(stderr, "    Found after %d links\n", count);
 	}
     }
@@ -223,7 +223,7 @@ ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char
 CTABLE_INTERNAL int
 ctable_searchMatchPatternCheck (char *s) {
     char c;
-if(!s) panic("ctable_searchMatchPatternCheck called with null");
+if(!s) Tcl_Panic("ctable_searchMatchPatternCheck called with null");
 
     int firstCharIsStar = 0;
     int lastCharIsStar = 0;
@@ -705,7 +705,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 
 	  default: {
 	      if (search->keyVarNameObj == NULL) {
-	          panic ("software failure - unhandled search action");
+	          Tcl_Panic ("software failure - unhandled search action");
 	      }
 	  }
 	}
@@ -1115,7 +1115,7 @@ ctable_SearchCompareRow (Tcl_Interp *interp, CTable *ctable, CTableSearch *searc
 	return actionResult;
     }
 
-    panic("software failure - unhandled SearchAction return");
+    Tcl_Panic("software failure - unhandled SearchAction return");
     return TCL_ERROR;
 }
 
@@ -1598,7 +1598,7 @@ restart_search:
 		    break;
 		}
 		default: { // Can't happen
-		    panic("skipNext has unexpected value %d (comparisonType == %d, skipStart == %d, skipEnd == %d, score == %d)", skipNext, comparisonType, skipStart, skipEnd, score);
+		    Tcl_Panic("skipNext has unexpected value %d (comparisonType == %d, skipStart == %d, skipEnd == %d, score == %d)", skipNext, comparisonType, skipStart, skipEnd, score);
 		}
 	    }
 
@@ -1740,7 +1740,7 @@ fprintf(stderr, "WALK_SKIP\n");
 	    main_cycle = ctable->share->map->cycle;
 #ifdef SANITY_CHECKS
 	    if(main_cycle == LOST_HORIZON)
-		panic("Master is not updating the garbage collect cycle!");
+		Tcl_Panic("Master is not updating the garbage collect cycle!");
 #endif
 	    // save the main restart condition
 	    main_restart.row1 = row1;
@@ -1760,19 +1760,19 @@ fprintf(stderr, "WALK_SKIP\n");
 	switch(skipStart) {
 
 	    case SKIP_START_EQ_ROW1: {
-if(!row1) panic("Can't happen! Row1 is null for '=' comparison.");
+if(!row1) Tcl_Panic("Can't happen! Row1 is null for '=' comparison.");
 		jsw_sfind (skipList, row1);
 		break;
 	    }
 
 	    case SKIP_START_GE_ROW1: {
-if(!row1) panic("Can't happen! Row1 is null for '>=' comparison.");
+if(!row1) Tcl_Panic("Can't happen! Row1 is null for '>=' comparison.");
 		jsw_sfind_equal_or_greater (skipList, row1);
 		break;
 	    }
 
 	    case SKIP_START_GT_ROW1: {
-if(!row1) panic("Can't happen! Row1 is null for '>' comparison.");
+if(!row1) Tcl_Panic("Can't happen! Row1 is null for '>' comparison.");
 		jsw_sfind_equal_or_greater (skipList, row1);
 		while (1) {
                     if ((row = jsw_srow (skipList)) == NULL)
@@ -1790,7 +1790,7 @@ if(!row1) panic("Can't happen! Row1 is null for '>' comparison.");
 	    }
 
 	    default: { // can't happen
-		panic("skipStart has unexpected value %d", skipStart);
+		Tcl_Panic("skipStart has unexpected value %d", skipStart);
 	    }
 	}
 
@@ -1822,7 +1822,7 @@ if(ctable->share_type == CTABLE_SHARED_READER)
 #endif
 
 		  row = inListRows[inIndex++];
-if(!row) panic("Can't happen, null row in 'in' comparison");
+if(!row) Tcl_Panic("Can't happen, null row in 'in' comparison");
 
 		  // If there's a match for this row, break out of the loop
                   if (jsw_sfind (skipList, row) != NULL)
@@ -1856,7 +1856,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: main restart: main_cycle=%ld; row->_r
 		    }
 #ifdef SANITY_CHECKS
 		} else {
-		    panic("Master is not copying the garbage collect cycle to the row!");
+		    Tcl_Panic("Master is not copying the garbage collect cycle to the row!");
 #endif
 		}
 
@@ -1916,7 +1916,7 @@ if(num_restarts == 0) fprintf(stderr, "%d: loop restart: loop_cycle=%ld; row->_r
 		        }
 #ifdef SANITY_CHECKS
 		    } else {
-		        panic("Master is not copying the garbage collect cycle to the row!");
+		        Tcl_Panic("Master is not copying the garbage collect cycle to the row!");
 #endif
 		    }
 	        }
@@ -2909,7 +2909,7 @@ ctable_InsertIntoIndex (Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *row,
 
     // invariant: prev is always NULL if not in list
     if(row->_ll_nodes[index].prev != NULL) {
-	panic ("Double insert row for field %s", ctable->creator->fields[field]->name);
+	Tcl_Panic ("Double insert row for field %s", ctable->creator->fields[field]->name);
     }
 
 #ifdef SANITY_CHECKS

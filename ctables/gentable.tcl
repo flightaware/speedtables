@@ -274,7 +274,7 @@ proc gen_deallocate {ctable pointer {private 0}} {
 variable allocateSource {
 void ${table}_shmpanic(CTable *ctable)
 {
-    panic (
+    Tcl_Panic (
 	"Out of shared memory for \"%s\".", ctable->share_file
     );
 }
@@ -320,11 +320,11 @@ void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, CONS
     if(indexCtl != CTABLE_INDEX_NEW) {
 	if(ctable->share_type == CTABLE_SHARED_MASTER || ctable->share_type == CTABLE_SHARED_READER) {
 	    if(ctable->share == NULL)
-		panic("%s: ctable->share_type = %d but ctable->share = NULL", where, ctable->share_type);
+		Tcl_Panic("%s: ctable->share_type = %d but ctable->share = NULL", where, ctable->share_type);
 	    if((char *)ptr < (char *)ctable->share->map)
-		panic("%s: ctable->share->map = 0x%lX but ptr == 0x%lX", where, (long)ctable->share->map, (long)ptr);
+		Tcl_Panic("%s: ctable->share->map = 0x%lX but ptr == 0x%lX", where, (long)ctable->share->map, (long)ptr);
 	    if((size_t)((char *)ptr - (char *)ctable->share->map) > ctable->share->size)
-		panic("%s: ctable->share->size = %ld but ptr is at %ld offset from map", where, (long)ctable->share->size, (long)((char *)ptr - (char *)ctable->share->map));
+		Tcl_Panic("%s: ctable->share->size = %ld but ptr is at %ld offset from map", where, (long)ctable->share->size, (long)((char *)ptr - (char *)ctable->share->map));
 	}
     }
 #endif
@@ -1138,7 +1138,7 @@ variable standardCompSwitchSource {
 		break;
 
 	    default:
-	        panic ("compare type %d not implemented for field \"${fieldName}\"", compType);
+	        Tcl_Panic ("compare type %d not implemented for field \"${fieldName}\"", compType);
 	  }
 	  break;
 }
@@ -1214,7 +1214,7 @@ variable numberCompSource {
 		break;
 
 	    default:
-	        panic ("compare type %d not implemented for field \"${fieldName}\"", compType);
+	        Tcl_Panic ("compare type %d not implemented for field \"${fieldName}\"", compType);
 	  }
 	  break;
         }
@@ -1267,7 +1267,7 @@ variable varstringCompSource {
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
               } else {
-		  panic ("software bug, sm->type unknown match type");
+		  Tcl_Panic ("software bug, sm->type unknown match type");
 	      }
 	  }
 
@@ -1369,7 +1369,7 @@ variable keyCompSource {
 		  if (!matchMeansKeep) exclude = !exclude;
 		  break;
               } else {
-		  panic ("software bug, sm->type unknown match type");
+		  Tcl_Panic ("software bug, sm->type unknown match type");
 	      }
 	  }
 
@@ -3804,7 +3804,7 @@ proc gen_set_function {table} {
         emit "    if (ctable->share_type == CTABLE_SHARED_MASTER) $leftCurly"
 	if {$sanityChecks} {
 	    emit "        if(ctable->share->map->cycle == LOST_HORIZON)"
-	    emit "            panic(\"map->cycle not updated?\");"
+	    emit "            Tcl_Panic(\"map->cycle not updated?\");"
 	}
 	emit "        row->_row_cycle = ctable->share->map->cycle;"
 	emit "    $rightCurly"
@@ -4896,8 +4896,8 @@ int ${table}_field_${fieldName}_compare(const ctable_BaseRow *vPointer1, const c
     row2 = (struct $table *) vPointer2;
 
 #ifdef SANITY_CHECKS
-    if(!row1) panic("NULL row1 for ${table}_field_${fieldName}_compare, row2 == 0x%lx", (long)row2);
-    if(!row2) panic("NULL row2 for ${table}_field_${fieldName}_compare, row1 == 0x%lx", (long)row1);
+    if(!row1) Tcl_Panic("NULL row1 for ${table}_field_${fieldName}_compare, row2 == 0x%lx", (long)row2);
+    if(!row2) Tcl_Panic("NULL row2 for ${table}_field_${fieldName}_compare, row1 == 0x%lx", (long)row1);
 #endif
 
 }
