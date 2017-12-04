@@ -58,6 +58,7 @@ t search -array row -code {
 	if {"$sample" != "$target"} {
 		# Check for stripped leading zeroes
 		regsub -all {:0} $target {:} target
+		regsub {^0} $target {} target
 		if {"$sample" != "$target"} {
 			error "Expected mac $expected(mac) got $row(mac) for $id"
 		}
