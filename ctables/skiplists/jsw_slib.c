@@ -112,7 +112,7 @@ static jsw_node_t *new_node ( ctable_BaseRow *row, size_t height, void *share )
     node  = (jsw_node_t *)shmalloc ((shm_t*)share, sizeof (jsw_node_t) + height * sizeof (jsw_node_t *) );
     if(!node) {
       //if(DUMPER) shmdump(share);
-      panic("Can't allocate shared memory for skiplist");
+      Tcl_Panic("Can't allocate shared memory for skiplist");
     }
   } else
 #endif
@@ -238,7 +238,7 @@ void jsw_sinit ( jsw_skip_t *skip, size_t max, cmp_f cmp, void *share)
     skip->publicdata = (jsw_pub_t *)shmalloc ( (shm_t *)share, sizeof *skip->publicdata );
     if(!skip) {
       //if(DUMPER) shmdump(share);
-      panic("Can't allocate shared memory for skiplist");
+      Tcl_Panic("Can't allocate shared memory for skiplist");
     }
   } else
 #endif
@@ -268,7 +268,7 @@ jsw_skip_t *jsw_snew ( size_t max, cmp_f cmp, void *share)
     skip = (jsw_skip_t *)shmalloc ( (shm_t *)share, sizeof *skip );
     if(!skip) {
       //if(DUMPER) shmdump(share);
-      panic("Can't allocate shared memory for skiplist");
+      Tcl_Panic("Can't allocate shared memory for skiplist");
     }
   } else
 #endif
@@ -527,7 +527,7 @@ jsw_dump_node (const char *s, jsw_skip_t *skip, jsw_node_t *p, int indexNumber) 
 	CTABLE_LIST_FOREACH (p->row, walkRow, indexNumber) {
 	    printf("%8lx ", (long unsigned int)walkRow);
 	    if ( cmp ( p->row, walkRow ) != 0 ) {
-	        panic ("index hosed - value in dup list doesn't match others, p->row == 0x%08lx, walkRow == 0x%08lx", (long)p->row, (long)walkRow);
+	        Tcl_Panic ("index hosed - value in dup list doesn't match others, p->row == 0x%08lx, walkRow == 0x%08lx", (long)p->row, (long)walkRow);
 	    }
 	}
     }

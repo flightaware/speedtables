@@ -469,7 +469,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      return TCL_OK;
 	  }
         }
-	panic ("\"impossible\" path followed");
+	Tcl_Panic ("\"impossible\" path followed");
       }
 
       case OPT_FIELDTYPE: {

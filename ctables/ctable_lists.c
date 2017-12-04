@@ -44,7 +44,7 @@ ctable_ListRemove (ctable_BaseRow *row, int i)
 #endif
 #ifdef SANITY_CHECKS
     if(!row->_ll_nodes[i].prev) {
-	panic("Removing row not in list (0x%lx, %d)!", (long)row, i);
+	Tcl_Panic("Removing row not in list (0x%lx, %d)!", (long)row, i);
     }
 #endif
     // if there's an object following me, make his prev be my prev
@@ -72,7 +72,7 @@ ctable_ListRemoveMightBeTheLastOne (ctable_BaseRow *row, int i)
 #endif
 #ifdef SANITY_CHECKS
     if(!row->_ll_nodes[i].prev) {
-	panic("Removing row not in list (0x%lx, %d)!", (long)row, i);
+	Tcl_Panic("Removing row not in list (0x%lx, %d)!", (long)row, i);
     }
 #endif
     // if there's an object following me, make his prev be my prev
@@ -103,7 +103,7 @@ ctable_ListInsertHead (ctable_BaseRow **listPtr, ctable_BaseRow *row, int i)
 #endif
 #ifdef SANITY_CHECKS
     if(row->_ll_nodes[i].prev) {
-	panic("Inserting node twice (0x%lx, 0x%lx, %d)!", (long)listPtr, (long)row, i);
+	Tcl_Panic("Inserting node twice (0x%lx, 0x%lx, %d)!", (long)listPtr, (long)row, i);
     }
 #endif
 

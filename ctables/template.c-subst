@@ -453,7 +453,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	}
     }
 
-    panic("never expected to get here");
+    Tcl_Panic("never expected to get here");
     return TCL_ERROR;
 }
 
