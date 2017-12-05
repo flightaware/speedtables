@@ -1,3 +1,8 @@
+#
+# Usage: sh README.macOS [options]
+#
+# Options: any configure options, eg --with-pgsql or --with-casstcl
+#
 make clean
 autoreconf
 # With Apple Tcl
