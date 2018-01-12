@@ -72,17 +72,28 @@ else
   pg_prefixes=$withval
 fi
 
-# Look for pgsql and pgtcl
-for prefix in $pg_prefixes
-do
-  # look for pgsql frontend header
-  if test -f $prefix/include/libpq-fe.h; then
+# Check pg_config for pgsql
+pqinclude=`pg_config --includedir`
+if test -f $pqinclude/libpq-fe.h; then
+sysconfig_tcl_content="$sysconfig_tcl_content
+set sysconfig(pqinclude) $pqinclude"
+else
+  # Fallback - look for pgsql
+  for prefix in $pg_prefixes
+  do
+    # look for pgsql frontend header
+    if test -f $prefix/include/libpq-fe.h; then
 sysconfig_tcl_content="$sysconfig_tcl_content
 set sysconfig(pqprefix) $prefix"
-  else
-    continue
-  fi
+    else
+      continue
+    fi
+  done
+fi
 
+# Look for pgtcl
+for prefix in $pg_prefixes
+do
   # there may be multiple installed versions of pgtcl so sort with the highest version first.
   pg_libdirs=`find $prefix/lib -maxdepth 1 -name "pgtcl*" -type d | sort -rn`
 

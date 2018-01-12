@@ -5685,7 +5685,11 @@ proc compile {fileFragName version} {
 
     if {$withPgtcl} {
 	set pgString -I$sysconfig(pgtclprefix)/include
-	if [info exists sysconfig(pqprefix)] {
+	if [info exists sysconfig(pqinclude)] {
+	    if {"$sysconfig(pqinclude)" != "$sysconfig(pgtclprefix)/include"} {
+	        append pgString " -I$sysconfig(pqinclude)"
+	    }
+	} elseif [info exists sysconfig(pqprefix)] {
 	    if {"$sysconfig(pqprefix)" != "$sysconfig(pgtclprefix)"} {
 	        append pgString " -I$sysconfig(pqprefix)/include"
 	    }
