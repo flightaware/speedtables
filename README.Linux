@@ -9,8 +9,8 @@
 autoreconf
 
 #
-# This keeps configure honest if you have both clang and gcc installed
+# Any platform-specific configure changes go here. Currently, none.
 #
-./configure --with-pgsql
+./configure --with-pgsql "$@"
 
 # Then "make clean" and "make"

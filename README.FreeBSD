@@ -11,6 +11,6 @@ autoreconf
 #
 # This keeps configure honest if you have both clang and gcc installed
 #
-CC=clang CXX=clang++ ./configure --prefix=/usr/local --with-tcl=/usr/local/lib/tcl8.6 --with-pgsql --with-boost=/usr/local --with-casstcl
+CC=clang CXX=clang++ ./configure --prefix=/usr/local --with-tcl=/usr/local/lib/tcl8.6 --with-pgsql --with-boost=/usr/local --with-casstcl "$@"
 
 # Then "make clean" and "make"
