@@ -532,7 +532,7 @@ foo baz
 </pre>
 
 <dt>reset<dd>
-<p>Clear everything out of the table. This deletes all of the rows in the table, freeing all memory allocated for the rows, the rows' hashtable entries, etc.</p>
+<p>Clear everything out of the table. This deletes all of the rows in the table, freeing all memory allocated for the rows, the rows' hashtable entries, indexes, etc.... returns the table to the state it was created in. Note that you will need to recreate all the indexes on the table.</p>
 <pre>
 % x count
 <b>652343</b>
