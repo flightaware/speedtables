@@ -2,6 +2,10 @@ language: c
 
 sudo: required
 
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y boost
+
 script:
   - autoreconf -vi
   - ./configure --with-tcl=/usr/lib/tclConfig.sh --with-pgtcl
