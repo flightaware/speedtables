@@ -1,0 +1,10 @@
+language: c
+
+sudo: required
+
+script:
+  - autoreconf -vi
+  - ./configure --with-tcl=/usr/lib/tclConfig.sh --with-pgtcl
+  - make clean
+  - make
+  - sudo make install
