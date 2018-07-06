@@ -65,7 +65,7 @@ static void		RebuildTable(ctable_HashTable *tablePtr);
  */
 
 void
-ctable_InitHashTable(register ctable_HashTable *tablePtr)
+ctable_InitHashTable(ctable_HashTable *tablePtr)
 				/* Pointer to table record, which is supplied
 				 * by the caller. */
 {
@@ -137,7 +137,7 @@ ctable_InitOrStoreHashEntry(
     int *newPtr)		/* Store info here telling whether a new entry
 				 * was created. */
 {
-    register ctable_HashEntry *hPtr;
+    ctable_HashEntry *hPtr;
     unsigned int hash;
     int index;
 
@@ -318,7 +318,7 @@ ctable_FindHashEntry(
 void
 ctable_DeleteHashEntry(ctable_HashTable *tablePtr, ctable_HashEntry *entryPtr, char *nullKeyValue)
 {
-    register ctable_HashEntry *prevPtr;
+    ctable_HashEntry *prevPtr;
     ctable_HashEntry **bucketPtr;
     int index;
 
@@ -365,8 +365,7 @@ ctable_DeleteHashEntry(ctable_HashTable *tablePtr, ctable_HashEntry *entryPtr, c
  */
 
 void
-ctable_DeleteHashTable(
-    register ctable_HashTable *tablePtr)	/* Table to delete. */
+ctable_DeleteHashTable(ctable_HashTable *tablePtr)	/* Table to delete. */
 {
     /*
      * Free up the bucket array, if it was dynamically allocated.
@@ -429,8 +428,7 @@ ctable_FirstHashEntry(
  */
 
 ctable_HashEntry *
-ctable_NextHashEntry(
-    register ctable_HashSearch *searchPtr)
+ctable_NextHashEntry(ctable_HashSearch *searchPtr)
 				/* Place to store information about progress
 				 * through the table. Must have been
 				 * initialized by calling
@@ -477,7 +475,7 @@ ctable_HashStats(
 #define NUM_COUNTERS 10
     int count[NUM_COUNTERS], overflow, i, j;
     double average, tmp;
-    register ctable_HashEntry *hPtr;
+    ctable_HashEntry *hPtr;
     char *result, *p;
 
     /*
@@ -549,8 +547,8 @@ CompareStringKeys(
     VOID *keyPtr,		/* New key to compare. */
     ctable_HashEntry *hPtr)	/* Existing key to compare. */
 {
-    register CONST char *p1 = (CONST char *) keyPtr;
-    register CONST char *p2 = (CONST char *) hPtr->key;
+    CONST char *p1 = (CONST char *) keyPtr;
+    CONST char *p2 = (CONST char *) hPtr->key;
 
 #ifdef CTABLE_COMPARE_HASHES_WITH_STRCMP
     return strcmp(p1, p2);
@@ -595,9 +593,9 @@ HashStringKey(
     ctable_HashTable *tablePtr,	/* Hash table. */
     VOID *keyPtr)		/* Key from which to compute hash value. */
 {
-    register CONST char *string = (CONST char *) keyPtr;
-    register unsigned int result;
-    register int c;
+    CONST char *string = (CONST char *) keyPtr;
+    unsigned int result;
+    int c;
 
     /*
      * I tried a zillion different hash functions and asked many other people
@@ -643,13 +641,12 @@ HashStringKey(
  */
 
 static void
-RebuildTable(
-    register ctable_HashTable *tablePtr)	/* Table to enlarge. */
+RebuildTable(ctable_HashTable *tablePtr)	/* Table to enlarge. */
 {
     int oldSize, count, index;
     ctable_HashEntry **oldBuckets;
-    register ctable_HashEntry **oldChainPtr, **newChainPtr;
-    register ctable_HashEntry *hPtr;
+    ctable_HashEntry **oldChainPtr, **newChainPtr;
+    ctable_HashEntry *hPtr;
 
     oldSize = tablePtr->numBuckets;
     oldBuckets = tablePtr->buckets;
