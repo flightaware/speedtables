@@ -395,7 +395,7 @@ namespace eval ::stapi {
   namespace import ::stapi::extend::*
 }
 
-package provide stapi_extend 1.13.9
+package provide stapi_extend 1.13.10
 
 
 # vim: set ts=8 sw=4 sts=4 noet :

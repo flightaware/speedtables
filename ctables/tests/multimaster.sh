@@ -1,7 +1,7 @@
 #!/bin/sh
 #$Id$
 
-. test_common.sh
+. ./test_common.sh
 
 delay=5
 script=multiclient.tcl
