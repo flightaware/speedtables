@@ -1,6 +1,6 @@
 #
 #
-# Copyright (C) 2008 by FlightAware LLC.  All Rights Reserved
+# Copyright (C) 2008-2018 by FlightAware LLC.  All Rights Reserved
 # Copyright (C) 2006 by Superconnect, Ltd.  All Rights Reserved
 #
 # Open source under the Berkeley license
