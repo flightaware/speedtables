@@ -533,7 +533,7 @@ load_pwfile passwd /etc/passwd
 passwd destroy
 </pre>
 The story on the client side is quite different, since you have to connect to
-the server and then attach a slave "reader" table to the shared memory
+the server and then attach a client "reader" table to the shared memory
 segment for shared-memory search access. The "attach" method hides most of the
 details, but you still need 
 <pre>
@@ -541,7 +541,7 @@ details, but you still need
 package require U_passwd
 
 remote_ctable sttp://localhost:3100/passwd master
-u_passwd create slave reader [master attach [pid]]</span>
+u_passwd create client reader [master attach [pid]]</span>
 
 if {[llength $argv] == 0} {
    puts stderr "Usage: $argv0 user \[user...]"
@@ -549,16 +549,16 @@ if {[llength $argv] == 0} {
 }
 
 foreach id $argv {
-    if {[search_passwd <span class=change>slave</span> $id show_user] == 0} {
+    if {[search_passwd <span class=change>client</span> $id show_user] == 0} {
         puts stderr "$id: not found"
     }
 }
 
-<span class=change>slave destroy
+<span class=change>client destroy
 master destroy</span>
 </pre>
 And then remembering to use the STTP conection to the master table (master) or
-the shared memory reader table (slave) depending on whether you're using
+the shared memory reader table (client) depending on whether you're using
 <tt>search</tt> or not. For our example program this would not be all
 that significant, since it only uses search, but any other speed table methods
 would fail on the reader. For example, you could not use Speed Tables Display
