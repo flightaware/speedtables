@@ -59,7 +59,7 @@ const char *get_last_shmem_error() {
     return last_shmem_error;
 }
 
-// Callable by master or slaves.
+// Callable by master or clients.
 void shared_perror(const char *text) {
     if(last_shmem_error[0] != '\0') {
         fprintf(stderr, "%s: %s\n", text, last_shmem_error);
@@ -71,7 +71,7 @@ void shared_perror(const char *text) {
 
 // set/linkup_assoc_data - attach the bits of data that multiple speedtables
 // C shared libraries need to share.
-// Callable by master or slaves.
+// Callable by master or clients.
 // If not using Tcl, just allocate it if it doesn't exist already
 #ifdef WITH_TCL
 static void
@@ -116,7 +116,7 @@ set_assoc_data ()
 //
 // If the file is already mapped, but at a different address, this is an error
 //
-// Callable by master or slaves.
+// Callable by master or clients.
 //
 shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, int create)
 {
@@ -195,7 +195,7 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
 // unmap_file - Unmap the open and mapped associated with the memory mapped
 // for share. Return 0 on error, -1 if the map is still busy, 1 if it's
 // been umapped.
-// Callable by master or slaves.
+// Callable by master or clients.
 int unmap_file(shm_t   *share)
 {
     volatile reader_t   *r;
@@ -253,7 +253,7 @@ int unmap_file(shm_t   *share)
 }
 
 // unmap_all - Unmap all mapped files.
-// Callable by master or slaves.
+// Callable by master or clients.
 void unmap_all(void)
 {
 #ifndef WITH_TCL
@@ -389,7 +389,7 @@ void write_unlock(shm_t   *shm)
 
 
 // Find the reader structure associated with a reader's pid.
-// Callable by slaves.
+// Callable by clients.
 // Returns NULL if no match found.
 volatile reader_t *pid2reader(volatile mapheader_t *map, int pid)
 {
@@ -426,7 +426,7 @@ int shmattachpid(shm_t   *share, int pid)
 }
 
 // Called by a reader to start a read transaction on the current state of memory.
-// Callable by slaves.
+// Callable by clients.
 // Returns the cycle number that is locked, or LOST_HORIZON (0) on error.
 int read_lock(shm_t   *shm)
 {
@@ -444,7 +444,7 @@ int read_lock(shm_t   *shm)
 }
 
 // Called by a reader to end a read transaction on the current state of memory.
-// Callable by slaves.
+// Callable by clients.
 void read_unlock(shm_t   *shm)
 {
     volatile reader_t *self = shm->self;
