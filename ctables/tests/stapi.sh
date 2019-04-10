@@ -1,7 +1,7 @@
 #!/bin/sh
 #$Id$
 
-. test_common.sh
+. ./test_common.sh
 
 echo "Prebuilding master table"
 ${TCLSHSTAPI} ./master_prebuild.tcl

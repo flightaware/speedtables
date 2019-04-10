@@ -1,7 +1,7 @@
 #!/bin/sh
 #$Id$
 
-. test_common.sh
+. ./test_common.sh
 
 readers=${1:-10}
 count=${2:-100000}

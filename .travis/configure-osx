@@ -1,0 +1,4 @@
+#!/bin/sh
+
+set -x
+./configure --with-tcl=/usr/local/opt/tcl-tk/lib --prefix=/usr/local

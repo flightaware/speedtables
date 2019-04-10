@@ -20,13 +20,15 @@ CExtension Filtertest 1.0 {
     #   TCL_CONTINUE for a miss.
     #   TCL_RETURN or TCL_BREAK to terminate the search without an error.
     #   TCL_ERROR to terminate the search with an error.
-    cfilter latorlong code {
-      double target;
-      if(Tcl_GetDoubleFromObj (interp, filter, &target) != TCL_OK)
-        return TCL_ERROR;
-      if(row->latitude == target || row->longitude == target) return TCL_OK;
-      return TCL_CONTINUE;
-    }
+
+   # New style filter, memoization and argument parsing is hidden
+   cfilter latorlong args {double target} code {
+     if(row->latitude == target || row->longitude == target)
+	return TCL_OK;
+     return TCL_CONTINUE;
+   }
+
+   # Old style filter with all the guts hanging out
     cfilter distance code {
       static double target_lat, target_long, target_range;
       static int lastSequence = 0;
@@ -56,6 +58,15 @@ CExtension Filtertest 1.0 {
       if(dsquared <= (target_range * target_range)) return TCL_OK;
       return TCL_CONTINUE;
     }
+
+   # new style complex filter
+    cfilter distance2 args {double target_lat double target_long double target_range} code {
+      double dlat = target_lat - row->latitude;
+      double dlong = target_long - row->longitude;
+      double dsquared = (dlat * dlat) + (dlong * dlong);
+      if(dsquared <= (target_range * target_range)) return TCL_OK;
+      return TCL_CONTINUE;
+    }
   }
 }
 
@@ -63,15 +74,30 @@ package require Filtertest
 
 track create t
 
+puts "Generating points"
 for {set i 0} {$i < 100} {incr i} {
   t set $i id CO$i latitude $i longitude [expr {100 - $i}]
 }
 
+puts "Testing distance"
 set found [t search -filter {{distance {40 30 40}}} -countOnly 1]
 if {$found != 47} {
   error "Should have returned 47 points within 30 units of (40,30) (got $found)"
 }
 
+puts "Testing distance2"
+set found [t search -filter {{distance2 {40 30 40}}} -countOnly 1]
+if {$found != 47} {
+  error "Should have returned 47 points within 30 units of (40,30) (got $found)"
+}
+
+puts "Testing latorlong"
+set found [t search -filter {{latorlong 40}} -countOnly 1]
+if {$found != 2} {
+  error "Should have returned 2 points with latorlong = 40 (got $found)"
+}
+
+puts "Random testing distance"
 for {set i 0} {$i < 10000} {incr i} {
   set lat [expr {rand() * 100.0}]
   set long [expr {rand() * 100.0}]
@@ -81,3 +107,4 @@ for {set i 0} {$i < 10000} {incr i} {
     error "Should have had at least one point in 1 unit of ($lat, $long)"
   }
 }
+puts "Done"

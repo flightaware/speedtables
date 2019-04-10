@@ -32,7 +32,7 @@ int ${table}_delete_all_rows(Tcl_Interp *interp, CTable *ctable, int final) {
 	    return TCL_OK;
 	} else {
 	    if (interp != NULL) {
-		Tcl_AppendResult(interp, "Can't reset read-only shared table.", NULL);
+		Tcl_AppendResult(interp, "Can't reset read-only shared table", (char *)NULL);
 		Tcl_SetErrorCode (interp, "speedtables", "read_only", NULL);
 	    }
 	    return TCL_ERROR;
@@ -137,8 +137,9 @@ void ${table}_cmdDeleteProc (ClientData clientData)
     }
 }
 
-// Forward definition
+// Forward definitions
 int ${table}MetaObjCmd(ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc);
 
 int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
@@ -150,41 +151,51 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     int indexCtl;
     int commandStatus = TCL_OK;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", (char *)NULL};
+    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", "clean", "cursors", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, NUM_OPTIONS
+    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, OPT_CLEAN, OPT_CURSORS, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
     // Options allowed in shared tables
-    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, NUM_OPTIONS };
+    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, OPT_CURSORS, NUM_OPTIONS };
     static int shared_ok[NUM_OPTIONS] = {-1};
 
     // Read_only options
-    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, NUM_OPTIONS };
+    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
     static int readonly[NUM_OPTIONS] = {-1};
 
     // Memory_allocating options - except for "index create" which
     // has to be checked for explicitly.
     static enum options shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_WRITE_TABSEP, NUM_OPTIONS };
     static int shmcheck[NUM_OPTIONS] = {-1};
+#endif
+
+    static enum options cursor_safe_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
+    static int cursor_ok[NUM_OPTIONS] = {-1};
 
     // First time through, make it a bitmap.
-    if(shared_ok[0] == -1) {
+    if(cursor_ok[0] == -1) {
 	int i;
 	for(i = 0; i < NUM_OPTIONS; i++) {
+	    cursor_ok[i] = FALSE;
+#ifdef WITH_SHARED_TABLES
 	    shared_ok[i] = FALSE;
 	    readonly[i] = FALSE;
 	    shmcheck[i] = FALSE;
+#endif
 	}
+	for(i = 0; cursor_safe_options[i] != NUM_OPTIONS; i++)
+	    cursor_ok[cursor_safe_options[i]] = TRUE;
+#ifdef WITH_SHARED_TABLES
 	for(i = 0; shared_options[i] != NUM_OPTIONS; i++)
 	    shared_ok[shared_options[i]] = TRUE;
 	for(i = 0; readonly_options[i] != NUM_OPTIONS; i++)
 	    readonly[readonly_options[i]] = TRUE;
 	for(i = 0; shmcheck_options[i] != NUM_OPTIONS; i++)
 	    shmcheck[shmcheck_options[i]] = TRUE;
-    }
 #endif
+    }
 
     if (objc == 1) {
         Tcl_WrongNumArgs (interp, 1, objv, "option ?args?");
@@ -239,6 +250,14 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
     // fall through to primitives
 
+    if (ctable->cursors) {
+	if (!cursor_ok[optIndex]) {
+	    Tcl_AppendResult (interp, "Command '", options[optIndex], "' is not possible while a cursor exists on the table.", (char *)NULL);
+	    Tcl_SetErrorCode (interp, "speedtables", "read_only", NULL);
+	    return TCL_ERROR;
+	}
+    }
+
 #ifdef WITH_SHARED_TABLES
     if (ctable->share_type == CTABLE_SHARED_READER) {
         if (!shared_ok[optIndex]) {
@@ -251,7 +270,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	if(shmcheck[optIndex]) {
 	    // Check for free space
 	    if(shmfreemem(ctable->share, 0) < ctable->share_min_free) {
-		Tcl_AppendResult (interp, "Free shared memory low.", NULL);
+		Tcl_AppendResult (interp, "Free shared memory low", (char *)NULL);
 		Tcl_SetErrorCode (interp, "speedtables", "shared_memory_low", NULL);
 		return TCL_ERROR;
 	    }
@@ -295,7 +314,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 			 : ctable_quoteTypeList(interp);
 
 		  if (Tcl_ListObjAppendElement (interp, list, tmpobj) == TCL_ERROR) {
-		      Tcl_AppendResult(interp, " (internal error)", NULL);
+		      Tcl_AppendResult(interp, " (internal error)", (char *)NULL);
 		      return TCL_ERROR;
 		  }
 	      }
@@ -303,7 +322,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      for(j = 2; j < objc; j++) {
     		  if (Tcl_GetIndexFromObj (interp, objv[j], infoStrings, "property", TCL_EXACT, &i) != TCL_OK || (i & 1)) {
 		      Tcl_ResetResult(interp); // Because it's misleading
-		      Tcl_AppendResult(interp, "Unknown property '", Tcl_GetString(objv[j]), "'.", NULL);
+		      Tcl_AppendResult(interp, "Unknown property '", Tcl_GetString(objv[j]), "'", (char *)NULL);
 		      Tcl_SetErrorCode (interp, "speedtables", "unknown_property", NULL);
 		      return TCL_ERROR;
 		  }
@@ -311,7 +330,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 			 ? Tcl_NewStringObj(infoStrings[i+1], -1)
                          : ctable_quoteTypeList(interp);
 		  if (Tcl_ListObjAppendElement (interp, list, tmpobj) == TCL_ERROR) {
-		      Tcl_AppendResult(interp, " (internal error)", NULL);
+		      Tcl_AppendResult(interp, " (internal error)", (char *)NULL);
 		      return TCL_ERROR;
 		  }
 	      }
@@ -450,7 +469,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      return TCL_OK;
 	  }
         }
-	panic ("\"impossible\" path followed");
+	Tcl_Panic ("\"impossible\" path followed");
       }
 
       case OPT_FIELDTYPE: {
@@ -599,7 +618,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      }
 
 	      if (!shmattachpid(ctable->share, pid)) {
-		  TclShmError(interp, Tcl_GetString(objv[2]));
+		  Tcl_AppendResult(interp, "Can't register pid ", Tcl_GetString(objv[2]), " in shared memory", NULL);
 		  return TCL_ERROR;
 	      }
 
@@ -617,14 +636,20 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      break;
 	  }
 #endif
-	  Tcl_AppendResult(interp, "Not a shared table.\n", NULL);
+	  Tcl_AppendResult(interp, "Not a shared table.", NULL);
 	  Tcl_SetErrorCode (interp, "speedtables", "not_a_shared_table", NULL);
 	  return TCL_ERROR;
       }
 
       case OPT_DELETE: {
-	if(ctable->searching) {
-	    Tcl_AppendResult(interp, "Can not delete from inside search.\n", NULL);
+	if(ctable->cursors) {
+	    Tcl_AppendResult(interp, "Can not delete while cursors are active.", NULL);
+	    Tcl_SetErrorCode (interp, "speedtables", "no_delete_with_cursors", NULL);
+	    return TCL_ERROR;
+	}
+
+	if(ctable->searches) {
+	    Tcl_AppendResult(interp, "Can not delete from inside search.", NULL);
 	    Tcl_SetErrorCode (interp, "speedtables", "no_delete_inside_search", NULL);
 	    return TCL_ERROR;
 	}
@@ -914,6 +939,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  int               nTuples;
 	  int               field;
 	  int               noKeys = 0;
+	  int               dirty = 0;
 	  int               pgRow;
 	  Tcl_Obj          *fieldNameObj = Tcl_NewObj();
 	  Tcl_Obj          *valueObj;
@@ -963,6 +989,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      Tcl_AppendResult (interp, "in argument to -poll_interval", NULL);
 		      return TCL_ERROR;
 		  }
+	      } else if (strcmp (option, "-dirty") == 0) {
+	          if (i >= objc)
+		      goto import_arg_err;
+		  if (Tcl_GetIntFromObj(interp, objv[i++], &dirty) == TCL_ERROR) {
+		      Tcl_AppendResult (interp, "in argument to -dirty", NULL);
+		      return TCL_ERROR;
+		  }
 	      } else if(dataSource == NULL) {
 		  dataSource = option;
 	      } else {
@@ -972,7 +1005,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
 	  if (dataSource == NULL) {
 	    import_arg_err:
-	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate? ?-info arrayName?");
+	      Tcl_WrongNumArgs (interp, 2, objv, "pgTclResultHandle ?-rowbyrow? ?-nokeys? ?-nocomplain? ?-poll_code codeBody? ?-poll_interval rate? ?-info arrayName? ?-dirty flag?");
 	      return TCL_ERROR;
 	  }
 
@@ -1159,6 +1192,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		      }
 		      ${table}_set (interp, ctable, valueObj, row, fieldList[field], indexCtl);
 	          }
+
+		  if (dirty) {
+		      if (${table}_dirty (interp, ctable, row) == TCL_ERROR) {
+			  tclStatus = TCL_ERROR;
+			  goto done;
+		      }
+		  }
 
                   if (indexCtl == CTABLE_INDEX_NEW)
 	              if (${table}_index_defaults(interp, ctable, row) == TCL_ERROR) {
@@ -1449,6 +1489,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	int		 poll_interval = 0;
 	Tcl_Obj		*poll_code = NULL;
 	int		 poll_foreground = 0;
+	int		 withDirty = 0;
 
 	while (objIdx < objc) {
 	    char *possibleSwitch;
@@ -1509,6 +1550,9 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    } else if (strcmp (possibleSwitch, "-nokeys") == 0) {
 		objIdx++;
 		noKeys = 1;
+	    } else if (optIndex == OPT_READ_TABSEP && strcmp (possibleSwitch, "-dirty") == 0) {
+		objIdx++;
+		withDirty = 1;
 	    } else if (strcmp (possibleSwitch, "-with_field_names") == 0) {
 		objIdx++;
 		withFieldNames = 1;
@@ -1616,7 +1660,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	if (optIndex == OPT_WRITE_TABSEP) {
 	    commandStatus = ${table}_export_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, term, quoteType, nullString);
 	} else if(optIndex == OPT_READ_TABSEP) {
-	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls, quoteType, nullString, poll_interval, poll_code, poll_foreground);
+	    commandStatus = ${table}_import_tabsep (interp, ctable, channel, fieldIds, nFields, pattern, noKeys, withFieldNames, sepstr, skip, term, nocomplain, withNulls, quoteType, nullString, poll_interval, poll_code, poll_foreground, withDirty);
 	}
 
 	if(fieldIds) ckfree((char *)fieldIds);
@@ -2047,16 +2091,302 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 		ctable->performanceCallbackEnable = 1;
 	      }
 	}
+	break;
 #else
 	Tcl_AppendResult(interp, "performance callback not implemented on this OS", (char *)NULL);
 	return TCL_ERROR;
 #endif
       }
+
+      case OPT_CLEAN: {
+	commandStatus = ${table}_clean (interp, ctable);
+	break;
+      }
+
+      case OPT_CURSORS: {
+	char *pattern = NULL;
+	int destroy = FALSE;
+	int opt = 2;
+
+	while(opt < objc) {
+	    char *optname = Tcl_GetString(objv[opt]);
+	    if (optname[0] != '-') break;
+	    opt++;
+	    if (strcmp(optname, "-match") == 0)
+		pattern = Tcl_GetString(objv[opt++]);
+	    else if (strcmp(optname, "-destroy") == 0)
+		destroy = TRUE;
+	    else {
+		Tcl_AppendResult(interp, "Unknown cursors option '", optname, "'", (char *)NULL);
+		return TCL_ERROR;
+	    }
+	}
+
+	if (opt < objc) {
+	    Tcl_WrongNumArgs (interp, 2, objv, "?-destroy? ?-match pattern?");
+	    return TCL_ERROR;
+	}
+
+	if(destroy) {
+	    if(pattern) {
+		Tcl_AppendResult(interp, "Cursors -match and -destroy are not compatible", (char *)NULL);
+		return TCL_ERROR;
+	    }
+	    while(ctable->cursors) {
+		if (ctable_DestroyCursor(interp, ctable->cursors) != TCL_OK)
+		    return TCL_ERROR;
+	    }
+	    return TCL_OK;
+	}
+
+	struct cursor *c;
+	Tcl_Obj *l = Tcl_NewObj();
+
+	for(c = ctable->cursors; c; c = c->nextCursor) {
+	    if(pattern == NULL || Tcl_StringMatch(c->cursorName, pattern))
+		Tcl_ListObjAppendElement(interp, l, Tcl_NewStringObj(c->cursorName, -1));
+	}
+	Tcl_IncrRefCount(l);
+	Tcl_SetObjResult(interp, l);
+	return TCL_OK;
+      }
     }
 
 #ifdef WITH_SHARED_TABLES
-    end_write(ctable);
+    if(!readonly[optIndex]) {
+	// Inform the shared memory code that a write is ending
+	end_write(ctable);
+    }
 #endif
     return commandStatus;
 }
+
+int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *CONST objv[], int objc)
+{
+    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "delete", "count", "at_end", "key", NULL };
+    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_DELETE, CURSOR_COUNT, CURSOR_AT_END, CURSOR_KEY, NUM_CURSOR_COMMANDS };
+    int command_id = 0;
+
+    if (Tcl_GetIndexFromObj (interp, objv[0], cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    // check for end of line
+    if(cursor->tranIndex >= cursor->offsetLimit) {
+	switch(command_id) {
+	    case CURSOR_DELETE:
+	    case CURSOR_GET:
+	    case CURSOR_SET:
+	    case CURSOR_ARRAY_GET:
+	    case CURSOR_ARRAY_GET_WITH_NULLS:
+		Tcl_AppendResult(interp, "Cursor past end of transaction", (char *)NULL);
+		return TCL_ERROR;
+	}
+    }
+
+    switch (command_id) {
+	case CURSOR_DESTROY: {
+	    return ctable_DestroyCursor(interp, cursor);
+	}
+
+	case CURSOR_RESET: {
+	    cursor->tranIndex = cursor->offset;
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->tranIndex));
+	    return TCL_OK;
+	}
+
+	case CURSOR_AT_END: {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->tranIndex >= cursor->offsetLimit));
+	    return TCL_OK;
+	}
+
+	case CURSOR_NEXT: {
+	    int result;
+	    if(cursor->tranIndex < cursor->offsetLimit)
+		cursor->tranIndex++;
+	    if(cursor->tranIndex < cursor->offsetLimit)
+		result = cursor->tranIndex;
+	    else
+		result = -1;
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(result));
+	    return TCL_OK;
+	}
+
+	case CURSOR_INDEX: {
+	    int result;
+	    if(cursor->tranIndex < cursor->offsetLimit)
+		result = cursor->tranIndex;
+	    else
+		result = -1;
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(result));
+	    return TCL_OK;
+	}
+
+	case CURSOR_GET: {
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+	      past_end_of_search:
+		Tcl_AppendResult (interp, "Cursor past end of search.", (char *)NULL);
+		return TCL_ERROR;
+	    }
+	    if(objc == 1) {
+		Tcl_SetObjResult (interp, ${table}_genlist (interp, cursor->tranTable[cursor->tranIndex]));
+	    } else {
+		int i;
+
+		for(i = 1; i < objc; i++) {
+		    if (${table}_lappend_fieldobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
+			return TCL_ERROR;
+		}
+	    }
+	    return TCL_OK;
+        }
+
+	case CURSOR_SET: {
+	    int              i;
+	    int              listObjc;
+	    Tcl_Obj        **listObjv;
+	    struct ${table} *row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
+	    int              nocomplain = 0;
+
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+	        goto past_end_of_search;
+	    }
+#ifdef WITH_SHARED_TABLES
+	    if (ctable->share_type == CTABLE_SHARED_READER) {
+		Tcl_AppendResult (interp, "Cursor set is not possible in a shared reader table.", (char *)NULL);
+		Tcl_SetErrorCode (interp, "speedtables", "read_only", NULL);
+		return TCL_ERROR;
+	    } else if(ctable->share_type == CTABLE_SHARED_MASTER && ctable->share) {
+		// Check for free space
+		if(shmfreemem(ctable->share, 0) < ctable->share_min_free) {
+		    Tcl_AppendResult (interp, "Free shared memory low", (char *)NULL);
+		    Tcl_SetErrorCode (interp, "speedtables", "shared_memory_low", NULL);
+		    return TCL_ERROR;
+		}
+		// Inform the shared memory code that a write is starting
+		begin_write(ctable);
+	    }
+#endif
+
+	    while (objc > 2) {
+		char *opt = Tcl_GetString(objv[1]);
+
+		// no an option
+		if (opt[0] != '-')
+		    break;
+
+		// starts with a -, eat an object
+		objv++;
+		objc--;
+
+		// It's --, no more options
+		if (opt[1] == '-' && opt[2] == '\0')
+		    break;
+
+		// Look for known options
+		if (strcmp(opt, "-nocomplain") == 0) {
+		    nocomplain = 1;
+		} else {
+		    Tcl_AppendResult(interp, "Unknown option ", opt, NULL);
+		    return TCL_ERROR;
+		}
+	    }
+
+	    if (objc == 2) {
+		if (Tcl_ListObjGetElements(interp, objv[1], &listObjc, &listObjv) == TCL_ERROR) {
+		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		    return TCL_ERROR;
+		}
+	    } else {
+		listObjc = objc - 1;
+		listObjv = (Tcl_Obj **)&objv[1];
+	    }
+
+	    if ((listObjc % 2) != 0) {
+		Tcl_AppendResult (interp, "key-value list must contain an even number of elements", (char *)NULL);
+		return TCL_ERROR;
+	    }
+
+	    for (i = 0; i < listObjc; i+= 2) {
+		if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], CTABLE_INDEX_NORMAL, nocomplain) == TCL_ERROR) {
+		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
+		    return TCL_ERROR;
+		}
+	    }
+
+	    return TCL_OK;
+	}
+
+	case CURSOR_ARRAY_GET: {
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+		goto past_end_of_search;
+	    }
+	    if(objc == 1) {
+		Tcl_SetObjResult (interp,  ${table}_gen_nonnull_keyvalue_list (interp, (${table} *)cursor->tranTable[cursor->tranIndex]));
+	    } else {
+		int i;
+
+		for(i = 1; i < objc; i++) {
+		    if (${table}_lappend_nonnull_field_and_nameobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
+			return TCL_ERROR;
+		}
+	    }
+	    return TCL_OK;
+	}
+
+	case CURSOR_ARRAY_GET_WITH_NULLS: {
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+		goto past_end_of_search;
+	    }
+	    if(objc == 1) {
+		Tcl_SetObjResult (interp,  ${table}_gen_keyvalue_list (interp, (${table} *)cursor->tranTable[cursor->tranIndex]));
+	    } else {
+		int i;
+
+		for(i = 1; i < objc; i++) {
+		    if (${table}_lappend_field_and_nameobj (interp, cursor->tranTable[cursor->tranIndex], objv[i]) == TCL_ERROR)
+			return TCL_ERROR;
+		}
+	    }
+	    return TCL_OK;
+	}
+
+	case CURSOR_DELETE: {
+	    Tcl_AppendResult(interp, "Unimplemented subcommand ", Tcl_GetString(objv[0]), (char *)NULL);
+	    return TCL_ERROR;
+	}
+
+	case CURSOR_COUNT: {
+	    Tcl_SetObjResult (interp, Tcl_NewIntObj(cursor->offsetLimit - cursor->offset));
+	    return TCL_OK;
+	}
+
+	case CURSOR_KEY: {
+	    if(cursor->tranIndex >= cursor->offsetLimit) {
+		goto past_end_of_search;
+	    }
+	    struct ctable_BaseRow *row = cursor->tranTable[cursor->tranIndex];
+	    Tcl_SetObjResult (interp, Tcl_NewStringObj(row->hashEntry.key, -1));
+	    return TCL_OK;
+	}
+
+	default: {
+	    Tcl_AppendResult(interp, "Unknown subcommand ", Tcl_GetString(objv[0]), (char *)NULL);
+	    return TCL_ERROR;
+	}
+    }
+}
+
+int ${table}CursorObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+    struct cursor *cursor = (struct cursor *)cData;
+    CTable *ctable = cursor->ownerTable;
+
+    if (objc < 1) {
+	Tcl_WrongNumArgs(interp, 1, objv, "command ?args?");
+	return TCL_ERROR;
+    }
+    return ${table}CursorCommandCommon(interp, ctable, cursor, objv+1, objc-1);
+}
+
 // vim: set ts=8 sw=4 sts=4 noet :

@@ -53,8 +53,15 @@ t search -array row -code {
 	if {"$row(ip)" != "$expected(ip)"} {
 		error "Expected ip $expected(ip) got $row(ip) for $id"
 	}
-	if {"[string tolower $row(mac)]" != "[string tolower $expected(mac)]"} {
-		error "Expected mac $expected(mac) got $row(mac) for $id"
+	set sample [string tolower $row(mac)]
+	set target [string tolower $expected(mac)]
+	if {"$sample" != "$target"} {
+		# Check for stripped leading zeroes
+		regsub -all {:0} $target {:} target
+		regsub {^0} $target {} target
+		if {"$sample" != "$target"} {
+			error "Expected mac $expected(mac) got $row(mac) for $id"
+		}
 	}
 }
 puts "ok"

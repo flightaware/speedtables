@@ -5,6 +5,7 @@ proc test_index {table args} {
   if {"$table" == "-v"} {
     set table [lindex $args 0]
     set args [lrange $args 1 end]
+    set verbose 1
   }
   if {$verbose} {puts -nonewline [info level 0]...; flush stdout}
   set comp [list $args]

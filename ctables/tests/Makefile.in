@@ -21,7 +21,7 @@ TCLSHM          = $(TCLSH)
 #TCLSH=tclsh8.4
 #TCLSHM=$(TCLSH)m
 
-all: maintests macip stapi stapireturn
+all: maintests macip allstapi corrupt
 
 maintests:
 	rm -rf stobj
@@ -42,16 +42,29 @@ maintests:
 	$(TCLSH) index-compare.tcl
 	rm -rf stobj
 	$(TCLSH) index-defaults.tcl
+	$(TCLSH) fixed-default.tcl
 	$(TCLSH) filter.tcl
 	$(TCLSH) filter2.tcl
 	$(TCLSH) tclobj.tcl
 	$(TCLSH) match-fail-test.tcl
+	$(TCLSH) clean-test.tcl
+	$(TCLSH) cursortest.tcl
+	$(TCLSH) nested-search.tcl
 
 clean:
 	rm -rf stobj
 	rm -f *.dat
 	rm -f *.core vgcore*
 	rm -f tmp_*
+
+corrupt:
+	rm -rf stobj
+	$(TCLSH) corruption-test.tcl
+
+pgtests:
+	$(TCLSH) pgtcl.tcl
+	$(TCLSH) stapi_pg.tcl
+
 
 compare:
 	rm -rf stobj
@@ -87,6 +100,9 @@ pools:
 	rm -f *.dat
 	$(TCLSH) poolspeed.tcl
 
+allstapi: stapi multishared stapireturn stapicursors
+	rm -f serverlog_multimaster.log sharefile.dat
+
 reader:
 	rm -rf stobj
 	rm -f *.dat
@@ -118,6 +134,9 @@ filter:
 filter2:
 	rm -rf stobj
 	$(TCLSH) filter2.tcl
+
+multishared:
+	sh multimaster.sh
 
 multireader:
 	rm -rf stobj
@@ -159,3 +178,8 @@ stapireturn:
 	rm -rf stobj
 	rm -f *.dat
 	sh stapi.sh -s stapireturn.tcl
+
+stapicursors:
+	rm -rf stobj
+	rm -f *.dat
+	sh stapi.sh -s stapicursors.tcl

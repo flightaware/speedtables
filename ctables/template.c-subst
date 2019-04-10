@@ -249,8 +249,12 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	    ctable->count = 0;
 	    ctable->autoRowNumber = 0;
 	    ctable->destroying = 0;
-	    ctable->searching = 0;
+	    ctable->searches = NULL;
 	    ctable->nullKeyValue = NULL;
+	    ctable->cursors = NULL;
+#ifdef WITH_SHARED_TABLES
+	    ctable->cursorLock = 0;
+#endif
 
 	    ctable->performanceCallbackEnable = 0;
 	    ctable->performanceCallback = NULL;
@@ -449,7 +453,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 	}
     }
 
-    panic("never expected to get here");
+    Tcl_Panic("never expected to get here");
     return TCL_ERROR;
 }
 

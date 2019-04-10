@@ -210,6 +210,26 @@ struct ctable_BaseRow {
         (var) && ((tvar) = (var)->_ll_nodes[i].next); \
          var = tvar)
 
+// Cursor state values
+#define CTABLE_CURSOR_NEW       0
+#define CTABLE_CURSOR_OK        1
+#define CTABLE_CURSOR_DELETING -1
+
+struct cursor {
+    struct cursor   *nextCursor;
+    struct CTable   *ownerTable;
+    char            *cursorName;
+    ctable_BaseRow **tranTable;
+    int              tranIndex;
+    int              offset;
+    int              offsetLimit;
+    int              cursorState;
+    Tcl_Command      commandInfo;
+#ifdef WITH_SHARED_TABLES
+    int              lockCycle;
+#endif
+};
+
 // define ctable search comparison types
 // these terms must line up with the definition of searchTerms
 //  in function ctable_ParseSearch
@@ -322,12 +342,14 @@ struct CTableSearchFilter {
 #define CTABLE_SEARCH_ACTION_WRITE_TABSEP 6
 #define CTABLE_SEARCH_ACTION_TRANSACTION_ONLY 7
 #define CTABLE_SEARCH_ACTION_CODE 8
+#define CTABLE_SEARCH_ACTION_CURSOR 9
 
 // transactions are run after the operation is complete, so they don't modify
 // a field that's being searched on
 #define CTABLE_SEARCH_TRAN_NONE 0
 #define CTABLE_SEARCH_TRAN_DELETE 1
 #define CTABLE_SEARCH_TRAN_UPDATE 2
+#define CTABLE_SEARCH_TRAN_CURSOR 3
 
 // Buffering types
 #define CTABLE_BUFFER_DEFAULT -1
@@ -345,6 +367,7 @@ struct CTableSearchFilter {
 // ctable search struct - this controls everything about a search
 struct CTableSearch {
     struct CTable                       *ctable;
+    struct CTableSearch                 *previousSearch;
     CTableSearchComponent               *components;
     CTableSearchFilter			*filters;
     char                                *pattern;
@@ -404,6 +427,13 @@ struct CTableSearch {
 
     // Unique search ID for memoization
     int					 sequence;
+
+    // cursor ID and structure
+    char                                *cursorName;
+    struct cursor                       *cursor;
+
+    // what index is this searching?
+    int                                  searchField;
 };
 
 struct ctable_FieldInfo {
@@ -469,6 +499,7 @@ struct ctable_CreatorTable {
     void (*delete_row) (struct CTable *ctable, ctable_BaseRow *row, int indexCtl);
 
     int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+    int (*cursor_command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 #ifdef SANITY_CHECKS
     void (*sanity_check_pointer)(struct CTable *ctable, void *ptr, int indexCtl, CONST char *where);
@@ -485,7 +516,7 @@ struct CTable {
 
     int                                  autoRowNumber;
     int                                  destroying;
-    int					 searching;
+    CTableSearch			*searches;
     char				*nullKeyValue;
 #ifdef WITH_SHARED_TABLES
     int					 was_locked;
@@ -508,6 +539,13 @@ struct CTable {
 
     Tcl_Command                          commandInfo;
     long                                 count;
+
+    struct cursor			*cursors;
+#ifdef WITH_SHARED_TABLES
+// reader only
+    int					 cursorLock;
+#endif
+
     CT_LIST_ENTRY(CTable)                   instance;
 };
 

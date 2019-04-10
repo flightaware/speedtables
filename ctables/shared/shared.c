@@ -20,9 +20,6 @@
 
 #include "shared.h"
 
-
-
-
 // Data that must be shared between multiple speedtables C extensions
 //
 // NB we used Tcl's interpreter-associated property lists to create, find and
@@ -62,7 +59,7 @@ const char *get_last_shmem_error() {
     return last_shmem_error;
 }
 
-// Callable by master or slaves.
+// Callable by master or clients.
 void shared_perror(const char *text) {
     if(last_shmem_error[0] != '\0') {
         fprintf(stderr, "%s: %s\n", text, last_shmem_error);
@@ -72,34 +69,42 @@ void shared_perror(const char *text) {
 }
 
 
-#ifdef WITH_TCL
-// linkup_assoc_data - attach the bits of data that multiple speedtables
+// set/linkup_assoc_data - attach the bits of data that multiple speedtables
 // C shared libraries need to share.
-// Callable by master or slaves.
+// Callable by master or clients.
+// If not using Tcl, just allocate it if it doesn't exist already
+#ifdef WITH_TCL
 static void
 linkup_assoc_data (Tcl_Interp *interp)
+#else
+void
+set_assoc_data ()
+#endif
 {
     if (assocData != NULL) {
       //IFDEBUG(fprintf(SHM_DEBUG_FP, "previously found assocData at %lX\n", (long unsigned int)assocData);)
         return;
     }
 
+#ifdef WITH_TCL
     // locate the associated data 
     assocData = (struct speedtablesAssocData *)Tcl_GetAssocData (interp, ASSOC_DATA_KEY, NULL);
     if (assocData != NULL) {
         //IFDEBUG(fprintf(SHM_DEBUG_FP, "found assocData at %lX\n", (long unsigned int)assocData);)
         return;
     }
+#endif
 
     assocData = (struct speedtablesAssocData *)ckalloc (sizeof (struct speedtablesAssocData));
     assocData->autoshare = 0;
     assocData->share_base = NULL;
     assocData->share_list = NULL;
 
+#ifdef WITH_TCL
     //IFDEBUG(fprintf(SHM_DEBUG_FP, "on interp %lX, constructed assocData at %lX\n", (long unsigned int) interp, (long unsigned int)assocData);)
     Tcl_SetAssocData (interp, ASSOC_DATA_KEY, NULL, (ClientData)assocData);
-}
 #endif
+}
 
 
 // map_file - map a file at addr. If the file doesn't exist, create it first
@@ -111,11 +116,17 @@ linkup_assoc_data (Tcl_Interp *interp)
 //
 // If the file is already mapped, but at a different address, this is an error
 //
-// Callable by master or slaves.
+// Callable by master or clients.
 //
 shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, int create)
 {
-    shm_t *p = assocData->share_list;
+    shm_t *p;
+
+#ifndef WITH_TCL
+    set_assoc_data();
+#endif
+
+    p = assocData->share_list;
 
 
     // Look for an already mapped share
@@ -184,7 +195,7 @@ shm_t *map_file(const char *file, char *addr, size_t default_size, int flags, in
 // unmap_file - Unmap the open and mapped associated with the memory mapped
 // for share. Return 0 on error, -1 if the map is still busy, 1 if it's
 // been umapped.
-// Callable by master or slaves.
+// Callable by master or clients.
 int unmap_file(shm_t   *share)
 {
     volatile reader_t   *r;
@@ -198,6 +209,10 @@ int unmap_file(shm_t   *share)
     if (--share->attach_count > 0) {
         return 1;
     }
+
+#ifndef WITH_TCL
+    set_assoc_data();
+#endif
 
     // remove from list
     if(!assocData->share_list) {
@@ -238,9 +253,13 @@ int unmap_file(shm_t   *share)
 }
 
 // unmap_all - Unmap all mapped files.
-// Callable by master or slaves.
+// Callable by master or clients.
 void unmap_all(void)
 {
+#ifndef WITH_TCL
+    set_assoc_data();
+#endif
+
     while(assocData->share_list) {
         shm_t *p    = assocData->share_list;
         shm_t *next = p->next;
@@ -370,7 +389,7 @@ void write_unlock(shm_t   *shm)
 
 
 // Find the reader structure associated with a reader's pid.
-// Callable by slaves.
+// Callable by clients.
 // Returns NULL if no match found.
 volatile reader_t *pid2reader(volatile mapheader_t *map, int pid)
 {
@@ -383,14 +402,16 @@ volatile reader_t *pid2reader(volatile mapheader_t *map, int pid)
 }
 
 
-// Add ourself (pid) to the list of readers.
-// Callable by slaves.
+// Add client (pid) to the list of readers.
+// Callable by master.
 // Returns 1 on success, 0 on failure.
 int shmattachpid(shm_t   *share, int pid)
 {
     volatile mapheader_t *map = share->map;
 
-    if(!pid) return 0;         // invalid pid
+    if(!pid) {
+	return 0;         // invalid pid
+    }
     if(pid2reader(map, pid)) return 1;    // success, already added.
 
     for (unsigned i = 0; i < MAX_SHMEM_READERS; i++) {
@@ -405,7 +426,7 @@ int shmattachpid(shm_t   *share, int pid)
 }
 
 // Called by a reader to start a read transaction on the current state of memory.
-// Callable by slaves.
+// Callable by clients.
 // Returns the cycle number that is locked, or LOST_HORIZON (0) on error.
 int read_lock(shm_t   *shm)
 {
@@ -423,7 +444,7 @@ int read_lock(shm_t   *shm)
 }
 
 // Called by a reader to end a read transaction on the current state of memory.
-// Callable by slaves.
+// Callable by clients.
 void read_unlock(shm_t   *shm)
 {
     volatile reader_t *self = shm->self;
@@ -964,6 +985,7 @@ int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             ) {
                 return TCL_ERROR;
             }
+	    Tcl_IncrRefCount(list);
             Tcl_SetObjResult(interp, list);
             return TCL_OK;
         }
@@ -1062,7 +1084,9 @@ Shared_Init(Tcl_Interp *interp)
         return TCL_ERROR;
 #endif
 
+#ifdef WITH_SHARE_COMMAND
     Tcl_CreateObjCommand(interp, "share", (Tcl_ObjCmdProc *) shareCmd, (ClientData)NULL, (Tcl_CmdDeleteProc *)NULL);
+#endif
 
 #ifdef SHARED_TCL_EXTENSION
     return Tcl_PkgProvide(interp, "Shared", "1.0");

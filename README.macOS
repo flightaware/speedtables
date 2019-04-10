@@ -1,5 +1,14 @@
+#
+# Usage: sh README.macOS [options]
+#
+# Options: any configure options, eg --with-pgsql or --with-casstcl
+#
+make clean
 autoreconf
 # With Apple Tcl
-#./configure
+#./configure ${1+"$@"}
 # With Macports Tcl
-./configure --prefix=/opt/local --with-tcl=/opt/local/lib
+#./configure --prefix=/opt/local --with-tcl=/opt/local/lib ${1+"$@"}
+# With Tcl in /usr/local
+env CXXFLAGS='-Wall -Wno-unused-local-typedef' ./configure --prefix=/usr/local --with-tcl=/usr/local/lib ${1+"$@"}
+make

@@ -207,6 +207,8 @@ search+_test "search+ <" {-compare {{< show M}}} {ur inignot carl frylock shake 
 
 search+_test "using 'in'" {-compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
+search+_test "using 'in' with integers" {-compare {{in age {35 16}}}} {zorak 21 triana dean hank brock}
+
 search_unsorted_test "using index and 'in'" {-index show -compare {{in show {"The Brak Show" "Stroker and Hoop"}}}} {dad brak zorak mom thundercleese clarence stroker hoop angel carr rick}
 
 t index drop name
@@ -220,7 +222,7 @@ puts "ok"
 
 puts -nonewline "testing 'methods'..."
 set methlab [
-  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result import_cassandra_future fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach key makekey methods attach getprop share null isnull verify performance_callback
+  list get set store incr array_get array_get_with_nulls exists delete count batch search search+ type import_postgres_result import_cassandra_future fields field fieldtype needs_quoting names reset destroy statistics read_tabsep write_tabsep index foreach key makekey methods attach getprop share null isnull verify performance_callback clean cursors
 ]
 set methods [t methods]
 if {"$methods" != "$methlab"} {
@@ -243,10 +245,10 @@ foreach {n v} $proplist {
 puts "ok"
 
 puts -nonewline "testing 'getprop' with invalid property..."
+set expected_error "Unknown property 'rumplestiltskin'"
 if {[catch {t getprop rumplestiltskin} result] == 1} {
-    if {$result == "Unknown property 'rumplestiltskin'."} {
-    } else {
-	error "t getprop rumplestiltskin got '$result'"
+    if {![string match "$expected_error*" $result]} {
+	error "t getprop rumplestiltskin got '$result' expected '$expected_error'"
     }
 } else {
     error "should have gotten an error"

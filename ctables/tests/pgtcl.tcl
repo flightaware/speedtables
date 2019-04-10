@@ -25,7 +25,7 @@ proc do_sql {conn sql} {
 	pg_result $r -clear
 	if {"$s" != "PGRES_COMMAND_OK"} {
 		puts stderr $e
-		error "Postgres error $s in $sql"
+		error "Postgres error $e in $sql"
 	}
 }
 
@@ -38,7 +38,7 @@ proc do_prepared {conn statement args} {
 	pg_result $r -clear
 	if {"$s" != "PGRES_COMMAND_OK"} {
 		puts stderr $e
-		error "Postgres error $s in prepared statement $statement $args"
+		error "Postgres error $e in prepared statement $statement $args"
 	}
 }
 
@@ -50,7 +50,7 @@ puts stderr "Set up DB"
 do_sql $conn [readfile pgtcl_create.sql]
 
 # prepared statements are case sensitive lowercase even if declared uppercase.
-do_sql $conn {PREPARE INSERTANIMAL AS INSERT INTO ANIMALS (ID, TYPE, NAME, WEIGHT) VALUES ($1, $2, $3, $4);}
+do_sql $conn {PREPARE INSERTANIMAL AS INSERT INTO TEST_ANIMALS (ID, TYPE, NAME, WEIGHT) VALUES ($1, $2, $3, $4);}
 
 puts stderr "Insert big animals"
 array set animals {
@@ -82,7 +82,7 @@ puts stderr "Creating ctable"
 set a [Animals create #auto]
 
 puts stderr "Import test"
-set r [pg_exec $conn "select id, name, type, weight from animals;"]
+set r [pg_exec $conn "select id, name, type, weight from test_animals;"]
 puts "  results"
     puts "    status    [pg_result $r -status]"
     puts "    numTuples [pg_result $r -numTuples]"
@@ -104,7 +104,7 @@ puts "Imported results matched."
 $a reset
 
 puts stderr "Import row-by-row test"
-pg_sendquery $conn "select id, name, type, weight from animals;"
+pg_sendquery $conn "select id, name, type, weight from test_animals;"
 $a import_postgres_result -rowbyrow $conn -info stat
 puts "Import maybe complete"
 if {"[array get stat]" != "numTuples 106"} {
@@ -131,7 +131,7 @@ for {set i 0} {$i < 10000} {incr i} {
 		} 
 	}
 	$a reset
-	pg_sendquery $conn "select id, name, type, weight from animals;"
+	pg_sendquery $conn "select id, name, type, weight from test_animals;"
 	$a import_postgres_result -rowbyrow $conn
 	set newrows [$a count]
 	if {$newrows != $oldrows} {

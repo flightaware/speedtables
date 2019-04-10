@@ -23,6 +23,13 @@ tables and helper functions.</p>
 <p>Raw C code passed through to the compiler.</p>
 <dt>table {block}<dd>
 <p>Structured Speed Table definition, see Chapter 3 for data types, Chapter 4 for example.</p>
+<dt>CTableBuildPath <i>directory</i><dd>
+The source code to the speedtable (generated C code and included .c and .h files) and the compiled object and shared library are stored in a subdirectory of the current directory at the time the Speed Table package is invoked. If this directory is not appropriate, use the CTableBuildPath procedure to change it immediately after including the speedtables package. For example:
+
+<pre>
+package require speedtable
+CTableBuildPath ~/.ctables
+</pre>
 </dl>
 <H3>Meta-table (Class) Methods</H3>
 <p>The following methods are available as arguments to the meta-table (class)
@@ -43,7 +50,7 @@ arguments.
 </dl>
 <H3> Table (Object) Methods </H3>
 <p>The following built-in methods are available as arguments to each instance of a speed table:</p>
-<p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep</i>, <i>key</i>, <i>makekey</i>, <i>store</i>, <i>share</i>, <i>getprop</i>, <i>attach</i></p>
+<p><i>get</i>, <i>set</i>, <i>array_get</i>, <i>array_get_with_nulls</i>, <i>exists</i>, <i>delete</i>, <i>count</i>, <i>foreach</i>, <i>type</i>, <i>import</i>, <i>import_postgres_result</i>, <i>export</i>, <i>fields</i>, <i>fieldtype</i>, <i>needs_quoting</i>, <i>names</i>, <i>reset</i>, <i>destroy</i>, <i>statistics</i>, <i>write_tabsep</i>, <i>read_tabsep</i>, <i>key</i>, <i>makekey</i>, <i>store</i>, <i>share</i>, <i>getprop</i>, <i>attach</i>, <i>cursors</i></p>
 <p>For the examples, assume we have done a "<tt>cable_info create x</tt>"</p>
 <dl compact>
 
@@ -209,7 +216,8 @@ $table search \
     ?-write_tabsep channel? ?-tab string? ?-with_field_names 0|1? \
     ?-nokeys 0|1? ?-null string? \
     ?-delete 0|1? ?-buffer 0|1? ?-update {field value}? \
-    ?-poll_interval interval? ?-poll_code codeBody?
+    ?-poll_interval interval? ?-poll_code codeBody? \
+    ?-cursor name?
 </pre>
 <p>Search options:</p>
 <dl>
@@ -359,6 +367,40 @@ $points search -filter [list [list distance [concat $fieldLatLong 150]]] -code {
 <dt>-countOnly 1<dd>
 <p><tt>countOnly</tt> is deprecated, it only exists for legacy reasons.</p>
 
+<dt>-cursor <i>name</i><dd>
+<dt>-cursor #auto<dd>
+<p>Create a named cursor. This can not be combined with any other active commands, it creates a new object that holds the
+results of the search so it can be processed separately from the search command. The restun value of the search will be the name of the cursor rather than a count of matched rows.</p>
+<p>Cursor commands:</p>
+
+<dl>
+<dt>$cursor destroy<dd>
+<p>Delete the named cursor.</p>
+<dt>$cursor reset<dd>
+<p>Position the cursor at the beginning of the search results.</p>
+<dt>$cursor next<dd>
+<p>Step to the next result in the list. Returns the index of the result or -1 if past the end of the results.</p>
+<dt>$cursor index<dd>
+<p>Returns the index of the result or -1 if past the end of the results.</p>
+<dt>$cursor get ?field?...<dd>
+<p>Return the current row, or the fields names from the current row, as a list.</p>
+<dt>$cursor array_get ?field?...<dd>
+<p>Return the current row, or the fields names from the current row, as a key value list suitable for passing to array_set. Null values are omitted from the list</p>
+<dt>$cursor array_get_with_nulls ?field?...<dd>
+<p>Return the current row, or the fields names from the current row, as a key value list suitable for passing to array_set Null values are returns as empty strings.</p>
+<dt>$cursor set ?field value?...<dd>
+<p>Set the named fields in the current row to the provided values.</p>
+<dt>$cursor count<dd>
+<p>Return the number of rows in the cursor.</p>
+<dt>$cursor at_end<dd>
+<p>Return true if the cursor is at the end of the results.</p>
+<dt>$cursor key<dd>
+<p>Return the key for the current row.</p>
+</dl>
+
+<p>Note that the cursor results are buffered. Multiple cursors can exist and it is safe to change the results of cursors while other cursors exist, but the results may be surprising so it's not recommended. It is not possible to delete rows from the speedtable while cursors are in use.</p>
+</dl>
+
 </dl>
 
 <p>Search Examples:</p>
@@ -382,6 +424,11 @@ $table search \
 close $fp
 </pre>
 
+<dt>cursors<dd>
+<p>Return a list of all cursors open on the speedtable.</p>
+<dt>cursors destroy<dd>
+<p>Destroy all cursors open on the speedtable.</p>
+
 <dt>incr<dd>
 <p>Increment the specified numeric values, returning a list of the new incremented values</p>
 <pre>
@@ -396,11 +443,12 @@ close $fp
 <b>cable_info</b>
 </pre>
 
-<dt>import_postgres_result <i>handle</i> ?-nokeys? ?-nocomplain? ?-poll_interval count? ?-poll_code code? ?-foreground? ?-info arrayName?<dd> 
+<dt>import_postgres_result <i>handle</i> ?-nokeys? ?-nocomplain? ?-poll_interval count? ?-poll_code code? ?-foreground? ?-info arrayName? ?-dirty 0|1?<dd>
 <p>Given a <i>Pgtcl</i> result handle, <i>import_postgresql_result</i> will iterate over all of the result rows and create corresponding rows in the table, matching the SQL column names to the field names.</p>
 <p>the "-info <i>arrayname</i>" option can be used to return additional informationfrom the request. Currently the only value provided is <i>arrayName(numTuples)</i>.</p>
 <p>If the "-nocomplain" option is specified unknown columns in the result will be ignored.</p>
 <p>If the "-nokeys" option is specified the key is derived from the key column specified for the table, or autogenerated as described in <i>read_tabsep</i>.</p>
+<p>If the "-dirty boolean" option is specified then the defauult dirty flag is set to the provided value. If true, rows are marked dirty even if nothing was changed. This is useful, for example, for tracking stale rows.</p>
 <p>If the "poll_interval" option is provided, it will call <tt>update</tt> every <tt>count</tt> rows to keep the event loop alive</p>
 <p>If the "poll_code" option is provided, it will call the specified <tt>code</tt> block instead of calling update</p>
 <p>Normally the poll code is treated as background processing errors are logged and do not interrupt the import, and breaks and returns are ignored. If the "foreground" option is present, then you can break out of the import in the poll code using "break", and errors will terminate the import.</p>
@@ -484,7 +532,7 @@ foo baz
 </pre>
 
 <dt>reset<dd>
-<p>Clear everything out of the table. This deletes all of the rows in the table, freeing all memory allocated for the rows, the rows' hashtable entries, etc.</p>
+<p>Clear everything out of the table. This deletes all of the rows in the table, freeing all memory allocated for the rows, the rows' hashtable entries, indexes, etc.... returns the table to the state it was created in. Note that you will need to recreate all the indexes on the table.</p>
 <pre>
 % x count
 <b>652343</b>
@@ -569,6 +617,7 @@ close $fp
 <tt>-with_nulls</tt>
 <tt>-null <i>string</i></tt>,
 <tt>-nocomplain</tt>,
+<tt>-dirty</tt>,
 <tt>-skip <i>pattern</i></tt>,
 <tt>-term <i>pattern</i></tt>,
 <tt>-poll_interval <i>count</i></tt>,
@@ -596,6 +645,7 @@ Since you must have a key and at least one field, this is safe. However it might
 <p>With <tt>-term pattern</tt> then read_tabsep will instead terminate on a line that matches <tt>pattern</tt>. For example, to emulate SQL "COPY FROM stdin" you could use <tt>-term "\\."</tt>.</p>
 <p>With <tt>-nocomplain</tt> then the file being read is allowed to specify columns that do not match fields</p>
 <p>Blank or missing fields literally insert empty strings unless <tt>-with_nulls</tt> is set, indicating that the file was created with null values.</p>
+<p>With <tt>-dirty</tt> then rows read from tabsep are marked dirty even if nothing was changed. This is useful, for example, for tracking stale rows.</p>
 <p>The <tt>-quote type</tt> options are compatible with <tt>search -write_tabsep</tt></p>
 <p>For compatibility, the default quoting for tabs and newlines inside a field is "none". It is recommended that <tt>-quote escape</tt> or <tt>-quote uri</tt> is used for writing and reading tab-separated files.</p>
 <p>The <tt>-null string</tt> allows you to specify the string expected to be seen for a null. The null string must be an entire field, and it is evaluated before quoting is applied.

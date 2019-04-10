@@ -4,16 +4,36 @@
 
 package require ctable
 
-CExtension multi 1.0 {
+if {![info exists suffix]} {
+	set suffix ""
+}
 
-CTable nameval {
-    varstring name 
+if {![info exists nametags]} {
+	set nametags [list]
+}
+
+CExtension multi$suffix 1.0 {
+
+CTable nameval$suffix {
+    varstring name {*}$nametags
     varstring value
 }
 
-CTable elements {
-    varstring name
+CTable elements$suffix {
+    varstring name {*}$nametags
     varstring symbol
+}
+
+CTable anim_characters$suffix {
+    varstring id indexed 1 unique 1 notnull 1
+    varstring name indexed 1 unique 1
+    varstring home indexed 1 unique 0
+    varstring show indexed 1 unique 0
+    varstring dad
+    boolean alive default 1
+    varstring gender default male
+    int age indexed 1 unique 0
+    int coolness
 }
 
 }
@@ -29,6 +49,6 @@ CTable albums {
 
 }
 
-package require Multi
+package require Multi$suffix
 package require Multitoo
 
