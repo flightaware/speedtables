@@ -210,8 +210,14 @@ catch { ::itcl::delete class STDisplay }
 			# we were running under Apache Rivet and could use its existing command.
 			return $result
 		} else {
-			# This duplicates the Rivet escape_sgml_chars command:
-			return [string map { & &amp; < &lt; > &gt; " &quot; ' &#39; } $str]
+			# TODO: this is not very good; it is probably missing some chars.
+			# Substitute & first :)
+			foreach \
+				src " &		   {\"}		 " \
+				dst { {\&amp;} {\&quot;} } {
+					regsub -all $src $str $dst str
+				}
+			return $str
 		}
 	}
 
@@ -223,7 +229,7 @@ catch { ::itcl::delete class STDisplay }
 		} else {
 			# TODO: this is not very good; should also hex-encode many other things.
 			foreach \
-				src " &	       {\"}      <       > " \
+				src " &		   {\"}		 <       > " \
 				dst { {\&amp;} {\&quot;} {\&lt;} {\&gt;} } {
 					regsub -all $src $str $dst str
 				}
@@ -231,11 +237,6 @@ catch { ::itcl::delete class STDisplay }
 		}
 	}
 
-	# minimal escape string for protecting HTML only
-	# Avoids changing more than necessary to avoid stepping on legacy filters
-	protected method escape_html {str} {
-		return [string map { & &amp; < &lt; > &gt; } $str]
-	}
 
 	#
 	# read_css_file - parse and read in a CSS file so we can
@@ -1925,7 +1926,6 @@ catch { ::itcl::delete class STDisplay }
 		$f hidden query -value [escape_cgi $response(query)]
 		$f submit submit -value Yes -class DIODeleteConfirmYesButton
 		$f end
-		$f destroy
 		puts "</TD>"
 		puts {<TD ALIGN="center" CLASS="DIODeleteConfirmNoButton">}
 		set f [::form #auto]
@@ -2030,7 +2030,7 @@ catch { ::itcl::delete class STDisplay }
 		}
 
 		if [info exists row($column)] {
-			set val [apply_filter $name [escape_html $row($column)] row $type]
+			set val [apply_filter $name $row($column) row $type]
 		}
 
 		return $val
@@ -2576,5 +2576,5 @@ catch { ::itcl::delete class ::STDisplayField_boolean }
 
 } ; ## ::itcl::class ::STDisplayField_boolean
 
-package provide st_display 1.13.10
+package provide st_display 1.10.1
 

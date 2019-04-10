@@ -2,9 +2,11 @@
 # stapi code to copy 
 #
 # Copyright (C) 2006 by Superconnect, Ltd.  All Rights Reserved
-# Copyright (C) 2008-2018 by FlightAware LLC. All Rights Reserved
+# Copyright (C) 2008-2009 by FlightAware LLC. All Rights Reserved
 #
 # Released under the Berkeley license
+#
+# $Id$
 #
 
 namespace eval ::stapi {
@@ -165,5 +167,5 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_postgres 1.13.10
+package provide st_postgres 1.10.1
 

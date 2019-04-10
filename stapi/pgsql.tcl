@@ -1,6 +1,6 @@
 #
 #
-# Copyright (C) 2008-2018 by FlightAware LLC.  All Rights Reserved
+# Copyright (C) 2008 by FlightAware LLC.  All Rights Reserved
 # Copyright (C) 2006 by Superconnect, Ltd.  All Rights Reserved
 #
 # Open source under the Berkeley license
@@ -197,7 +197,7 @@ namespace eval ::stapi {
 		pg_catalog.format_type(a.atttypid, a.atttypmod) as type,
 		a.attnotnull as not_null
 		FROM pg_class c, pg_attribute a, pg_type t
-		WHERE c.relname = '[string tolower $table]'
+		WHERE c.relname = '$table'
 		  and a.attnum > 0
 		  and a.attrelid = c.oid
 		  and a.atttypid = t.oid
@@ -222,14 +222,7 @@ namespace eval ::stapi {
   #
   # if successful it returns the number of tuples read, from zero on up.
   #
-  # The "_full" variant takes an integer argument to determine how often to run "update" during import, and
-  # a dirty flag to determine if it should mark read rows dirty. The non_full variant is for legacy code
-  #
   proc read_ctable_from_sql {ctable sql {_err ""}} {
-    uplevel 1 [list [namespace which read_ctable_from_sql_full] $ctable $sql 0 0 $_err]
-  }
-
-  proc read_ctable_from_sql_full {ctable sql poll_interval dirty {_err ""}} {
     if {[string length $_err] > 0} {
 	upvar 1 $_err err
     }
@@ -241,10 +234,7 @@ namespace eval ::stapi {
       set errinf "$err\nIn \"sql\""
     } else {
 	# postgres request succeeded, try to import it into the speedtable
-	set command [list]
-	lappend command $ctable import_postgres_result $pg_res -poll_interval $poll_interval
-	if {$dirty} {lappend command -dirty $dirty}
-	if {[catch $command err] == 1} {
+	if {[catch {$ctable import_postgres_result $pg_res} err] == 1} {
 	  # failed
 	  set ok 0
 	  set errinf $::errorInfo
@@ -252,8 +242,10 @@ namespace eval ::stapi {
 	    # succeeded
 	    set numTuples [pg_result $pg_res -numTuples]
 	}
+	# either way, if we are here we got a valid postgres result,
+	# clear it
+	pg_result $pg_res -clear
     }
-    pg_result $pg_res -clear
 
     if {!$ok} {
       # if there was an error var pased, set the error into the var
@@ -278,13 +270,7 @@ namespace eval ::stapi {
   #
   # if successful it returns the number of tuples read, from zero on up.
   #
-  # The "_full" variant takes an integer argument to determine how often to run "update" during import
-  #
   proc read_ctable_from_sql_rowbyrow {ctable sql {_err ""}} {
-    uplevel 1 [list [namespace which read_ctable_from_sql_rowbyrow_full] $ctable $sql 0 0 $_err]
-  }
-
-  proc read_ctable_from_sql_rowbyrow_full {ctable sql poll_interval dirty {_err ""}} {
     if {[string length $_err] > 0} {
 	upvar 1 $_err err
     }
@@ -292,10 +278,7 @@ namespace eval ::stapi {
     set ok 1
 
     pg_sendquery [conn] $sql
-    set command [list]
-    lappend command $ctable import_postgres_result -rowbyrow [conn] -poll_interval $poll_interval -info status
-    if {$dirty} { lappend command -dirty $dirty }
-    if {[catch $command err] == 1} {
+    if {[catch {$ctable import_postgres_result -rowbyrow [conn] -info status} err] == 1} {
 	# failed
 	set ok 0
 	set errinf $::errorInfo
@@ -322,7 +305,11 @@ namespace eval ::stapi {
   #  this code invokes the SQL statement and loads the results into the
   #  specified ctable, asynchronously
   #
-  # There is no return value.
+  # does a Tcl error if it gets an error from postgres unless error variable
+  # is specified, in which case it sets the error message into the error
+  # variable and returns -1.
+  #
+  # if successful it returns the number of tuples read, from zero on up.
   #
   proc read_ctable_from_sql_async {ctable sql callback} {
     pg_blocking [conn] 0
@@ -347,7 +334,7 @@ namespace eval ::stapi {
 	    return
 	}
 
-	$ctable import_postgres_result $pg_res -poll_interval 100
+	$ctable import_postgres_result $pg_res -poll_code update -poll_interval 100
 	pg_result $pg_res -clear
     }
     after 10 [list ::stapi::read_ctable_async_poll $ctable $callback]
@@ -381,4 +368,4 @@ namespace eval ::stapi {
   }
 }
 
-package provide st_postgres 1.13.10
+package provide st_postgres 1.10.1
