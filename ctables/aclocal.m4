@@ -75,8 +75,10 @@ fi
 # Check pg_config for pgsql
 pqinclude=`pg_config --includedir`
 if test -f $pqinclude/libpq-fe.h; then
+pqlibdir=`pg_config --libdir`
 sysconfig_tcl_content="$sysconfig_tcl_content
-set sysconfig(pqinclude) $pqinclude"
+set sysconfig(pqinclude) $pqinclude
+set sysconfig(pqlibdir)  $pqlibdir"
 else
   # Fallback - look for pgsql
   for prefix in $pg_prefixes
@@ -95,7 +97,7 @@ fi
 for prefix in $pg_prefixes
 do
   # there may be multiple installed versions of pgtcl so sort with the highest version first.
-  pg_libdirs=`find $prefix/lib -maxdepth 1 -name "pgtcl*" -type d | sort -rn`
+  pg_libdirs=`find -L $prefix/lib -maxdepth 1 -name "pgtcl*" -type d | sort -rn`
 
   if test -z "$pg_libdirs"; then
      continue
