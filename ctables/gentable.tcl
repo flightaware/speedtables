@@ -5716,10 +5716,14 @@ proc compile {fileFragName version} {
 	set pgtcl_libdir $sysconfig(pgtclprefix)
 	set pgtcl_ver $sysconfig(pgtclver)
 	set pgtcl_lib pgtcl$pgtcl_ver
+	set pq_libdir /usr/local/lib
+	if {[info exists sysconfig(pqlibdir)]} {
+	    set pq_libdir $sysconfig(pqlibdir)
+	}
 
 	append ld_cmd " -Wl,-rpath,$pgtcl_libdir"
-	append ld_cmd " -L$pgtcl_libdir"
-	append ld_cmd " -l$pgtcl_lib -L/usr/local/lib -lpq"
+	append ld_cmd " -L$pgtcl_libdir -l$pgtcl_lib"
+	append ld_cmd " -L$pq_libdir -lpq"
     }
 
     if {$withCasstcl} {

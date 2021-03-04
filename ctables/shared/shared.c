@@ -52,7 +52,7 @@ char *ckalloc(size_t size)
 
 static char last_shmem_error[256] = { '\0' };
 void set_last_shmem_error(const char *message) {
-    strncpy(last_shmem_error, message, sizeof(last_shmem_error));
+    strncpy(last_shmem_error, message, sizeof(last_shmem_error) - 1);
 }
 
 const char *get_last_shmem_error() {
