@@ -5,7 +5,7 @@
 
 if [ -z "$TCLSH" ]
 then
-  TCLVERSION=8.5
+  TCLVERSION=8.6
 
   for tclsh in /usr/bin/tclsh${TCLVERSION} /usr/local/bin/tclsh${TCLVERSION}
   do
