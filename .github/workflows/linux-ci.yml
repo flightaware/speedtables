@@ -33,4 +33,4 @@ jobs:
     - name: install	
       run: sudo make install
     - name: test
-      run: make test
+      run: make -C ctables test
