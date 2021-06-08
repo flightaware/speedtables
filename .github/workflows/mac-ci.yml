@@ -20,6 +20,7 @@ jobs:
         brew install tcl-tk || true
         brew install boost || true
         find /usr/local/Cellar/tcl-tk/8.6.11_1 -name tclInt.h
+        find /usr/local/opt/tcl-tk -name tclInt.h
         sudo mkdir -p /usr/local
         sudo ln -sf /usr/local/opt/tcl-tk/include /usr/local/include/tcl8.6
         sudo cp /usr/local/opt/tcl-tk/lib/libtcl* /usr/local/lib
