@@ -23,6 +23,12 @@ jobs:
         sudo cp /usr/local/opt/tcl-tk/lib/libtcl* /usr/local/lib
         sudo ln -sf /usr/local/opt/tcl-tk/bin/tclsh8.6 /usr/local/bin/tclsh
         sudo ln -sf /usr/local/opt/tcl-tk/bin/tclsh8.6 /usr/local/bin/tclsh8.6
+        git clone https://github.com/flightaware/tclx.git
+        cd tclx
+        autoreconf -vi
+        ./configure --with-tcl=/usr/local/opt/tcl-tk/lib --prefix=/usr/local
+        make
+        sudo make install
     - name: configure
       run: |       
         autoreconf -vi
