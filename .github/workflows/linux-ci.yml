@@ -1,0 +1,36 @@
+# This is a basic workflow to help you get started with Actions	
+
+name: Linux CI	
+
+# Controls when the action will run. 	
+on:	
+  # Triggers the workflow on push or pull request events but only for the master branch	
+  push:	
+    branches: [ master ]	
+  pull_request:	
+    branches: [ master ]	
+
+jobs:	
+  build:	
+
+    runs-on: ubuntu-latest	
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install dependencies
+      run: |
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt-get update -qq
+        sudo apt-get install -y gcc-7 g++-7
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 70 --slave /usr/bin/g++ g++ /usr/bin/g++-7
+        sudo apt-get install -y tcl8.6-dev tcllib tclx libboost-all-dev
+    - name: configure	
+      run: |       	
+        autoreconf -vi	
+        ./configure --with-tcl=/usr/lib/tcl8.6	
+    - name: make	
+      run: make	
+    - name: install	
+      run: sudo make install
+    - name: test
+      run: make -C ctables test

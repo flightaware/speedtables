@@ -177,6 +177,6 @@ proc table {cttpUrl} {
 
 }
 
-package provide sttp_buffer 1.13.10
+package provide sttp_buffer 1.13.12
 
 # vim: set ts=8 sw=4 sts=4 noet :

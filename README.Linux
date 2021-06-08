@@ -9,8 +9,8 @@
 autoreconf
 
 #
-# Any platform-specific configure changes go here. Currently, none.
+# Any platform-specific configure changes go here.
 #
-./configure --with-pgsql "$@"
+./configure --with-tcl=/usr/lib/tcl8.6 --prefix=/usr/local --with-pgsql "$@"
 
 # Then "make clean" and "make"
