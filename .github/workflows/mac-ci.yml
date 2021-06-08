@@ -15,6 +15,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install dependencies
       run: |
+        set -x
         brew update
         brew install tcl-tk || true
         brew install boost || true
@@ -25,7 +26,7 @@ jobs:
         sudo ln -sf /usr/local/opt/tcl-tk/bin/tclsh8.6 /usr/local/bin/tclsh8.6
         git clone https://github.com/flightaware/tclx.git
         cd tclx
-        autoreconf -vi
+        autoreconf
         ./configure --with-tcl=/usr/local/opt/tcl-tk/lib --prefix=/usr/local
         make
         sudo make install
