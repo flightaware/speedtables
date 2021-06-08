@@ -30,7 +30,7 @@ jobs:
         git clone https://github.com/flightaware/tclx.git
         cd tclx
         autoreconf
-        ./configure --with-tcl=/usr/local/opt/tcl-tk/lib --prefix=/usr/local
+        ./configure --with-tcl=/usr/local/Cellar/tcl-tk/8.6.11_1/lib --prefix=/usr/local
         make
         sudo make install
     - name: configure
