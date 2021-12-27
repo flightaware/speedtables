@@ -154,21 +154,40 @@ else
   cass_prefixes=$withval
 fi
 
+msg_debug=""
+
 # Look for cassandra and casstcl
 for prefix in $cass_prefixes
 do
   # look for cassandra include file
   if test -f $prefix/include/cassandra.h; then
+    msg_debug="$msg_debug
+found include/cassandra.h in $prefix"
 sysconfig_tcl_content="$sysconfig_tcl_content
 set sysconfig(cassprefix) $prefix"
   else
+    msg_debug="$msg_debug
+skipped $prefix no include/cassandra.h"
+    continue
+  fi
+  break
+done
+
+for prefix in $cass_prefixes
+do
+  # there may be multiple installed versions of casstcl so sort with the highest version first.
+  if test -d $prefix/lib
+  then
+    cass_libdirs=`find $prefix/lib -maxdepth 1 -name "casstcl*" -type d | sort -rn`
+  else
+    msg_debug="$msg_debug
+skipped $prefix no lib"
     continue
   fi
 
-  # there may be multiple installed versions of casstcl so sort with the highest version first.
-  cass_libdirs=`find $prefix/lib -maxdepth 1 -name "casstcl*" -type d | sort -rn`
-
   if test -z "$cass_libdirs"; then
+    msg_debug="$msg_debug
+skipped $prefix no libdirs"
      continue
   fi
 
@@ -178,6 +197,8 @@ set sysconfig(cassprefix) $prefix"
     do
       if test -f $dir/casstcl.tcl; then
         casstclver=`basename $dir | sed s/^casstcl//`
+    msg_debug="$msg_debug
+found casstcl in $dir"
         sysconfig_tcl_content="$sysconfig_tcl_content
 set sysconfig(casstclver) $casstclver
 set sysconfig(casstclprefix) $dir"
@@ -185,13 +206,13 @@ set sysconfig(casstclprefix) $dir"
       fi
     done
   fi
-
-  cass_prefixes=$dir
-  break
+      msg_debug="$msg_debug
+no casstcl in $cass_libdirs"
 done
 
 if test -z "$casstclver"; then
-  AC_MSG_ERROR([cassandra and/or casstcl not found under $cass_prefixes])
+  AC_MSG_ERROR([cassandra and/or casstcl not found under $cass_prefixes
+$msg_debug])
 fi
 
 AC_MSG_RESULT([found under $cass_prefixes])
