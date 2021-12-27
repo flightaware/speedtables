@@ -170,7 +170,12 @@ done
 for prefix in $cass_prefixes
 do
   # there may be multiple installed versions of casstcl so sort with the highest version first.
-  cass_libdirs=`find $prefix/lib -maxdepth 1 -name "casstcl*" -type d | sort -rn`
+  if test -d $prefix/lib
+  then
+    cass_libdirs=`find $prefix/lib -maxdepth 1 -name "casstcl*" -type d | sort -rn`
+  else
+    continue
+  fi
 
   if test -z "$cass_libdirs"; then
      continue
