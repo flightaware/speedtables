@@ -164,7 +164,11 @@ set sysconfig(cassprefix) $prefix"
   else
     continue
   fi
+  break
+done
 
+for prefix in $cass_prefixes
+do
   # there may be multiple installed versions of casstcl so sort with the highest version first.
   cass_libdirs=`find $prefix/lib -maxdepth 1 -name "casstcl*" -type d | sort -rn`
 
@@ -185,8 +189,6 @@ set sysconfig(casstclprefix) $dir"
       fi
     done
   fi
-
-  cass_prefixes=$dir
   break
 done
 
