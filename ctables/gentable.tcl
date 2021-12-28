@@ -558,7 +558,7 @@ variable removeFromIndexSource {
 # from an index, or nothing if the field is not indexable -- requires
 # interp, ctable, row and field to be defined and in scope in the C target.
 #
-proc gen_ctable_remove_from_index {fieldName} { 
+proc gen_ctable_remove_from_index {fieldName} {
     variable fields
     variable removeFromIndexSource
 
@@ -584,7 +584,7 @@ variable insertIntoIndexSource {
 # into an index, or nothing if the field is not indexable -- requires
 # interp, ctable, row and field to be defined and in scope in the C target.
 #
-proc gen_ctable_insert_into_index {fieldName} { 
+proc gen_ctable_insert_into_index {fieldName} {
     variable fields
     variable insertIntoIndexSource
 
@@ -621,7 +621,7 @@ variable boolSetSource {
 
 #
 # numberSetSource - code we run subst over to generate a set of a standard
-#  number such as an integer, long, double, and wide integer.  (We have to 
+#  number such as an integer, long, double, and wide integer.  (We have to
 #  handle shorts and floats specially due to type coercion requirements.)
 #
 variable numberSetSource {
@@ -760,7 +760,7 @@ variable charSetSource {
 }
 
 #
-# fixedstringSetSource - code we run subst over to generate a set of a 
+# fixedstringSetSource - code we run subst over to generate a set of a
 # fixed-length string.
 #
 variable fixedstringSetSource {
@@ -920,7 +920,7 @@ proc gen_null_exclude_during_sort_comp {table fieldName} {
 }
 
 #
-# boolSortSource - code we run subst over to generate a compare of a 
+# boolSortSource - code we run subst over to generate a compare of a
 # boolean (bit) for use in a sort.
 #
 variable boolSortSource {
@@ -986,7 +986,7 @@ variable varstringSortCompareNullSource {
 }
 
 #
-# varstringSortSource - code we run subst over to generate a compare of 
+# varstringSortSource - code we run subst over to generate a compare of
 # a string for use in a sort.
 #
 variable varstringSortSource {
@@ -999,7 +999,7 @@ variable varstringSortSource {
 }
 
 #
-# fixedstringSortSource - code we run subst over to generate a comapre of a 
+# fixedstringSortSource - code we run subst over to generate a comapre of a
 # fixed-length string for use in a sort.
 #
 variable fixedstringSortSource {
@@ -1011,7 +1011,7 @@ variable fixedstringSortSource {
 }
 
 #
-# binaryDataSortSource - code we run subst over to generate a comapre of a 
+# binaryDataSortSource - code we run subst over to generate a comapre of a
 # inline binary arrays (inets and mac addrs) for use in a sort.
 #
 variable binaryDataSortSource {
@@ -1023,7 +1023,7 @@ variable binaryDataSortSource {
 }
 
 #
-# tclobjSortSource - code we run subst over to generate a compare of 
+# tclobjSortSource - code we run subst over to generate a compare of
 # a tclobj for use in a sort.
 #
 variable tclobjSortSource {
@@ -1034,7 +1034,7 @@ variable tclobjSortSource {
 }
 
 #
-# keySortSource - code we run subst over to generate a compare of 
+# keySortSource - code we run subst over to generate a compare of
 # a key for use in a sort.
 #
 variable keySortSource {
@@ -1153,7 +1153,7 @@ proc gen_standard_comp_switch_source {fieldName} {
 }
 
 #
-# boolCompSource - code we run subst over to generate a compare of a 
+# boolCompSource - code we run subst over to generate a compare of a
 # boolean (bit)
 #
 variable boolCompSource {
@@ -1174,7 +1174,7 @@ variable boolCompSource {
 
 #
 # numberCompSource - code we run subst over to generate a compare of a standard
-#  number such as an integer, long, double, and wide integer.  (We have to 
+#  number such as an integer, long, double, and wide integer.  (We have to
 #  handle shorts and floats specially due to type coercion requirements.)
 #
 variable numberCompSource {
@@ -1221,7 +1221,7 @@ variable numberCompSource {
 }
 
 #
-# varstringCompSource - code we run subst over to generate a compare of 
+# varstringCompSource - code we run subst over to generate a compare of
 # a string.
 #
 variable varstringCompSource {
@@ -1277,7 +1277,7 @@ variable varstringCompSource {
 }
 
 #
-# fixedstringCompSource - code we run subst over to generate a comapre of a 
+# fixedstringCompSource - code we run subst over to generate a comapre of a
 # fixed-length string.
 #
 variable fixedstringCompSource {
@@ -1291,7 +1291,7 @@ variable fixedstringCompSource {
 }
 
 #
-# binaryDataCompSource - code we run subst over to generate a comapre of a 
+# binaryDataCompSource - code we run subst over to generate a comapre of a
 # binary data.
 #
 variable binaryDataCompSource {
@@ -1305,7 +1305,7 @@ variable binaryDataCompSource {
 }
 
 #
-# tclobjCompSource - code we run subst over to generate a compare of 
+# tclobjCompSource - code we run subst over to generate a compare of
 # a tclobj for use in a search.
 #
 # this could be so wrong - there may be a way to keep it from generating
@@ -1324,7 +1324,7 @@ variable tclobjCompSource {
 }
 
 #
-# keyCompSource - code we run subst over to generate a compare of 
+# keyCompSource - code we run subst over to generate a compare of
 # a string.
 #
 variable keyCompSource {
@@ -1592,7 +1592,7 @@ ${table}_lappend_field_and_nameobj (Tcl_Interp *interp, ctable_BaseRow *vPointer
         return TCL_ERROR;
     }
 
-    return ${table}_lappend_field_and_name (interp, Tcl_GetObjResult(interp), vPointer, field); 
+    return ${table}_lappend_field_and_name (interp, Tcl_GetObjResult(interp), vPointer, field);
 }
 
 }
@@ -1768,7 +1768,7 @@ ${table}_dstring_append_get_tabsep (CONST char *key, ctable_BaseRow *vPointer, i
     Tcl_DecrRefCount (utilityObj);
 }
 
-void 
+void
 ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, CONST char *sepstr)
 {
     int i;
@@ -2327,7 +2327,7 @@ proc gen_decl_filter_arg {type name} {
 	double		" = 0.0"
 	key		" = NULL"
     }
-	
+
     if [info exists type_map($type)] {
 	emit "    static $type_map($type)$name$init_map($type);"
     } else {
@@ -2930,7 +2930,7 @@ void ${table}_deleteKey(CTable *ctable, struct ${table} *row, int free_shared)
     ckfree(row->hashEntry.key);
     row->hashEntry.key = ctable->nullKeyValue;
 }
- 
+
 void ${table}_deleteHashEntry(CTable *ctable, struct ${table} *row)
 {
 #ifdef WITH_SHARED_TABLES
@@ -3093,7 +3093,7 @@ proc determine_how_many_linked_lists_and_gen_field_index_table {} {
 	    append result "\n    -1,"
             continue
         }
-  
+
         # we're going to use linked lists even if it's not unique
 if 0 {
         # if the "unique" field doesn't exist or isn't set to 0
@@ -3102,13 +3102,13 @@ if 0 {
             continue
         }
 }
-  
+
         # if we got here it's indexed and not unique,
         # i.e. field args include "indexed 1 unique 0"
         # generate them a list entry
 
 	append result "\n[format "%6d" $nLinkedLists],"
-  
+
         incr nLinkedLists
     }
 
@@ -3275,7 +3275,7 @@ proc emit_set_varstring_field {table fieldName} {
     emit [string range [subst $varstringSetSource] 1 end-1]
 }
 
-#           
+#
 # emit_set_fixedstring_field - emit code to set a fixedstring field
 #
 proc emit_set_fixedstring_field {fieldName length} {
@@ -3293,7 +3293,7 @@ proc emit_set_fixedstring_field {fieldName length} {
     set optname [field_to_enum $fieldName]
 
     emit [string range [subst $fixedstringSetSource] 1 end-1]
-} 
+}
 
 variable fieldIncrSource {
 int
@@ -3352,7 +3352,7 @@ proc gen_set_notnull_if_notnull {table fieldName} {
 
 #
 # numberIncrSource - code we run subst over to generate a set of a standard
-#  number such as an integer, long, double, and wide integer.  (We have to 
+#  number such as an integer, long, double, and wide integer.  (We have to
 #  handle shorts and floats specially due to type coercion requirements.)
 #
 variable numberIncrSource {
@@ -3427,7 +3427,7 @@ proc emit_incr_illegal_field {fieldName} {
 }
 
 #
-# gen_incrs - emit code to incr all of the incr'able fields of the table being 
+# gen_incrs - emit code to incr all of the incr'able fields of the table being
 # defined
 #
 proc gen_incrs {} {
@@ -3582,11 +3582,11 @@ variable setNullSource {
 		if (row->_${myField}IsNull) {
 			break;
 		}
-		
+
 		if ((indexCtl == CTABLE_INDEX_NORMAL) && (ctable->skipLists[field] != NULL)) {
 			ctable_RemoveFromIndex (ctable, row, field);
 		}
-		row->_${myField}IsNull = 1; 
+		row->_${myField}IsNull = 1;
 		if ((indexCtl != CTABLE_INDEX_PRIVATE) && (ctable->skipLists[field] != NULL)) {
 			if (ctable_InsertIntoIndex (interp, ctable, row, field) == TCL_ERROR) {
 				return TCL_ERROR;
@@ -3597,7 +3597,7 @@ variable setNullSource {
 }
 
 variable setNullNotNullSource {
-      case $optname: 
+      case $optname:
         Tcl_AppendResult (interp, "can't set non-null field \"${myField}\" to be null", (char *)NULL);
 	return TCL_ERROR;
 }
@@ -3681,7 +3681,7 @@ proc put_metatable_source {table} {
 
 #
 # put_init_command_source - emit the code to initialize create within Tcl
-# the command that will invoke the C command defined by 
+# the command that will invoke the C command defined by
 # put_metatable_source
 #
 proc put_init_command_source {table} {
@@ -3872,7 +3872,7 @@ proc gen_get_function {table} {
 }
 
 #
-# gen_setup_routine - emit code to be run for this table type at shared 
+# gen_setup_routine - emit code to be run for this table type at shared
 #  libary load time
 #
 proc gen_setup_routine {table} {
@@ -3884,7 +3884,7 @@ proc gen_setup_routine {table} {
     emit "void ${table}_setup (void) $leftCurly"
 
     # create and initialize all of the NameObj objects containing field
-    # names as Tcl objects and increment their reference counts so 
+    # names as Tcl objects and increment their reference counts so
     # (hopefully, heh) they'll never be deleted.
     #
     # also populate the *_NameObjList table
@@ -4182,12 +4182,12 @@ proc gen_new_obj {type fieldName} {
 }
 
 #
-# gen_get_set_obj - given an object, a data type, pointer name and field name, 
+# gen_get_set_obj - given an object, a data type, pointer name and field name,
 #  return the C code to set a Tcl object to contain that element from the
 #  pointer pointing to the named field.
 #
 # note: this is an inefficient way to get the value of varstrings,
-# fixedstrings and chars, and can't even do tclobjs.  
+# fixedstrings and chars, and can't even do tclobjs.
 #
 # do what gen_get_string_cases does, or call its parent anyway *_get_string,
 # to get string representations of those efficiently.
@@ -4514,7 +4514,7 @@ proc gen_field_names {} {
 	upvar ::ctable::fields::$fieldName field
 
 	set propstring "static CONST char *[field_to_var $table $fieldName propkeys]\[] = $leftCurly"
-    
+
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$fieldName\", "
 	}
@@ -4535,7 +4535,7 @@ proc gen_field_names {} {
 	upvar ::ctable::fields::$fieldName field
 
 	set propstring "static CONST char *[field_to_var $table $fieldName propvalues]\[] = $leftCurly"
-    
+
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$field($fieldName)\", "
 	}
@@ -4928,7 +4928,7 @@ $rightCurly
 }
 
 #
-# boolFieldCompSource - code we run subst over to generate a compare of a 
+# boolFieldCompSource - code we run subst over to generate a compare of a
 # boolean (bit) for use in a field comparison routine.
 #
 variable boolFieldCompSource {
@@ -4961,7 +4961,7 @@ variable numberFieldCompSource {
 }
 
 #
-# varstringFieldCompSource - code we run subst over to generate a compare of 
+# varstringFieldCompSource - code we run subst over to generate a compare of
 # a string for use in searching, sorting, etc.
 #
 # NOTE - this code has NO safety net. This code must NEVER be exposed without the safety net.
@@ -4981,7 +4981,7 @@ variable varstringFieldCompSource {
 #
 # varstringCompareNullSource - compare against default empty string
 #
-# note there's also a varstringSortCompareNullSource that's pretty close to 
+# note there's also a varstringSortCompareNullSource that's pretty close to
 # this but sets a result variable and does a break to get out of a case
 # statement rather than returning something
 #
@@ -5001,7 +5001,7 @@ variable varstringCompareNullSource {
 }
 
 #
-# fixedstringFieldCompSource - code we run subst over to generate a comapre of a 
+# fixedstringFieldCompSource - code we run subst over to generate a comapre of a
 # fixed-length string for use in a searching, sorting, etc.
 #
 variable fixedstringFieldCompSource {
@@ -5016,7 +5016,7 @@ variable fixedstringFieldCompSource {
 }
 
 #
-# binaryDataFieldCompSource - code we run subst over to generate a comapre of a 
+# binaryDataFieldCompSource - code we run subst over to generate a comapre of a
 # inline binary arrays (inets and mac addrs) for use in searching and sorting.
 #
 variable binaryDataFieldCompSource {
@@ -5024,7 +5024,7 @@ variable binaryDataFieldCompSource {
 }
 
 #
-# tclobjFieldCompSource - code we run subst over to generate a compare of 
+# tclobjFieldCompSource - code we run subst over to generate a compare of
 # a tclobj for use in searching and sorting.
 #
 variable tclobjFieldCompSource {
@@ -5178,7 +5178,7 @@ int ${table}_sort_compare(void *clientData, const ctable_BaseRow *vRow1, const c
 
     for (i = 0; i < sortControl->nFields; i++) $leftCurly
         direction = sortControl->directions[i];
-        switch (sortControl->fields[i]) $leftCurly 
+        switch (sortControl->fields[i]) $leftCurly
 }
 
 variable sortCompareTrailerSource {
@@ -5729,8 +5729,8 @@ proc compile {fileFragName version} {
     if {$withCasstcl} {
 	set casstcl_libdir $sysconfig(casstclprefix)
 	set casstcl_ver $sysconfig(casstclver)
-	#set casstcl_lib casstcl$casstcl_ver
-	set casstcl_lib casstcl
+	set casstcl_lib casstcl$casstcl_ver
+	#set casstcl_lib casstcl
 
 	append ld_cmd " -Wl,-rpath,$casstcl_libdir"
 	append ld_cmd " -L$casstcl_libdir"
