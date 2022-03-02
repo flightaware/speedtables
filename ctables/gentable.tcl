@@ -5729,7 +5729,9 @@ proc compile {fileFragName version} {
     if {$withCasstcl} {
 	set casstcl_libdir $sysconfig(casstclprefix)
 	set casstcl_ver $sysconfig(casstclver)
-	if {[catch {glob $casstcl_libdir/casstcl$casstcl_ver*}]} {
+	set files ""
+	set caught [catch {glob $casstcl_libdir/libcasstcl$casstcl_ver*} files]
+	if {$caught || ![string length $files]} {
 	    set casstcl_lib casstcl
 	} else {
 	    set casstcl_lib casstcl$casstcl_ver
