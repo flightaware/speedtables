@@ -197,8 +197,8 @@ skipped $prefix no libdirs"
     do
       if test -f $dir/casstcl.tcl; then
         casstclver=`sh -c "cd $dir && ls libcasstcl*.so | sed -e 's/^libcasstcl//' -e 's/\.so$//'"`
-	if test -z "$casstclver"; then
-	  casstclver=`basename $dir | sed s/^casstcl//`
+        if test -z "$casstclver"; then
+          casstclver=`basename $dir | sed s/^casstcl//`
         fi
     msg_debug="$msg_debug
 found casstcl in $dir"
