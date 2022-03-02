@@ -200,7 +200,6 @@ skipped $prefix no libdirs"
 	if test -z "$casstclver"; then
           casstclver=`sh -c "cd $dir && ls libcasstcl*.so | sed -e 's/^libcasstcl//' -e 's/\.so$//'"`
         fi
-      fi
     msg_debug="$msg_debug
 found casstcl in $dir"
         sysconfig_tcl_content="$sysconfig_tcl_content
