@@ -18,6 +18,8 @@ jobs:
         set -x
         brew update
         brew reinstall tcl-tk@8
+        brew install autoconf
+        brew install automake
         brew install boost
     - name: configure
       run: |       
