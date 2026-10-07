@@ -20,7 +20,7 @@ jobs:
         brew reinstall tcl-tk@8
         brew install autoconf
         brew install automake
-        brew install boost
+        brew install boost boost-build
     - name: configure
       run: |       
         autoreconf -vi
