@@ -24,8 +24,10 @@ jobs:
     - name: configure
       run: |       
         autoreconf -vi
-        PREFIX=/opt/homebrew/opt/tcl-tk@8
-        ./configure --with-tcl=$PREFIX/lib --prefix=$PREFIX
+        PREFIX=/opt/homebrew/opt
+        TCL=$PREFIX/tcl-tk@8
+        BOOST=$PREFIX/boost
+        ./configure --with-tcl=$TCL/lib --prefix=$TCL --with-boost=$BOOST
     - name: make
       run: make
     - name: install
