@@ -12,23 +12,18 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
         set -x
         brew update
-        brew install tcl-tk || true
-        brew install boost || true
-        sudo mkdir -p /usr/local
-        sudo rm -f /usr/local/lib/libtcl* || true
-        sudo ln -sf /usr/local/opt/tcl-tk/include /usr/local/include/tcl8.6
-        sudo cp /usr/local/opt/tcl-tk/lib/libtcl* /usr/local/lib
-        sudo ln -sf /usr/local/opt/tcl-tk/bin/tclsh8.6 /usr/local/bin/tclsh
-        sudo ln -sf /usr/local/opt/tcl-tk/bin/tclsh8.6 /usr/local/bin/tclsh8.6
+        brew reinstall tcl-tk@8
+        brew install boost
     - name: configure
       run: |       
         autoreconf -vi
-        ./configure --with-tcl=/usr/local/opt/tcl-tk/lib --prefix=/usr/local 
+        PREFIX=/opt/homebrew/opt/tcl-tk@8
+        ./configure --with-tcl=$PREFIX/lib --prefix=$PREFIX
     - name: make
       run: make
     - name: install
