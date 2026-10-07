@@ -1,4 +1,4 @@
-name: Mac CI
+name: Mac tcl8 build-install
 
 on:
   push:
