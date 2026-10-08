@@ -4,6 +4,10 @@
 
 source test_common.tcl
 
+set ::ctable::showCompilerCommands 1
+set ::ctable::errorDebug 1
+
+
 speedtables Topbrands 1.0 {
 
 table top_brands {
@@ -13,6 +17,12 @@ table top_brands {
 }
 
 }
+
+puts "BEGIN DEBUG OUTPUT"
+if {[catch {puts [exec du -a .]} err]} {
+	puts "du error: $err"
+}
+puts "END DEBUG OUTPUT"
 
 package require Topbrands
 
