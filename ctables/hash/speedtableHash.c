@@ -36,8 +36,8 @@
  * Prototypes for the string hash key methods.
  */
 
-static int		CompareStringKeys(ctable_HashTable *tablePtr, VOID *keyPtr, ctable_HashEntry *hPtr);
-static unsigned int	HashStringKey(ctable_HashTable *tablePtr, VOID *keyPtr);
+static int		CompareStringKeys(ctable_HashTable *tablePtr, void *keyPtr, ctable_HashEntry *hPtr);
+static unsigned int	HashStringKey(ctable_HashTable *tablePtr, void *keyPtr);
 
 /*
  * Function prototypes for static functions in this file:
@@ -141,7 +141,7 @@ ctable_InitOrStoreHashEntry(
     unsigned int hash;
     int index;
 
-    hash = HashStringKey (tablePtr, (VOID *) key);
+    hash = HashStringKey (tablePtr, (void *) key);
     index = RANDOM_INDEX (tablePtr, hash);
 
     /*
@@ -155,7 +155,7 @@ ctable_InitOrStoreHashEntry(
 	    continue;
 	}
 
-	if (!CompareStringKeys(tablePtr, (VOID *) key, hPtr)) {
+	if (!CompareStringKeys(tablePtr, (void *) key, hPtr)) {
 	    if (newPtr)
 		*newPtr = 0;
 	    return hPtr;
@@ -544,7 +544,7 @@ ctable_HashStats(
 static int
 CompareStringKeys(
     ctable_HashTable *tablePtr,
-    VOID *keyPtr,		/* New key to compare. */
+    void *keyPtr,		/* New key to compare. */
     ctable_HashEntry *hPtr)	/* Existing key to compare. */
 {
     const char *p1 = (const char *) keyPtr;
@@ -591,7 +591,7 @@ CompareStringKeys(
 static unsigned int
 HashStringKey(
     ctable_HashTable *tablePtr,	/* Hash table. */
-    VOID *keyPtr)		/* Key from which to compute hash value. */
+    void *keyPtr)		/* Key from which to compute hash value. */
 {
     const char *string = (const char *) keyPtr;
     unsigned int result;
