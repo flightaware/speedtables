@@ -1691,7 +1691,7 @@ ${table}_get_string (const ctable_BaseRow *vPointer, int field, Tcl_Size *length
     Tcl_Size length;
     const struct $table *row = (const struct $table*) vPointer;
 
-    if (lengthPtr == (int *) NULL) {
+    if (lengthPtr == (Tcl_Size *) NULL) {
         lengthPtr = &length;
     }
 

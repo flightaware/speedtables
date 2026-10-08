@@ -8,11 +8,11 @@
 // string was modified and needs to be freed.
 //
 CTABLE_INTERNAL int
-ctable_quoteString(const char **stringPtr, int *stringLengthPtr, int quoteType, const char *quotedChars)
+ctable_quoteString(const char **stringPtr, Tcl_Size *stringLengthPtr, int quoteType, const char *quotedChars)
 {
     int          i, j = 0;
     const char  *string = *stringPtr;
-    int          length = (stringLengthPtr ? *stringLengthPtr : strlen(string));
+    Tcl_Size     length = (stringLengthPtr ? *stringLengthPtr : strlen(string));
     char        *newptr = NULL;
     int		 quoteChar = '\0'; // no quote by default
     int		 maxExpansion = 4; // worst possible worst case
