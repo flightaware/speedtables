@@ -1725,7 +1725,7 @@ void
 ${table}_dstring_append_get_tabsep (const char *key, ctable_BaseRow *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, const char *sepstr, int quoteType, const char *nullString) {
     int              i;
     const char      *string;
-    int              nChars;
+    Tcl_Size         nChars;
     Tcl_Obj         *utilityObj = Tcl_NewObj();
     struct $table *row = (struct $table *) vPointer;
 
