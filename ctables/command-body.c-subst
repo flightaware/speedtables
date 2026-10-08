@@ -153,25 +153,25 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 
     static const char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", "clean", "cursors", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, OPT_CLEAN, OPT_CURSORS, NUM_OPTIONS
+    enum options_e {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, OPT_CLEAN, OPT_CURSORS, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
     // Options allowed in shared tables
-    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, OPT_CURSORS, NUM_OPTIONS };
+    static enum options_e shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, OPT_CURSORS, NUM_OPTIONS };
     static int shared_ok[NUM_OPTIONS] = {-1};
 
     // Read_only options
-    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
+    static enum options_e readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
     static int readonly[NUM_OPTIONS] = {-1};
 
     // Memory_allocating options - except for "index create" which
     // has to be checked for explicitly.
-    static enum options shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_WRITE_TABSEP, NUM_OPTIONS };
+    static enum options_e shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_WRITE_TABSEP, NUM_OPTIONS };
     static int shmcheck[NUM_OPTIONS] = {-1};
 #endif
 
-    static enum options cursor_safe_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
+    static enum options_e cursor_safe_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
     static int cursor_ok[NUM_OPTIONS] = {-1};
 
     // First time through, make it a bitmap.
@@ -283,7 +283,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
     }
 #endif
 
-    switch ((enum options) optIndex) {
+    switch ((enum options_e) optIndex) {
       case NUM_OPTIONS: { // Can't happen!
 	  Tcl_AppendResult (interp, "Can't happen.", (char *)NULL);
 	  return TCL_ERROR;
@@ -399,7 +399,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
         ctable_FieldInfo        *f;
       Tcl_Obj                   *resultObj = Tcl_GetObjResult (interp);
 
-	enum suboptions {SUBOPT_GETPROP, SUBOPT_PROPERTIES, SUBOPT_PROPLIST};
+	enum suboptions_e {SUBOPT_GETPROP, SUBOPT_PROPERTIES, SUBOPT_PROPLIST};
 
 	if ((objc < 4) || (objc > 5)) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "fieldName opt ?arg?");
@@ -700,7 +700,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
       case OPT_MAKEKEY:
       case OPT_STORE: {
         int            i;
-	int            listObjc;
+	Tcl_Size       listObjc;
 	Tcl_Obj      **listObjv;
 	char	      *key;
         Tcl_Obj       *keyObj;
@@ -849,7 +849,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 
       case OPT_INCR: {
         int       i;
-	int       listObjc;
+	Tcl_Size  listObjc;
 	Tcl_Obj **listObjv;
 
 	if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
@@ -1673,7 +1673,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 	int                suboptIndex;
 	int                fieldNum;
 
-	enum suboptions {SUBOPT_SPAN, SUBOPT_COUNT, SUBOPT_CREATE, SUBOPT_DROP, SUBOPT_INDEXABLE, SUBOPT_INDEXED, SUBOPT_UNIQUE, SUBOPT_LIST, SUBOPT_DUMP};
+	enum suboptions_e {SUBOPT_SPAN, SUBOPT_COUNT, SUBOPT_CREATE, SUBOPT_DROP, SUBOPT_INDEXABLE, SUBOPT_INDEXED, SUBOPT_UNIQUE, SUBOPT_LIST, SUBOPT_DUMP};
 
 	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "option ?args?");
@@ -2164,7 +2164,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *const objv[], int objc)
 {
     static const char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "delete", "count", "at_end", "key", NULL };
-    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_DELETE, CURSOR_COUNT, CURSOR_AT_END, CURSOR_KEY, NUM_CURSOR_COMMANDS };
+    enum cursorCommands_e { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_DELETE, CURSOR_COUNT, CURSOR_AT_END, CURSOR_KEY, NUM_CURSOR_COMMANDS };
     int command_id = 0;
 
     if (Tcl_GetIndexFromObj (interp, objv[0], cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
@@ -2243,7 +2243,7 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 
 	case CURSOR_SET: {
 	    int              i;
-	    int              listObjc;
+	    Tcl_Size         listObjc;
 	    Tcl_Obj        **listObjv;
 	    struct ${table} *row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
 	    int              nocomplain = 0;

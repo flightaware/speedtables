@@ -737,7 +737,7 @@ ctable_SearchAction (Tcl_Interp *interp, CTable *ctable, CTableSearch *search, c
 	  case TCL_OK:
 	  case TCL_CONTINUE:
 	  case TCL_BREAK:
-	    Tcl_ResetResult(interp);
+	    Tcl_ResetResult(interp); // fallthrough
 	  case TCL_RETURN:
 	    return evalResult;
 	}
