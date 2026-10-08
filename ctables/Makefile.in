@@ -230,7 +230,7 @@ install-doc: doc
 #	done
 
 test: binaries libraries
-	cd $(srcdir)/tests && $(MAKE) -DTCL_VERSION=$(TCL_VERSION)
+	cd $(srcdir)/tests && $(MAKE) TCL_VERSION=$(TCL_VERSION)
 
 # various convenience targets to run test cases defined in the tests subdirectory.
 compare searchget null indef master speed pools reader stapi stapi2 stapi3 filter filter2 multireader speedreader readerperf tclobj barnrow gbarnrow:
