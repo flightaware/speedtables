@@ -8,8 +8,10 @@ namespace eval ::ctable_test {
     set suffix _m
 }
 
-source top-brands-nokey-def.tcl
+set ::ctable::showCompilerCommands 1
+set ::ctable::errorDebug 1
 
+source top-brands-nokey-def.tcl
 
 top_brands_nokey_m create m master file sharefile.dat
 puts "m share info -> [m share info]"

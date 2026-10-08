@@ -8,6 +8,9 @@ package require ctable
 
 #CTableBuildPath /tmp
 
+set ::ctable::showCompilerCommands 1
+set ::ctable::errorDebug 1
+
 namespace eval ::ctable_test {
     if {![info exists suffix]} {
 	set suffix ""
