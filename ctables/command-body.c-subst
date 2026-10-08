@@ -1965,15 +1965,15 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
       case OPT_NULL: {
 	int            i;
 	int            field;
-        struct $table *row;
+        struct $table *found;
 
 	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
 	    return TCL_ERROR;
 	}
 
-	row = (${table}*) ${table}_find (ctable, Tcl_GetString (objv[2]));
-	if (row == NULL) {
+	found = (${table}*) ${table}_find (ctable, Tcl_GetString (objv[2]));
+	if (found == NULL) {
 	    Tcl_AppendResult (interp, "no such key");
 	    return TCL_ERROR;
 	}
@@ -1982,7 +1982,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 	    Tcl_Obj *result = Tcl_NewObj();
 
 	    for(i = 0; i < $nFields; i++) {
-		if(${table}_is_null(row, i)) {
+		if(${table}_is_null(found, i)) {
 		    if(Tcl_ListObjAppendElement(interp, result, ${table}_NameObjList[i]) == TCL_ERROR) {
 			return TCL_ERROR;
 		    }
@@ -1997,7 +1997,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 	    if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
 		return TCL_ERROR;
 	    }
-	    if(${table}_set_null(interp, ctable, row, field, CTABLE_INDEX_NORMAL) != TCL_OK) {
+	    if(${table}_set_null(interp, ctable, found, field, CTABLE_INDEX_NORMAL) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	}
@@ -2007,7 +2007,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
       case OPT_ISNULL: {
 	int            i;
 	int            field;
-        struct $table *row;
+        struct $table *found;
 	Tcl_Obj       *result = Tcl_NewObj();
 
 	if (objc < 4) {
@@ -2015,8 +2015,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 	    return TCL_ERROR;
 	}
 
-	row = (${table}*) ${table}_find (ctable, Tcl_GetString (objv[2]));
-	if (row == NULL) {
+	found = (${table}*) ${table}_find (ctable, Tcl_GetString (objv[2]));
+	if (found == NULL) {
 	    Tcl_AppendResult (interp, "no such key");
 	    return TCL_ERROR;
 	}
@@ -2025,7 +2025,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 	    if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
 		return TCL_ERROR;
 	    }
-	    if(Tcl_ListObjAppendElement(interp, result, Tcl_NewIntObj(${table}_is_null(row, field))) != TCL_OK) {
+	    if(Tcl_ListObjAppendElement(interp, result, Tcl_NewIntObj(${table}_is_null(found, field))) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	}
@@ -2245,7 +2245,7 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    int              i;
 	    Tcl_Size         listObjc;
 	    Tcl_Obj        **listObjv;
-	    struct ${table} *row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
+	    struct ${table} *cursor_row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
 	    int              nocomplain = 0;
 
 	    if(cursor->tranIndex >= cursor->offsetLimit) {
@@ -2308,7 +2308,7 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    }
 
 	    for (i = 0; i < listObjc; i+= 2) {
-		if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], CTABLE_INDEX_NORMAL, nocomplain) == TCL_ERROR) {
+		if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], cursor_row, listObjv[i], CTABLE_INDEX_NORMAL, nocomplain) == TCL_ERROR) {
 		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
 		    return TCL_ERROR;
 		}
@@ -2365,8 +2365,8 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    if(cursor->tranIndex >= cursor->offsetLimit) {
 		goto past_end_of_search;
 	    }
-	    struct ctable_BaseRow *row = cursor->tranTable[cursor->tranIndex];
-	    Tcl_SetObjResult (interp, Tcl_NewStringObj(row->hashEntry.key, -1));
+	    struct ctable_BaseRow *cursor_row = cursor->tranTable[cursor->tranIndex];
+	    Tcl_SetObjResult (interp, Tcl_NewStringObj(cursor_row->hashEntry.key, -1));
 	    return TCL_OK;
 	}
 
