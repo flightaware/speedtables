@@ -104,7 +104,7 @@ ${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj 
 
 	    if (objc >= 5) {
 		int	  k;
-	        int	  listObjc;
+	        Tcl_Size  listObjc;
 	        Tcl_Obj **listObjv;
 
 		if(Tcl_GetIndexFromObj(interp, objv[3], types, "type", TCL_EXACT, &typeIndex) != TCL_OK)
