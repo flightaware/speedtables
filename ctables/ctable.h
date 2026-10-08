@@ -323,7 +323,7 @@ struct CTableSearchComponent {
     fieldCompareFunction_t   compareFunction;
     Tcl_Obj                **inListObj;
     ctable_BaseRow	   **inListRows;
-    int                      inCount;
+    Tcl_Size                 inCount;
     int                      fieldID;
     int                      comparisonType;
 };
