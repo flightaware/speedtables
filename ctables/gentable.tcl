@@ -2397,7 +2397,7 @@ proc gen_filters {} {
 		validate_arg_name $listName
 
 		emit "    Tcl_Obj **$listName;"
-		emit "    int       $listCount;\n"
+		emit "    Tcl_Size  $listCount;\n"
 		emit "    if(Tcl_ListObjGetElements(interp, filter, &$listCount, &$listName) != TCL_OK)"
 		emit "        return TCL_ERROR;"
 
@@ -2416,7 +2416,7 @@ proc gen_filters {} {
 		    gen_get_filter_arg [lindex $filter(args) 0] [lindex $filter(args) 1] filter
 	        } else {
 		    emit "        Tcl_Obj **filterList;"
-        	    emit "        int       filterCount;\n"
+		    emit "        Tcl_Size  filterCount;\n"
         	    emit "        if (Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)"
           	    emit "             return TCL_ERROR;\n"
 		    set argNames ""
