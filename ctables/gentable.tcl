@@ -694,7 +694,7 @@ variable keySetSource {
 variable varstringSetSource {
       case $optname: {
 	const char *stringPtr = NULL;
-	int   length;
+	Tcl_Size   length;
 [gen_null_check_during_set_source $table $fieldName]
 
 	stringPtr = Tcl_GetStringFromObj (obj, &length);
@@ -766,7 +766,7 @@ variable charSetSource {
 variable fixedstringSetSource {
       case $optname: {
 	const char *stringPtr;
-	int   len;
+	Tcl_Size   len;
 [gen_null_check_during_set_source $table $fieldName]
 	stringPtr = Tcl_GetStringFromObj (obj, &len);
 [gen_unset_null_during_set_source $table $fieldName "
@@ -1484,7 +1484,7 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, cons
 int
 ${table}_set_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl, int nocomplain)
 {
-    int field;
+    Tcl_Size field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
 	if (nocomplain) {
@@ -1523,7 +1523,7 @@ ctable_BaseRow *${table}_find (CTable *ctable, const char *key) {
 Tcl_Obj *
 ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *row, Tcl_Obj *fieldObj)
 {
-    int field;
+    Tcl_Size field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return (Tcl_Obj *)NULL;
@@ -1586,7 +1586,7 @@ ${table}_lappend_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, ctabl
 int
 ${table}_lappend_field_and_nameobj (Tcl_Interp *interp, ctable_BaseRow *vPointer, Tcl_Obj *fieldObj)
 {
-    int        field;
+    Tcl_Size        field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return TCL_ERROR;
@@ -1623,7 +1623,7 @@ ${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListOb
 int
 ${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, ctable_BaseRow *vPointer, Tcl_Obj *fieldObj)
 {
-    int        field;
+    Tcl_Size        field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return TCL_ERROR;
@@ -1687,8 +1687,8 @@ ${table}_get (Tcl_Interp *interp, ctable_BaseRow *vPointer, int field) $leftCurl
 
 variable fieldGetStringSource {
 const char *
-${table}_get_string (const ctable_BaseRow *vPointer, int field, int *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
-    int length;
+${table}_get_string (const ctable_BaseRow *vPointer, int field, Tcl_Size *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
+    Tcl_Size length;
     const struct $table *row = (const struct $table*) vPointer;
 
     if (lengthPtr == (int *) NULL) {
@@ -3392,7 +3392,7 @@ variable incrFieldObjSource {
 int
 ${table}_incr_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
 {
-    int field;
+    Tcl_Size field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return TCL_ERROR;
@@ -5879,7 +5879,7 @@ proc install_ch_files {includeDir} {
     lappend subdirs skiplists hash
 
     set copyFiles {
-	ctable.h ctable_search.c ctable_lists.c ctable_batch.c
+	ctable.h tclsize.h ctable_search.c ctable_lists.c ctable_batch.c
 	boyer_moore.c jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
 	speedtables.h speedtableHash.c ctable_io.c ctable_qsort.c
 	ethers.c

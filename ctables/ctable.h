@@ -44,6 +44,8 @@
 
 #include "speedtables.h"
 
+#include "tclsize.h"
+
 #ifdef WITH_SHARED_TABLES
 #include "shared.c"
 
