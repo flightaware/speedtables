@@ -23,7 +23,7 @@ cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *c
         "definition", "builder_version", "tables", (char *)NULL
     };
  
-    enum options
+    enum options_e
     {
         OPT_DEFINITION, OPT_VERSION, OPT_TABLES
     };
@@ -37,7 +37,7 @@ cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *c
         return TCL_ERROR;
     }
 
-    switch ((enum options) optIndex) {
+    switch ((enum options_e) optIndex) {
 	case OPT_DEFINITION: {
 	    Tcl_SetStringObj (Tcl_GetObjResult (interp), sourceCode, -1);
 	    break;

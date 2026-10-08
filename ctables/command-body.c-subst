@@ -785,7 +785,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *con
 
       case OPT_SET: {
         int            i;
-	int            listObjc;
+	Tcl_Size       listObjc;
 	Tcl_Obj      **listObjv;
 	Tcl_Obj       *keyObj = objv[2];
 	int	       nocomplain = 0;
