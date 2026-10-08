@@ -482,7 +482,7 @@ struct ctable_CreatorTable {
     int (*set_null) (Tcl_Interp *interp, struct CTable *ctable, ctable_BaseRow *row, int field, int indexCtl);
 
     Tcl_Obj *(*get) (Tcl_Interp *interp, ctable_BaseRow *row, int field);
-    const char *(*get_string) (const ctable_BaseRow *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
+    const char *(*get_string) (const ctable_BaseRow *pointer, int field, Tcl_Size *lengthPtr, Tcl_Obj *utilityObj);
 
     Tcl_Obj *(*gen_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
     Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);

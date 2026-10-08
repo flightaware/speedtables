@@ -666,8 +666,8 @@ int parse_size(const char *s, size_t *ptr)
         s++;
     }
     switch(toupper((unsigned char)*s)) {
-        case 'G': size *= 1024;
-        case 'M': size *= 1024;
+        case 'G': size *= 1024; // fallthrough
+        case 'M': size *= 1024; // fallthrough
         case 'K': size *= 1024;
             s++;
     }
