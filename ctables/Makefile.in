@@ -120,6 +120,7 @@ STLIB_LD	= @STLIB_LD@
 TCL_DEFS	= @TCL_DEFS@
 TCL_BIN_DIR	= @TCL_BIN_DIR@
 TCL_SRC_DIR	= @TCL_SRC_DIR@
+TCL_VERSION     = @TCL_VERSION@
 # This is necessary for packages that use private Tcl headers
 #TCL_TOP_DIR_NATIVE	= @TCL_TOP_DIR_NATIVE@
 # Not used, but retained for reference of what libs Tcl required
@@ -229,7 +230,7 @@ install-doc: doc
 #	done
 
 test: binaries libraries
-	cd $(srcdir)/tests && $(MAKE)
+	cd $(srcdir)/tests && $(MAKE) -DTCL_VERSION=$(TCL_VERSION)
 
 # various convenience targets to run test cases defined in the tests subdirectory.
 compare searchget null indef master speed pools reader stapi stapi2 stapi3 filter filter2 multireader speedreader readerperf tclobj barnrow gbarnrow:
