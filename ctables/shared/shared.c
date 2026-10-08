@@ -834,12 +834,12 @@ int doDetach(Tcl_Interp *interp, shm_t *share)
 
 int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
-    int          cmdIndex  = -1;
+    Tcl_Size     cmdIndex  = -1;
     char        *sharename = NULL;
     shm_t       *share     = NULL;
 
     static const char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "free", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_FREE };
+    enum commands_e {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_FREE };
 
     static const struct {
         int need_share;         // if a missing share is an error

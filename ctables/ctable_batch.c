@@ -21,7 +21,7 @@
 //
 static int
 ctable_RunBatch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *tableCmdObj, Tcl_Obj *batchListObj) {
-    int          listObjc;
+    Tcl_Size     listObjc;
     Tcl_Obj    **listObjv;
 
     int          i;
@@ -45,7 +45,7 @@ ctable_RunBatch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *tableCmdObj, Tcl_O
     }
 
     for (i = 0; i < listObjc; i++) {
-        int          cmdObjc;
+        Tcl_Size     cmdObjc;
         Tcl_Obj    **cmdObjv;
 
 	Tcl_Obj     *batchCmdObj;

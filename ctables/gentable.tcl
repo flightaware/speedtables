@@ -4560,7 +4560,7 @@ proc gen_field_names {} {
     emit "// define the null value object"
     emit "static Tcl_Obj *${table}_NullValueObj;"
     emit "static char *${table}_NullValueString;"
-    emit "static int ${table}_NullValueSize;"
+    emit "static Tcl_Size ${table}_NullValueSize;"
     emit ""
 
     set nullableList {}

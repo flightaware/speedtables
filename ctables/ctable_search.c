@@ -114,7 +114,7 @@ ctable_verify (Tcl_Interp *interp, CTable *ctable, int verbose) {
  */
 CTABLE_INTERNAL int
 ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, const char **fieldNames, int **fieldListPtr, int *fieldCountPtr) {
-    int             nFields;
+    Tcl_Size        nFields;
     Tcl_Obj       **fieldsObjv;
     int             i;
     int            *fieldList;
@@ -157,7 +157,7 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, const char **f
 //
 CTABLE_INTERNAL int
 ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, const char **fieldNames, CTableSort *sort) {
-    int             nFields;
+    Tcl_Size             nFields;
     Tcl_Obj       **fieldsObjv;
     Tcl_Obj        *fieldNameObj;
     int             i;
@@ -321,10 +321,10 @@ static int
 ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListObj, const char **fieldNames, CTableSearch *search) {
     Tcl_Obj    **componentList;
     int          componentIdx;
-    int          componentListCount;
+    Tcl_Size     componentListCount;
 
     Tcl_Obj    **termList;
-    int          termListCount;
+    Tcl_Size     termListCount;
 
     int          field;
 
@@ -444,12 +444,12 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 
 		if (sm->type == CTABLE_STRING_MATCH_UNANCHORED) {
 		    char *needle;
-		    int len;
+		    Tcl_Size len;
 
 		    needle = Tcl_GetStringFromObj (termList[2], &len);
 		    boyer_moore_setup (sm, (unsigned char *)needle + 1, len - 2, sm->nocase);
 		} else if(sm->type == CTABLE_STRING_MATCH_ANCHORED && term == CTABLE_COMP_MATCH_CASE) {
-		    int len;
+		    Tcl_Size len;
 		    char *needle = Tcl_GetStringFromObj (termList[2], &len);
 		    char *prefix = (char *) ckalloc(len+1);
 		    int i;
@@ -510,7 +510,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
 static int
 ctable_ParseFilters (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *filterListObj, CTableSearch *search) {
     Tcl_Obj               **filterList;
-    int                     filterListCount;
+    Tcl_Size                filterListCount;
 
     CTableSearchFilter     *filters = NULL;
 
@@ -537,7 +537,7 @@ ctable_ParseFilters (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *filterListObj,
     // step through list, looking for filter names and filling in the structs
     for (i = 0; i < filterListCount; i++) {
         Tcl_Obj    **termList;
-        int          termListCount;
+        Tcl_Size     termListCount;
         int item;
 
         if (Tcl_ListObjGetElements (interp, filterList[i], &termListCount, &termList) == TCL_ERROR || termListCount != 2) {
@@ -848,7 +848,7 @@ ctable_PerformTransaction (Tcl_Interp *interp, CTable *ctable, CTableSearch *sea
 
     if(search->tranType == CTABLE_SEARCH_TRAN_UPDATE) {
 
-	int objc;
+	Tcl_Size objc;
 	Tcl_Obj **objv;
 	int *updateFields;
 
@@ -1327,7 +1327,7 @@ ctable_PerformSearch (Tcl_Interp *interp, CTable *ctable, CTableSearch *search) 
     int			   inIndex = 0;
     Tcl_Obj		 **inListObj = NULL;
     ctable_BaseRow	 **inListRows = NULL;
-    int			   inCount = 0;
+    Tcl_Size		   inCount = 0;
 
     int			   canUseHash = 1;
 
@@ -2021,7 +2021,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *const objv[], i
 
     static const char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", "-null", "-filter", "-cursor", (char *)NULL};
 
-    enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL, SEARCH_OPT_QUOTE_TYPE, SEARCH_OPT_NULL_STRING, SEARCH_OPT_FILTER, SEARCH_OPT_CURSOR};
+    enum searchOptions_e {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL, SEARCH_OPT_QUOTE_TYPE, SEARCH_OPT_NULL_STRING, SEARCH_OPT_FILTER, SEARCH_OPT_CURSOR};
     if (objc < 2) {
       wrong_args:
 	Tcl_WrongNumArgs (interp, 2, objv, "?-array_get varName? ?-array_get_with_nulls varName? ?-code codeBody? ?-compare list? ?-filter list? ?-countOnly 0|1? ?-fields fieldList? ?-get varName? ?-glob pattern? ?-key varName? ?-with_field_names 0|1?  ?-limit limit? ?-nokeys 0|1? ?-offset offset? ?-sort {?-?field1..}? ?-write_tabsep channel? ?-tab value? ?-delete 0|1? ?-update {fields value...}? ?-buffer 0|1? ?-poll_interval interval? ?-poll_code codeBody? ?-quote type?");
@@ -2406,7 +2406,7 @@ ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *const objv[], i
 
 	    if (strcmp (cursorName, "#auto") == 0) {
 		char *tableName = NULL;
-		int tableNameLength;
+		Tcl_Size tableNameLength;
 		static unsigned long int auto_cursor_id = 0;
 
 		// use command name of the ctable as the base of the cursor name
