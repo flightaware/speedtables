@@ -8,7 +8,7 @@
 # override sysconfig.sh from environment
 if test ! -z "$TCL_VERSION"
 then
-  export TCLVER=$TCL_VERSION;;
+  export TCLVER=$TCL_VERSION
 fi
 
 P=`cd ../..; pwd`
