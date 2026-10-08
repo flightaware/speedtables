@@ -2117,7 +2117,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, const char *channelN
 
 //${table}_dumpFieldNums(fieldNums, nFields, "after key check");
     if(withNulls && !nullString) {
-	int nullLen;
+	Tcl_Size nullLen;
 
 	nullString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullLen);
     }
