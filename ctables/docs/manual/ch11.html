@@ -56,7 +56,7 @@ struct CTableCreatorTable {
     long unsigned int  nextAutoCounter;
     int                nFields;
     int                nLinkedLists;
-    CONST char       **fieldNames;
+    const char       **fieldNames;
     Tcl_Obj          **nameObjList;
     int               *fieldList;
     enum ctable_types *fieldTypes;
@@ -93,7 +93,7 @@ struct CTableTable {
 <p>Next, the number of fields is defined, the field names as an array of pointers to character strings and an enumerated type definition of the fields:</p>
 <pre>
 #define CABLE_INFO_NFIELDS 10
-static CONST char *cable_info_fields[] = {
+static const char *cable_info_fields[] = {
     "ip",
     "mac",
     "name",
@@ -170,7 +170,7 @@ int cable_info_needs_quoting[] = {
 <p><b>*_get_string</b> - This is particularly useful for the C coder. It takes a pointer to an instance of the structure, a field number, a pointer to an integer, and a pointer to a Tcl object and returns a string representation of the requested field. The Tcl object is used for certain conversions and hence can be considered a reusable utility object. The length of the string returned is set into the pointed-to integer.</p>
 <p>Example:</p>
 <pre>
-CONST char *cable_info_get_string (
+const char *cable_info_get_string (
     struct cable_info *cable_info_ptr,
     int field,
     int *lengthPtr,

@@ -15,15 +15,15 @@ CTABLE_EXTERNAL int
 ${extension}_Init(Tcl_Interp *interp);
 
 static int
-cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {    int      optIndex;
  
  
-    static CONST char *options[] = {
+    static const char *options[] = {
         "definition", "builder_version", "tables", (char *)NULL
     };
  
-    enum options
+    enum options_e
     {
         OPT_DEFINITION, OPT_VERSION, OPT_TABLES
     };
@@ -37,7 +37,7 @@ cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *C
         return TCL_ERROR;
     }
 
-    switch ((enum options) optIndex) {
+    switch ((enum options_e) optIndex) {
 	case OPT_DEFINITION: {
 	    Tcl_SetStringObj (Tcl_GetObjResult (interp), sourceCode, -1);
 	    break;
@@ -102,6 +102,16 @@ ${extension}_SafeInit(Tcl_Interp *interp)
  *----------------------------------------------------------------------
  */
 
+#if TCL_MAJOR_VERSION == 8
+# define REQUIRED_VERSION "8.1"
+#else
+# if TCL_MAJOR_VERSION == 9
+#  define REQUIRED_VERSION "9.0"
+# else
+#  define REQUIRED_VERSION TCL_VERSION
+# endif
+#endif
+
 CTABLE_EXTERNAL int CTABLE_EXTERNAL2
 ${extension}_Init(Tcl_Interp *interp)
 {
@@ -114,7 +124,7 @@ ${extension}_Init(Tcl_Interp *interp)
      * This may work with 8.0, but we are using strictly stubs here,
      * which requires 8.1.
      */
-    if (Tcl_InitStubs(interp, "8.1", 0) == NULL) {
+    if (Tcl_InitStubs(interp, "8.1-", 0) == NULL) {
 	return TCL_ERROR;
     }
 
@@ -123,7 +133,7 @@ ${extension}_Init(Tcl_Interp *interp)
     Tcl_InitMemory(interp);
 #endif
 
-    if (Tcl_PkgRequire(interp, "Tcl", "8.1", 0) == NULL) {
+    if (Tcl_PkgRequire(interp, "Tcl", REQUIRED_VERSION, 0) == NULL) {
 	return TCL_ERROR;
     }
 

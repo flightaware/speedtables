@@ -534,7 +534,7 @@ cell_t oldest_reader_cycle(shm_t   *shm)
 // removed from the list) and the list is never updated with an incomplete
 // entry, so no locking is necessary.
 
-int add_symbol(shm_t   *shm, CONST char *name, char *value, int type)
+int add_symbol(shm_t   *shm, const char *name, char *value, int type)
 {
     int namelen = strlen(name);
     volatile mapheader_t *map = shm->map;
@@ -570,7 +570,7 @@ int add_symbol(shm_t   *shm, CONST char *name, char *value, int type)
 // freed, because we don't know what they're used for and we don't want to
 // lock the garbage collector for long-term symbol use. It's up to the
 // caller to determine if the value can be freed and to do it.
-int set_symbol(shm_t *shm, CONST char *name, char *value, int type)
+int set_symbol(shm_t *shm, const char *name, char *value, int type)
 {
     volatile mapheader_t *map = shm->map;
     volatile symbol_t *s = map->namelist;
@@ -596,7 +596,7 @@ int set_symbol(shm_t *shm, CONST char *name, char *value, int type)
 }
 
 // Get a symbol back.
-char *get_symbol(shm_t *shm, CONST char *name, int wanted)
+char *get_symbol(shm_t *shm, const char *name, int wanted)
 {
     volatile mapheader_t *map = shm->map;
     volatile symbol_t *s = map->namelist;
@@ -666,8 +666,8 @@ int parse_size(const char *s, size_t *ptr)
         s++;
     }
     switch(toupper((unsigned char)*s)) {
-        case 'G': size *= 1024;
-        case 'M': size *= 1024;
+        case 'G': size *= 1024; // fallthrough
+        case 'M': size *= 1024; // fallthrough
         case 'K': size *= 1024;
             s++;
     }
@@ -832,16 +832,16 @@ int doDetach(Tcl_Interp *interp, shm_t *share)
     return TCL_OK;
 }
 
-int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
-    int          cmdIndex  = -1;
+    Tcl_Size     cmdIndex  = -1;
     char        *sharename = NULL;
     shm_t       *share     = NULL;
 
-    static CONST char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "free", (char *)NULL};
-    enum commands {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_FREE };
+    static const char *commands[] = {"create", "attach", "list", "detach", "names", "get", "multiget", "set", "info", "free", (char *)NULL};
+    enum commands_e {CMD_CREATE, CMD_ATTACH, CMD_LIST, CMD_DETACH, CMD_NAMES, CMD_GET, CMD_MULTIGET, CMD_SET, CMD_INFO, CMD_FREE };
 
-    static CONST struct {
+    static const struct {
         int need_share;         // if a missing share is an error
         int nargs;              // >0 number args, <0 -minimum number
         const char *args;             // String for Tcl_WrongNumArgs

@@ -120,6 +120,7 @@ STLIB_LD	= @STLIB_LD@
 TCL_DEFS	= @TCL_DEFS@
 TCL_BIN_DIR	= @TCL_BIN_DIR@
 TCL_SRC_DIR	= @TCL_SRC_DIR@
+TCL_VERSION     = @TCL_VERSION@
 # This is necessary for packages that use private Tcl headers
 #TCL_TOP_DIR_NATIVE	= @TCL_TOP_DIR_NATIVE@
 # Not used, but retained for reference of what libs Tcl required
@@ -229,6 +230,7 @@ install-doc: doc
 #	done
 
 test: binaries libraries
+	echo "TCLVER=$(TCL_VERSION)" > sysconfig.sh
 	cd $(srcdir)/tests && $(MAKE)
 
 # various convenience targets to run test cases defined in the tests subdirectory.

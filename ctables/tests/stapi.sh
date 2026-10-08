@@ -1,5 +1,7 @@
 #!/bin/sh
-#$Id$
+
+echo "Starting stapi.sh"
+set -x
 
 . ./test_common.sh
 

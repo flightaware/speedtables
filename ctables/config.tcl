@@ -33,7 +33,7 @@
     set sharedTraceFile -none
     #set sharedTraceFile -stderr
 
-    if {$tcl_platform(pointerSize) == 8} {
+    if {$::tcl_platform(pointerSize) == 8} {
 		# 64-bit platform
 		set sharedBase 0xA0000000000;
 	} else {
