@@ -21,11 +21,11 @@
  */
 
 int
-${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+${table}MetaObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     int      optIndex;
 
-    static CONST char *options[] = {
+    static const char *options[] = {
         "create", "info", "null_value", "method", "package", "instances",
 	(char *)NULL
     };

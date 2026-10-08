@@ -130,7 +130,7 @@ inline
 ctable_HashEntry *
 ctable_InitOrStoreHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
-    CONST char *key,		/* Key to use to find or create matching
+    const char *key,		/* Key to use to find or create matching
 				 * entry. */
     ctable_HashEntry *newEntry,	/* if not null, use this entry */
     int flags,			/* options */
@@ -226,7 +226,7 @@ inline
 ctable_HashEntry *
 ctable_InitHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
-    CONST char *key,		/* Key to use to find or create matching
+    const char *key,		/* Key to use to find or create matching
 				 * entry. */
     int *newPtr)		/* Store info here telling whether a new entry
 				 * was created. */
@@ -261,7 +261,7 @@ inline
 ctable_HashEntry *
 ctable_StoreHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
-    CONST char *key,		/* Key to use to find or create matching
+    const char *key,		/* Key to use to find or create matching
 				 * entry. */
     ctable_HashEntry *newEntry,	/* if not null, use this entry */
     int flags,			/* options */
@@ -293,7 +293,7 @@ inline
 ctable_HashEntry *
 ctable_FindHashEntry(
     ctable_HashTable *tablePtr,	/* Table in which to lookup entry. */
-    CONST char *key)		/* Key to use to find matching entry. */
+    const char *key)		/* Key to use to find matching entry. */
 {
     return ctable_InitHashEntry (tablePtr, key, NULL);
 }
@@ -468,7 +468,7 @@ ctable_NextHashEntry(ctable_HashSearch *searchPtr)
  *----------------------------------------------------------------------
  */
 
-CONST char *
+const char *
 ctable_HashStats(
     ctable_HashTable *tablePtr)	/* Table for which to produce stats. */
 {
@@ -547,8 +547,8 @@ CompareStringKeys(
     VOID *keyPtr,		/* New key to compare. */
     ctable_HashEntry *hPtr)	/* Existing key to compare. */
 {
-    CONST char *p1 = (CONST char *) keyPtr;
-    CONST char *p2 = (CONST char *) hPtr->key;
+    const char *p1 = (const char *) keyPtr;
+    const char *p2 = (const char *) hPtr->key;
 
 #ifdef CTABLE_COMPARE_HASHES_WITH_STRCMP
     return strcmp(p1, p2);
@@ -593,7 +593,7 @@ HashStringKey(
     ctable_HashTable *tablePtr,	/* Hash table. */
     VOID *keyPtr)		/* Key from which to compute hash value. */
 {
-    CONST char *string = (CONST char *) keyPtr;
+    const char *string = (const char *) keyPtr;
     unsigned int result;
     int c;
 

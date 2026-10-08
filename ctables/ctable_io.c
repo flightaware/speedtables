@@ -8,18 +8,18 @@
 // string was modified and needs to be freed.
 //
 CTABLE_INTERNAL int
-ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, CONST char *quotedChars)
+ctable_quoteString(const char **stringPtr, int *stringLengthPtr, int quoteType, const char *quotedChars)
 {
     int          i, j = 0;
-    CONST char  *string = *stringPtr;
+    const char  *string = *stringPtr;
     int          length = (stringLengthPtr ? *stringLengthPtr : strlen(string));
     char        *newptr = NULL;
     int		 quoteChar = '\0'; // no quote by default
     int		 maxExpansion = 4; // worst possible worst case
     int		 strict = 0;
 
-    static CONST char *special = "\b\f\n\r\t\v\\";
-    static CONST char *replace = "bfnrtv\\";
+    static const char *special = "\b\f\n\r\t\v\\";
+    static const char *replace = "bfnrtv\\";
 
     if(quoteType == CTABLE_QUOTE_STRICT_URI) {
 	quoteType = CTABLE_QUOTE_URI;
@@ -93,7 +93,7 @@ ctable_quoteString(CONST char **stringPtr, int *stringLengthPtr, int quoteType, 
 // format error.
 //
 CTABLE_INTERNAL int
-ctable_copyDequoted(char *dst, CONST char *src, int length, int quoteType)
+ctable_copyDequoted(char *dst, const char *src, int length, int quoteType)
 {
     int i = 0, j = 0;
     int strict = 0;
@@ -174,7 +174,7 @@ CTABLE_INTERNAL int ctable_dequoteString(char *string, int length, int quoteType
     return ctable_copyDequoted(string, string, length, quoteType);
 }
 
-static CONST char *ctable_quote_names[] = { "none", "uri", "escape", "strict_uri", "strict_escape", NULL };
+static const char *ctable_quote_names[] = { "none", "uri", "escape", "strict_uri", "strict_escape", NULL };
 static int         ctable_quote_types[] = { CTABLE_QUOTE_NONE, CTABLE_QUOTE_URI, CTABLE_QUOTE_ESCAPE, CTABLE_QUOTE_STRICT_URI, CTABLE_QUOTE_STRICT_ESCAPE };
 
 //

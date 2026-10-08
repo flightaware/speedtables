@@ -113,7 +113,7 @@ ctable_verify (Tcl_Interp *interp, CTable *ctable, int verbose) {
  *
  */
 CTABLE_INTERNAL int
-ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, int **fieldListPtr, int *fieldCountPtr) {
+ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, const char **fieldNames, int **fieldListPtr, int *fieldCountPtr) {
     int             nFields;
     Tcl_Obj       **fieldsObjv;
     int             i;
@@ -156,7 +156,7 @@ ctable_ParseFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **f
 //
 //
 CTABLE_INTERNAL int
-ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, CONST char **fieldNames, CTableSort *sort) {
+ctable_ParseSortFieldList (Tcl_Interp *interp, Tcl_Obj *fieldListObj, const char **fieldNames, CTableSort *sort) {
     int             nFields;
     Tcl_Obj       **fieldsObjv;
     Tcl_Obj        *fieldNameObj;
@@ -318,7 +318,7 @@ CTABLE_INTERNAL void ctable_FreeInRows(CTable *ctable, CTableSearchComponent *co
 }
 
 static int
-ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListObj, CONST char **fieldNames, CTableSearch *search) {
+ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListObj, const char **fieldNames, CTableSearch *search) {
     Tcl_Obj    **componentList;
     int          componentIdx;
     int          componentListCount;
@@ -331,7 +331,7 @@ ctable_ParseSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *componentListOb
     CTableSearchComponent  *components;
     CTableSearchComponent  *component;
 
-    static CONST char *searchTerms[] = CTABLE_SEARCH_TERMS;
+    static const char *searchTerms[] = CTABLE_SEARCH_TERMS;
 
     if (Tcl_ListObjGetElements (interp, componentListObj, &componentListCount, &componentList) == TCL_ERROR) {
         return TCL_ERROR;
@@ -2011,15 +2011,15 @@ if(num_restarts) fprintf(stderr, "%d: Restarted search %d times\n", getpid(), nu
 //
 //
 static int
-ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, CTableSearch *search, int indexField, CTableSearch *previous_search) {
+ctable_SetupSearch (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *const objv[], int objc, CTableSearch *search, int indexField, CTableSearch *previous_search) {
     int             i;
     int             searchTerm = 0;
-    CONST char    **fieldNames = ctable->creator->fieldNames;
+    const char    **fieldNames = ctable->creator->fieldNames;
     int		    quick_count;
 
     static int staticSequence = 0;
 
-    static CONST char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", "-null", "-filter", "-cursor", (char *)NULL};
+    static const char *searchOptions[] = {"-array", "-array_with_nulls", "-array_get", "-array_get_with_nulls", "-code", "-compare", "-countOnly", "-fields", "-get", "-glob", "-key", "-with_field_names", "-limit", "-nokeys", "-offset", "-sort", "-write_tabsep", "-tab", "-delete", "-update", "-buffer", "-index", "-poll_code", "-poll_interval", "-quote", "-null", "-filter", "-cursor", (char *)NULL};
 
     enum searchOptions {SEARCH_OPT_ARRAY_NAMEOBJ, SEARCH_OPT_ARRAYWITHNULLS_NAMEOBJ, SEARCH_OPT_ARRAYGET_NAMEOBJ, SEARCH_OPT_ARRAYGETWITHNULLS_NAMEOBJ, SEARCH_OPT_CODE, SEARCH_OPT_COMPARE, SEARCH_OPT_COUNTONLY, SEARCH_OPT_FIELDS, SEARCH_OPT_GET_NAMEOBJ, SEARCH_OPT_GLOB, SEARCH_OPT_KEYVAR_NAMEOBJ, SEARCH_OPT_WITH_FIELD_NAMES, SEARCH_OPT_LIMIT, SEARCH_OPT_DONT_INCLUDE_KEY, SEARCH_OPT_OFFSET, SEARCH_OPT_SORT, SEARCH_OPT_WRITE_TABSEP, SEARCH_OPT_TAB, SEARCH_OPT_DELETE, SEARCH_OPT_UPDATE, SEARCH_OPT_BUFFER, SEARCH_OPT_INDEX, SEARCH_OPT_POLL_CODE, SEARCH_OPT_POLL_INTERVAL, SEARCH_OPT_QUOTE_TYPE, SEARCH_OPT_NULL_STRING, SEARCH_OPT_FILTER, SEARCH_OPT_CURSOR};
     if (objc < 2) {
@@ -2526,7 +2526,7 @@ ctable_elapsed_time (struct timespec *oldtime, struct timespec *newtime, struct 
 // ctable_performance_callback - callback routine for performance of search calls
 //
 void
-ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc, struct timespec *startTimeSpec, int loggingMatchCount) {
+ctable_performance_callback (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *const objv[], int objc, struct timespec *startTimeSpec, int loggingMatchCount) {
     struct timespec endTimeSpec;
     struct timespec elapsedTimeSpec;
     Tcl_Obj *cmdObjv[4];
@@ -2642,7 +2642,7 @@ ctable_TeardownSearch (CTableSearch *search) {
 //
 //
 CTABLE_INTERNAL int
-ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *CONST objv[], int objc, CTable *ctable, int indexField) {
+ctable_SetupAndPerformSearch (Tcl_Interp *interp, Tcl_Obj *const objv[], int objc, CTable *ctable, int indexField) {
     CTableSearch    search;
     int result;
 #ifdef CTABLES_CLOCK
@@ -2770,7 +2770,7 @@ ctable_DumpIndex (CTable *ctable, int field) {
     jsw_skip_t *skip = ctable->skipLists[field];
     ctable_BaseRow *row;
     Tcl_Obj    *utilityObj = Tcl_NewObj ();
-    CONST char *s;
+    const char *s;
 
     if (skip == NULL) {
         return TCL_OK;

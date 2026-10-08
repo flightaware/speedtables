@@ -15,11 +15,11 @@ CTABLE_EXTERNAL int
 ${extension}_Init(Tcl_Interp *interp);
 
 static int
-cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+cExtensionObjCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {    int      optIndex;
  
  
-    static CONST char *options[] = {
+    static const char *options[] = {
         "definition", "builder_version", "tables", (char *)NULL
     };
  
