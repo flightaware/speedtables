@@ -8,21 +8,20 @@ namespace eval ::ctable_test {
 	if {![info exists suffix]} {
 		set suffix ""
 	}
-}
-
-if {![info exists nametags]} {
-	set nametags [list]
+	if {![info exists nametags]} {
+		set nametags [list]
+	}
 }
 
 CExtension multi$::ctable_test::suffix 1.0 {
 
 CTable nameval$::ctable_test::suffix {
-    varstring name {*}$nametags
+    varstring name {*}$::ctable_test::nametags
     varstring value
 }
 
 CTable elements$::ctable_test::suffix {
-    varstring name {*}$nametags
+    varstring name {*}$::ctable_test::nametags
     varstring symbol
 }
 
