@@ -3023,7 +3023,7 @@ proc gen_delete_subr {subr struct} {
 variable isNullSubrSource {
 int ${table}_obj_is_null(Tcl_Obj *obj) {
     char     *objString;
-    int       objStringLength;
+    Tcl_Size  objStringLength;
 
      objString = Tcl_GetStringFromObj (obj, &objStringLength);
 
