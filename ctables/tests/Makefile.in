@@ -1,14 +1,14 @@
 #
 # run some tests
 #
-# $Id$
-#
 
 # default 
+TCL_VERSION     = @TCL_VERSION@
 TCLSH_ENV       = TCL_LIBRARY=`@CYGPATH@ @TCL_SRC_DIR@/library` \
                   @LD_LIBRARY_PATH_VAR@="@TCL_BIN_DIR@:$(@LD_LIBRARY_PATH_VAR@)" \
                   PATH="@TCL_BIN_DIR@:$(PATH)" \
-                  TCLLIBPATH=".."
+                  TCLLIBPATH=".." \
+                  TCL_VERSION="@TCL_VERSION@"
 TCLSH_PROG      = @TCLSH_PROG@
 TCLSH           = $(TCLSH_ENV) $(TCLSH_PROG)
 TCLSHM          = $(TCLSH)
@@ -24,6 +24,9 @@ TCLSHM          = $(TCLSH)
 all: maintests macip allstapi corrupt
 
 maintests:
+	@echo "ENVIRONMENT"
+	cat Makefile
+	$(TCLSH_ENV) env
 	rm -rf stobj
 	$(TCLSH) speedtable.tcl
 	$(TCLSH) serious-tests.tcl

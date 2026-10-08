@@ -230,10 +230,11 @@ install-doc: doc
 #	done
 
 test: sysconfig.sh binaries libraries
-	cd $(srcdir)/tests && $(MAKE) TCL_VERSION=$(TCL_VERSION)
+	cd $(srcdir)/tests && $(MAKE)
 
 sysconfig.sh:
-	sed -i "/TCLVER/s/.*/TCLVER=$(TCL_VERSION)" sysconfig.sh
+	echo "@ SETTING TCLVER TO $(TCL_VERSION)"
+	echo "TCLVER=$(TCL_VERSION)" > sysconfig.sh
 
 # various convenience targets to run test cases defined in the tests subdirectory.
 compare searchget null indef master speed pools reader stapi stapi2 stapi3 filter filter2 multireader speedreader readerperf tclobj barnrow gbarnrow:
