@@ -26,7 +26,7 @@ jobs:
         sudo apt-get install -y gcc-11 g++-11
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110 --slave /usr/bin/g++ g++ /usr/bin/g++-11
         sudo apt-get install -y tcl9.0-dev tcllib libboost-all-dev
-        git clone -b v9.0.0 git@github.com:flightaware/tclx.git
+        git clone -b v9.0.0 https://github.com/flightaware/tclx.git
         cd tclx/unix
         ./configure
         make
