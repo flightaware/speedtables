@@ -44,6 +44,8 @@
 
 #include "speedtables.h"
 
+#include "tclsize.h"
+
 #ifdef WITH_SHARED_TABLES
 #include "shared.c"
 
@@ -321,7 +323,7 @@ struct CTableSearchComponent {
     fieldCompareFunction_t   compareFunction;
     Tcl_Obj                **inListObj;
     ctable_BaseRow	   **inListRows;
-    int                      inCount;
+    Tcl_Size                 inCount;
     int                      fieldID;
     int                      comparisonType;
 };
@@ -402,7 +404,7 @@ struct CTableSearch {
 
     Tcl_Channel                          tabsepChannel;
     int                                  writingTabsepIncludeFieldNames;
-    CONST char				*sepstr;
+    const char				*sepstr;
 
     // count of matches during a search
     int                                  matchCount;
@@ -437,9 +439,9 @@ struct CTableSearch {
 };
 
 struct ctable_FieldInfo {
-    CONST char              *name;
+    const char              *name;
     Tcl_Obj                 *nameObj;
-    CONST char             **propKeys;
+    const char             **propKeys;
     char                   **propValues;
     fieldCompareFunction_t   compareFunction;
     int                      number;
@@ -454,7 +456,7 @@ struct ctable_CreatorTable {
     Tcl_HashTable     *registeredProcTablePtr;
     long unsigned int     nextAutoCounter;
 
-    CONST char          **fieldNames;
+    const char          **fieldNames;
     Tcl_Obj             **nameObjList;
     Tcl_Obj		**keyObjList;
     int                  *fieldList;
@@ -469,18 +471,18 @@ struct ctable_CreatorTable {
     int		       nPublicFields;
     int                nLinkedLists;
 
-    CONST char		   **filterNames;
-    CONST filterFunction_t  *filterFunctions;
+    const char		   **filterNames;
+    const filterFunction_t  *filterFunctions;
     int			     nFilters;
 
     ctable_BaseRow *(*make_empty_row) (struct CTable *ctable);
-    ctable_BaseRow *(*find_row) (struct CTable *ctable, CONST char *key);
+    ctable_BaseRow *(*find_row) (struct CTable *ctable, const char *key);
 
     int (*set) (Tcl_Interp *interp, struct CTable *ctable, Tcl_Obj *dataObj, ctable_BaseRow *row, int field, int indexCtl);
     int (*set_null) (Tcl_Interp *interp, struct CTable *ctable, ctable_BaseRow *row, int field, int indexCtl);
 
     Tcl_Obj *(*get) (Tcl_Interp *interp, ctable_BaseRow *row, int field);
-    CONST char *(*get_string) (const ctable_BaseRow *pointer, int field, int *lengthPtr, Tcl_Obj *utilityObj);
+    const char *(*get_string) (const ctable_BaseRow *pointer, int field, Tcl_Size *lengthPtr, Tcl_Obj *utilityObj);
 
     Tcl_Obj *(*gen_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
     Tcl_Obj *(*gen_keyvalue_list) (Tcl_Interp *interp, ctable_BaseRow *pointer);
@@ -488,7 +490,7 @@ struct ctable_CreatorTable {
     int (*lappend_field) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
     int (*lappend_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
     int (*lappend_nonnull_field_and_name) (Tcl_Interp *interp, Tcl_Obj *destListObj, ctable_BaseRow *p, int field);
-    void (*dstring_append_get_tabsep) (CONST char *key, ctable_BaseRow *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, CONST char *sepstr, int quoteType, CONST char *nullString);
+    void (*dstring_append_get_tabsep) (const char *key, ctable_BaseRow *pointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKey, const char *sepstr, int quoteType, const char *nullString);
 
     int (*array_set) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
     int (*array_set_with_nulls) (Tcl_Interp *interp, Tcl_Obj *arrayNameObj, ctable_BaseRow *row, int field);
@@ -498,11 +500,11 @@ struct ctable_CreatorTable {
 
     void (*delete_row) (struct CTable *ctable, ctable_BaseRow *row, int indexCtl);
 
-    int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-    int (*cursor_command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+    int (*command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
+    int (*cursor_command) (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 
 #ifdef SANITY_CHECKS
-    void (*sanity_check_pointer)(struct CTable *ctable, void *ptr, int indexCtl, CONST char *where);
+    void (*sanity_check_pointer)(struct CTable *ctable, void *ptr, int indexCtl, const char *where);
 #endif
     CT_LIST_HEAD(instances, CTable) instances;
 };

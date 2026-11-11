@@ -890,7 +890,7 @@ to character strings and an enumerated type definition of the fields:
 
 #define CABLE_INFO_NFIELDS 10
 
-static CONST char *cable_info_fields[] = {
+static const char *cable_info_fields[] = {
     "ip",
     "mac",
     "name",
@@ -1037,7 +1037,7 @@ string returned is set into the pointed-to integer.
 
 Example:
 
-    CONST char *cable_info_get_string (struct cable_info *cable_info_ptr, int field, int *lengthPtr, Tcl_Obj *utilityObj) {...}
+    const char *cable_info_get_string (struct cable_info *cable_info_ptr, int field, int *lengthPtr, Tcl_Obj *utilityObj) {...}
 
 For fixed strings and varstrings, no copying is performed.
 

@@ -35,15 +35,15 @@ typedef struct ctable_HashEntry ctable_HashEntry;
 
 typedef unsigned int (ctable_HashKeyProc) (
         ctable_HashTable *tablePtr,
-	VOID *keyPtr);
+	void *keyPtr);
 
 typedef int (ctable_CompareHashKeysProc) (
         ctable_HashTable *tablePtr, 
-	VOID *keyPtr,
+	void *keyPtr,
 	ctable_HashEntry *hPtr);
 
 typedef ctable_HashEntry *(ctable_AllocHashEntryProc) (
-	ctable_HashTable *tablePtr, VOID *keyPtr);
+	ctable_HashTable *tablePtr, void *keyPtr);
 
 typedef void (ctable_FreeHashEntryProc) (ctable_HashEntry *hPtr);
 

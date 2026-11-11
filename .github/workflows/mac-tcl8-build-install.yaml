@@ -1,0 +1,34 @@
+name: Mac tcl8 build-install
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        set -x
+        brew update
+        brew reinstall tcl-tk@8
+        brew install autoconf
+        brew install automake
+        brew install boost boost-build
+    - name: configure
+      run: |       
+        autoreconf -vi
+        PREFIX=/opt/homebrew/opt
+        TCL=$PREFIX/tcl-tk@8
+        BOOST=$PREFIX/boost
+        ./configure --with-tcl=$TCL/lib --prefix=$TCL --with-boost=$BOOST
+    - name: make
+      run: make
+    - name: install
+      run: sudo make install

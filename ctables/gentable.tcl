@@ -314,7 +314,7 @@ proc gen_allocate_function {table} {
 }
 
 variable sanitySource {
-void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, CONST char *where)
+void ${table}_sanity_check_pointer(CTable *ctable, void *ptr, int indexCtl, const char *where)
 {
 #ifdef WITH_SHARED_TABLES
     if(indexCtl != CTABLE_INDEX_NEW) {
@@ -694,7 +694,7 @@ variable keySetSource {
 variable varstringSetSource {
       case $optname: {
 	const char *stringPtr = NULL;
-	int   length;
+	Tcl_Size   length;
 [gen_null_check_during_set_source $table $fieldName]
 
 	stringPtr = Tcl_GetStringFromObj (obj, &length);
@@ -766,7 +766,7 @@ variable charSetSource {
 variable fixedstringSetSource {
       case $optname: {
 	const char *stringPtr;
-	int   len;
+	Tcl_Size   len;
 [gen_null_check_during_set_source $table $fieldName]
 	stringPtr = Tcl_GetStringFromObj (obj, &len);
 [gen_unset_null_during_set_source $table $fieldName "
@@ -1238,8 +1238,8 @@ variable varstringCompSource {
 	      struct ctableSearchMatchStruct *sm = (struct ctableSearchMatchStruct *)component->clientData;
 
 	      if (sm->type == CTABLE_STRING_MATCH_ANCHORED) {
-		  CONST char *field;
-		  CONST char *match;
+		  const char *field;
+		  const char *match;
 
 		  exclude = !matchMeansKeep;
 		  for (field = row->$fieldName, match = row1->$fieldName; *match != '*' && *match != '\0'; match++, field++) {
@@ -1484,7 +1484,7 @@ struct $table *${table}_find_or_create (Tcl_Interp *interp, CTable *ctable, cons
 int
 ${table}_set_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl, int nocomplain)
 {
-    int field;
+    Tcl_Size field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
 	if (nocomplain) {
@@ -1509,7 +1509,7 @@ variable fieldSetSwitchSource {
 }
 
 variable fieldObjGetSource {
-ctable_BaseRow *${table}_find (CTable *ctable, CONST char *key) {
+ctable_BaseRow *${table}_find (CTable *ctable, const char *key) {
     ctable_HashEntry *hashEntry;
 
     hashEntry = ctable_FindHashEntry (ctable->keyTablePtr, key);
@@ -1523,7 +1523,7 @@ ctable_BaseRow *${table}_find (CTable *ctable, CONST char *key) {
 Tcl_Obj *
 ${table}_get_fieldobj (Tcl_Interp *interp, struct $table *row, Tcl_Obj *fieldObj)
 {
-    int field;
+    Tcl_Size field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return (Tcl_Obj *)NULL;
@@ -1586,7 +1586,7 @@ ${table}_lappend_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListObj, ctabl
 int
 ${table}_lappend_field_and_nameobj (Tcl_Interp *interp, ctable_BaseRow *vPointer, Tcl_Obj *fieldObj)
 {
-    int        field;
+    Tcl_Size        field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return TCL_ERROR;
@@ -1623,7 +1623,7 @@ ${table}_lappend_nonnull_field_and_name (Tcl_Interp *interp, Tcl_Obj *destListOb
 int
 ${table}_lappend_nonnull_field_and_nameobj (Tcl_Interp *interp, ctable_BaseRow *vPointer, Tcl_Obj *fieldObj)
 {
-    int        field;
+    Tcl_Size        field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return TCL_ERROR;
@@ -1686,12 +1686,12 @@ ${table}_get (Tcl_Interp *interp, ctable_BaseRow *vPointer, int field) $leftCurl
 }
 
 variable fieldGetStringSource {
-CONST char *
-${table}_get_string (const ctable_BaseRow *vPointer, int field, int *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
-    int length;
+const char *
+${table}_get_string (const ctable_BaseRow *vPointer, int field, Tcl_Size *lengthPtr, Tcl_Obj *utilityObj) $leftCurly
+    Tcl_Size length;
     const struct $table *row = (const struct $table*) vPointer;
 
-    if (lengthPtr == (int *) NULL) {
+    if (lengthPtr == (Tcl_Size *) NULL) {
         lengthPtr = &length;
     }
 
@@ -1706,7 +1706,7 @@ ${table}_get_string (const ctable_BaseRow *vPointer, int field, int *lengthPtr, 
 
 variable tabSepFunctionsSource {
 
-void ${table}_dumpFieldNums(int *fieldNums, int nFields, CONST char *msg)
+void ${table}_dumpFieldNums(int *fieldNums, int nFields, const char *msg)
 {
     int i;
 
@@ -1722,10 +1722,10 @@ void ${table}_dumpFieldNums(int *fieldNums, int nFields, CONST char *msg)
 }
 
 void
-${table}_dstring_append_get_tabsep (CONST char *key, ctable_BaseRow *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, CONST char *sepstr, int quoteType, CONST char *nullString) {
+${table}_dstring_append_get_tabsep (const char *key, ctable_BaseRow *vPointer, int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, const char *sepstr, int quoteType, const char *nullString) {
     int              i;
-    CONST char      *string;
-    int              nChars;
+    const char      *string;
+    Tcl_Size         nChars;
     Tcl_Obj         *utilityObj = Tcl_NewObj();
     struct $table *row = (struct $table *) vPointer;
 
@@ -1769,7 +1769,7 @@ ${table}_dstring_append_get_tabsep (CONST char *key, ctable_BaseRow *vPointer, i
 }
 
 void
-${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, CONST char *sepstr)
+${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *dsPtr, int noKeys, const char *sepstr)
 {
     int i;
 
@@ -1787,9 +1787,9 @@ ${table}_dstring_append_fieldnames (int *fieldNums, int nFields, Tcl_DString *ds
     Tcl_DStringAppend (dsPtr, "\n", 1);
 }
 
-// TODO: stringPtr argument should probably be CONST and not modified.
+// TODO: stringPtr argument should probably be const and not modified.
 int
-${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *stringPtr, int *nFieldsPtr, int **fieldNumsPtr, int *noKeysPtr, CONST char *sepstr, int nocomplain)
+${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *stringPtr, int *nFieldsPtr, int **fieldNumsPtr, int *noKeysPtr, const char *sepstr, int nocomplain)
 {
     int    i;
     int    field;
@@ -1862,7 +1862,7 @@ ${table}_get_fields_from_tabsep (Tcl_Interp *interp, char *stringPtr, int *nFiel
 }
 
 int
-${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, CONST char *sepstr, CONST char *term, int quoteType, CONST char *nullString) {
+${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, const char *channelName, int *fieldNums, int nFields, char *pattern, int noKeys, int withFieldNames, const char *sepstr, const char *term, int quoteType, const char *nullString) {
     Tcl_Channel             channel;
     int                     mode;
     Tcl_DString             dString;
@@ -1929,7 +1929,7 @@ ${table}_export_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 }
 
 int
-${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *stringPtr, int *fieldIds, int nFields, int keyColumn, CONST char *sepstr, CONST char *nullString, int quoteType, int dirty) {
+${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, const char *stringPtr, int *fieldIds, int nFields, int keyColumn, const char *sepstr, const char *nullString, int quoteType, int dirty) {
     struct $table *row;
     const char    *key;
     int            indexCtl;
@@ -1952,7 +1952,7 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *string
         }
         if (key) {
 			int keyLength;
-			CONST char *keyEnd = strstr(key, sepstr);
+			const char *keyEnd = strstr(key, sepstr);
 			if(keyEnd) {
 				keyLength = keyEnd - key;
 			} else {
@@ -2051,11 +2051,11 @@ ${table}_set_from_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *string
 }
 
 int
-${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelName, int *fieldNums, int nFields, CONST char *pattern, int noKeys, int withFieldNames, CONST char *sepstr, CONST char *skip, CONST char *term, int nocomplain, int withNulls, int quoteType, CONST char *nullString, int poll_interval, Tcl_Obj *poll_code, int poll_foreground, int dirty) {
+${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, const char *channelName, int *fieldNums, int nFields, const char *pattern, int noKeys, int withFieldNames, const char *sepstr, const char *skip, const char *term, int nocomplain, int withNulls, int quoteType, const char *nullString, int poll_interval, Tcl_Obj *poll_code, int poll_foreground, int dirty) {
     Tcl_Channel      channel;
     int              mode;
     Tcl_Obj         *lineObj = NULL;
-    char            *stringPtr;                  // TODO: should probably be CONST and not modified.
+    char            *stringPtr;                  // TODO: should probably be const and not modified.
     int              recordNumber = 0;
     char             keyNumberString[32];
     int		     keyColumn;
@@ -2117,7 +2117,7 @@ ${table}_import_tabsep (Tcl_Interp *interp, CTable *ctable, CONST char *channelN
 
 //${table}_dumpFieldNums(fieldNums, nFields, "after key check");
     if(withNulls && !nullString) {
-	int nullLen;
+	Tcl_Size nullLen;
 
 	nullString = Tcl_GetStringFromObj (${table}_NullValueObj, &nullLen);
     }
@@ -2397,7 +2397,7 @@ proc gen_filters {} {
 		validate_arg_name $listName
 
 		emit "    Tcl_Obj **$listName;"
-		emit "    int       $listCount;\n"
+		emit "    Tcl_Size  $listCount;\n"
 		emit "    if(Tcl_ListObjGetElements(interp, filter, &$listCount, &$listName) != TCL_OK)"
 		emit "        return TCL_ERROR;"
 
@@ -2416,7 +2416,7 @@ proc gen_filters {} {
 		    gen_get_filter_arg [lindex $filter(args) 0] [lindex $filter(args) 1] filter
 	        } else {
 		    emit "        Tcl_Obj **filterList;"
-        	    emit "        int       filterCount;\n"
+		    emit "        Tcl_Size  filterCount;\n"
         	    emit "        if (Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)"
           	    emit "             return TCL_ERROR;\n"
 		    set argNames ""
@@ -2445,14 +2445,14 @@ proc gen_filters {} {
     }
 
     # Define filter lookup table
-    emit "static CONST char *${table}_filterNames\[] = $leftCurly"
+    emit "static const char *${table}_filterNames\[] = $leftCurly"
     foreach name $filterList {
 	emit "    \"$name\","
     }
     emit "    (char *) NULL"
     emit "$rightCurly;\n"
 
-    emit "static CONST filterFunction_t ${table}_filterFunctions\[] = $leftCurly"
+    emit "static const filterFunction_t ${table}_filterFunctions\[] = $leftCurly"
     foreach name $filterList {
 	emit "    ${table}_filter_${name},"
     }
@@ -2694,7 +2694,7 @@ proc gen_ctable_type_stuff {} {
     variable leftCurly
     variable rightCurly
 
-    emit "static CONST char *ctableTypes\[\] = $leftCurly"
+    emit "static const char *ctableTypes\[\] = $leftCurly"
     foreach type $ctableTypes {
         emit "    \"$type\","
     }
@@ -3023,7 +3023,7 @@ proc gen_delete_subr {subr struct} {
 variable isNullSubrSource {
 int ${table}_obj_is_null(Tcl_Obj *obj) {
     char     *objString;
-    int       objStringLength;
+    Tcl_Size  objStringLength;
 
      objString = Tcl_GetStringFromObj (obj, &objStringLength);
 
@@ -3392,7 +3392,7 @@ variable incrFieldObjSource {
 int
 ${table}_incr_fieldobj (Tcl_Interp *interp, CTable *ctable, Tcl_Obj *obj, struct $table *row, Tcl_Obj *fieldObj, int indexCtl)
 {
-    int field;
+    Tcl_Size field;
 
     if (Tcl_GetIndexFromObj (interp, fieldObj, ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
         return TCL_ERROR;
@@ -3708,14 +3708,14 @@ proc put_init_extension_source {extension extensionVersion} {
 }
 
 variable noCleanDirtyTableSource {
-CONST int
+const int
 ${table}_clean(Tcl_Interp *interp, CTable *ctable)
 {
     Tcl_AppendResult(interp, "Dirty bits not implemented.", NULL);
     return TCL_ERROR;
 }
 
-CONST int
+const int
 ${table}_dirty(Tcl_Interp *interp, CTable *ctable)
 {
     Tcl_AppendResult(interp, "Dirty bits not implemented.", NULL);
@@ -3724,7 +3724,7 @@ ${table}_dirty(Tcl_Interp *interp, CTable *ctable)
 }
 
 variable cleanDirtyTableSource {
-CONST int
+const int
 ${table}_clean(Tcl_Interp *interp, CTable *ctable)
 {
     ctable_BaseRow *row = NULL;
@@ -3744,7 +3744,7 @@ ${table}_clean(Tcl_Interp *interp, CTable *ctable)
     return TCL_OK;
 }
 
-CONST int
+const int
 ${table}_dirty(Tcl_Interp *interp, CTable *ctable, ctable_BaseRow *row)
 {
 #ifdef WITH_SHARED_TABLES
@@ -4451,7 +4451,7 @@ proc gen_field_names {} {
 
     emit "int      ${table}_keyField = $keyField;"
 
-    emit "static CONST char *${table}_fields\[] = $leftCurly"
+    emit "static const char *${table}_fields\[] = $leftCurly"
     foreach fieldName $fieldList {
 	emit "    \"$fieldName\","
     }
@@ -4513,16 +4513,16 @@ proc gen_field_names {} {
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
-	set propstring "static CONST char *[field_to_var $table $fieldName propkeys]\[] = $leftCurly"
+	set propstring "static const char *[field_to_var $table $fieldName propkeys]\[] = $leftCurly"
 
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$fieldName\", "
 	}
-	emit "${propstring}(CONST char *)NULL$rightCurly;"
+	emit "${propstring}(const char *)NULL$rightCurly;"
     }
     emit ""
 
-    set propstring "static CONST char **${table}_propKeys\[] = $leftCurly"
+    set propstring "static const char **${table}_propKeys\[] = $leftCurly"
     foreach fieldName $fieldList {
         append propstring "[field_to_var $table $fieldName propkeys],"
     }
@@ -4534,16 +4534,16 @@ proc gen_field_names {} {
     foreach fieldName $fieldList {
 	upvar ::ctable::fields::$fieldName field
 
-	set propstring "static CONST char *[field_to_var $table $fieldName propvalues]\[] = $leftCurly"
+	set propstring "static const char *[field_to_var $table $fieldName propvalues]\[] = $leftCurly"
 
 	foreach fieldName [lsort [array names field]] {
 	    append propstring "\"$field($fieldName)\", "
 	}
-	emit "${propstring}(CONST char *)NULL$rightCurly;"
+	emit "${propstring}(const char *)NULL$rightCurly;"
     }
     emit ""
 
-    set propstring "static CONST char **${table}_propValues\[] = $leftCurly"
+    set propstring "static const char **${table}_propValues\[] = $leftCurly"
     foreach fieldName $fieldList {
         append propstring "[field_to_var $table $fieldName propvalues],"
     }
@@ -4560,7 +4560,7 @@ proc gen_field_names {} {
     emit "// define the null value object"
     emit "static Tcl_Obj *${table}_NullValueObj;"
     emit "static char *${table}_NullValueString;"
-    emit "static int ${table}_NullValueSize;"
+    emit "static Tcl_Size ${table}_NullValueSize;"
     emit ""
 
     set nullableList {}
@@ -4594,7 +4594,7 @@ proc gen_field_names {} {
         }
 
         emit "// define default string list"
-        emit "static CONST char *${table}_defaultStrings\[] = $leftCurly"
+        emit "static const char *${table}_defaultStrings\[] = $leftCurly"
         emit "    \"[join $defaultStrings {", "}]\""
         emit "$rightCurly;"
         emit ""
@@ -5879,7 +5879,7 @@ proc install_ch_files {includeDir} {
     lappend subdirs skiplists hash
 
     set copyFiles {
-	ctable.h ctable_search.c ctable_lists.c ctable_batch.c
+	ctable.h tclsize.h ctable_search.c ctable_lists.c ctable_batch.c
 	boyer_moore.c jsw_rand.c jsw_rand.h jsw_slib.c jsw_slib.h
 	speedtables.h speedtableHash.c ctable_io.c ctable_qsort.c
 	ethers.c
@@ -6018,10 +6018,10 @@ proc start_codegen {} {
 
     ::ctable::emit "#include \"ctable_search.c\""
 
-    ::ctable::emit "static CONST char *sourceCode = \"[::ctable::cquote "CExtension $::ctable::extension $::ctable::extensionVersion { $::ctable::sourceCode }"]\";"
+    ::ctable::emit "static const char *sourceCode = \"[::ctable::cquote "CExtension $::ctable::extension $::ctable::extensionVersion { $::ctable::sourceCode }"]\";"
     ::ctable::emit ""
 
-    ::ctable::emit "static CONST char *ctablePackageVersion = \"$::ctable::ctablePackageVersion\";"
+    ::ctable::emit "static const char *ctablePackageVersion = \"$::ctable::ctablePackageVersion\";"
 
     if [info exists ::ctable::rawCode] {
 	::ctable::emit "// BEGIN imported C Code"

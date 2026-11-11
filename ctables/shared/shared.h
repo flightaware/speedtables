@@ -43,7 +43,7 @@ using namespace boost::container;
 #endif
 
 #ifndef WITH_TCL
-#define CONST const
+#define const const
 #endif
 
 // TUNING
@@ -158,9 +158,9 @@ cell_t oldest_reader_cycle(shm_t *shm);
 void shared_perror(const char *text);
 void shmpanic(const char *message);
 #ifdef WITH_SHMEM_SYMBOL_LIST
-int add_symbol(shm_t *shm, CONST char *name, char *value, int type);
-int set_symbol(shm_t *shm, CONST char *name, char *value, int type);
-char *get_symbol(shm_t *shm, CONST char *name, int wanted);
+int add_symbol(shm_t *shm, const char *name, char *value, int type);
+int set_symbol(shm_t *shm, const char *name, char *value, int type);
+char *get_symbol(shm_t *shm, const char *name, int wanted);
 #endif
 int use_name(shm_t *share, const char *symbol);
 void release_name(shm_t *share, const char *symbol);
@@ -184,7 +184,7 @@ int TclGetSizeFromObj(Tcl_Interp *interp, Tcl_Obj *obj, size_t *ptr);
 void TclShmError(Tcl_Interp *interp, const char *name);
 int doCreateOrAttach(Tcl_Interp *interp, const char *sharename, const char *filename, size_t size, int flags, shm_t **sharePtr);
 int doDetach(Tcl_Interp *interp, shm_t *share);
-int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+int shareCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 #endif
 
 

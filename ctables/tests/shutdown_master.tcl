@@ -6,7 +6,10 @@
 
 package require ctable_client
 
-set suffix _m
+namespace eval ::ctable_test {
+    set suffix _m
+}
+
 set verbose 0
 
 source top-brands-nokey-def.tcl

@@ -8,13 +8,18 @@ package require ctable
 
 #CTableBuildPath /tmp
 
-if {![info exists suffix]} {
-    set suffix ""
+set ::ctable::showCompilerCommands 1
+set ::ctable::errorDebug 1
+
+namespace eval ::ctable_test {
+    if {![info exists suffix]} {
+	set suffix ""
+    }
 }
 
-CExtension topbrandsnokey$suffix 1.0 {
+CExtension topbrandsnokey$::ctable_test::suffix 1.0 {
 
-CTable top_brands_nokey$suffix {
+CTable top_brands_nokey$::ctable_test::suffix {
     varstring id indexed 1
     int rank indexed 1
     varstring name indexed 1
@@ -23,6 +28,6 @@ CTable top_brands_nokey$suffix {
 
 }
 
-package require Topbrandsnokey$suffix
+package require Topbrandsnokey$::ctable_test::suffix
 
-top_brands_nokey$suffix create t
+top_brands_nokey$::ctable_test::suffix create t

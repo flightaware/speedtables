@@ -1,8 +1,8 @@
 // $Id$
 
 #ifdef WITH_PGTCL
-extern "C" PGresult *PgGetResultId (Tcl_Interp *interp, CONST char *id, void **resultidPtr);
-extern "C" PGconn *PgGetConnectionId (Tcl_Interp *interp, CONST char *id, void **resultidPtr);
+extern "C" PGresult *PgGetResultId (Tcl_Interp *interp, const char *id, void **resultidPtr);
+extern "C" PGconn *PgGetConnectionId (Tcl_Interp *interp, const char *id, void **resultidPtr);
 #endif
 
 // ctable table-specific function to delete all rows
@@ -138,10 +138,10 @@ void ${table}_cmdDeleteProc (ClientData clientData)
 }
 
 // Forward definitions
-int ${table}MetaObjCmd(ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *CONST objv[], int objc);
+int ${table}MetaObjCmd(ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
+int ${table}CursorCommand(Tcl_Interp *interp, CTable *ctable, Tcl_Obj *const objv[], int objc);
 
-int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     CTable *ctable = (CTable *)cData;
     struct $table *row;
@@ -151,27 +151,27 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     int indexCtl;
     int commandStatus = TCL_OK;
 
-    static CONST char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", "clean", "cursors", (char *)NULL};
+    static const char *options[] = {"get", "set", "store", "incr", "array_get", "array_get_with_nulls", "exists", "delete", "count", "batch", "search", "search+", "type", "import_postgres_result", "import_cassandra_future", "fields", "field", "fieldtype", "needs_quoting", "names", "reset", "destroy", "statistics", "read_tabsep", "write_tabsep", "index", "foreach", "key", "makekey", "methods", "attach", "getprop", "share", "null", "isnull", "verify", "performance_callback", "clean", "cursors", (char *)NULL};
 
-    enum options {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, OPT_CLEAN, OPT_CURSORS, NUM_OPTIONS
+    enum options_e {OPT_GET, OPT_SET, OPT_STORE, OPT_INCR, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_DELETE, OPT_COUNT, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_RESET, OPT_DESTROY, OPT_STATISTICS, OPT_READ_TABSEP, OPT_WRITE_TABSEP, OPT_INDEX, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_ATTACH, OPT_GETPROP, OPT_SHARE, OPT_NULL, OPT_ISNULL, OPT_VERIFY, OPT_PERFORMANCE_CALLBACK, OPT_CLEAN, OPT_CURSORS, NUM_OPTIONS
 		};
 
 #ifdef WITH_SHARED_TABLES
     // Options allowed in shared tables
-    static enum options shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, OPT_CURSORS, NUM_OPTIONS };
+    static enum options_e shared_options[] = { OPT_METHODS, OPT_DESTROY, OPT_NEEDSQUOTING, OPT_FIELDTYPE, OPT_FIELD, OPT_FIELDS, OPT_TYPE, OPT_SEARCHPLUS, OPT_SEARCH, OPT_GETPROP, OPT_SHARE, OPT_PERFORMANCE_CALLBACK, OPT_CURSORS, NUM_OPTIONS };
     static int shared_ok[NUM_OPTIONS] = {-1};
 
     // Read_only options
-    static enum options readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
+    static enum options_e readonly_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
     static int readonly[NUM_OPTIONS] = {-1};
 
     // Memory_allocating options - except for "index create" which
     // has to be checked for explicitly.
-    static enum options shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_WRITE_TABSEP, NUM_OPTIONS };
+    static enum options_e shmcheck_options[] = {OPT_SET, OPT_STORE, OPT_INCR, OPT_BATCH, OPT_SEARCH, OPT_SEARCHPLUS, OPT_IMPORT_POSTGRES_RESULT, OPT_IMPORT_CASSANDRA_FUTURE, OPT_WRITE_TABSEP, NUM_OPTIONS };
     static int shmcheck[NUM_OPTIONS] = {-1};
 #endif
 
-    static enum options cursor_safe_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
+    static enum options_e cursor_safe_options[] = { OPT_GET, OPT_ARRAY_GET, OPT_ARRAY_GET_WITH_NULLS, OPT_EXISTS, OPT_COUNT, OPT_SEARCH, OPT_SEARCHPLUS, OPT_TYPE, OPT_FIELDS, OPT_FIELD, OPT_FIELDTYPE, OPT_NEEDSQUOTING, OPT_NAMES, OPT_STATISTICS, OPT_WRITE_TABSEP, OPT_FOREACH, OPT_KEY, OPT_MAKEKEY, OPT_METHODS, OPT_GETPROP, OPT_CURSORS, NUM_OPTIONS };
     static int cursor_ok[NUM_OPTIONS] = {-1};
 
     // First time through, make it a bitmap.
@@ -283,7 +283,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     }
 #endif
 
-    switch ((enum options) optIndex) {
+    switch ((enum options_e) optIndex) {
       case NUM_OPTIONS: { // Can't happen!
 	  Tcl_AppendResult (interp, "Can't happen.", (char *)NULL);
 	  return TCL_ERROR;
@@ -303,7 +303,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       case OPT_GETPROP: {
 	  Tcl_Obj           *list = Tcl_NewObj();
 	  Tcl_Obj	    *tmpobj;
-	  static CONST char *infoStrings[] = { "type", "$table", "extension", "$extension", "key", "$keyFieldName", "quote", "", NULL };
+	  static const char *infoStrings[] = { "type", "$table", "extension", "$extension", "key", "$keyFieldName", "quote", "", NULL };
 	  int	             i;
 	  int                j;
 
@@ -392,14 +392,14 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_FIELD: {
-	static CONST char *subOptions[] = {"getprop", "properties", "proplist", (char *)NULL};
+	static const char *subOptions[] = {"getprop", "properties", "proplist", (char *)NULL};
 	int                      suboptIndex;
 	int                      fieldNum;
 	int                      propIndex;
         ctable_FieldInfo        *f;
       Tcl_Obj                   *resultObj = Tcl_GetObjResult (interp);
 
-	enum suboptions {SUBOPT_GETPROP, SUBOPT_PROPERTIES, SUBOPT_PROPLIST};
+	enum suboptions_e {SUBOPT_GETPROP, SUBOPT_PROPERTIES, SUBOPT_PROPLIST};
 
 	if ((objc < 4) || (objc > 5)) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "fieldName opt ?arg?");
@@ -424,7 +424,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	      return TCL_ERROR;
 	    }
 
-	    if (Tcl_GetIndexFromObj (interp, objv[4], (CONST char **)f->propKeys, "property", TCL_EXACT, &propIndex) != TCL_OK) {
+	    if (Tcl_GetIndexFromObj (interp, objv[4], (const char **)f->propKeys, "property", TCL_EXACT, &propIndex) != TCL_OK) {
 	        return TCL_ERROR;
 	    }
 
@@ -541,7 +541,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_STATISTICS: {
-          CONST char *stats = ctable_HashStats (ctable->keyTablePtr);
+          const char *stats = ctable_HashStats (ctable->keyTablePtr);
 	  Tcl_SetStringObj (Tcl_GetObjResult (interp), stats, -1);
 	  ckfree((char *)stats);
 	  break;
@@ -605,7 +605,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	  if (ctable->share_type == CTABLE_SHARED_MASTER) {
 	      int	 pid = -1;
 	      Tcl_Obj	*resultObj = Tcl_GetObjResult(interp);
-	      CONST char	*resultList[4];
+	      const char	*resultList[4];
 	      int	 i;
 
 	      if (objc != 3) {
@@ -700,13 +700,13 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       case OPT_MAKEKEY:
       case OPT_STORE: {
         int            i;
-	int            listObjc;
+	Tcl_Size       listObjc;
 	Tcl_Obj      **listObjv;
 	char	      *key;
         Tcl_Obj       *keyObj;
 	static char    keyString[32];
 	int	       nocomplain = 0;
-	Tcl_Obj *CONST*origObjv = objv;
+	Tcl_Obj *const *origObjv = objv;
 
 	while (objc > 2) {
 	    char *option = Tcl_GetString (objv[2]);
@@ -785,11 +785,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_SET: {
         int            i;
-	int            listObjc;
+	Tcl_Size       listObjc;
 	Tcl_Obj      **listObjv;
 	Tcl_Obj       *keyObj = objv[2];
 	int	       nocomplain = 0;
-	Tcl_Obj *CONST*origObjv = objv;
+	Tcl_Obj *const *origObjv = objv;
 
 	while (objc > 3) {
 	    char *option = Tcl_GetString (objv[3]);
@@ -849,7 +849,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 
       case OPT_INCR: {
         int       i;
-	int       listObjc;
+	Tcl_Size  listObjc;
 	Tcl_Obj **listObjv;
 
 	if ((objc < 3) || ((objc != 4) && (objc % 2) != 1)) {
@@ -1669,11 +1669,11 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       }
 
       case OPT_INDEX: {
-	static CONST char *subOptions[] = {"span", "count", "create", "drop", "indexable", "indexed", "unique", "list", "dump", (char *)NULL};
+	static const char *subOptions[] = {"span", "count", "create", "drop", "indexable", "indexed", "unique", "list", "dump", (char *)NULL};
 	int                suboptIndex;
 	int                fieldNum;
 
-	enum suboptions {SUBOPT_SPAN, SUBOPT_COUNT, SUBOPT_CREATE, SUBOPT_DROP, SUBOPT_INDEXABLE, SUBOPT_INDEXED, SUBOPT_UNIQUE, SUBOPT_LIST, SUBOPT_DUMP};
+	enum suboptions_e {SUBOPT_SPAN, SUBOPT_COUNT, SUBOPT_CREATE, SUBOPT_DROP, SUBOPT_INDEXABLE, SUBOPT_INDEXED, SUBOPT_UNIQUE, SUBOPT_LIST, SUBOPT_DUMP};
 
 	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "option ?args?");
@@ -1965,15 +1965,15 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       case OPT_NULL: {
 	int            i;
 	int            field;
-        struct $table *row;
+        struct $table *found;
 
 	if (objc < 3) {
 	    Tcl_WrongNumArgs (interp, 2, objv, "key ?field...?");
 	    return TCL_ERROR;
 	}
 
-	row = (${table}*) ${table}_find (ctable, Tcl_GetString (objv[2]));
-	if (row == NULL) {
+	found = (${table}*) ${table}_find (ctable, Tcl_GetString (objv[2]));
+	if (found == NULL) {
 	    Tcl_AppendResult (interp, "no such key");
 	    return TCL_ERROR;
 	}
@@ -1982,7 +1982,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    Tcl_Obj *result = Tcl_NewObj();
 
 	    for(i = 0; i < $nFields; i++) {
-		if(${table}_is_null(row, i)) {
+		if(${table}_is_null(found, i)) {
 		    if(Tcl_ListObjAppendElement(interp, result, ${table}_NameObjList[i]) == TCL_ERROR) {
 			return TCL_ERROR;
 		    }
@@ -1997,7 +1997,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
 		return TCL_ERROR;
 	    }
-	    if(${table}_set_null(interp, ctable, row, field, CTABLE_INDEX_NORMAL) != TCL_OK) {
+	    if(${table}_set_null(interp, ctable, found, field, CTABLE_INDEX_NORMAL) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	}
@@ -2007,7 +2007,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
       case OPT_ISNULL: {
 	int            i;
 	int            field;
-        struct $table *row;
+        struct $table *found;
 	Tcl_Obj       *result = Tcl_NewObj();
 
 	if (objc < 4) {
@@ -2015,8 +2015,8 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    return TCL_ERROR;
 	}
 
-	row = (${table}*) ${table}_find (ctable, Tcl_GetString (objv[2]));
-	if (row == NULL) {
+	found = (${table}*) ${table}_find (ctable, Tcl_GetString (objv[2]));
+	if (found == NULL) {
 	    Tcl_AppendResult (interp, "no such key");
 	    return TCL_ERROR;
 	}
@@ -2025,7 +2025,7 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
 	    if (Tcl_GetIndexFromObj (interp, objv[i], ${table}_fields, "field", TCL_EXACT, &field) != TCL_OK) {
 		return TCL_ERROR;
 	    }
-	    if(Tcl_ListObjAppendElement(interp, result, Tcl_NewIntObj(${table}_is_null(row, field))) != TCL_OK) {
+	    if(Tcl_ListObjAppendElement(interp, result, Tcl_NewIntObj(${table}_is_null(found, field))) != TCL_OK) {
 		return TCL_ERROR;
 	    }
 	}
@@ -2161,10 +2161,10 @@ int ${table}ObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CON
     return commandStatus;
 }
 
-int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *CONST objv[], int objc)
+int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct cursor *cursor, Tcl_Obj *const objv[], int objc)
 {
-    static CONST char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "delete", "count", "at_end", "key", NULL };
-    enum cursorCommands { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_DELETE, CURSOR_COUNT, CURSOR_AT_END, CURSOR_KEY, NUM_CURSOR_COMMANDS };
+    static const char *cursorCommands[] = { "destroy", "reset", "next", "index", "get", "set", "array_get", "array_get_with_nulls", "delete", "count", "at_end", "key", NULL };
+    enum cursorCommands_e { CURSOR_DESTROY, CURSOR_RESET, CURSOR_NEXT, CURSOR_INDEX, CURSOR_GET, CURSOR_SET, CURSOR_ARRAY_GET, CURSOR_ARRAY_GET_WITH_NULLS, CURSOR_DELETE, CURSOR_COUNT, CURSOR_AT_END, CURSOR_KEY, NUM_CURSOR_COMMANDS };
     int command_id = 0;
 
     if (Tcl_GetIndexFromObj (interp, objv[0], cursorCommands, "cursor command", TCL_EXACT, &command_id) != TCL_OK) {
@@ -2243,9 +2243,9 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 
 	case CURSOR_SET: {
 	    int              i;
-	    int              listObjc;
+	    Tcl_Size         listObjc;
 	    Tcl_Obj        **listObjv;
-	    struct ${table} *row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
+	    struct ${table} *cursor_row = (struct ${table} *)cursor->tranTable[cursor->tranIndex];
 	    int              nocomplain = 0;
 
 	    if(cursor->tranIndex >= cursor->offsetLimit) {
@@ -2308,7 +2308,7 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    }
 
 	    for (i = 0; i < listObjc; i+= 2) {
-		if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], row, listObjv[i], CTABLE_INDEX_NORMAL, nocomplain) == TCL_ERROR) {
+		if (${table}_set_fieldobj (interp, ctable, listObjv[i+1], cursor_row, listObjv[i], CTABLE_INDEX_NORMAL, nocomplain) == TCL_ERROR) {
 		    Tcl_AppendResult (interp, " while processing key-value list", (char *)NULL);
 		    return TCL_ERROR;
 		}
@@ -2365,8 +2365,8 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
 	    if(cursor->tranIndex >= cursor->offsetLimit) {
 		goto past_end_of_search;
 	    }
-	    struct ctable_BaseRow *row = cursor->tranTable[cursor->tranIndex];
-	    Tcl_SetObjResult (interp, Tcl_NewStringObj(row->hashEntry.key, -1));
+	    struct ctable_BaseRow *cursor_row = cursor->tranTable[cursor->tranIndex];
+	    Tcl_SetObjResult (interp, Tcl_NewStringObj(cursor_row->hashEntry.key, -1));
 	    return TCL_OK;
 	}
 
@@ -2377,7 +2377,7 @@ int ${table}CursorCommandCommon(Tcl_Interp *interp, CTable *ctable, struct curso
     }
 }
 
-int ${table}CursorObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+int ${table}CursorObjCmd (ClientData cData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
     struct cursor *cursor = (struct cursor *)cData;
     CTable *ctable = cursor->ownerTable;
