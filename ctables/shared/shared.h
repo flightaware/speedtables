@@ -42,10 +42,6 @@ using namespace boost::container;
 #  define WITH_TCL
 #endif
 
-#ifndef WITH_TCL
-#define const const
-#endif
-
 // TUNING
 
 // Maximum number of readers
