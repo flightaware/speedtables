@@ -1,5 +1,7 @@
 #!/bin/sh
-#$Id$
+
+echo "Starting readerperf.sh"
+set -x
 
 . test_common.sh
 

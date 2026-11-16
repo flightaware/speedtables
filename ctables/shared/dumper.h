@@ -1,6 +1,5 @@
 // A stripped down ctable.h
 #define WITH_SHARED_TABLES 1
-#define VOID void
 
 // Dummy out types we're not going to use
 typedef void *Tcl_Command;

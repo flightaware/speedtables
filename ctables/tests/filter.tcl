@@ -36,7 +36,7 @@ CExtension Filtertest 1.0 {
       // Only parse target information if the search ID changes.
       if(sequence != lastSequence) {
         Tcl_Obj **filterList;
-        int       filterCount;
+        Tcl_Size  filterCount;
         if(Tcl_ListObjGetElements(interp, filter, &filterCount, &filterList) != TCL_OK)
 	  return TCL_ERROR;
         if(filterCount != 3) {

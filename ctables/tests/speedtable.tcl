@@ -4,6 +4,9 @@
 
 source test_common.tcl
 
+set ::ctable::showCompilerCommands 1
+set ::ctable::errorDebug 1
+
 speedtables Topbrands 1.0 {
 
 table top_brands {

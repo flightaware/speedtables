@@ -8,7 +8,9 @@ source test_common.tcl
 
 package require ctable_server
 
-set suffix _m
+namespace eval ::ctable_test {
+    set suffix _m
+}
 
 source top-brands-nokey-def.tcl
 

@@ -4,8 +4,10 @@
 
 source test_common.tcl
 
-set suffix _m
-set nametags {indexed 1}
+namespace eval ::ctable_test {
+    set suffix _m
+    set nametags {indexed 1}
+}
 
 source multitable.ct
 

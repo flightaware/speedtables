@@ -4,27 +4,28 @@
 
 package require ctable
 
-if {![info exists suffix]} {
-	set suffix ""
+namespace eval ::ctable_test {
+	if {![info exists suffix]} {
+		set suffix ""
+	}
+	if {![info exists nametags]} {
+		set nametags [list]
+	}
 }
 
-if {![info exists nametags]} {
-	set nametags [list]
-}
+CExtension multi$::ctable_test::suffix 1.0 {
 
-CExtension multi$suffix 1.0 {
-
-CTable nameval$suffix {
-    varstring name {*}$nametags
+CTable nameval$::ctable_test::suffix {
+    varstring name {*}$::ctable_test::nametags
     varstring value
 }
 
-CTable elements$suffix {
-    varstring name {*}$nametags
+CTable elements$::ctable_test::suffix {
+    varstring name {*}$::ctable_test::nametags
     varstring symbol
 }
 
-CTable anim_characters$suffix {
+CTable anim_characters$::ctable_test::suffix {
     varstring id indexed 1 unique 1 notnull 1
     varstring name indexed 1 unique 1
     varstring home indexed 1 unique 0
@@ -49,6 +50,6 @@ CTable albums {
 
 }
 
-package require Multi$suffix
+package require Multi$::ctable_test::suffix
 package require Multitoo
 

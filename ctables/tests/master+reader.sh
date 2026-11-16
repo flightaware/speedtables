@@ -1,5 +1,7 @@
 #!/bin/sh
-#$Id$
+
+echo "Starting master+reader.sh"
+set -x
 
 . ./test_common.sh
 

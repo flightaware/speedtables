@@ -1,5 +1,7 @@
 #!/bin/sh
-#$Id$
+
+echo "Starting multimaster.sh"
+set -x
 
 . ./test_common.sh
 
