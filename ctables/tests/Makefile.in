@@ -24,9 +24,6 @@ TCLSHM          = $(TCLSH)
 all: maintests macip allstapi corrupt
 
 maintests:
-	#@echo "ENVIRONMENT"
-	#cat Makefile
-	#$(TCLSH_ENV) env
 	rm -rf stobj
 	$(TCLSH) speedtable.tcl
 	$(TCLSH) serious-tests.tcl
